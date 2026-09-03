@@ -1,0 +1,4 @@
+# APKs and checksums belong in versioned GitHub Releases, not Git history.
+*.apk
+*.zip
+SHA256SUMS.txt
