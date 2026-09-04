@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        android:label="@string/app_name_demo"
+        tools:replace="android:label">
+        <meta-data
+            android:name="com.streammate.tv.DEMO_CONTENT_PROVIDER"
+            android:value="com.streammate.tv.demo.StreamMateDemoContentProvider" />
+    </application>
+</manifest>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The languages the interface is translated into. Declaring them lets Android
+    13 and up list StreamMate in its own per-app language screen, and tells the
+    Play Console which locales the listing actually supports.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="fi" />
+</locale-config>

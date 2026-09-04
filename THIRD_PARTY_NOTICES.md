@@ -1,8 +1,9 @@
 # Sohva TV third-party notices
 
-For the non-commercial **0.1.0-beta.1** tester package. Sohva TV's own source
-code is not relicensed by this document. Third-party copyrights and licences
-remain in force.
+For the **0.1.0-beta.1** tester package and accompanying public source. Sohva
+TV's original source is licensed separately under `GPL-3.0-only`. This document
+does not relicense third-party material; third-party copyrights, licences,
+service terms, logos, and trademarks remain in force.
 
 ## Open-source software
 
@@ -33,7 +34,8 @@ upstream content.
 
 - **TMDB:** This product uses the TMDB API but is not endorsed or certified by
   TMDB. TMDB is optional and uses your own credential. The unmodified TMDB
-  attribution logo appears in the app. [TMDB FAQ](https://developer.themoviedb.org/docs/faq).
+  attribution logo appears in the app and is not offered under Sohva TV's GPL
+  licence. [TMDB FAQ](https://developer.themoviedb.org/docs/faq).
 - **TVmaze:** TVmaze data is used under CC BY-SA; enriched information cards
   identify and link to the source. [TVmaze licensing](https://www.tvmaze.com/api#licensing).
 - **API-Sports:** Optional and user-keyed. Coverage, quotas and terms depend

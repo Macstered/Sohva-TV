@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Cleartext stays permitted by default because IPTV playlists, EPG feeds and
+    stream URLs are entered by the user and served by their provider. Those
+    hosts are not knowable at build time and many providers still serve plain
+    HTTP, so a blanket ban would simply stop the app working.
+
+    Everything StreamMate itself talks to is known, is HTTPS, and is pinned to
+    HTTPS here, so an attacker on the network cannot downgrade a metadata or
+    sports lookup - and the carve-out for cleartext is visibly limited to
+    user-supplied sources rather than being app-wide.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Sports fixtures and live scores. -->
+        <domain includeSubdomains="true">api-sports.io</domain>
+        <!-- Film and series metadata, and the poster/backdrop CDN. -->
+        <domain includeSubdomains="true">themoviedb.org</domain>
+        <domain includeSubdomains="true">tmdb.org</domain>
+        <!-- Series metadata fallback. -->
+        <domain includeSubdomains="true">tvmaze.com</domain>
+    </domain-config>
+</network-security-config>

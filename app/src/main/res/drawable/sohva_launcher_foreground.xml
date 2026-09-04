@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from assets/branding/sohva/sohva-mark.svg; do not edit paths here. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="256" android:viewportHeight="256">
+  <group android:pivotX="128" android:pivotY="128" android:scaleX="0.72" android:scaleY="0.72" android:translateY="-5">
+    <path android:fillColor="#2DE2E6" android:pathData="M80 62H176C191.464 62 204 74.536 204 90V143H52V90C52 74.536 64.536 62 80 62ZM115 88V132L152 110Z" />
+    <path android:fillColor="#2DE2E6" android:pathData="M40 116C31.163 116 24 123.163 24 132V168C24 185.673 38.327 200 56 200H200C217.673 200 232 185.673 232 168V132C232 123.163 224.837 116 216 116C207.163 116 200 123.163 200 132V155H56V132C56 123.163 48.837 116 40 116Z" />
+    <path android:fillColor="#2DE2E6" android:pathData="M56 196H76V206C76 209.314 73.314 212 70 212H62C58.686 212 56 209.314 56 206ZM180 196H200V206C200 209.314 197.314 212 194 212H186C182.686 212 180 209.314 180 206Z" />
+  </group>
+</vector>

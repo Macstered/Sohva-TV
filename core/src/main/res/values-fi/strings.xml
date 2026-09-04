@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Messages raised below the UI layer.
+
+    Repositories, network clients and validators have no Context, so they carry
+    a resource id in LocalizedException instead of a finished sentence, and the
+    screen that shows the failure resolves it. Keeping them here rather than in
+    each feature module means one place to translate and no duplicate keys.
+-->
+<resources>
+    <string name="error_unknown">Tuntematon virhe</string>
+    <string name="error_transport_failed">Pyyntöä ei voitu suorittaa</string>
+    <string name="error_transport_failed_detail">Pyyntöä ei voitu suorittaa: %1$s</string>
+    <string name="error_source_url_invalid">%1$s-osoitteen täytyy olla kelvollinen HTTP- tai HTTPS-osoite</string>
+    <string name="error_source_label">Lähde</string>
+    <string name="error_label_xtream_server">Xtream-palvelin</string>
+    <string name="error_source_url_malformed">Lähteen osoite on virheellinen</string>
+    <string name="error_source_http">Lähde vastasi HTTP-virheellä %1$d</string>
+    <string name="error_source_connection_limit">Lähteen %1$s yhteysraja (%2$d) on käytössä</string>
+    <string name="error_source_not_xtream">Lähde ei ole Xtream-lähde</string>
+    <string name="error_source_not_m3u">Lähde ei ole M3U-lähde</string>
+    <string name="error_source_no_vod">Lähde ei tuo elokuvia tai sarjoja</string>
+    <string name="error_source_no_live_tv">Lähde ei tuo suoraa TV:tä</string>
+    <string name="error_m3u_url_missing">M3U-lähteen osoite puuttuu</string>
+    <string name="error_xtream_url_missing">Xtream-palvelimen osoite puuttuu</string>
+    <string name="error_xtream_url_invalid">Xtream-palvelimen osoite on virheellinen</string>
+    <string name="error_xtream_username_missing">Xtream-käyttäjänimi puuttuu</string>
+    <string name="error_xtream_password_missing">Xtream-salasana puuttuu</string>
+    <string name="error_xtream_no_user_info">Xtream-palvelin ei palauttanut käyttäjätietoja</string>
+    <string name="error_xtream_auth_failed">Xtream-tunnistautuminen epäonnistui</string>
+    <string name="error_xtream_http">Xtream-palvelin vastasi HTTP-virheellä %1$d</string>
+    <string name="error_xtream_response_too_large">Xtream-palvelimen vastaus oli liian suuri</string>
+    <string name="error_xtream_response_invalid">Xtream-palvelimen vastaus ei ollut kelvollinen</string>
+    <string name="error_series_id_invalid">Sarjan tunniste on virheellinen</string>
+    <string name="error_metadata_http">%1$s-metatietopalvelu vastasi %2$d</string>
+    <string name="error_metadata_response_too_large">%1$s-metatietovastaus on liian suuri</string>
+    <string name="error_tmdb_key_invalid">TMDB API-avain tai Read Access Token on virheellinen</string>
+    <string name="error_tmdb_key_required">TMDB tarvitsee API-avaimen tai Read Access Token -tunnisteen</string>
+    <string name="error_metadata_settings_save">Metatietoasetuksia ei voitu tallentaa</string>
+    <string name="error_api_sports_key_missing">Lisää API-Sports-avain asetuksissa</string>
+    <string name="error_api_sports_key_invalid">API-Sports-avain on virheellinen</string>
+    <string name="error_api_sports_settings_save">API-Sports-asetuksia ei voitu tallentaa</string>
+    <string name="error_api_sports_http">API-Sports vastasi HTTP %1$d</string>
+    <string name="error_api_sports_response_too_large">API-Sports-vastaus on liian suuri</string>
+    <string name="error_api_sports_unavailable">API-Sports ei ole juuri nyt saatavilla</string>
+    <string name="error_api_sports_invalid_data">API-Sports palautti virheellisiä tietoja</string>
+    <string name="error_api_sports_service_error">API-Sports palautti palveluvirheen</string>
+    <string name="error_endpoint_must_be_https">API-Sports-päätepisteen pitää olla HTTPS-juuriosoite</string>
+    <string name="error_football_event_id_invalid">Jalkapallo-ottelun tunniste on virheellinen</string>
+    <string name="error_sport_unsupported_source">Valittua urheilulajia ei tueta tällä tietolähteellä</string>
+    <string name="error_backup_passphrase_too_short">Varmuuskopion salasanan pitää olla vähintään %1$d merkkiä</string>
+    <string name="error_backup_too_large">Varmuuskopio on liian suuri</string>
+    <string name="error_backup_not_streammate">Tiedosto ei ole Sohva TV -varmuuskopio</string>
+    <string name="error_backup_version_unsupported">Varmuuskopion versiota ei tueta</string>
+    <string name="error_backup_key_format">Varmuuskopion avainmuoto on virheellinen</string>
+    <string name="error_backup_trailing_data">Varmuuskopion lopussa on ylimääräistä tietoa</string>
+    <string name="error_backup_wrong_passphrase">Väärä salasana tai vioittunut varmuuskopio</string>
+    <string name="error_backup_structure">Varmuuskopion rakenne on virheellinen</string>
+    <string name="error_pin_format">PIN-koodin pitää olla 4–8 numeroa</string>
+</resources>

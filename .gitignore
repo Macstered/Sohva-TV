@@ -1,4 +1,50 @@
-# APKs and checksums belong in versioned GitHub Releases, not Git history.
+# Gradle and Android build output
+.gradle/
+.kotlin/
+build/
+**/build/
+captures/
+.idea/
+*.iml
+local.properties
+.local/
+
+# Local development, review, and publication staging
+.agents/
+.codex/
+.codex-artifacts/
+artifacts/
+assets/
+concept_images/
 *.apk
+*.aab
+*.apks
 *.zip
+*.log
 SHA256SUMS.txt
+
+# Signing material
+*.jks
+*.keystore
+keystore.properties
+
+# Secrets and local service configuration
+secrets.properties
+*.env
+.env.*
+!*.env.example
+*credentials*.json
+*iptv*.json
+
+# Private Sohva TV configuration backups
+*.smbak
+
+# Internal handoffs and machine-specific working notes
+*_HANDOFF*.md
+implementation_plan.md
+ui_and_system_improvement_plan.md
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp

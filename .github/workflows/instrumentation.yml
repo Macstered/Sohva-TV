@@ -1,0 +1,69 @@
+name: Instrumentation
+
+# Emulator runs are slow and comparatively flaky, so they do not gate pull
+# requests. Trigger manually, or let the nightly run catch drift.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+
+concurrency:
+  group: instrumentation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  connected:
+    name: Android TV emulator (API 30)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          # The screensaver is the reason this suite was red on real hardware:
+          # once it takes the foreground mid-run every later test fails to find
+          # a Compose hierarchy. Turn it off before any test starts.
+          script: |
+            adb shell settings put secure screensaver_enabled 0
+            adb shell settings put system screen_off_timeout 2147483647
+            adb shell svc power stayon true
+            ./gradlew :core:connectedDebugAndroidTest :app:connectedDebugAndroidTest
+
+      - name: Upload instrumentation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-reports
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            **/build/reports/androidTests/**
+            **/build/outputs/androidTest-results/**

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Messages raised below the UI layer.
+
+    Repositories, network clients and validators have no Context, so they carry
+    a resource id in LocalizedException instead of a finished sentence, and the
+    screen that shows the failure resolves it. Keeping them here rather than in
+    each feature module means one place to translate and no duplicate keys.
+-->
+<resources>
+    <string name="brand_sohva_tv" translatable="false">Sohva TV</string>
+    <string name="brand_sohva_sport" translatable="false">Sohva Sport</string>
+    <string name="error_unknown">Unknown error</string>
+    <string name="error_transport_failed">Could not complete the request</string>
+    <string name="error_transport_failed_detail">Could not complete the request: %1$s</string>
+    <string name="error_source_url_invalid">The %1$s address must be a valid HTTP or HTTPS address</string>
+    <string name="error_source_label">Source</string>
+    <string name="error_label_xtream_server">Xtream server</string>
+    <string name="error_source_url_malformed">The source address is invalid</string>
+    <string name="error_source_http">The source responded with HTTP error %1$d</string>
+    <string name="error_source_connection_limit">The connection limit for %1$s (%2$d) is already in use</string>
+    <string name="error_source_not_xtream">This is not an Xtream source</string>
+    <string name="error_source_not_m3u">This is not an M3U source</string>
+    <string name="error_source_no_vod">This source does not provide movies or series</string>
+    <string name="error_source_no_live_tv">This source does not provide live TV</string>
+    <string name="error_m3u_url_missing">The M3U source address is missing</string>
+    <string name="error_xtream_url_missing">The Xtream server address is missing</string>
+    <string name="error_xtream_url_invalid">The Xtream server address is invalid</string>
+    <string name="error_xtream_username_missing">The Xtream username is missing</string>
+    <string name="error_xtream_password_missing">The Xtream password is missing</string>
+    <string name="error_xtream_no_user_info">The Xtream server did not return account details</string>
+    <string name="error_xtream_auth_failed">Xtream sign-in failed</string>
+    <string name="error_xtream_http">The Xtream server responded with HTTP error %1$d</string>
+    <string name="error_xtream_response_too_large">The Xtream server response was too large</string>
+    <string name="error_xtream_response_invalid">The Xtream server response was not valid</string>
+    <string name="error_series_id_invalid">The series identifier is invalid</string>
+    <string name="error_metadata_http">The %1$s metadata service responded with %2$d</string>
+    <string name="error_metadata_response_too_large">The %1$s metadata response is too large</string>
+    <string name="error_tmdb_key_invalid">The TMDB API key or read access token is invalid</string>
+    <string name="error_tmdb_key_required">TMDB needs an API key or a read access token</string>
+    <string name="error_metadata_settings_save">Metadata settings could not be saved</string>
+    <string name="error_api_sports_key_missing">Add an API-Sports key in settings</string>
+    <string name="error_api_sports_key_invalid">The API-Sports key is invalid</string>
+    <string name="error_api_sports_settings_save">API-Sports settings could not be saved</string>
+    <string name="error_api_sports_http">API-Sports responded with HTTP %1$d</string>
+    <string name="error_api_sports_response_too_large">The API-Sports response is too large</string>
+    <string name="error_api_sports_unavailable">API-Sports is not available right now</string>
+    <string name="error_api_sports_invalid_data">API-Sports returned invalid data</string>
+    <string name="error_api_sports_service_error">API-Sports returned a service error</string>
+    <string name="error_endpoint_must_be_https">The API-Sports endpoint must be an HTTPS root address</string>
+    <string name="error_football_event_id_invalid">The football match identifier is invalid</string>
+    <string name="error_sport_unsupported_source">The selected sport is not supported by this data source</string>
+    <string name="error_backup_passphrase_too_short">The backup password must be at least %1$d characters</string>
+    <string name="error_backup_too_large">The backup is too large</string>
+    <string name="error_backup_not_streammate">This file is not a Sohva TV backup</string>
+    <string name="error_backup_version_unsupported">This backup version is not supported</string>
+    <string name="error_backup_key_format">The backup key format is invalid</string>
+    <string name="error_backup_trailing_data">The backup has extra data at the end</string>
+    <string name="error_backup_wrong_passphrase">Wrong password, or the backup is damaged</string>
+    <string name="error_backup_structure">The backup structure is invalid</string>
+    <string name="error_pin_format">The PIN must be 4–8 digits</string>
+</resources>

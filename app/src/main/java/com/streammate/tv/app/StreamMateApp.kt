@@ -1,0 +1,601 @@
+package com.streammate.tv.app
+
+import com.streammate.tv.feature.today.TodayPollingPolicy
+import androidx.lifecycle.compose.currentStateAsState
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import android.content.ComponentName
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.media3.session.SessionToken
+import androidx.tv.material3.Text
+import com.streammate.tv.R
+import com.streammate.tv.feature.guide.GuideScreen
+import com.streammate.tv.feature.home.HomeScreen
+import com.streammate.tv.feature.legal.LegalInformationScreen
+import com.streammate.tv.feature.player.PlayerScreen
+import com.streammate.tv.feature.catalogue.CatalogueMode
+import com.streammate.tv.feature.catalogue.MovieDetailsScreen
+import com.streammate.tv.feature.catalogue.SeriesDetailsScreen
+import com.streammate.tv.feature.catalogue.v2.CatalogueBrowserSession
+import com.streammate.tv.feature.catalogue.v2.CatalogueBrowserV2
+import com.streammate.tv.feature.catalogue.v2.CatalogueBrowseTarget
+import com.streammate.tv.feature.search.SearchScreen
+import com.streammate.tv.feature.settings.SettingsScreen
+import com.streammate.tv.feature.settings.ChannelEditorScreen
+import com.streammate.tv.feature.settings.LibraryManagerScreen
+import com.streammate.tv.core.model.LibraryRoom
+import com.streammate.tv.feature.settings.ParentalPinScreen
+import com.streammate.tv.feature.today.TodayScreen
+import com.streammate.tv.feature.today.TodayViewModel
+import com.streammate.tv.feature.today.sportMateStatusSummary
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CancellationException
+import com.streammate.tv.core.model.IptvSourceType
+import com.streammate.tv.iptv.xtream.derivedXtreamSourceOrNull
+import com.streammate.tv.iptv.repository.VodSeries
+import com.streammate.tv.iptv.repository.VodMovie
+
+internal fun shouldReturnPlaybackToGuide(
+    catchupStartEpochMillis: Long?,
+    catchupStopEpochMillis: Long?,
+): Boolean = catchupStartEpochMillis == null && catchupStopEpochMillis == null
+
+@Composable
+fun StreamMateApp(container: StreamMateContainer) {
+    var backStack by remember { mutableStateOf(listOf<Destination>(Destination.Home)) }
+    var startupApplied by remember { mutableStateOf(false) }
+    var guideManagementReturn by remember { mutableStateOf(false) }
+    var guideManagedGroup by remember { mutableStateOf<String?>(null) }
+    var guideFocusChannelId by remember { mutableStateOf<String?>(null) }
+    val movieCatalogueSession = remember { CatalogueBrowserSession(CatalogueMode.MOVIES) }
+    val seriesCatalogueSession = remember { CatalogueBrowserSession(CatalogueMode.SERIES) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val genericChannelName = stringResource(R.string.generic_channel)
+    val playbackSessionToken = remember(context) {
+        SessionToken(context, ComponentName(context, StreamMatePlaybackService::class.java))
+    }
+    val destination = backStack.last()
+    val appPreferences by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
+        initialValue = AppPreferences(),
+    )
+    LaunchedEffect(container) {
+        val preferences = container.preferencesRepository.preferences.first()
+        val parentalPinConfigured = container.secretSettingsStore.hasParentalPin()
+        if (preferences.parentalPinConfigured != parentalPinConfigured) {
+            container.preferencesRepository.setParentalPinConfigured(parentalPinConfigured)
+        }
+        val lockedChannelIds = if (parentalPinConfigured) preferences.lockedChannelIds else emptySet()
+        backStack = when (preferences.startupScreen) {
+            StartupScreen.HOME -> listOf(Destination.Home)
+            StartupScreen.GUIDE -> listOf(Destination.Home, Destination.Guide)
+            StartupScreen.LAST_CHANNEL -> {
+                val channel = preferences.lastChannelId
+                    ?.let { container.guideRepository.activeChannel(it) }
+                if (channel == null) {
+                    listOf(Destination.Home, Destination.Guide)
+                } else if (channel.channelId in lockedChannelIds) {
+                    guideFocusChannelId = channel.channelId
+                    listOf(
+                        Destination.Home,
+                        Destination.Guide,
+                        Destination.PinGate(channel.channelId, channel.name, replacePlayer = false),
+                    )
+                } else {
+                    guideFocusChannelId = channel.channelId
+                    listOf(Destination.Home, Destination.Guide, Destination.Player(channel.channelId))
+                }
+            }
+        }
+        startupApplied = true
+    }
+    LaunchedEffect(container, context) {
+        if (container.demoMode) return@LaunchedEffect
+        container.preferencesRepository.preferences
+            .map { it.playlistEpgRefreshInterval }
+            .distinctUntilChanged()
+            .collect { interval -> GuideRefreshScheduler.schedule(context, interval) }
+    }
+    fun navigateTo(next: Destination) {
+        if (next != destination) backStack = backStack + next
+    }
+    fun navigateBack() {
+        if (backStack.size > 1) backStack = backStack.dropLast(1)
+    }
+    fun playChannel(channelId: String, rememberForGuide: Boolean = true) {
+        if (rememberForGuide) guideFocusChannelId = channelId
+        coroutineScope.launch {
+            if (channelId in appPreferences.lockedChannelIds) {
+                val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
+                navigateTo(
+                    Destination.PinGate(
+                        channelId = channelId,
+                        channelName = channelName,
+                        replacePlayer = false,
+                        rememberForGuide = rememberForGuide,
+                    ),
+                )
+            } else {
+                if (rememberForGuide) container.preferencesRepository.recordRecentChannel(channelId)
+                navigateTo(Destination.Player(channelId))
+            }
+        }
+    }
+    fun playCatchup(channelId: String, startEpochMillis: Long, stopEpochMillis: Long) {
+        guideFocusChannelId = channelId
+        coroutineScope.launch {
+            if (channelId in appPreferences.lockedChannelIds) {
+                val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
+                navigateTo(
+                    Destination.PinGate(
+                        channelId = channelId,
+                        channelName = channelName,
+                        replacePlayer = false,
+                        catchupStartEpochMillis = startEpochMillis,
+                        catchupStopEpochMillis = stopEpochMillis,
+                    ),
+                )
+            } else {
+                container.preferencesRepository.recordRecentChannel(channelId)
+                navigateTo(Destination.Player(channelId, startEpochMillis, stopEpochMillis))
+            }
+        }
+    }
+    fun zapToChannel(channelId: String) {
+        guideFocusChannelId = channelId
+        coroutineScope.launch {
+            if (channelId in appPreferences.lockedChannelIds) {
+                val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
+                backStack = backStack + Destination.PinGate(channelId, channelName, replacePlayer = true)
+            } else {
+                container.preferencesRepository.recordRecentChannel(channelId)
+                backStack = backStack.dropLast(1) + Destination.Player(channelId)
+            }
+        }
+    }
+    fun playVod(contentKey: String, resumePositionMillis: Long) {
+        navigateTo(Destination.VodPlayer(contentKey, resumePositionMillis))
+    }
+    fun playVodFromHome(contentKey: String, resumePositionMillis: Long) {
+        coroutineScope.launch {
+            val detailRoute = container.catalogueRepository.movie(contentKey)?.let { movie ->
+                listOf<Destination>(
+                    Destination.Catalogue(CatalogueMode.MOVIES),
+                    Destination.MovieDetails(movie),
+                )
+            } ?: container.catalogueRepository.seriesForEpisode(contentKey)?.let { series ->
+                listOf<Destination>(
+                    Destination.Catalogue(CatalogueMode.SERIES),
+                    Destination.SeriesDetails(series),
+                )
+            }.orEmpty()
+            if (backStack.lastOrNull() == Destination.Home) {
+                backStack = backStack + detailRoute + Destination.VodPlayer(
+                    contentKey,
+                    resumePositionMillis,
+                )
+            }
+        }
+    }
+    fun continueToNextEpisode(player: Destination.VodPlayer) {
+        if (!appPreferences.autoPlayNextEpisodeEnabled) return
+        coroutineScope.launch {
+            val next = container.catalogueRepository.nextEpisode(player.contentKey) ?: return@launch
+            if (backStack.lastOrNull() == player) {
+                backStack = backStack.dropLast(1) + Destination.VodPlayer(
+                    contentKey = next.contentKey,
+                    resumePositionMillis = 0L,
+                )
+            }
+        }
+    }
+    suspend fun refreshCatalogues(): Result<String> = try {
+        if (container.refreshDemoContent()) {
+            return Result.success(resources.getString(R.string.catalogue_demo_refreshed))
+        }
+        val sources = container.secretSettingsStore.loadSources()
+            .filter { it.enabled && it.importScope.importsVod }
+        require(sources.isNotEmpty()) { resources.getString(R.string.catalogue_add_xtream_first) }
+        var movieCount = 0
+        var seriesCount = 0
+        sources.forEach { source ->
+            container.guideRepository.upsertSourceState(source)
+            val result = when (source.type) {
+                IptvSourceType.M3U -> source.derivedXtreamSourceOrNull()
+                    ?.let { container.xtreamCatalogueImportService.refresh(it) }
+                    ?: container.m3uCatalogueImportService.refresh(source)
+                IptvSourceType.XTREAM -> container.xtreamCatalogueImportService.refresh(source)
+            }
+            movieCount += result.movies
+            seriesCount += result.series
+        }
+        CatalogueMetadataScheduler.restart(context)
+        val movies = resources.getQuantityString(
+            R.plurals.catalogue_imported_movies,
+            movieCount,
+            movieCount,
+        )
+        val series = resources.getQuantityString(
+            R.plurals.catalogue_imported_series,
+            seriesCount,
+            seriesCount,
+        )
+        Result.success(resources.getString(R.string.catalogue_imported, movies, series))
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Throwable) {
+        Result.failure(error)
+    }
+    val todayViewModel: TodayViewModel = viewModel(
+        factory = remember(container) {
+            TodayViewModel.factory(
+                repository = container.sportsRepository,
+                matchingRepository = container.eventChannelMatchingRepository,
+                preferencesRepository = container.preferencesRepository,
+            )
+        },
+    )
+    val todayUiState by todayViewModel.uiState.collectAsStateWithLifecycle()
+    // Polling has to stop when nobody is looking, not just when navigation has
+    // moved on. Leaving the app for the launcher, or handing a stream to an
+    // external player, both leave the sports screen as the current destination
+    // while the daily API-Sports allowance quietly drains.
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    LaunchedEffect(destination, lifecycleState, todayViewModel) {
+        todayViewModel.setAutoRefreshEnabled(
+            TodayPollingPolicy.shouldPoll(
+                onSportsScreen = destination == Destination.Today,
+                appInForeground = lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
+            ),
+        )
+    }
+    fun handleBack() {
+        if (destination == Destination.Settings) todayViewModel.refresh()
+        navigateBack()
+    }
+    fun handlePlayerBack(player: Destination.Player) {
+        if (
+            shouldReturnPlaybackToGuide(
+                player.catchupStartEpochMillis,
+                player.catchupStopEpochMillis,
+            )
+        ) {
+            guideFocusChannelId = player.channelId
+            backStack = listOf(Destination.Home, Destination.Guide)
+        } else {
+            handleBack()
+        }
+    }
+    BackHandler(enabled = backStack.size > 1, onBack = ::handleBack)
+    StreamMateTheme {
+        val palette = StreamMateThemeTokens.palette
+        if (!startupApplied) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(palette.backgroundBottom),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(text = stringResource(R.string.app_name))
+            }
+        } else when (val current = destination) {
+            Destination.Home -> HomeScreen(
+                guideRepository = container.guideRepository,
+                catalogueRepository = container.catalogueRepository,
+                preferencesRepository = container.preferencesRepository,
+                // The same list SearchScreen already reads. Home only shows
+                // what is there; it starts no fetch of its own.
+                sportsEvents = todayUiState.events,
+                onLiveTv = { navigateTo(Destination.Guide) },
+                onSportMate = { navigateTo(Destination.Today) },
+                onMovies = { navigateTo(Destination.Catalogue(CatalogueMode.MOVIES)) },
+                onSeries = { navigateTo(Destination.Catalogue(CatalogueMode.SERIES)) },
+                onSearch = { navigateTo(Destination.Search) },
+                onSettings = { navigateTo(Destination.Settings) },
+                onPlayChannel = ::playChannel,
+                onPlayVod = ::playVodFromHome,
+            )
+            Destination.Search -> SearchScreen(
+                guideRepository = container.guideRepository,
+                catalogueRepository = container.catalogueRepository,
+                sportsEvents = todayUiState.events,
+                onPlayChannel = ::playChannel,
+                onPlayVod = ::playVod,
+                onOpenMovie = { navigateTo(Destination.MovieDetails(it)) },
+                onOpenSeries = { navigateTo(Destination.SeriesDetails(it)) },
+                onSportMate = { navigateTo(Destination.Today) },
+                onBack = ::handleBack,
+            )
+            is Destination.Catalogue -> {
+                CatalogueBrowserV2(
+                    mode = current.mode,
+                    repository = container.catalogueRepository,
+                    preferredCopy = appPreferences.preferredCatalogueCopy,
+                    customGroups = appPreferences.customCatalogueGroups,
+                    onManageGroups = { group ->
+                        navigateTo(Destination.LibraryManager(
+                            if (current.mode == CatalogueMode.MOVIES) LibraryRoom.MOVIES else LibraryRoom.SERIES,
+                            group,
+                        ))
+                    },
+                    onRefresh = ::refreshCatalogues,
+                    session = if (current.mode == CatalogueMode.MOVIES) {
+                        movieCatalogueSession
+                    } else {
+                        seriesCatalogueSession
+                    },
+                    onOpenEntry = { entry ->
+                        coroutineScope.launch {
+                            when (val target = entry.target) {
+                                is CatalogueBrowseTarget.Movie -> container.catalogueRepository
+                                    .movie(entry.contentKey)
+                                    ?.let { navigateTo(Destination.MovieDetails(it)) }
+                                is CatalogueBrowseTarget.Series -> container.catalogueRepository
+                                    .series(target.sourceId, target.seriesId)
+                                    ?.let { navigateTo(Destination.SeriesDetails(it)) }
+                            }
+                        }
+                    },
+                    onBack = ::handleBack,
+                )
+            }
+            is Destination.MovieDetails -> MovieDetailsScreen(
+                movie = current.movie,
+                repository = container.catalogueRepository,
+                metadataRepository = container.metadataRepository,
+                onPlay = ::playVod,
+                onOpenMovie = { navigateTo(Destination.MovieDetails(it)) },
+                onBack = ::handleBack,
+            )
+            is Destination.SeriesDetails -> SeriesDetailsScreen(
+                series = current.series,
+                repository = container.catalogueRepository,
+                metadataRepository = container.metadataRepository,
+                onRefreshEpisodes = {
+                    val source = container.secretSettingsStore.loadSources()
+                        .firstOrNull { it.id == current.series.sourceId && it.enabled }
+                    if (source == null) {
+                        Result.failure(
+                            IllegalStateException(resources.getString(R.string.catalogue_source_disabled)),
+                        )
+                    } else if (source.type == IptvSourceType.M3U) {
+                        val derived = source.derivedXtreamSourceOrNull()
+                        if (derived == null) {
+                            Result.success(0)
+                        } else {
+                            try {
+                                Result.success(
+                                    container.xtreamCatalogueImportService.refreshEpisodes(
+                                        derived,
+                                        current.series.seriesId,
+                                    ),
+                                )
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (error: Throwable) {
+                                Result.failure(error)
+                            }
+                        }
+                    } else {
+                        try {
+                            Result.success(
+                                container.xtreamCatalogueImportService.refreshEpisodes(
+                                    source,
+                                    current.series.seriesId,
+                                ),
+                            )
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Throwable) {
+                            Result.failure(error)
+                        }
+                    }
+                },
+                onPlay = ::playVod,
+                onBack = ::handleBack,
+            )
+            Destination.Today -> TodayScreen(
+                uiState = todayUiState,
+                onRefresh = todayViewModel::refresh,
+                onLoadDetails = { eventId -> todayViewModel.loadEventDetails(eventId) },
+                onRefreshDetails = { eventId -> todayViewModel.loadEventDetails(eventId, force = true) },
+                onMatchDecision = todayViewModel::setMatchDecision,
+                onGuide = { navigateTo(Destination.Guide) },
+                onSettings = { navigateTo(Destination.Settings) },
+                onPlay = { channelId ->
+                    playChannel(channelId, rememberForGuide = false)
+                },
+            )
+            Destination.Guide -> GuideScreen(
+                guideRepository = container.guideRepository,
+                preferencesRepository = container.preferencesRepository,
+                metadataRepository = container.metadataRepository,
+                initialChannelId = guideFocusChannelId,
+                startInOptions = guideManagementReturn,
+                initialManagedGroup = guideManagedGroup.takeIf { guideManagementReturn },
+                onManagementReturnHandled = { guideManagementReturn = false },
+                onBack = ::handleBack,
+                onSettings = { navigateTo(Destination.Settings) },
+                onChannels = { navigateTo(Destination.ChannelEditor) },
+                onManageGroups = { group, source -> guideManagementReturn = true; guideManagedGroup = group; navigateTo(Destination.LibraryManager(LibraryRoom.LIVE, group, source)) },
+                onPlay = { channelId ->
+                    playChannel(channelId)
+                },
+                onPlayCatchup = ::playCatchup,
+            )
+            Destination.Settings -> SettingsScreen(
+                secretSettingsStore = container.secretSettingsStore,
+                guideImportService = container.guideImportService,
+                m3uCatalogueImportService = container.m3uCatalogueImportService,
+                xtreamImportService = container.xtreamImportService,
+                xtreamCatalogueImportService = container.xtreamCatalogueImportService,
+                metadataRepository = container.metadataRepository,
+                guideRepository = container.guideRepository,
+                preferencesRepository = container.preferencesRepository,
+                sportStatusText = sportMateStatusSummary(todayUiState, appPreferences.timeZoneId),
+                loadSportsCompetitions = { sport ->
+                    try {
+                        Result.success(container.sportsRepository.competitions(sport))
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        Result.failure(error)
+                    }
+                },
+                onExportBackup = { uri, passphrase ->
+                    runBackupOperation { container.backupManager.write(uri, passphrase) }
+                },
+                onRestoreBackup = { uri, passphrase ->
+                    runBackupOperation { container.backupManager.restore(uri, passphrase) }
+                },
+                onLegalInformation = { navigateTo(Destination.LegalInformation) },
+                onManageLibrary = { navigateTo(Destination.LibraryManager(LibraryRoom.LIVE)) },
+                onBack = ::handleBack,
+            )
+            Destination.LegalInformation -> LegalInformationScreen(onBack = ::handleBack)
+            is Destination.LibraryManager -> LibraryManagerScreen(
+                repository = container.organizationRepository,
+                guideRepository = container.guideRepository,
+                initialRoom = current.room,
+                initialGroup = current.group,
+                initialSource = current.source,
+                onAdvanced = { navigateTo(Destination.ChannelEditor) },
+                onBack = ::handleBack,
+            )
+            Destination.ChannelEditor -> ChannelEditorScreen(
+                guideRepository = container.guideRepository,
+                preferencesRepository = container.preferencesRepository,
+                onBack = ::handleBack,
+            )
+            is Destination.PinGate -> ParentalPinScreen(
+                channelName = current.channelName,
+                pinConfigured = container.secretSettingsStore.hasParentalPin(),
+                onVerify = container.secretSettingsStore::verifyParentalPin,
+                onUnlocked = {
+                    coroutineScope.launch {
+                        if (current.rememberForGuide) {
+                            guideFocusChannelId = current.channelId
+                            container.preferencesRepository.recordRecentChannel(current.channelId)
+                        }
+                        backStack = if (current.replacePlayer) {
+                            backStack.dropLast(2) + Destination.Player(
+                                current.channelId,
+                                current.catchupStartEpochMillis,
+                                current.catchupStopEpochMillis,
+                            )
+                        } else {
+                            backStack.dropLast(1) + Destination.Player(
+                                current.channelId,
+                                current.catchupStartEpochMillis,
+                                current.catchupStopEpochMillis,
+                            )
+                        }
+                    }
+                },
+                onBack = ::handleBack,
+            )
+            is Destination.Player -> PlayerScreen(
+                channelId = current.channelId,
+                catchupStartEpochMillis = current.catchupStartEpochMillis,
+                catchupStopEpochMillis = current.catchupStopEpochMillis,
+                sessionToken = playbackSessionToken,
+                guideRepository = container.guideRepository,
+                metadataRepository = container.metadataRepository,
+                timeZoneId = appPreferences.timeZoneId,
+                remoteChannelKeyMode = appPreferences.remoteChannelKeyMode,
+                playbackReconnectPolicy = appPreferences.playbackReconnectPolicy,
+                autoFrameRateEnabled = appPreferences.autoFrameRateEnabled,
+                onChannelChange = ::zapToChannel,
+                onOpenExternal = { channelId ->
+                    container.externalPlayerLauncher.launch(channelId).fold(
+                        onSuccess = { Result.success(Unit) },
+                        onFailure = { Result.failure(it) },
+                    )
+                },
+                onBack = { handlePlayerBack(current) },
+                previewArtworkUrl = container.demoPlaybackArtworkUrl,
+            )
+            is Destination.VodPlayer -> PlayerScreen(
+                channelId = current.contentKey,
+                vodContentKey = current.contentKey,
+                resumePositionMillis = current.resumePositionMillis,
+                sessionToken = playbackSessionToken,
+                guideRepository = container.guideRepository,
+                metadataRepository = container.metadataRepository,
+                timeZoneId = appPreferences.timeZoneId,
+                remoteChannelKeyMode = appPreferences.remoteChannelKeyMode,
+                playbackReconnectPolicy = appPreferences.playbackReconnectPolicy,
+                autoFrameRateEnabled = appPreferences.autoFrameRateEnabled,
+                preferredAudioLanguage = appPreferences.preferredAudioLanguage,
+                secondaryAudioLanguage = appPreferences.secondaryAudioLanguage,
+                preferredSubtitleLanguage = appPreferences.preferredSubtitleLanguage,
+                secondarySubtitleLanguage = appPreferences.secondarySubtitleLanguage,
+                onChannelChange = {},
+                onOpenExternal = {
+                    Result.failure(
+                        IllegalStateException(resources.getString(R.string.recording_external_unavailable)),
+                    )
+                },
+                onBack = ::handleBack,
+                onPlaybackEnded = { continueToNextEpisode(current) },
+                previewArtworkUrl = container.demoPlaybackArtworkUrl,
+            )
+        }
+    }
+}
+
+private sealed interface Destination {
+    data object Home : Destination
+    data object Today : Destination
+    data object Guide : Destination
+    data object Settings : Destination
+    data object LegalInformation : Destination
+    data object ChannelEditor : Destination
+    data class LibraryManager(val room: LibraryRoom, val group: String? = null, val source: String? = null) : Destination
+    data object Search : Destination
+    data class Catalogue(val mode: CatalogueMode) : Destination
+    data class MovieDetails(val movie: VodMovie) : Destination
+    data class SeriesDetails(val series: VodSeries) : Destination
+    data class PinGate(
+        val channelId: String,
+        val channelName: String,
+        val replacePlayer: Boolean,
+        val rememberForGuide: Boolean = true,
+        val catchupStartEpochMillis: Long? = null,
+        val catchupStopEpochMillis: Long? = null,
+    ) : Destination
+    data class Player(
+        val channelId: String,
+        val catchupStartEpochMillis: Long? = null,
+        val catchupStopEpochMillis: Long? = null,
+    ) : Destination
+    data class VodPlayer(val contentKey: String, val resumePositionMillis: Long) : Destination
+}
+
+private suspend fun runBackupOperation(operation: suspend () -> Unit): Result<Unit> = try {
+    operation()
+    Result.success(Unit)
+} catch (cancelled: CancellationException) {
+    throw cancelled
+} catch (error: Throwable) {
+    Result.failure(error)
+}

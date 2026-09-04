@@ -40,3 +40,10 @@ not a guarantee for every device or source.
 See [known limitations and the feedback checklist](TESTING.md). A missing
 poster can still require selecting the correct TMDB match again. Provider
 availability, quotas and stream compatibility remain outside the app's control.
+
+## Source publication
+
+The corresponding source was published after the beta 1 release tag under
+`GPL-3.0-only`. It produces the same signed APK when built with the private
+release identity; the signing key and credentials are not part of the source.
+Future release tags will point directly to their corresponding source commits.
