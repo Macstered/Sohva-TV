@@ -577,6 +577,12 @@ data class EditableChannelRow(
     val sourceEnabled: Boolean = true,
 )
 
+/** See [GuideDao.stagedEpgMatch]. */
+data class StagedEpgMatchRow(
+    val matchedProgrammes: Int,
+    val mappableChannels: Int,
+)
+
 data class XmlTvChannelOptionRow(
     val sourceId: String,
     val xmltvChannelId: String,

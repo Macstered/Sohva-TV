@@ -876,16 +876,23 @@ private fun EventCard(
                         live -> palette.focus
                         else -> palette.textPrimary
                     },
-                    fontSize = when {
-                        // AFL carries goals, behinds and a total, so it needs
-                        // more room than a football scoreline.
-                        event.sport == SportType.AUSTRALIAN_FOOTBALL -> typography.bodyLarge.fontSize
-                        else -> typography.title.fontSize
-                    },
+                    fontSize = typography.title.fontSize,
                     lineHeight = typography.title.lineHeight,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
                 )
+                // Goals and behinds for AFL; nothing for the sports whose
+                // score says it all.
+                event.scoreDetail?.let { detail ->
+                    Text(
+                        text = detail,
+                        color = if (focused) palette.background else secondary,
+                        fontSize = typography.caption.fontSize,
+                        lineHeight = typography.caption.lineHeight,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
                 // The minute, the period, or whatever the provider calls the
                 // state of play. Left out when it says nothing.
                 event.statusLabel.takeIf(String::isNotBlank)?.let { label ->
@@ -1165,13 +1172,27 @@ private fun MatchHeroHeader(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             HeroTeam(event.home, event.homeLogoUrl)
-            Text(
-                text = event.score ?: "–",
-                color = if (event.status == TodayEventStatus.LIVE) palette.danger else palette.textPrimary,
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Black,
+            Column(
                 modifier = Modifier.padding(horizontal = 26.dp),
-            )
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = event.score ?: "–",
+                    color = if (event.status == TodayEventStatus.LIVE) palette.danger else palette.textPrimary,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                )
+                event.scoreDetail?.let { detail ->
+                    Text(
+                        text = detail,
+                        color = palette.textMuted,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
             HeroTeam(event.away, event.awayLogoUrl)
         }
         Column(

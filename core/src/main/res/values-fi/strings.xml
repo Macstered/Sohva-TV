@@ -22,6 +22,8 @@
     <string name="error_source_no_vod">Lähde ei tuo elokuvia tai sarjoja</string>
     <string name="error_source_no_live_tv">Lähde ei tuo suoraa TV:tä</string>
     <string name="error_m3u_url_missing">M3U-lähteen osoite puuttuu</string>
+    <string name="error_epg_empty">Ohjelmaopas tuli tyhjänä. Aiempi opas säilytettiin.</string>
+    <string name="error_epg_unmatched">Ohjelmaopas ei vastaa yhtäkään tämän lähteen kanavaa. Aiempi opas säilytettiin.</string>
     <string name="error_xtream_url_missing">Xtream-palvelimen osoite puuttuu</string>
     <string name="error_xtream_url_invalid">Xtream-palvelimen osoite on virheellinen</string>
     <string name="error_xtream_username_missing">Xtream-käyttäjänimi puuttuu</string>

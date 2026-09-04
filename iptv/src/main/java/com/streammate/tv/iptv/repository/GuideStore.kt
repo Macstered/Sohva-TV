@@ -205,6 +205,16 @@ data class SourceRefreshHealth(
     val consecutiveFailures: Int,
 )
 
+/**
+ * [matchedProgrammes] is how many staged programmes attach to an active channel
+ * of the source, by its EPG id or a manual mapping; [mappableChannels] is how
+ * many active channels carry an id at all.
+ */
+data class StagedEpgMatch(
+    val matchedProgrammes: Int,
+    val mappableChannels: Int,
+)
+
 interface GuideStore {
     fun newSnapshotId(): String
     suspend fun insertChannels(sourceId: String, snapshotId: String, channels: List<StoredIptvChannel>)
@@ -214,6 +224,8 @@ interface GuideStore {
     suspend fun activateEpg(sourceId: String, snapshotId: String, itemCount: Int)
     suspend fun discardPlaylist(sourceId: String, snapshotId: String)
     suspend fun discardEpg(sourceId: String, snapshotId: String)
+    /** How the staged guide lines up with the source's active channels. */
+    suspend fun stagedEpgMatch(sourceId: String, snapshotId: String): StagedEpgMatch
     suspend fun markRefreshStarted(sourceId: String, kind: String)
     suspend fun markRefreshFailed(sourceId: String, kind: String, redactedError: String?)
 }
@@ -293,6 +305,9 @@ class RoomGuideStore(
     override suspend fun activateEpg(sourceId: String, snapshotId: String, itemCount: Int) {
         dao.activateEpgSnapshot(sourceId, snapshotId, itemCount, clock())
     }
+
+    override suspend fun stagedEpgMatch(sourceId: String, snapshotId: String): StagedEpgMatch =
+        dao.stagedEpgMatch(sourceId, snapshotId).let { StagedEpgMatch(it.matchedProgrammes, it.mappableChannels) }
 
     override suspend fun discardPlaylist(sourceId: String, snapshotId: String) =
         dao.deleteChannelSnapshot(sourceId, snapshotId)

@@ -37,6 +37,11 @@ data class TodayEvent(
     val status: TodayEventStatus,
     val statusLabel: String,
     val score: String?,
+    /**
+     * A second, sport-specific reading of the score, such as AFL goals and
+     * behinds, for screens with room for it. The cards show [score] alone.
+     */
+    val scoreDetail: String? = null,
     val matchingChannels: Int,
     val detailsAvailable: Boolean = false,
     val isFavourite: Boolean = false,

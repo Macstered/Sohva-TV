@@ -571,7 +571,11 @@ internal class ApiSportsParser {
             awayScore = awayScore,
             detailsAvailable = false,
         )
-        val formattedScore = if (state in setOf(TodayEventStatus.LIVE, TodayEventStatus.FINISHED) &&
+        // The total goes where every other sport's score goes, so the card
+        // keeps its shape. Goals and behinds are a second line for screens
+        // with room for one: "14.11 (95) – 16.9 (105)" in the score slot
+        // pushed the team marks off the card.
+        val scoreDetail = if (state in setOf(TodayEventStatus.LIVE, TodayEventStatus.FINISHED) &&
             listOf(
                 homeScore,
                 awayScore,
@@ -582,12 +586,12 @@ internal class ApiSportsParser {
             )
                 .all { it != null }
         ) {
-            "${homeScores.int("goals")}.${homeScores.int("behinds")} ($homeScore) – " +
-                "${awayScores.int("goals")}.${awayScores.int("behinds")} ($awayScore)"
+            "${homeScores.int("goals")}.${homeScores.int("behinds")} – " +
+                "${awayScores.int("goals")}.${awayScores.int("behinds")}"
         } else {
-            base.score
+            null
         }
-        return base.copy(score = formattedScore, detailsAvailable = false)
+        return base.copy(scoreDetail = scoreDetail, detailsAvailable = false)
     }
 
     private fun event(

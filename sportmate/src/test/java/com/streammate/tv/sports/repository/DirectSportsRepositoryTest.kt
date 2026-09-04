@@ -73,7 +73,8 @@ class DirectSportsRepositoryTest {
 
         assertEquals(1, events.size)
         assertEquals(TodayEventStatus.FINISHED, events.single().status)
-        assertEquals("14.11 (95) – 16.9 (105)", events.single().score)
+        assertEquals("95 – 105", events.single().score)
+        assertEquals("14.11 – 16.9", events.single().scoreDetail)
     }
 
     @Test

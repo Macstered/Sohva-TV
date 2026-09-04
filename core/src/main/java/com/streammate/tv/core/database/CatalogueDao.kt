@@ -176,28 +176,7 @@ abstract class CatalogueDao {
     )
     abstract fun observeMovieCards(): Flow<List<VodMovieCardRow>>
 
-    @Query(
-        """
-        SELECT movie.sourceId, movie.movieId, movie.name, movie.categoryName, movie.organizationGroupKey,
-            movie.posterUrl, movie.year, movie.rating,
-            metadata.replacementPosterUrl, metadata.replaceProviderPoster,
-            metadata.replacementTitle, metadata.externalId,
-            metadata.genresVersion AS metadataGenresVersion,
-            (SELECT GROUP_CONCAT(genre.genre) FROM catalogue_genres genre
-                WHERE genre.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-            ) AS genresCsv
-        FROM organization_visible_movies movie
-        INNER JOIN iptv_source_state source ON source.sourceId = movie.sourceId AND source.enabled = 1
-        INNER JOIN import_state state ON state.sourceId = movie.sourceId
-            AND state.kind = 'catalogue' AND state.activeSnapshotId = movie.snapshotId
-        INNER JOIN playback_progress progress
-            ON progress.sourceId = movie.sourceId AND progress.itemId = movie.movieId
-                AND progress.contentType = 'movie'
-        LEFT JOIN catalogue_metadata_overrides metadata
-            ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-        ORDER BY progress.lastWatchedEpochMillis DESC
-        """,
-    )
+    @Query(MOVIE_HISTORY_CARDS_SQL)
     abstract fun observeMovieHistoryCards(): Flow<List<VodMovieCardRow>>
 
     @Query(
@@ -547,34 +526,7 @@ abstract class CatalogueDao {
     )
     abstract fun observeSeriesCards(): Flow<List<VodSeriesCardRow>>
 
-    @Query(
-        """
-        SELECT item.sourceId, item.seriesId, item.name, item.categoryName, item.organizationGroupKey,
-            item.posterUrl, item.year, item.rating,
-            metadata.replacementPosterUrl, metadata.replaceProviderPoster,
-            metadata.replacementTitle, metadata.externalId,
-            metadata.genresVersion AS metadataGenresVersion,
-            (SELECT GROUP_CONCAT(genre.genre) FROM catalogue_genres genre
-                WHERE genre.contentKey = 'series:' || item.sourceId || ':' || item.seriesId
-            ) AS genresCsv
-        FROM organization_visible_series item
-        INNER JOIN iptv_source_state source ON source.sourceId = item.sourceId AND source.enabled = 1
-        INNER JOIN import_state state ON state.sourceId = item.sourceId
-            AND state.kind = 'catalogue' AND state.activeSnapshotId = item.snapshotId
-        INNER JOIN (
-            SELECT episode.sourceId AS sourceId, episode.seriesId AS seriesId,
-                MAX(progress.lastWatchedEpochMillis) AS lastWatchedEpochMillis
-            FROM vod_episodes episode
-            INNER JOIN playback_progress progress
-                ON progress.sourceId = episode.sourceId AND progress.itemId = episode.episodeId
-                    AND progress.contentType = 'episode'
-            GROUP BY episode.sourceId, episode.seriesId
-        ) watched ON watched.sourceId = item.sourceId AND watched.seriesId = item.seriesId
-        LEFT JOIN catalogue_metadata_overrides metadata
-            ON metadata.contentKey = 'series:' || item.sourceId || ':' || item.seriesId
-        ORDER BY watched.lastWatchedEpochMillis DESC
-        """,
-    )
+    @Query(SERIES_HISTORY_CARDS_SQL)
     abstract fun observeSeriesHistoryCards(): Flow<List<VodSeriesCardRow>>
 
     @Query(
@@ -1107,60 +1059,7 @@ abstract class CatalogueDao {
     )
     abstract fun observeMovieProgress(): Flow<List<PlaybackProgressEntity>>
 
-    /**
-     * One row per film, not per copy.
-     *
-     * Two playlists carrying the same film would otherwise put the same
-     * half-watched title on the home screen twice, which is the duplicate
-     * problem where it is most annoying. The most recently watched copy wins:
-     * SQLite takes the bare columns from the row that produced the MAX. Rows
-     * with no work key - anything watched before that existed, and every
-     * episode - group by their own content key and so stand alone.
-     */
-    @Query(
-        """
-        SELECT contentKey, contentType, title, year, posterUrl, seriesName,
-            seasonNumber, episodeNumber, positionMillis, durationMillis, completed,
-            MAX(lastWatchedEpochMillis) AS lastWatchedEpochMillis
-        FROM (
-            SELECT progress.contentKey AS contentKey, progress.contentType AS contentType,
-                movie.name AS title, movie.year AS year, movie.posterUrl AS posterUrl,
-                NULL AS seriesName, NULL AS seasonNumber, NULL AS episodeNumber,
-                progress.positionMillis AS positionMillis, progress.durationMillis AS durationMillis,
-                progress.completed AS completed, progress.lastWatchedEpochMillis AS lastWatchedEpochMillis,
-                progress.workKey AS workKey
-            FROM playback_progress progress
-            INNER JOIN organization_visible_movies movie
-                ON movie.sourceId = progress.sourceId AND movie.movieId = progress.itemId
-            INNER JOIN iptv_source_state source
-                ON source.sourceId = movie.sourceId AND source.enabled = 1
-            INNER JOIN import_state state ON state.sourceId = movie.sourceId
-                AND state.kind = 'catalogue' AND state.activeSnapshotId = movie.snapshotId
-            WHERE progress.contentType = 'movie' AND progress.completed = 0 AND progress.positionMillis > 0
-            UNION ALL
-            SELECT progress.contentKey AS contentKey, progress.contentType AS contentType,
-                episode.name AS title, NULL AS year, item.posterUrl AS posterUrl,
-                item.name AS seriesName, episode.seasonNumber AS seasonNumber,
-                episode.episodeNumber AS episodeNumber,
-                progress.positionMillis AS positionMillis, progress.durationMillis AS durationMillis,
-                progress.completed AS completed, progress.lastWatchedEpochMillis AS lastWatchedEpochMillis,
-                progress.workKey AS workKey
-            FROM playback_progress progress
-            INNER JOIN vod_episodes episode
-                ON episode.sourceId = progress.sourceId AND episode.episodeId = progress.itemId
-            INNER JOIN organization_visible_series item
-                ON item.sourceId = episode.sourceId AND item.seriesId = episode.seriesId
-            INNER JOIN iptv_source_state source
-                ON source.sourceId = item.sourceId AND source.enabled = 1
-            INNER JOIN import_state state ON state.sourceId = item.sourceId
-                AND state.kind = 'catalogue' AND state.activeSnapshotId = item.snapshotId
-            WHERE progress.contentType = 'episode' AND progress.completed = 0 AND progress.positionMillis > 0
-        )
-        GROUP BY COALESCE(workKey, contentKey)
-        ORDER BY lastWatchedEpochMillis DESC
-        LIMIT 20
-        """,
-    )
+    @Query(CONTINUE_WATCHING_SQL)
     abstract fun observeContinueWatching(): Flow<List<ContinueWatchingRow>>
 
     @Query("SELECT * FROM playback_progress WHERE contentKey = :contentKey LIMIT 1")

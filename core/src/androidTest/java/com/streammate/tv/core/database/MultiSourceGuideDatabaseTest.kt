@@ -212,6 +212,50 @@ class MultiSourceGuideDatabaseTest {
         assertEquals(listOf(member), dao.customChannelListMembers())
     }
 
+    @Test
+    fun stagedEpgMatchCountsProgrammesAgainstActiveChannelsOnly() = runBlocking {
+        val dao = database.guideDao()
+        dao.upsertSourceState(source("source-a", "Primary", priority = 10))
+        dao.upsertChannels(
+            listOf(
+                channel("source-a", "playlist", "source-a:one", "One", tvgId = "one.fi"),
+                channel("source-a", "playlist", "source-a:two", "Two", tvgId = ""),
+                channel("source-a", "playlist", "source-a:three", "Three"),
+                channel("source-a", "stale", "source-a:old", "Old", tvgId = "old.fi"),
+            ),
+        )
+        dao.activatePlaylistSnapshot("source-a", "playlist", 3, 1)
+        dao.upsertChannelPreference(
+            ChannelPreferenceEntity(
+                channelId = "source-a:three",
+                sourceId = "source-a",
+                customName = null,
+                customGroupTitle = null,
+                hidden = false,
+                sortOrder = null,
+                manualXmltvChannelId = "mapped.fi",
+                updatedAtEpochMillis = 1,
+            ),
+        )
+        dao.upsertProgrammes(
+            listOf(
+                programme("source-a", "staged", "p1", "one.fi", 100, 200, "Matches by EPG id"),
+                programme("source-a", "staged", "p2", "mapped.fi", 100, 200, "Matches by manual mapping"),
+                programme("source-a", "staged", "p3", "old.fi", 100, 200, "Only an inactive snapshot has this id"),
+                programme("source-a", "staged", "p4", "nowhere.fi", 100, 200, "Unknown channel"),
+                programme("source-a", "other", "p5", "one.fi", 100, 200, "Different snapshot"),
+            ),
+        )
+
+        val match = dao.stagedEpgMatch("source-a", "staged")
+
+        // One by id, one by manual mapping; the blank-id channel does not count as mappable.
+        assertEquals(2, match.matchedProgrammes)
+        assertEquals(2, match.mappableChannels)
+        assertEquals(StagedEpgMatchRow(0, 2), dao.stagedEpgMatch("source-a", "missing"))
+        assertEquals(StagedEpgMatchRow(0, 0), dao.stagedEpgMatch("source-b", "staged"))
+    }
+
     private fun source(
         id: String,
         name: String,

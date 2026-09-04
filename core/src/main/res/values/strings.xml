@@ -24,6 +24,8 @@
     <string name="error_source_no_vod">This source does not provide movies or series</string>
     <string name="error_source_no_live_tv">This source does not provide live TV</string>
     <string name="error_m3u_url_missing">The M3U source address is missing</string>
+    <string name="error_epg_empty">The programme guide came back empty. The previous guide was kept.</string>
+    <string name="error_epg_unmatched">The programme guide matches none of this source\'s channels. The previous guide was kept.</string>
     <string name="error_xtream_url_missing">The Xtream server address is missing</string>
     <string name="error_xtream_url_invalid">The Xtream server address is invalid</string>
     <string name="error_xtream_username_missing">The Xtream username is missing</string>

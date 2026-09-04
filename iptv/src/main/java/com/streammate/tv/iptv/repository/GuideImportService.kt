@@ -160,6 +160,23 @@ class GuideImportService(
                     programmeBatch.clear()
                 }
             }
+            // A feed that has nothing for this source's channels must not take
+            // the place of the guide that is already on screen. A provider that
+            // served an empty document, or renamed every channel id, used to
+            // wipe a working guide and report success for it.
+            if (programmeCount == 0) {
+                throw GuideImportException(
+                    CoreR.string.error_epg_empty,
+                    logMessage = "The programme guide contained no programmes",
+                )
+            }
+            val match = store.stagedEpgMatch(sourceId, snapshotId)
+            if (match.mappableChannels > 0 && match.matchedProgrammes == 0) {
+                throw GuideImportException(
+                    CoreR.string.error_epg_unmatched,
+                    logMessage = "The programme guide matched none of the source's ${match.mappableChannels} channels",
+                )
+            }
             store.activateEpg(sourceId, snapshotId, programmeCount)
             ImportSummary(channels = channelCount, programmes = programmeCount)
         } catch (cancellation: CancellationException) {
@@ -173,7 +190,9 @@ class GuideImportService(
             store.discardEpg(sourceId, snapshotId)
             val redactedError = SecretRedactor.redact(error.message)
             runCatching { store.markRefreshFailed(sourceId, GuideDao.EPG_KIND, redactedError) }
-            throw localizedTransportFailure(error, ::GuideImportException)
+            // A guard failure already carries its own message; only transport
+            // failures need the "could not complete the request" frame.
+            throw error as? GuideImportException ?: localizedTransportFailure(error, ::GuideImportException)
         }
     }
 

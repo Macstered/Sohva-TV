@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Policy packaged: 3 September 2026. Applies to Sohva TV 0.1.0-beta.1.
+Policy packaged: 3 September 2026. Applies to Sohva TV 0.1.0-beta.1 and 0.1.0-beta.2.
 
 Sohva TV plays media sources configured by the user. It contains no channels
 or media and does not provide an IPTV subscription. There is no

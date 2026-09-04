@@ -1,6 +1,6 @@
 # Sohva TV third-party notices
 
-For the **0.1.0-beta.1** tester package and accompanying public source. Sohva
+For the **0.1.0-beta.2** tester package and accompanying public source. Sohva
 TV's original source is licensed separately under `GPL-3.0-only`. This document
 does not relicense third-party material; third-party copyrights, licences,
 service terms, logos, and trademarks remain in force.

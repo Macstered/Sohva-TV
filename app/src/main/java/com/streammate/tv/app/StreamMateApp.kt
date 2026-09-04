@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,14 +56,25 @@ import com.streammate.tv.iptv.xtream.derivedXtreamSourceOrNull
 import com.streammate.tv.iptv.repository.VodSeries
 import com.streammate.tv.iptv.repository.VodMovie
 
+/**
+ * Live playback started from the guide, the home rows or a channel number
+ * lands back on the guide, on the channel just watched. Playback started from
+ * somewhere else - a match card in Sohva Sport - goes back to where it came
+ * from, and catch-up always does.
+ */
 internal fun shouldReturnPlaybackToGuide(
     catchupStartEpochMillis: Long?,
     catchupStopEpochMillis: Long?,
-): Boolean = catchupStartEpochMillis == null && catchupStopEpochMillis == null
+    launchedForGuide: Boolean = true,
+): Boolean = launchedForGuide && catchupStartEpochMillis == null && catchupStopEpochMillis == null
 
 @Composable
 fun StreamMateApp(container: StreamMateContainer) {
     var backStack by remember { mutableStateOf(listOf<Destination>(Destination.Home)) }
+    // Screens leave the composition while the player is up. The sport screen
+    // keeps the match card it had open in saveable state, so it needs a holder
+    // to come back to the same card rather than the day's list.
+    val saveableStateHolder = rememberSaveableStateHolder()
     var startupApplied by remember { mutableStateOf(false) }
     var guideManagementReturn by remember { mutableStateOf(false) }
     var guideManagedGroup by remember { mutableStateOf<String?>(null) }
@@ -138,7 +150,7 @@ fun StreamMateApp(container: StreamMateContainer) {
                 )
             } else {
                 if (rememberForGuide) container.preferencesRepository.recordRecentChannel(channelId)
-                navigateTo(Destination.Player(channelId))
+                navigateTo(Destination.Player(channelId, returnToGuide = rememberForGuide))
             }
         }
     }
@@ -279,6 +291,7 @@ fun StreamMateApp(container: StreamMateContainer) {
             shouldReturnPlaybackToGuide(
                 player.catchupStartEpochMillis,
                 player.catchupStopEpochMillis,
+                launchedForGuide = player.returnToGuide,
             )
         ) {
             guideFocusChannelId = player.channelId
@@ -413,18 +426,22 @@ fun StreamMateApp(container: StreamMateContainer) {
                 onPlay = ::playVod,
                 onBack = ::handleBack,
             )
-            Destination.Today -> TodayScreen(
-                uiState = todayUiState,
-                onRefresh = todayViewModel::refresh,
-                onLoadDetails = { eventId -> todayViewModel.loadEventDetails(eventId) },
-                onRefreshDetails = { eventId -> todayViewModel.loadEventDetails(eventId, force = true) },
-                onMatchDecision = todayViewModel::setMatchDecision,
-                onGuide = { navigateTo(Destination.Guide) },
-                onSettings = { navigateTo(Destination.Settings) },
-                onPlay = { channelId ->
-                    playChannel(channelId, rememberForGuide = false)
-                },
-            )
+            Destination.Today -> saveableStateHolder.SaveableStateProvider(key = "today") {
+                TodayScreen(
+                    uiState = todayUiState,
+                    onRefresh = todayViewModel::refresh,
+                    onLoadDetails = { eventId -> todayViewModel.loadEventDetails(eventId) },
+                    onRefreshDetails = { eventId -> todayViewModel.loadEventDetails(eventId, force = true) },
+                    onMatchDecision = todayViewModel::setMatchDecision,
+                    onGuide = { navigateTo(Destination.Guide) },
+                    onSettings = { navigateTo(Destination.Settings) },
+                    // Not for the guide: back from the stream returns here,
+                    // to the match card it was chosen from.
+                    onPlay = { channelId ->
+                        playChannel(channelId, rememberForGuide = false)
+                    },
+                )
+            }
             Destination.Guide -> GuideScreen(
                 guideRepository = container.guideRepository,
                 preferencesRepository = container.preferencesRepository,
@@ -496,18 +513,16 @@ fun StreamMateApp(container: StreamMateContainer) {
                             guideFocusChannelId = current.channelId
                             container.preferencesRepository.recordRecentChannel(current.channelId)
                         }
+                        val player = Destination.Player(
+                            current.channelId,
+                            current.catchupStartEpochMillis,
+                            current.catchupStopEpochMillis,
+                            returnToGuide = current.rememberForGuide,
+                        )
                         backStack = if (current.replacePlayer) {
-                            backStack.dropLast(2) + Destination.Player(
-                                current.channelId,
-                                current.catchupStartEpochMillis,
-                                current.catchupStopEpochMillis,
-                            )
+                            backStack.dropLast(2) + player
                         } else {
-                            backStack.dropLast(1) + Destination.Player(
-                                current.channelId,
-                                current.catchupStartEpochMillis,
-                                current.catchupStopEpochMillis,
-                            )
+                            backStack.dropLast(1) + player
                         }
                     }
                 },
@@ -587,6 +602,8 @@ private sealed interface Destination {
         val channelId: String,
         val catchupStartEpochMillis: Long? = null,
         val catchupStopEpochMillis: Long? = null,
+        /** False when playback began somewhere the guide had no part in, such as a match card. */
+        val returnToGuide: Boolean = true,
     ) : Destination
     data class VodPlayer(val contentKey: String, val resumePositionMillis: Long) : Destination
 }

@@ -259,6 +259,41 @@ abstract class GuideDao {
     )
     abstract suspend fun getActiveChannel(channelId: String): IptvChannelEntity?
 
+    /**
+     * How a staged guide snapshot lines up with the source's active channels,
+     * read before the snapshot is allowed to replace the one on screen.
+     */
+    @Query(
+        """
+        SELECT
+            (SELECT COUNT(*) FROM tv_programmes p
+                WHERE p.sourceId = :sourceId AND p.snapshotId = :snapshotId
+                AND p.xmltvChannelId IN (
+                    SELECT COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
+                    FROM iptv_channels c
+                    INNER JOIN import_state state
+                        ON state.sourceId = c.sourceId
+                        AND state.kind = 'playlist'
+                        AND c.snapshotId = state.activeSnapshotId
+                    LEFT JOIN channel_preferences preference
+                        ON preference.channelId = c.channelId
+                    WHERE c.sourceId = :sourceId
+                )
+            ) AS matchedProgrammes,
+            (SELECT COUNT(*) FROM iptv_channels c
+                INNER JOIN import_state state
+                    ON state.sourceId = c.sourceId
+                    AND state.kind = 'playlist'
+                    AND c.snapshotId = state.activeSnapshotId
+                LEFT JOIN channel_preferences preference
+                    ON preference.channelId = c.channelId
+                WHERE c.sourceId = :sourceId
+                AND COALESCE(NULLIF(preference.manualXmltvChannelId, ''), NULLIF(c.tvgId, '')) IS NOT NULL
+            ) AS mappableChannels
+        """,
+    )
+    abstract suspend fun stagedEpgMatch(sourceId: String, snapshotId: String): StagedEpgMatchRow
+
     @Query(
         """
         SELECT

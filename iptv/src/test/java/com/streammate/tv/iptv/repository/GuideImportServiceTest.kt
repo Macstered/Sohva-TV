@@ -14,6 +14,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import com.streammate.tv.core.R as CoreR
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -128,6 +129,72 @@ class GuideImportServiceTest {
         assertEquals(expectedProgrammes, store.programmeBatchSizes.sum())
         assertTrue(store.programmeBatchSizes.all { it in 1..250 })
         assertEquals("snapshot-1", store.activeEpg)
+    }
+
+    @Test
+    fun `keeps the previous guide when the feed matches none of the channels`() {
+        val store = RecordingGuideStore().apply {
+            activeEpg = "known-good"
+            stagedEpgMatch = StagedEpgMatch(matchedProgrammes = 0, mappableChannels = 120)
+        }
+
+        val error = assertThrows(GuideImportException::class.java) {
+            runBlocking {
+                service(TextGuideSource(smallEpg()), store)
+                    .refreshEpg("source", "http://provider.example/guide.xml")
+            }
+        }
+
+        assertEquals(CoreR.string.error_epg_unmatched, error.messageResource)
+        assertEquals("known-good", store.activeEpg)
+        assertEquals(listOf("snapshot-1"), store.discardedEpgs)
+        assertEquals(listOf("epg"), store.refreshFailures.map { it.second })
+        assertTrue(store.refreshFailures.single().third!!.contains("120 channels"))
+    }
+
+    @Test
+    fun `keeps the previous guide when the feed is empty`() {
+        val store = RecordingGuideStore().apply { activeEpg = "known-good" }
+
+        val error = assertThrows(GuideImportException::class.java) {
+            runBlocking {
+                service(TextGuideSource("<tv></tv>"), store)
+                    .refreshEpg("source", "http://provider.example/guide.xml")
+            }
+        }
+
+        assertEquals(CoreR.string.error_epg_empty, error.messageResource)
+        assertEquals("known-good", store.activeEpg)
+        assertEquals(listOf("snapshot-1"), store.discardedEpgs)
+        assertEquals(1, store.refreshFailures.size)
+    }
+
+    @Test
+    fun `activates a guide for a source whose channels carry no EPG ids`() = runBlocking {
+        // Nothing can match yet, so nothing is being protected: the playlist
+        // may simply not have been imported, or its channels have no ids.
+        val store = RecordingGuideStore().apply {
+            stagedEpgMatch = StagedEpgMatch(matchedProgrammes = 0, mappableChannels = 0)
+        }
+
+        val summary = service(TextGuideSource(smallEpg()), store)
+            .refreshEpg("source", "http://provider.example/guide.xml")
+
+        assertEquals(2, summary.programmes)
+        assertEquals("snapshot-1", store.activeEpg)
+        assertTrue(store.discardedEpgs.isEmpty())
+    }
+
+    private fun smallEpg(): String = buildString {
+        appendLine("<tv>")
+        appendLine("<channel id=\"one.fi\"><display-name>One</display-name></channel>")
+        repeat(2) { index ->
+            val start = EPG_START.plusMinutes(index * 30L)
+            append("<programme channel=\"one.fi\" start=\"").append(start.format(XMLTV_FORMAT))
+            append(" +0000\" stop=\"").append(start.plusMinutes(30).format(XMLTV_FORMAT))
+            appendLine(" +0000\"><title>Programme $index</title></programme>")
+        }
+        appendLine("</tv>")
     }
 
     @Test
@@ -262,7 +329,10 @@ private class RecordingGuideStore(
     val programmeBatchSizes = mutableListOf<Int>()
     val discardedPlaylists = mutableListOf<String>()
     val refreshFailures = mutableListOf<Triple<String, String, String?>>()
+    val discardedEpgs = mutableListOf<String>()
     var activeEpg: String? = null
+    /** What the staged guide looks like against the channels; null means every programme matched one channel. */
+    var stagedEpgMatch: StagedEpgMatch? = null
     private var nextId = 1
 
     override fun newSnapshotId(): String = "snapshot-${nextId++}"
@@ -302,7 +372,12 @@ private class RecordingGuideStore(
         discardedPlaylists += snapshotId
     }
 
-    override suspend fun discardEpg(sourceId: String, snapshotId: String) = Unit
+    override suspend fun stagedEpgMatch(sourceId: String, snapshotId: String): StagedEpgMatch =
+        stagedEpgMatch ?: StagedEpgMatch(matchedProgrammes = programmeBatchSizes.sum(), mappableChannels = 1)
+
+    override suspend fun discardEpg(sourceId: String, snapshotId: String) {
+        discardedEpgs += snapshotId
+    }
 
     override suspend fun markRefreshStarted(sourceId: String, kind: String) = Unit
 

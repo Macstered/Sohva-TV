@@ -137,6 +137,7 @@ private class XtreamRecordingStore : GuideStore {
     }
 
     override suspend fun activateEpg(sourceId: String, snapshotId: String, itemCount: Int) = Unit
+    override suspend fun stagedEpgMatch(sourceId: String, snapshotId: String) = StagedEpgMatch(1, 1)
     override suspend fun discardPlaylist(sourceId: String, snapshotId: String) = Unit
     override suspend fun discardEpg(sourceId: String, snapshotId: String) = Unit
     override suspend fun markRefreshStarted(sourceId: String, kind: String) = Unit

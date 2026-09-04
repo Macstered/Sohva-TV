@@ -56,6 +56,8 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.kotlinx.serialization.json)
+    testImplementation(libs.sqlite.jdbc)
 
     androidTestImplementation(composeBom)
     androidTestImplementation(libs.androidx.test.ext.junit)
