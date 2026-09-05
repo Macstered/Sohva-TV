@@ -1043,7 +1043,8 @@ private const val PLAYER_CONTROL_FOCUS_DELAY_MILLIS = 80L
  * app uses leaves room for a number, a logo, a name and what is on, and shows
  * eight rows on a 1080p panel.
  */
-private val CHANNEL_BROWSER_WIDTH = 268.dp
+// Wide enough for a long custom name such as "FI: Viaplay 1 Urheilu" next to a logo.
+private val CHANNEL_BROWSER_WIDTH = 330.dp
 private val CHANNEL_ROW_HEIGHT = 66.dp
 private val CHANNEL_GROUP_BROWSER_WIDTH = 220.dp
 private val CHANNEL_GROUP_ROW_HEIGHT = 52.dp

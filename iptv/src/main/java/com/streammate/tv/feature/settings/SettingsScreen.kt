@@ -82,6 +82,7 @@ import com.streammate.tv.app.PlaybackBufferProfile
 import com.streammate.tv.app.PlaybackReconnectPolicy
 import com.streammate.tv.app.PlaylistEpgRefreshInterval
 import com.streammate.tv.app.AppLocale
+import com.streammate.tv.app.InterfaceScale
 import com.streammate.tv.app.PreferredLanguageSlot
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.app.StartupScreen
@@ -1231,6 +1232,27 @@ fun SettingsScreen(
                 }
             }
             item {
+                SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.interface_scale_title))
+                    Text(
+                        text = stringResource(R.string.interface_scale_help),
+                        color = palette.textMuted,
+                        fontSize = 12.sp,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        interfaceScaleOptions().forEach { (scale, label) ->
+                            TvActionButton(
+                                label = label,
+                                selected = appPreferences.interfaceScale == scale,
+                                onClick = { scope.launch { preferencesRepository.setInterfaceScale(scale) } },
+                                compact = true,
+                                testTag = "settings-interface-scale-${scale.name.lowercase()}",
+                            )
+                        }
+                    }
+                }
+            }
+            item {
                 val languageOptions = preferredLanguageOptions()
                 SettingsGroup {
                     SettingsGroupHeading(stringResource(R.string.preferred_languages_title))
@@ -2177,6 +2199,13 @@ private fun PreferredLanguageRow(
         }
     }
 }
+
+@Composable
+private fun interfaceScaleOptions(): List<Pair<InterfaceScale, String>> = listOf(
+    InterfaceScale.NORMAL to stringResource(R.string.interface_scale_normal),
+    InterfaceScale.COMPACT to stringResource(R.string.interface_scale_compact),
+    InterfaceScale.SMALL to stringResource(R.string.interface_scale_small),
+)
 
 @Composable
 private fun interfaceLanguageOptions(): List<Pair<String?, String>> = listOf(

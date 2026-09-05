@@ -32,6 +32,8 @@ data class AppPreferences(
     val remoteMappings: RemoteMappings = RemoteMappings.DEFAULTS,
     /** TMDB language for titles, plots and artwork; see [MetadataLanguages]. */
     val metadataLanguage: String = "en-US",
+    /** How large the whole interface is drawn; see [InterfaceScale]. */
+    val interfaceScale: InterfaceScale = InterfaceScale.DEFAULT,
     val autoFrameRateEnabled: Boolean = true,
     val autoPlayNextEpisodeEnabled: Boolean = true,
     val followedSports: Set<SportType> = SportsFollowDefaults.sports,
@@ -161,6 +163,7 @@ class AppPreferencesRepository(
             ),
             metadataLanguage = values[METADATA_LANGUAGE]?.takeIf(MetadataLanguages::isSupported)
                 ?: MetadataLanguages.defaultFor(AppLocale.stored(context)),
+            interfaceScale = InterfaceScale.fromStored(values[INTERFACE_SCALE]),
             autoFrameRateEnabled = values[AUTO_FRAME_RATE] ?: true,
             autoPlayNextEpisodeEnabled = values[AUTO_PLAY_NEXT_EPISODE] ?: true,
             followedSports = values[FOLLOWED_SPORTS]
@@ -284,6 +287,10 @@ class AppPreferencesRepository(
     suspend fun setMetadataLanguage(tag: String) {
         require(MetadataLanguages.isSupported(tag)) { "Unsupported metadata language" }
         context.sportMatePreferences.edit { values -> values[METADATA_LANGUAGE] = tag }
+    }
+
+    suspend fun setInterfaceScale(scale: InterfaceScale) {
+        context.sportMatePreferences.edit { values -> values[INTERFACE_SCALE] = scale.name }
     }
 
     suspend fun resetRemoteMappings() {
@@ -415,6 +422,7 @@ class AppPreferencesRepository(
             values[REMOTE_CHANNEL_KEY_MODE] = restored.remoteChannelKeyMode.name
             values[REMOTE_MAPPINGS] = restored.remoteMappings.encode()
             values[METADATA_LANGUAGE] = restored.metadataLanguage
+            values[INTERFACE_SCALE] = restored.interfaceScale.name
             values[AUTO_FRAME_RATE] = restored.autoFrameRateEnabled
             values[AUTO_PLAY_NEXT_EPISODE] = restored.autoPlayNextEpisodeEnabled
             values[FOLLOWED_SPORTS] = restored.followedSports.mapTo(mutableSetOf()) { it.name }
@@ -454,6 +462,7 @@ class AppPreferencesRepository(
         val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")
         val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
         val METADATA_LANGUAGE = stringPreferencesKey("metadata_language")
+        val INTERFACE_SCALE = stringPreferencesKey("interface_scale")
         val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
         val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")

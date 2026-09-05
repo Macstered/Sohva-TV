@@ -414,7 +414,8 @@ private fun GuideChannelCell(
                 lineHeight = if (nameWraps) 15.sp else 17.sp,
                 maxLines = if (nameWraps) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
-                onTextLayout = { layout -> if (!nameWraps && layout.hasVisualOverflow) nameWraps = true },
+                // An ellipsised single line does not count as overflow; ask for the line itself.
+                onTextLayout = { layout -> if (!nameWraps && (layout.isLineEllipsized(0) || layout.hasVisualOverflow)) nameWraps = true },
             )
             // What the provider says about the feed - quality and language -
             // read off the channel name, the same markers the stream switcher

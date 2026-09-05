@@ -271,6 +271,11 @@
     <string name="interface_language_title">Interface language</string>
     <string name="interface_language_help">Changes the language of Sohva TV itself. Restarts the app to apply.</string>
     <string name="interface_language_system">System default</string>
+    <string name="interface_scale_title">Interface size</string>
+    <string name="interface_scale_help">Draws everything on screen smaller, for a very large screen or a projector.</string>
+    <string name="interface_scale_normal">Normal</string>
+    <string name="interface_scale_compact">Compact</string>
+    <string name="interface_scale_small">Small</string>
     <!-- Each language is named in its own language, so it stays findable when
          the interface is currently in one the reader does not speak. -->
     <string name="interface_language_en">English</string>

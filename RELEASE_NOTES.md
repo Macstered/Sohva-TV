@@ -1,21 +1,20 @@
-# Sohva TV 0.1.0-beta.4
+# Sohva TV 0.1.0-beta.5
 
-Prepared: **5 September 2026**. Android version code: **5**.
+Prepared: **5 September 2026**. Android version code: **6**.
 
-Fourth Sohva TV tester package, and the first one the app can fetch itself:
-on beta 3, open **Settings > About > Check for updates**. Earlier betas are
-updated by installing this package over them, without uninstalling or clearing
-data. This is a non-commercial beta, not a public-launch announcement.
+Fifth Sohva TV tester package. On beta 3 or later, fetch it from **Settings >
+About > Check for updates**; on earlier betas, install it over the existing
+app without uninstalling or clearing data. This is a non-commercial beta, not
+a public-launch announcement.
 
-## Changed since beta 3
+## Changed since beta 4
 
-- In the channel manager, moving down the group list no longer pauses for a
-  second or two at each group while its channels fill in on the right. Every
-  group's counts are worked out once, off the screen's thread, and a group's
-  channels are read only once focus has rested on it for a moment.
-- A long channel name in the programme guide, such as a custom name, wraps
-  onto a second line instead of being cut short; the channel column is also a
-  little wider.
+- **Interface size** under **Playback & remote**: Normal, Compact or Small
+  draws the whole app a step smaller, for a projector or a very large screen.
+- A long channel name in the programme guide now actually wraps onto a second
+  line; beta 4 announced this but the wrap never triggered.
+- The channel list during playback is wider, so long custom names fit next to
+  their logos.
 
 ## Included
 
@@ -24,15 +23,16 @@ data. This is a non-commercial beta, not a public-launch announcement.
 - Live TV, programme guide, movies, series, playback resume and optional
   TMDB / TVmaze / API-Sports integrations using the tester's own credentials.
 - Library organisation, custom channel lists, remote button mapping, phone
-  setup and in-app update check.
+  setup, interface size and in-app update check.
 - English and Finnish app interface; English installation and testing guide.
 
 ## Update compatibility
 
 Future Sohva TV betas should be installed over this one without uninstalling or
 clearing data, or fetched from **Settings > About**. This beta uses Android
-build 5; every later distributed build must use a higher build number. There is
-no database, preference, key or backup-format change since beta 3.
+build 6; every later distributed build must use a higher build number. One new
+preference, the interface size, is carried by the backup format with a default
+of Normal; nothing else changed since beta 4.
 
 Release certificate SHA-256:
 
@@ -45,9 +45,9 @@ The APK's own checksum is in the accompanying `SHA256SUMS.txt`.
 ## Testing context
 
 The beta passed its build gate and the unit-test suite, and a full emulator run
-of the database and UI tests on the released source, including a new timing
-test for the channel manager's group list. These are bounded results, not a
-guarantee for every device or source.
+of the database and UI tests on the released source. The guide wrap and the
+wider channel list were confirmed on a Shield against real playlists. These
+are bounded results, not a guarantee for every device or source.
 
 See [known limitations and the feedback checklist](TESTING.md). A missing
 poster can still require selecting the correct TMDB match again. Provider
