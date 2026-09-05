@@ -40,7 +40,7 @@ internal val GUIDE_RAIL_WIDTH = 200.dp
 internal val GUIDE_CONTENT_GAP = 14.dp
 
 /** The fixed identity column: number, logo, name, stream tags. */
-internal val CHANNEL_COLUMN_WIDTH = 202.dp
+internal val CHANNEL_COLUMN_WIDTH = 232.dp
 
 /** Between the channel column and the timeline. */
 internal val GRID_GAP = 6.dp

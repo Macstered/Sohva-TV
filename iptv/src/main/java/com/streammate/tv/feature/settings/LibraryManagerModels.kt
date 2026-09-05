@@ -30,6 +30,37 @@ internal fun managedGroups(room: LibraryRoom, library: ManagedLibrary, sourceId:
     } else combined
 }
 
+/**
+ * What the rail shows for a group: whether it is on, and how many of its
+ * items are on out of how many. Counted once, off the main thread, for every
+ * group; the rail's rows used to count their own items, sixteen rule lookups
+ * apiece, on every focus move.
+ */
+internal data class ManagedGroupSummary(val enabled: Boolean, val total: Int, val enabledCount: Int)
+
+internal data class ManagedGroups(
+    val groups: List<ManagedGroup> = emptyList(),
+    val summaries: Map<String, ManagedGroupSummary> = emptyMap(),
+)
+
+/** One group's items in their shown order, with each item's eligibility already decided. */
+internal data class ManagedItems(
+    val groupKey: String? = null,
+    val items: List<OrganizationItem> = emptyList(),
+    val enabled: Map<String, Boolean> = emptyMap(),
+)
+
+internal fun ManagedGroup.summary(room: LibraryRoom, state: LibraryOrganization): ManagedGroupSummary = ManagedGroupSummary(
+    enabled = enabled(room, state),
+    total = items.distinctBy { it.identity }.size,
+    enabledCount = items.filter { state.enabledInView(room, it, key.takeIf { custom }) }.distinctBy { it.identity }.size,
+)
+
+internal fun ManagedGroup.managedItems(room: LibraryRoom, state: LibraryOrganization): ManagedItems {
+    val ordered = orderedItems(room, state)
+    return ManagedItems(key, ordered, ordered.associate { it.identity to state.enabledInView(room, it, key.takeIf { custom }) })
+}
+
 internal fun ManagedGroup.enabled(room: LibraryRoom, state: LibraryOrganization): Boolean =
     if (automatic || custom) state.shortcutEnabled(room, key) else items.any { state.groupRule(room, it).enabled != false }
 

@@ -1,38 +1,21 @@
-# Sohva TV 0.1.0-beta.3
+# Sohva TV 0.1.0-beta.4
 
-Prepared: **5 September 2026**. Android version code: **4**.
+Prepared: **5 September 2026**. Android version code: **5**.
 
-Third Sohva TV tester package. Install it over beta 1 or beta 2 without
-uninstalling or clearing data. This is a non-commercial beta, not a public-launch
-announcement.
+Fourth Sohva TV tester package, and the first one the app can fetch itself:
+on beta 3, open **Settings > About > Check for updates**. Earlier betas are
+updated by installing this package over them, without uninstalling or clearing
+data. This is a non-commercial beta, not a public-launch announcement.
 
-## Changed since beta 2
+## Changed since beta 3
 
-- A new source syncs as soon as it is saved, and **Sync everything** on the
-  Playlists page refreshes all sources at once.
-- The first sync is much faster: a playlist and its guide arrive in a minute or
-  two instead of ten. Only the programmes the channels can show are kept.
-- Very large Xtream movie and series lists import instead of being refused as
-  too big.
-- The guide no longer says there are no channels while the first sync is still
-  running; it shows each source's progress, and a failed import says why.
-- The app can fetch the next beta itself: **Settings > About > Check for
-  updates**.
-- Playlist details can be typed in from a phone: **Set up from a phone** on
-  the Playlists page.
-- TMDB titles, plots and artwork can be asked for in any of 22 languages under
-  **Programme data & artwork**.
-- The remote's D-pad and channel buttons, on a press and on a hold, can be
-  mapped to the channel list, programme info, previous channel and other
-  actions under **Playback & remote**.
-- The guide and the programme info during playback open at once on a large
-  library; they used to take ten seconds or more, and the guide could stop
-  responding. The player's channel list reads one group at a time, and channel
-  up and down stay within the group.
-- Moving between groups in the guide keeps the rows and the info box in place
-  until the new group is read.
-- Saved source addresses and keys are protected by one wrapped data key rather
-  than a keystore round trip per address, which is part of the faster sync.
+- In the channel manager, moving down the group list no longer pauses for a
+  second or two at each group while its channels fill in on the right. Every
+  group's counts are worked out once, off the screen's thread, and a group's
+  channels are read only once focus has rested on it for a moment.
+- A long channel name in the programme guide, such as a custom name, wraps
+  onto a second line instead of being cut short; the channel column is also a
+  little wider.
 
 ## Included
 
@@ -48,9 +31,8 @@ announcement.
 
 Future Sohva TV betas should be installed over this one without uninstalling or
 clearing data, or fetched from **Settings > About**. This beta uses Android
-build 4; every later distributed build must use a higher build number. Existing
-settings, sources and backups carry over; saved addresses are re-protected
-with the new data key on first use.
+build 5; every later distributed build must use a higher build number. There is
+no database, preference, key or backup-format change since beta 3.
 
 Release certificate SHA-256:
 
@@ -63,10 +45,9 @@ The APK's own checksum is in the accompanying `SHA256SUMS.txt`.
 ## Testing context
 
 The beta passed its build gate and the unit-test suite, and a full emulator run
-of the database and UI tests on the released source. The build was installed
-on a Shield over beta 2 with data intact and used against real playlists,
-including one with tens of thousands of channels. These are bounded results,
-not a guarantee for every device or source.
+of the database and UI tests on the released source, including a new timing
+test for the channel manager's group list. These are bounded results, not a
+guarantee for every device or source.
 
 See [known limitations and the feedback checklist](TESTING.md). A missing
 poster can still require selecting the correct TMDB match again. Provider

@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.3 (4)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.4 (5)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Suggested first session
@@ -57,7 +57,7 @@ Email [hello@luontra.fi](mailto:hello@luontra.fi). If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.3 (4)
+Version: 0.1.0-beta.4 (5)
 Device model:
 Android / Google TV version:
 Fresh install or update:

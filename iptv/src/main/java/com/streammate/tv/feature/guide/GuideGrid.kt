@@ -402,14 +402,19 @@ private fun GuideChannelCell(
         ChannelLogo(channel.logoUrl, channel.name, CHANNEL_LOGO_SIZE, focused = focused)
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
+            // A name the column cannot hold on one line, such as a long custom
+            // name, wraps onto a second line in place of the feed line instead
+            // of being cut short; the row keeps its height.
+            var nameWraps by remember(channel.name) { mutableStateOf(false) }
             Text(
                 text = channel.name,
                 color = colors.content,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = typography.label.fontSize,
-                lineHeight = 17.sp,
-                maxLines = 1,
+                fontSize = if (nameWraps) 13.sp else typography.label.fontSize,
+                lineHeight = if (nameWraps) 15.sp else 17.sp,
+                maxLines = if (nameWraps) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
+                onTextLayout = { layout -> if (!nameWraps && layout.hasVisualOverflow) nameWraps = true },
             )
             // What the provider says about the feed - quality and language -
             // read off the channel name, the same markers the stream switcher
@@ -417,7 +422,7 @@ private fun GuideChannelCell(
             val streamTags = remember(channel.name) {
                 ChannelStreamTags.read(channel.name).joinToString(" · ") { it.label }
             }
-            Text(
+            if (!nameWraps) Text(
                 text = streamTags.ifBlank { channel.groupTitle ?: channel.sourceName },
                 color = colors.secondaryContent,
                 fontSize = typography.caption.fontSize,

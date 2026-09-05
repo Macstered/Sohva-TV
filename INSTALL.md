@@ -1,6 +1,6 @@
 # Install and set up Sohva TV
 
-For **0.1.0-beta.3**, Android build **4**.
+For **0.1.0-beta.4**, Android build **5**.
 
 ## Before you start
 
@@ -18,7 +18,7 @@ For **0.1.0-beta.3**, Android build **4**.
 
 ## Install using your TV
 
-1. Download `sohva-tv-0.1.0-beta.3.apk` from the developer's supplied package
+1. Download `sohva-tv-0.1.0-beta.4.apk` from the developer's supplied package
    or the approved release page. Do not use an APK from an unknown mirror.
 2. Transfer that file to the TV using a USB drive or your existing trusted
    file-transfer method, then open it with a file manager on the TV.
@@ -30,7 +30,7 @@ For **0.1.0-beta.3**, Android build **4**.
 5. Open **Sohva TV** from the TV's app list. You may turn off the file manager's
    install permission afterwards.
 6. Check **Settings > About > About, privacy and licences**. The version must
-   be **0.1.0-beta.3**.
+   be **0.1.0-beta.4**.
 
 If your TV does not offer APK installation, record the TV model, Android
 version and exact message and contact the developer. Device installation
@@ -70,7 +70,7 @@ authorize debugging on your device. In PowerShell, from the APK's directory:
 
 ```powershell
 adb devices -l
-adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.1.0-beta.3.apk
+adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.1.0-beta.4.apk
 ```
 
 Replace `YOUR_DEVICE_SERIAL` with the exact serial shown by ADB. Always select
@@ -80,7 +80,7 @@ options. Disable debugging again when finished if you no longer need it.
 To check file integrity before installation:
 
 ```powershell
-Get-FileHash .\sohva-tv-0.1.0-beta.3.apk -Algorithm SHA256
+Get-FileHash .\sohva-tv-0.1.0-beta.4.apk -Algorithm SHA256
 ```
 
 Compare with the APK entry in `SHA256SUMS.txt` from the same trusted package.

@@ -40,6 +40,7 @@ import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.iptv.R
 import com.streammate.tv.iptv.repository.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -48,6 +49,12 @@ private enum class ManagerFilter { ALL, ENABLED, DISABLED }
 private enum class ManagerPane { GROUPS, ITEMS }
 private enum class ManagerMenu { GROUP, ITEM, GROUP_SORT, ITEM_SORT, DEFAULT_SORT, BULK, POSITION }
 private data class ManagerMove(val pane: ManagerPane, val id: String, val ids: List<String>)
+
+/** How long focus rests on a group before its items are read. */
+private const val GROUP_SETTLE_MILLIS = 150L
+
+/** How long the rail rests before the manager's location is stored. */
+private const val LOCATION_SAVE_DELAY_MILLIS = 1_000L
 
 @Composable
 fun LibraryManagerScreen(
@@ -120,20 +127,43 @@ fun LibraryManagerContent(
     var lastGroupIndex by remember(room) { mutableIntStateOf(0) }
     var lastItemIndex by remember(room) { mutableIntStateOf(0) }
 
-    val groups by produceState(emptyList<ManagedGroup>(), room, library, sourceId) {
-        value = if (library.loading || library.loadError) emptyList() else withContext(Dispatchers.Default) { managedGroups(room, library, sourceId) }
+    val managed by produceState(ManagedGroups(), room, library, sourceId) {
+        value = if (library.loading || library.loadError) ManagedGroups() else withContext(Dispatchers.Default) {
+            val groups = managedGroups(room, library, sourceId)
+            ManagedGroups(groups, groups.associate { it.key to it.summary(room, library.state.organization) })
+        }
     }
+    val groups = managed.groups
+    val summaries = managed.summaries
+    fun groupEnabled(group: ManagedGroup): Boolean = summaries[group.key]?.enabled ?: group.enabled(room, state)
     val selectedGroup = groups.firstOrNull { it.key == selectedGroupKey } ?: groups.firstOrNull()
-    val itemSlice by produceState<Pair<String?, List<OrganizationItem>>>(null to emptyList(), room, selectedGroup, state) {
-        value = selectedGroup?.key to withContext(Dispatchers.Default) { selectedGroup?.orderedItems(room, state).orEmpty() }
+    // The items pane follows the rail once focus has rested on a group for a
+    // moment, so passing through groups does not read and lay out each one.
+    var settledGroupKey by remember(room) { mutableStateOf(selectedGroupKey) }
+    LaunchedEffect(selectedGroupKey) {
+        if (settledGroupKey == selectedGroupKey) return@LaunchedEffect
+        if (settledGroupKey != null) delay(GROUP_SETTLE_MILLIS)
+        settledGroupKey = selectedGroupKey
     }
-    val orderedItems = itemSlice.second.takeIf { itemSlice.first == selectedGroup?.key }.orEmpty()
-    fun itemEnabled(item: OrganizationItem): Boolean = state.enabledInView(room, item, selectedGroup?.key?.takeIf { selectedGroup.custom })
+    val settledGroup = groups.firstOrNull { it.key == settledGroupKey } ?: selectedGroup
+    val itemSlice by produceState(ManagedItems(), room, settledGroup, state) {
+        value = settledGroup?.let { group -> withContext(Dispatchers.Default) { group.managedItems(room, state) } } ?: ManagedItems()
+    }
+    val itemsLoading = selectedGroup != null && itemSlice.groupKey != selectedGroup.key
+    val orderedItems = if (itemsLoading) emptyList() else itemSlice.items
+    fun itemEnabled(item: OrganizationItem): Boolean =
+        itemSlice.enabled[item.identity] ?: state.enabledInView(room, item, selectedGroup?.key?.takeIf { selectedGroup.custom })
     fun accepts(enabled: Boolean) = filter == ManagerFilter.ALL || enabled == (filter == ManagerFilter.ENABLED)
-    val visibleGroups = groups.filter { accepts(it.enabled(room, state)) && (pane != ManagerPane.GROUPS || search.isBlank() || it.name.contains(search, true)) }
-        .let { rows -> if (move?.pane == ManagerPane.GROUPS) rows.sortedBy { move!!.ids.indexOf(it.key).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE } else rows }
-    val visibleItems = orderedItems.filter { accepts(itemEnabled(it)) && (search.isBlank() || pane == ManagerPane.GROUPS || it.title.contains(search, true)) }
-        .let { rows -> if (move?.pane == ManagerPane.ITEMS) rows.sortedBy { move!!.ids.indexOf(it.identity).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE } else rows }
+    val visibleGroups = remember(groups, summaries, filter, search, pane, move) {
+        groups.filter { accepts(groupEnabled(it)) && (pane != ManagerPane.GROUPS || search.isBlank() || it.name.contains(search, true)) }
+            .let { rows -> if (move?.pane == ManagerPane.GROUPS) rows.sortedBy { move!!.ids.indexOf(it.key).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE } else rows }
+    }
+    val visibleItems = remember(orderedItems, itemSlice, filter, search, pane, move) {
+        orderedItems.filter { accepts(itemEnabled(it)) && (search.isBlank() || pane == ManagerPane.GROUPS || it.title.contains(search, true)) }
+            .let { rows -> if (move?.pane == ManagerPane.ITEMS) rows.sortedBy { move!!.ids.indexOf(it.identity).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE } else rows }
+    }
+    // Right on a group whose items are still being read enters them once they are there.
+    var enterItemsRequest by remember(room) { mutableStateOf<String?>(null) }
     val focusedItem = orderedItems.firstOrNull { it.identity == focusedItemId } ?: visibleItems.firstOrNull()
 
     fun save(changes: List<OrganizationChange>, keepUndo: Boolean = true) {
@@ -203,7 +233,19 @@ fun LibraryManagerContent(
         }
     }
     LaunchedEffect(library.loadError) { if (library.loadError) backFocus.requestFocusWhenAttached() }
+    LaunchedEffect(enterItemsRequest, itemsLoading, visibleItems) {
+        val requested = enterItemsRequest ?: return@LaunchedEffect
+        if (itemsLoading || requested != selectedGroup?.key) return@LaunchedEffect
+        enterItemsRequest = null
+        if (visibleItems.isNotEmpty()) {
+            search = ""; pane = ManagerPane.ITEMS; selection = emptySet()
+            itemsState.scrollToItem(0); itemFocus[visibleItems.first().identity]?.requestFocusWhenAttached()
+        } else menu = ManagerMenu.GROUP
+    }
     LaunchedEffect(room, selectedGroupKey, sourceId) {
+        // Written once the rail has settled: a store write per focus move
+        // is a preference emission the whole app recomposes on.
+        delay(LOCATION_SAVE_DELAY_MILLIS)
         if (selectedGroupKey != null) try { onLocation(selectedGroupKey, sourceId) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { error = true }
     }
     LaunchedEffect(move) {
@@ -288,17 +330,17 @@ fun LibraryManagerContent(
                 LazyColumn(Modifier.width(290.dp).fillMaxHeight().focusGroup().testTag("manager-groups"), state = groupsState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(visibleGroups, key = { it.key }) { group ->
                         val focus = remember(groupFocus, group.key) { groupFocus.getOrPut(group.key) { FocusRequester() } }
-                        val total = group.items.distinctBy { it.identity }.size
-                        val enabled = group.items.filter { state.enabledInView(room, it, group.key.takeIf { group.custom }) }.distinctBy { it.identity }.size
+                        val summary = summaries[group.key] ?: remember(group, state) { group.summary(room, state) }
                         ManagerRow(
-                            title = groupLabel(group), subtitle = if (group.automatic) stringResource(R.string.manager_automatic_view) else "$enabled / $total",
-                            enabled = group.enabled(room, state), selected = if (selectionMode && pane == ManagerPane.GROUPS) group.key in selection else selectedGroup?.key == group.key,
+                            title = groupLabel(group), subtitle = if (group.automatic) stringResource(R.string.manager_automatic_view) else "${summary.enabledCount} / ${summary.total}",
+                            enabled = summary.enabled, selected = if (selectionMode && pane == ManagerPane.GROUPS) group.key in selection else selectedGroup?.key == group.key,
                             modifier = Modifier.focusRequester(focus).onFocusChanged { if (it.isFocused && move == null) {
                                 if (pane != ManagerPane.GROUPS) selection = emptySet()
                                 pane = ManagerPane.GROUPS; selectedGroupKey = group.key; lastGroupIndex = visibleGroups.indexOf(group)
                             } }.onPreviewKeyEvent { event ->
                                 if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && move == null) {
-                                    if (visibleItems.isNotEmpty()) scope.launch { search = ""; pane = ManagerPane.ITEMS; selection = emptySet(); itemsState.scrollToItem(0); itemFocus[visibleItems.first().identity]?.requestFocusWhenAttached() }
+                                    if (itemsLoading) { settledGroupKey = group.key; enterItemsRequest = group.key }
+                                    else if (visibleItems.isNotEmpty()) scope.launch { search = ""; pane = ManagerPane.ITEMS; selection = emptySet(); itemsState.scrollToItem(0); itemFocus[visibleItems.first().identity]?.requestFocusWhenAttached() }
                                     else menu = ManagerMenu.GROUP
                                     true
                                 } else false
@@ -312,7 +354,7 @@ fun LibraryManagerContent(
                         Text(selectedGroup?.let { groupLabel(it) }.orEmpty(), Modifier.weight(1f), fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         if (selectedGroup != null && !selectedGroup.automatic) TvActionButton(stringResource(R.string.manager_item_sort), compact = true, onClick = { menu = ManagerMenu.ITEM_SORT })
                     }
-                    if (visibleItems.isEmpty()) {
+                    if (visibleItems.isEmpty() && !itemsLoading) {
                         Text(stringResource(if (selectedGroup?.automatic == true) R.string.manager_automatic_help else R.string.manager_empty), Modifier.padding(16.dp), color = palette.textMuted)
                     }
                     LazyColumn(Modifier.weight(1f).fillMaxWidth().focusGroup().testTag("manager-items"), state = itemsState, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -350,8 +392,8 @@ fun LibraryManagerContent(
             when (menu) {
                 ManagerMenu.GROUP -> selectedGroup?.let { group ->
                     Text(groupLabel(group), fontWeight = FontWeight.Bold)
-                    ManagerAction(stringResource(if (group.enabled(room, state)) R.string.manager_disable_group else R.string.manager_enable_group)) {
-                        save(groupVisibilityChanges(room, listOf(group), sourceId, !group.enabled(room, state))); leaveMenu()
+                    ManagerAction(stringResource(if (groupEnabled(group)) R.string.manager_disable_group else R.string.manager_enable_group)) {
+                        save(groupVisibilityChanges(room, listOf(group), sourceId, !groupEnabled(group))); leaveMenu()
                     }
                     if (!group.automatic) ManagerAction(stringResource(R.string.manager_item_sort)) { menu = ManagerMenu.ITEM_SORT }
                     ManagerAction(stringResource(R.string.manager_move)) { beginMove() }
