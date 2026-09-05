@@ -127,8 +127,54 @@ class GuideImportServiceTest {
         assertEquals(channelCount, summary.channels)
         assertEquals(expectedProgrammes, summary.programmes)
         assertEquals(expectedProgrammes, store.programmeBatchSizes.sum())
-        assertTrue(store.programmeBatchSizes.all { it in 1..250 })
+        assertTrue(store.programmeBatchSizes.all { it in 1..2_000 })
         assertEquals("snapshot-1", store.activeEpg)
+    }
+
+    @Test
+    fun `programmes for channels the playlist does not carry are not written`() = runBlocking {
+        val store = RecordingGuideStore().apply { referencedXmltvChannelIds = setOf("one.fi") }
+        val epg = buildString {
+            appendLine("<tv>")
+            appendLine("<channel id=\"one.fi\"><display-name>One</display-name></channel>")
+            appendLine("<channel id=\"other.fi\"><display-name>Other</display-name></channel>")
+            listOf("one.fi", "other.fi", "one.fi", "other.fi").forEachIndexed { index, channel ->
+                val start = EPG_START.plusMinutes(index * 30L)
+                append("<programme channel=\"$channel\" start=\"").append(start.format(XMLTV_FORMAT))
+                append(" +0000\" stop=\"").append(start.plusMinutes(30).format(XMLTV_FORMAT))
+                appendLine(" +0000\"><title>P$index</title></programme>")
+            }
+            appendLine("</tv>")
+        }
+
+        val summary = service(TextGuideSource(epg), store).refreshEpg("source", "http://provider.example/guide.xml")
+
+        // Both channels are kept for manual mapping; only one channel's programmes are written.
+        assertEquals(2, summary.channels)
+        assertEquals(2, summary.programmes)
+        assertEquals(2, store.programmeBatchSizes.sum())
+        assertEquals("snapshot-1", store.activeEpg)
+    }
+
+    @Test
+    fun `programmes long past or far ahead are not written`() = runBlocking {
+        val store = RecordingGuideStore()
+        val epg = buildString {
+            appendLine("<tv>")
+            appendLine("<channel id=\"one.fi\"><display-name>One</display-name></channel>")
+            listOf(-3L * 24, -1, 0, 2, 7 * 24, 9 * 24).forEach { hours ->
+                val start = EPG_START.plusHours(6).plusHours(hours)
+                append("<programme channel=\"one.fi\" start=\"").append(start.format(XMLTV_FORMAT))
+                append(" +0000\" stop=\"").append(start.plusMinutes(30).format(XMLTV_FORMAT))
+                appendLine(" +0000\"><title>At $hours h</title></programme>")
+            }
+            appendLine("</tv>")
+        }
+
+        val summary = service(TextGuideSource(epg), store).refreshEpg("source", "http://provider.example/guide.xml")
+
+        // Three days ago and nine days ahead fall outside the window; the rest stay.
+        assertEquals(4, summary.programmes)
     }
 
     @Test
@@ -262,10 +308,14 @@ class GuideImportServiceTest {
         xmlTvParser = XmlTvParser(),
         store = store,
         secretCipher = PrefixCipher,
+        // The feeds below are dated around EPG_START; the clock has to agree
+        // or the import's time window would drop every programme.
+        clock = { FIXED_NOW_MILLIS },
     )
 
     private companion object {
         val EPG_START: LocalDateTime = LocalDateTime.of(2026, 8, 24, 0, 0)
+        val FIXED_NOW_MILLIS: Long = EPG_START.plusHours(6).toEpochSecond(java.time.ZoneOffset.UTC) * 1000
         val XMLTV_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
     }
 }
@@ -374,6 +424,11 @@ private class RecordingGuideStore(
 
     override suspend fun stagedEpgMatch(sourceId: String, snapshotId: String): StagedEpgMatch =
         stagedEpgMatch ?: StagedEpgMatch(matchedProgrammes = programmeBatchSizes.sum(), mappableChannels = 1)
+
+    /** Empty by default: no playlist imported, so every programme is kept. */
+    var referencedXmltvChannelIds: Set<String> = emptySet()
+
+    override suspend fun referencedXmltvChannelIds(sourceId: String): Set<String> = referencedXmltvChannelIds
 
     override suspend fun discardEpg(sourceId: String, snapshotId: String) {
         discardedEpgs += snapshotId

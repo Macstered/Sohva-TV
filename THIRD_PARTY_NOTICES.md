@@ -1,6 +1,6 @@
 # Sohva TV third-party notices
 
-For the **0.1.0-beta.2** tester package and accompanying public source. Sohva
+For the **0.1.0-beta.3** tester package and accompanying public source. Sohva
 TV's original source is licensed separately under `GPL-3.0-only`. This document
 does not relicense third-party material; third-party copyrights, licences,
 service terms, logos, and trademarks remain in force.
@@ -48,3 +48,8 @@ is included. Use only sources and data you are authorized to access. Sohva TV
 claims no ownership of provider data, images or trademarks and does not imply
 provider endorsement. Non-commercial use does not override provider terms or
 third-party rights.
+
+## ZXing core
+
+QR code generation for the phone setup page. Apache License 2.0.
+<https://github.com/zxing/zxing>

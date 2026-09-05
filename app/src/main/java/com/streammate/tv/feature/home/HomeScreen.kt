@@ -123,8 +123,12 @@ fun HomeScreen(
     // launch screen, and re-creating this query every minute is exactly what
     // makes the player and the guide churn.
     val guideEntryMillis = remember { System.currentTimeMillis() }
-    val channels by remember(guideRepository, guideEntryMillis) {
-        guideRepository.observeGuide(guideEntryMillis)
+    // Only the channels the row can show are read. Reading the whole guide
+    // for a few recent tiles cost seconds and tens of megabytes on a library
+    // of fifty thousand channels.
+    val recentChannelIds = preferences.recentChannelIds
+    val channels by remember(guideRepository, guideEntryMillis, recentChannelIds) {
+        guideRepository.observeGuideChannels(recentChannelIds, guideEntryMillis)
     }.collectAsStateWithLifecycle(initialValue = emptyList())
     val recentChannels = remember(channels, preferences.recentChannelIds) {
         val positions = preferences.recentChannelIds.withIndex().associate { it.value to it.index }

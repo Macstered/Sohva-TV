@@ -289,7 +289,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
 
         composeRule.onNodeWithTag("settings-section-playback").performClick()
-        composeRule.onNodeWithTag("settings-remote-dpad_and_channel_keys").assertIsFocused()
+        composeRule.onNodeWithTag("settings-buffer-default").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-metadata").performClick()
         composeRule.onNodeWithTag("settings-metadata-tmdb-enabled").assertIsFocused()
@@ -303,8 +303,11 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-section-backup").performClick()
         composeRule.onNodeWithTag("settings-backup-passphrase").assertIsFocused()
 
+        composeRule.onNodeWithTag("settings-section-remote").performClick()
+        composeRule.onNodeWithTag("settings-remote-slot-up-press").assertIsFocused()
+
         composeRule.onNodeWithTag("settings-section-about").performClick()
-        composeRule.onNodeWithTag("settings-about-licenses").assertIsFocused()
+        composeRule.onNodeWithTag("settings-update-check").assertIsFocused()
     }
 
     @Test

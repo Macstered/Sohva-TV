@@ -39,6 +39,16 @@ import com.streammate.tv.feature.catalogue.v2.CatalogueBrowserV2
 import com.streammate.tv.feature.catalogue.v2.CatalogueBrowseTarget
 import com.streammate.tv.feature.search.SearchScreen
 import com.streammate.tv.feature.settings.SettingsScreen
+import com.streammate.tv.feature.settings.PhoneSetupUiState
+import com.streammate.tv.feature.settings.PhoneSetupActions
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.EncodeHintType
+import com.google.zxing.BarcodeFormat
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import android.graphics.Bitmap
+import com.streammate.tv.feature.settings.AppUpdateUiState
+import com.streammate.tv.feature.settings.AppUpdateActions
 import com.streammate.tv.feature.settings.ChannelEditorScreen
 import com.streammate.tv.feature.settings.LibraryManagerScreen
 import com.streammate.tv.core.model.LibraryRoom
@@ -79,6 +89,9 @@ fun StreamMateApp(container: StreamMateContainer) {
     var guideManagementReturn by remember { mutableStateOf(false) }
     var guideManagedGroup by remember { mutableStateOf<String?>(null) }
     var guideFocusChannelId by remember { mutableStateOf<String?>(null) }
+    // The channel watched before the one playing now, for zap-back. Session
+    // only; the persisted last channel stands in until there is one.
+    var previousChannelId by remember { mutableStateOf<String?>(null) }
     val movieCatalogueSession = remember { CatalogueBrowserSession(CatalogueMode.MOVIES) }
     val seriesCatalogueSession = remember { CatalogueBrowserSession(CatalogueMode.SERIES) }
     val coroutineScope = rememberCoroutineScope()
@@ -129,14 +142,40 @@ fun StreamMateApp(container: StreamMateContainer) {
             .distinctUntilChanged()
             .collect { interval -> GuideRefreshScheduler.schedule(context, interval) }
     }
+    // Once a day, from app start, ask the release list whether a newer beta
+    // exists; nothing is downloaded until the tester presses the button.
+    LaunchedEffect(container) {
+        if (!container.demoMode) container.appUpdateChecker.checkIfDue()
+    }
+    val appUpdateState by container.appUpdateChecker.state.collectAsStateWithLifecycle()
+    val phoneSetupState by container.phoneSetupServer.state.collectAsStateWithLifecycle()
+    // The phone page lives only while Settings is open.
+    LaunchedEffect(destination) {
+        if (destination != Destination.Settings) container.phoneSetupServer.stop()
+    }
+    val phoneSetupQr = remember(phoneSetupState) {
+        (phoneSetupState as? PhoneSetupState.Running)?.let { running -> qrCodeBitmap(running.url) }
+    }
+    LaunchedEffect(container) {
+        container.preferencesRepository.preferences
+            .map { it.metadataLanguage }
+            .distinctUntilChanged()
+            .collect { language -> container.metadataRepository.defaultLanguage = language }
+    }
     fun navigateTo(next: Destination) {
         if (next != destination) backStack = backStack + next
     }
     fun navigateBack() {
         if (backStack.size > 1) backStack = backStack.dropLast(1)
     }
+    fun rememberPreviousChannel(nextChannelId: String) {
+        val playing = (destination as? Destination.Player)?.channelId
+        val candidate = playing ?: appPreferences.lastChannelId ?: previousChannelId
+        if (candidate != null && candidate != nextChannelId) previousChannelId = candidate
+    }
     fun playChannel(channelId: String, rememberForGuide: Boolean = true) {
         if (rememberForGuide) guideFocusChannelId = channelId
+        rememberPreviousChannel(channelId)
         coroutineScope.launch {
             if (channelId in appPreferences.lockedChannelIds) {
                 val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
@@ -156,6 +195,7 @@ fun StreamMateApp(container: StreamMateContainer) {
     }
     fun playCatchup(channelId: String, startEpochMillis: Long, stopEpochMillis: Long) {
         guideFocusChannelId = channelId
+        rememberPreviousChannel(channelId)
         coroutineScope.launch {
             if (channelId in appPreferences.lockedChannelIds) {
                 val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
@@ -176,6 +216,7 @@ fun StreamMateApp(container: StreamMateContainer) {
     }
     fun zapToChannel(channelId: String) {
         guideFocusChannelId = channelId
+        rememberPreviousChannel(channelId)
         coroutineScope.launch {
             if (channelId in appPreferences.lockedChannelIds) {
                 val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
@@ -458,6 +499,7 @@ fun StreamMateApp(container: StreamMateContainer) {
                     playChannel(channelId)
                 },
                 onPlayCatchup = ::playCatchup,
+                onSyncNow = { GuideRefreshScheduler.syncNow(context) },
             )
             Destination.Settings -> SettingsScreen(
                 secretSettingsStore = container.secretSettingsStore,
@@ -485,6 +527,35 @@ fun StreamMateApp(container: StreamMateContainer) {
                     runBackupOperation { container.backupManager.restore(uri, passphrase) }
                 },
                 onLegalInformation = { navigateTo(Destination.LegalInformation) },
+                onSyncNow = { sourceId -> GuideRefreshScheduler.syncNow(context, sourceId) },
+                onMetadataLanguageChanged = {
+                    coroutineScope.launch {
+                        container.metadataRepository.resetCatalogueEnrichment()
+                        CatalogueMetadataScheduler.restart(context)
+                    }
+                },
+                phoneSetup = phoneSetupState.toUiState(phoneSetupQr),
+                phoneSetupActions = PhoneSetupActions(
+                    onStart = { container.phoneSetupServer.start() },
+                    onStop = { container.phoneSetupServer.stop() },
+                ),
+                appUpdate = appUpdateState.toUiState(container.appUpdateChecker.installedVersionName),
+                appUpdateActions = AppUpdateActions(
+                    onCheck = { coroutineScope.launch { container.appUpdateChecker.check() } },
+                    onDownload = {
+                        (appUpdateState as? AppUpdateState.Available)?.let { available ->
+                            coroutineScope.launch { container.appUpdateChecker.download(available.update) }
+                        }
+                    },
+                    onInstall = {
+                        when (val current = appUpdateState) {
+                            is AppUpdateState.Downloaded -> container.appUpdateChecker.install(current.update, current.file)
+                            is AppUpdateState.NeedsInstallPermission -> container.appUpdateChecker.retryInstall()
+                            else -> Unit
+                        }
+                    },
+                    onOpenInstallPermission = { container.appUpdateChecker.openInstallPermissionSettings() },
+                ),
                 onManageLibrary = { navigateTo(Destination.LibraryManager(LibraryRoom.LIVE)) },
                 onBack = ::handleBack,
             )
@@ -536,10 +607,20 @@ fun StreamMateApp(container: StreamMateContainer) {
                 guideRepository = container.guideRepository,
                 metadataRepository = container.metadataRepository,
                 timeZoneId = appPreferences.timeZoneId,
-                remoteChannelKeyMode = appPreferences.remoteChannelKeyMode,
+                remoteMappings = appPreferences.remoteMappings,
                 playbackReconnectPolicy = appPreferences.playbackReconnectPolicy,
                 autoFrameRateEnabled = appPreferences.autoFrameRateEnabled,
                 onChannelChange = ::zapToChannel,
+                onSwitchToPreviousChannel = previousChannelId
+                    ?.takeIf { it != current.channelId }
+                    ?.let { previous -> { zapToChannel(previous) } },
+                onOpenGuideAtChannel = {
+                    guideFocusChannelId = current.channelId
+                    backStack = listOf(Destination.Home, Destination.Guide)
+                },
+                onGoHome = { backStack = listOf(Destination.Home) },
+                onGoGuide = { backStack = listOf(Destination.Home, Destination.Guide) },
+                onGoSport = { backStack = listOf(Destination.Home, Destination.Today) },
                 onOpenExternal = { channelId ->
                     container.externalPlayerLauncher.launch(channelId).fold(
                         onSuccess = { Result.success(Unit) },
@@ -557,9 +638,12 @@ fun StreamMateApp(container: StreamMateContainer) {
                 guideRepository = container.guideRepository,
                 metadataRepository = container.metadataRepository,
                 timeZoneId = appPreferences.timeZoneId,
-                remoteChannelKeyMode = appPreferences.remoteChannelKeyMode,
+                remoteMappings = appPreferences.remoteMappings,
                 playbackReconnectPolicy = appPreferences.playbackReconnectPolicy,
                 autoFrameRateEnabled = appPreferences.autoFrameRateEnabled,
+                onGoHome = { backStack = listOf(Destination.Home) },
+                onGoGuide = { backStack = listOf(Destination.Home, Destination.Guide) },
+                onGoSport = { backStack = listOf(Destination.Home, Destination.Today) },
                 preferredAudioLanguage = appPreferences.preferredAudioLanguage,
                 secondaryAudioLanguage = appPreferences.secondaryAudioLanguage,
                 preferredSubtitleLanguage = appPreferences.preferredSubtitleLanguage,
@@ -616,3 +700,52 @@ private suspend fun runBackupOperation(operation: suspend () -> Unit): Result<Un
 } catch (error: Throwable) {
     Result.failure(error)
 }
+
+/** The checker's state in the words the settings screen understands. */
+internal fun AppUpdateState.toUiState(installedVersionName: String): AppUpdateUiState = when (this) {
+    AppUpdateState.Idle -> AppUpdateUiState(AppUpdateUiState.Phase.IDLE, installedVersionName)
+    AppUpdateState.Checking -> AppUpdateUiState(AppUpdateUiState.Phase.CHECKING, installedVersionName)
+    AppUpdateState.UpToDate -> AppUpdateUiState(AppUpdateUiState.Phase.UP_TO_DATE, installedVersionName)
+    is AppUpdateState.Available -> AppUpdateUiState(
+        AppUpdateUiState.Phase.AVAILABLE, installedVersionName, update.versionName, update.notes,
+    )
+    is AppUpdateState.Downloading -> AppUpdateUiState(
+        AppUpdateUiState.Phase.DOWNLOADING, installedVersionName, update.versionName, update.notes, percent,
+    )
+    is AppUpdateState.Downloaded -> AppUpdateUiState(
+        AppUpdateUiState.Phase.DOWNLOADED, installedVersionName, update.versionName, update.notes,
+    )
+    is AppUpdateState.NeedsInstallPermission -> AppUpdateUiState(
+        AppUpdateUiState.Phase.NEEDS_PERMISSION, installedVersionName, update.versionName, update.notes,
+    )
+    is AppUpdateState.Failed -> AppUpdateUiState(
+        AppUpdateUiState.Phase.FAILED, installedVersionName, update?.versionName, update?.notes,
+        failure = when (reason) {
+            AppUpdateFailure.NETWORK -> AppUpdateUiState.Failure.NETWORK
+            AppUpdateFailure.NO_CHECKSUMS -> AppUpdateUiState.Failure.NO_CHECKSUMS
+            AppUpdateFailure.CHECKSUM_MISMATCH -> AppUpdateUiState.Failure.CHECKSUM_MISMATCH
+            AppUpdateFailure.INSTALL_BLOCKED -> AppUpdateUiState.Failure.INSTALL_BLOCKED
+        },
+    )
+}
+
+internal fun PhoneSetupState.toUiState(qrCode: ImageBitmap?): PhoneSetupUiState = when (this) {
+    PhoneSetupState.Stopped -> PhoneSetupUiState()
+    PhoneSetupState.NoNetwork -> PhoneSetupUiState(noNetwork = true)
+    is PhoneSetupState.Running -> PhoneSetupUiState(
+        running = true,
+        url = url,
+        qrCode = qrCode,
+        receivedCount = receivedCount,
+        lastSourceName = lastSourceName,
+    )
+}
+
+/** The setup address as a QR code the phone camera reads across the room. */
+internal fun qrCodeBitmap(text: String, size: Int = 512): ImageBitmap? = runCatching {
+    val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, mapOf(EncodeHintType.MARGIN to 1))
+    val pixels = IntArray(size * size) { index ->
+        if (matrix.get(index % size, index / size)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+    }
+    Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888).asImageBitmap()
+}.getOrNull()

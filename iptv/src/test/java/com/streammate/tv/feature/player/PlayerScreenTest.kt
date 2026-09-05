@@ -168,64 +168,40 @@ class PlayerScreenTest {
     )
 
     @Test
-    fun theChannelBrowserOffersOnlyTheGroupBeingWatched() {
-        val channels = listOf(
-            guideChannel("a", "Urheilu"),
-            guideChannel("b", "Uutiset"),
-            guideChannel("c", "Urheilu"),
-            guideChannel("d", null),
+    fun channelBrowserGroupsComeFromTheRailInProviderOrderMergedAcrossSources() {
+        val rail = listOf(
+            railGroup("a", "Urheilu", 3),
+            railGroup("a", "Uutiset", 2),
+            railGroup("a", null, 1),
+            railGroup("b", "Urheilu", 4),
+            railGroup("b", "", 1),
         )
 
-        assertEquals(
-            listOf("a", "c"),
-            playerBrowserChannels(channels, "a").map { it.id },
-        )
+        assertEquals(listOf("Urheilu" to 7, "Uutiset" to 2), playerBrowserGroups(rail))
     }
 
     @Test
-    fun aChannelWithNoGroupOfItsOwnKeepsTheWholeList() {
-        val channels = listOf(
-            guideChannel("a", "Urheilu"),
-            guideChannel("b", null),
+    fun channelBrowserGroupsLeaveOutTheOnesARuleSwitchedOff() {
+        val rail = listOf(
+            railGroup("a", "Urheilu", 3),
+            railGroup("a", "Uutiset", 2),
+            railGroup("b", "Urheilu", 4),
         )
 
         assertEquals(
-            listOf("a", "b"),
-            playerBrowserChannels(channels, "b").map { it.id },
+            listOf("Urheilu" to 3, "Uutiset" to 2),
+            playerBrowserGroups(rail) { row -> !(row.sourceId == "b" && row.groupTitle == "Urheilu") },
         )
     }
 
-    @Test
-    fun channelBrowserGroupsKeepProviderOrderAndSkipUngroupedChannels() {
-        val channels = listOf(
-            guideChannel("a", "Urheilu"),
-            guideChannel("b", "Uutiset"),
-            guideChannel("c", "Urheilu"),
-            guideChannel("d", null),
-        )
-
-        assertEquals(listOf("Urheilu", "Uutiset"), playerBrowserGroups(channels))
-        assertEquals(
-            listOf("b"),
-            playerBrowserChannelsForGroup(channels, "Uutiset").map { it.id },
-        )
-    }
-
-    @Test
-    fun dismissingATemporaryGroupCanReturnToThePlayingChannelsGroup() {
-        val channels = listOf(
-            guideChannel("sport-1", "Urheilu"),
-            guideChannel("news-1", "Uutiset"),
-            guideChannel("sport-2", "Urheilu"),
-        )
-
-        val playingGroup = playerBrowserGroup(channels, "sport-1")
-        assertEquals("Urheilu", playingGroup)
-        assertEquals(
-            listOf("sport-1", "sport-2"),
-            playerBrowserChannelsForGroup(channels, playingGroup).map { it.id },
-        )
-    }
+    private fun railGroup(sourceId: String, groupTitle: String?, count: Int) = com.streammate.tv.iptv.repository.GuideRailGroup(
+        sourceId = sourceId,
+        sourceName = sourceId,
+        sourcePriority = 0,
+        groupTitle = groupTitle,
+        organizationGroupKey = "id:${groupTitle.orEmpty()}",
+        channelCount = count,
+    )
 
     @Test
     fun theBrowserHighlightTravelsToTheMiddleBeforeTheListMoves() {

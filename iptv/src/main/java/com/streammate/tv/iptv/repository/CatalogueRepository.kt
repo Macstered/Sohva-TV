@@ -886,9 +886,9 @@ class XtreamCatalogueImportService(
         val snapshotId = UUID.randomUUID().toString()
         dao.markCatalogueRefreshStarted(source.id, clock())
         return try {
-            val movies = client.movies(source)
-            val series = client.series(source)
-            movies.chunked(BATCH_SIZE).forEach { batch ->
+            // Written as they arrive: a large provider's film list is far too
+            // big to hold, and used to be refused for its size alone.
+            val movieCount = client.streamMovies(source, BATCH_SIZE) { batch ->
                 dao.upsertMovies(batch.map { movie ->
                     VodMovieEntity(
                         sourceId = source.id,
@@ -905,8 +905,11 @@ class XtreamCatalogueImportService(
                         plot = movie.plot,
                     )
                 })
+                // Copy aliases are registered per batch, before activation, so a
+                // new copy cannot briefly bypass a hidden film.
+                organization?.registerImportedMovies(source.id, batch)
             }
-            series.chunked(BATCH_SIZE).forEach { batch ->
+            val seriesCount = client.streamSeries(source, BATCH_SIZE) { batch ->
                 dao.upsertSeries(batch.map { item ->
                     VodSeriesEntity(
                         sourceId = source.id,
@@ -924,10 +927,8 @@ class XtreamCatalogueImportService(
                     )
                 })
             }
-            // Register proven copy aliases before activation so a new copy cannot briefly bypass a hidden film.
-            organization?.registerImportedMovies(source.id, movies)
-            dao.activateCatalogueSnapshot(source.id, snapshotId, movies.size + series.size, clock())
-            CatalogueImportSummary(movies.size, series.size)
+            dao.activateCatalogueSnapshot(source.id, snapshotId, movieCount + seriesCount, clock())
+            CatalogueImportSummary(movieCount, seriesCount)
         } catch (error: Throwable) {
             dao.deleteMovieSnapshot(source.id, snapshotId)
             dao.deleteSeriesSnapshot(source.id, snapshotId)

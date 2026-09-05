@@ -1,5 +1,11 @@
 package com.streammate.tv.feature.guide
 
+import com.streammate.tv.iptv.repository.GuideRailGroup
+import com.streammate.tv.iptv.repository.SourceRefreshHealth
+import com.streammate.tv.iptv.repository.GuideSource
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalResources
+import android.content.res.Resources
 import com.streammate.tv.iptv.repository.organizationItem
 
 import androidx.activity.compose.BackHandler
@@ -95,6 +101,8 @@ fun GuideScreen(
     startInOptions: Boolean = false,
     initialManagedGroup: String? = null,
     onManagementReturnHandled: () -> Unit = {},
+    /** Starts a full background sync of every source. */
+    onSyncNow: () -> Unit = {},
 ) {
     val palette = StreamMateThemeTokens.palette
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -122,8 +130,14 @@ fun GuideScreen(
         pendingPageDirection = if (byMillis > 0) 1 else -1
         pinnedWindowStart = moved.takeUnless { GuideTimeWindow.isAtNow(it, now) }
     }
-    val guide by remember(windowStart) { guideRepository.observeTimeline(windowStart, windowEnd) }
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    // The rail is the cheap read: every source and group with a count, from
+    // the channel table alone. The timeline below is read for one group, one
+    // list or a handful of ids at a time, never for the whole library.
+    val loadedRail by remember(guideRepository) { guideRepository.observeRail() }
+        .collectAsStateWithLifecycle(initialValue = null)
+    val railLoaded = loadedRail != null
+    val railRows = loadedRail ?: emptyList()
+    val libraryEmpty = railLoaded && railRows.isEmpty()
     val preferences by preferencesRepository.preferences.collectAsStateWithLifecycle(initialValue = AppPreferences())
     val organizationState by remember(guideRepository) { guideRepository.organization?.state ?: kotlinx.coroutines.flow.flowOf(com.streammate.tv.iptv.repository.OrganizationReadState()) }.collectAsStateWithLifecycle(initialValue = com.streammate.tv.iptv.repository.OrganizationReadState())
     val organization = organizationState.organization
@@ -166,25 +180,84 @@ fun GuideScreen(
     val favouriteChannelIds = preferences.favouriteChannelIds
     val recentChannelIds = preferences.recentChannelIds
 
-    val sources = remember(guide) { guide.distinctBy(GuideTimelineChannel::sourceId) }
-    val sourceChannels = remember(guide, selectedSourceId) {
-        guide.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
+    val sources = remember(railRows) {
+        railRows.distinctBy(GuideRailGroup::sourceId).map { GuideSourceOption(it.sourceId, it.sourceName) }
     }
-    val allGroups = remember(sourceChannels) {
-        sourceChannels.mapNotNull(GuideTimelineChannel::groupTitle).distinct()
+    // Groups a rule has switched off are not on the rail; the organisation
+    // view drops their channels the same way.
+    val sourceRail = remember(railRows, selectedSourceId, organizationState) {
+        railRows.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
+            .filter { row ->
+                row.groupTitle == null || organization.groupRule(
+                    liveRoom,
+                    com.streammate.tv.core.model.OrganizationItem("", row.sourceId, row.groupTitle, row.groupTitle, row.organizationGroupKey),
+                ).enabled != false
+            }
     }
+    val allGroups = remember(sourceRail) { sourceRail.mapNotNull(GuideRailGroup::groupTitle).distinct() }
     val groups = remember(allGroups, hiddenLiveCategories) {
         allGroups.filterNot { group ->
             hiddenLiveCategories.any { it.equals(group, ignoreCase = true) }
         }
     }
-    // Counted off the source's own channels rather than the filtered view, so a
-    // group's number says how many are in it, not how many survived the filter
-    // that is currently applied.
-    val groupCounts = remember(sourceChannels) {
-        sourceChannels.groupingBy { channel -> channel.groupTitle.orEmpty() }
-            .eachCount()
-            .filterKeys(String::isNotBlank)
+    // Counted off the rail, so a group's number says how many are in it, not
+    // how many survived the filter that is currently applied.
+    val groupCounts = remember(sourceRail) {
+        sourceRail.filter { it.groupTitle != null }
+            .groupBy { it.groupTitle!! }
+            .mapValues { (_, rows) -> rows.sumOf(GuideRailGroup::channelCount) }
+    }
+    val sourceChannelCount = remember(sourceRail, hiddenLiveCategories) {
+        sourceRail.filterNot { row ->
+            row.groupTitle != null && hiddenLiveCategories.any { it.equals(row.groupTitle, ignoreCase = true) }
+        }.sumOf(GuideRailGroup::channelCount)
+    }
+    // Which channels the timeline is read for: named ids for favourites,
+    // recent and lists; otherwise the selected source and group.
+    val timelineChannelIds: List<String>? = remember(channelFilter, selectedListId, favouriteChannelIds, recentChannelIds, listMemberships) {
+        when {
+            channelFilter == ChannelFilter.FAVOURITES -> favouriteChannelIds.toList()
+            channelFilter == ChannelFilter.RECENT -> recentChannelIds
+            selectedListId != null -> listMemberships.filter { it.listId == selectedListId }.map { it.channelId }
+            else -> null
+        }
+    }
+    val loadedTimeline by remember(windowStart, selectedSourceId, selectedGroup, timelineChannelIds) {
+        val ids = timelineChannelIds
+        val sourceId = selectedSourceId
+        when {
+            ids != null -> guideRepository.observeTimelineForChannels(ids, windowStart, windowEnd)
+            sourceId != null -> guideRepository.observeTimeline(windowStart, windowEnd, sourceId, selectedGroup)
+            else -> kotlinx.coroutines.flow.flowOf<List<GuideTimelineChannel>?>(null)
+        }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    // The last timeline stays on screen, its own rows and all, while the next
+    // one is read: the rows, the info box above them and the rail keep their
+    // places, and the new group's rows replace them when they arrive, normally
+    // within a few frames. Clearing them at once flashed an empty list and,
+    // with the info box gone, a rail stretched to the full height. A read that
+    // drags on gets a reading notice above the stale rows, never in their
+    // place: on the Shield a large group's read can pass the threshold, and
+    // swapping the rows out for the notice collapsed the layout all the same.
+    var shownTimeline by remember { mutableStateOf<List<GuideTimelineChannel>?>(null) }
+    LaunchedEffect(loadedTimeline) { if (loadedTimeline != null) shownTimeline = loadedTimeline }
+    var readingForLong by remember { mutableStateOf(false) }
+    LaunchedEffect(loadedTimeline == null) {
+        readingForLong = false
+        if (loadedTimeline == null) {
+            delay(TIMELINE_READING_NOTICE_MILLIS)
+            readingForLong = true
+        }
+    }
+    val timelineStale = loadedTimeline == null && shownTimeline != null
+    val guide = loadedTimeline ?: shownTimeline ?: emptyList()
+    val timelineLoading = loadedTimeline == null && shownTimeline == null
+    val showReadingNotice = timelineStale && readingForLong
+    val guideLoaded = railLoaded && (libraryEmpty || shownTimeline != null)
+    // A stale timeline was read for the previous selection; it is shown as it
+    // is rather than filtered to a selection none of its rows belong to.
+    val sourceChannels = remember(guide, selectedSourceId, timelineStale) {
+        if (timelineStale) guide else guide.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
     }
     val categoryChannels = remember(sourceChannels, channelFilter, selectedListId, hiddenLiveCategories) {
         if (channelFilter != ChannelFilter.ALL || selectedListId != null) {
@@ -208,9 +281,10 @@ fun GuideScreen(
         searchQuery,
         favouriteChannelIds,
         recentChannelIds,
+        timelineStale,
     ) {
         categoryChannels
-            .filter { selectedGroup == null || it.groupTitle == selectedGroup }
+            .filter { timelineStale || selectedGroup == null || it.groupTitle == selectedGroup }
             .filter { channel ->
                 selectedListId == null || listMemberships.any {
                     it.listId == selectedListId && it.channelId == channel.id
@@ -269,16 +343,16 @@ fun GuideScreen(
             now = System.currentTimeMillis()
         }
     }
-    LaunchedEffect(guide.map(GuideTimelineChannel::id), initialChannelId) {
-        if (managementReturn) return@LaunchedEffect
-        val restoredChannel = guide.firstOrNull { it.id == initialChannelId } ?: return@LaunchedEffect
-        selectedSourceId = restoredChannel.sourceId
-        selectedGroup = restoredChannel.groupTitle
+    LaunchedEffect(railLoaded, initialChannelId) {
+        if (managementReturn || !railLoaded || initialChannelId == null) return@LaunchedEffect
+        val restored = guideRepository.channelPlacement(initialChannelId) ?: return@LaunchedEffect
+        selectedSourceId = restored.sourceId
+        selectedGroup = restored.groupTitle
         selectedListId = null
         channelFilter = ChannelFilter.ALL
     }
-    LaunchedEffect(sources.map(GuideTimelineChannel::sourceId), initialChannelId) {
-        val sourceIds = sources.map(GuideTimelineChannel::sourceId)
+    LaunchedEffect(sources.map(GuideSourceOption::sourceId), initialChannelId) {
+        val sourceIds = sources.map(GuideSourceOption::sourceId)
         if (sourceIds.isEmpty()) {
             selectedSourceId = null
             sourceSelectionInitialized = false
@@ -288,9 +362,11 @@ fun GuideScreen(
             val storedPreferences = preferencesRepository.preferences.first()
             selectedSourceId = preferredGuideSourceId(
                 sourceIds = sourceIds,
-                initialChannelSourceId = guide.firstOrNull { !managementReturn && it.id == initialChannelId }?.sourceId,
+                initialChannelSourceId = initialChannelId
+                    ?.takeUnless { managementReturn }
+                    ?.let { guideRepository.channelPlacement(it)?.sourceId },
                 savedSourceId = storedPreferences.lastGuideSourceId,
-                lastChannelSourceId = guide.firstOrNull { it.id == storedPreferences.lastChannelId }?.sourceId,
+                lastChannelSourceId = storedPreferences.lastChannelId?.let { guideRepository.channelPlacement(it)?.sourceId },
             )
             sourceSelectionInitialized = true
         }
@@ -338,12 +414,14 @@ fun GuideScreen(
             selection = GuideSelection(current, current.programmeAt(windowStart, windowEnd))
         }
     }
-    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id), initialFocusIndex) {
-        if (optionsVisible) return@LaunchedEffect
+    // guideLoaded is a key so the empty state, which only appears after the
+    // first read, still gets its focus once it is there.
+    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id), initialFocusIndex, guideLoaded) {
+        if (optionsVisible || !guideLoaded) return@LaunchedEffect
         if (filteredGuide.isNotEmpty()) {
             channelListState.scrollToItem(initialFocusIndex)
             firstFocus.requestFocusWhenAttached()
-        } else if (guide.isEmpty()) {
+        } else if (libraryEmpty) {
             firstFocus.requestFocusWhenAttached()
         }
     }
@@ -378,8 +456,22 @@ fun GuideScreen(
     StreamMateScreenBackground { contentModifier ->
         Box(modifier = contentModifier) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (guide.isEmpty()) {
-                    EmptyGuide(onSettings = onSettings, focusRequester = firstFocus)
+                if (!guideLoaded) {
+                    LoadingGuide()
+                    return@Column
+                }
+                if (libraryEmpty) {
+                    val sourceStates by guideRepository.observeSourceStates()
+                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                    val health by guideRepository.observeSourceRefreshHealth()
+                        .collectAsStateWithLifecycle(initialValue = emptyList())
+                    EmptyGuide(
+                        sources = sourceStates.filter(GuideSource::enabled),
+                        health = health,
+                        onSettings = onSettings,
+                        onSyncNow = onSyncNow,
+                        focusRequester = firstFocus,
+                    )
                     return@Column
                 }
                 selection?.let { selected ->
@@ -444,8 +536,13 @@ fun GuideScreen(
                                 }
                                 put(key, it.position!!)
                             }
-                            sourceChannels.groupBy { it.groupTitle }.forEach { (name, members) ->
-                                members.mapNotNull { organization.groupRule(liveRoom, it.organizationItem()).position }.minOrNull()?.let { put("group:$name", it) }
+                            sourceRail.filter { it.groupTitle != null }.groupBy { it.groupTitle!! }.forEach { (name, rows) ->
+                                rows.mapNotNull { row ->
+                                    organization.groupRule(
+                                        liveRoom,
+                                        com.streammate.tv.core.model.OrganizationItem("", row.sourceId, name, name, row.organizationGroupKey),
+                                    ).position
+                                }.minOrNull()?.let { put("group:$name", it) }
                             }
                         } else emptyMap(),
                         allGroups = allGroups,
@@ -453,10 +550,8 @@ fun GuideScreen(
                         customLists = customLists.filter { organization.shortcutEnabled(liveRoom, "@list:${it.id}") }.map { it.id to it.name },
                         showFavourites = showFavourites,
                         showRecent = showRecent,
-                        favouriteCount = favouriteChannelIds.count { id ->
-                            guide.any { channel -> channel.id == id }
-                        },
-                        allChannelsCount = categoryChannels.size,
+                        favouriteCount = favouriteChannelIds.size,
+                        allChannelsCount = sourceChannelCount,
                         hiddenGroups = hiddenLiveCategories,
                         categoryEditMode = categoryEditMode,
                         searchVisible = searchVisible,
@@ -509,16 +604,27 @@ fun GuideScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = when (channelFilter) {
-                                    ChannelFilter.FAVOURITES -> stringResource(R.string.guide_empty_favourites)
-                                    ChannelFilter.RECENT -> stringResource(R.string.guide_empty_recent)
-                                    ChannelFilter.ALL -> stringResource(R.string.guide_empty_filtered)
+                                text = when {
+                                    timelineLoading -> stringResource(R.string.guide_loading)
+                                    channelFilter == ChannelFilter.FAVOURITES -> stringResource(R.string.guide_empty_favourites)
+                                    channelFilter == ChannelFilter.RECENT -> stringResource(R.string.guide_empty_recent)
+                                    else -> stringResource(R.string.guide_empty_filtered)
                                 },
                                 color = palette.textMuted,
+                                modifier = Modifier.testTag(if (timelineLoading) "guide-timeline-loading" else "guide-timeline-empty"),
                             )
                         }
                     } else {
                         Column(modifier = Modifier.fillMaxHeight().weight(1f)) {
+                            if (showReadingNotice) {
+                                Text(
+                                    text = stringResource(R.string.guide_loading),
+                                    color = palette.textMuted,
+                                    modifier = Modifier
+                                        .padding(horizontal = 24.dp, vertical = 4.dp)
+                                        .testTag("guide-timeline-loading"),
+                                )
+                            }
                             GuideGrid(
                                 modifier = Modifier.fillMaxWidth().weight(1f),
                                 channels = filteredGuide,
@@ -610,7 +716,7 @@ fun GuideScreen(
                     categoryEditMode = categoryEditMode,
                     firstFocusRequester = optionsFocus,
                     onCycleSource = {
-                        selectedSourceId = nextValue(sources.map(GuideTimelineChannel::sourceId), selectedSourceId)
+                        selectedSourceId = nextValue(sources.map(GuideSourceOption::sourceId), selectedSourceId)
                         channelFilter = ChannelFilter.ALL
                         selectedGroup = null
                         selectedListId = null
@@ -807,10 +913,23 @@ private fun GuideKeyHints() {
     }
 }
 
+/**
+ * The guide with nothing in it. With no source saved it points at Settings;
+ * with sources saved it says, per source, what each import last did, so an
+ * empty guide always comes with its reason and a way to sync from here.
+ */
 @Composable
-private fun EmptyGuide(onSettings: () -> Unit, focusRequester: FocusRequester) {
+private fun EmptyGuide(
+    sources: List<GuideSource>,
+    health: List<SourceRefreshHealth>,
+    onSettings: () -> Unit,
+    onSyncNow: () -> Unit,
+    focusRequester: FocusRequester,
+) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
+    val resources = LocalResources.current
+    val hasSources = sources.isNotEmpty()
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -825,18 +944,69 @@ private fun EmptyGuide(onSettings: () -> Unit, focusRequester: FocusRequester) {
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = stringResource(R.string.guide_empty_description),
+            text = stringResource(
+                if (hasSources) R.string.guide_empty_sources_description else R.string.guide_empty_description,
+            ),
             color = palette.textMuted,
         )
-        Spacer(Modifier.height(16.dp))
-        TvActionButton(
-            label = stringResource(R.string.guide_open_settings),
-            onClick = onSettings,
-            modifier = Modifier.focusRequester(focusRequester),
-            testTag = "guide-empty-settings",
-        )
+        if (hasSources) {
+            Spacer(Modifier.height(12.dp))
+            sources.forEach { source ->
+                val byKind = health.filter { it.sourceId == source.id }.associateBy(SourceRefreshHealth::kind)
+                Text(text = source.name, fontWeight = FontWeight.Bold, color = palette.textPrimary)
+                listOf(
+                    "playlist" to R.string.health_playlist,
+                    "epg" to R.string.health_epg,
+                ).forEach { (kind, label) ->
+                    Text(
+                        text = sourceHealthLine(resources, byKind[kind], resources.getString(label)),
+                        color = if (byKind[kind]?.status == "failed") palette.danger else palette.textMuted,
+                        fontSize = 13.sp,
+                        modifier = Modifier.testTag("guide-empty-health-${source.id}-$kind"),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (hasSources) {
+                TvActionButton(
+                    label = stringResource(R.string.guide_empty_sync),
+                    icon = TvIcons.Refresh,
+                    onClick = onSyncNow,
+                    modifier = Modifier.focusRequester(focusRequester),
+                    testTag = "guide-empty-sync",
+                )
+            }
+            TvActionButton(
+                label = stringResource(R.string.guide_open_settings),
+                onClick = onSettings,
+                modifier = if (hasSources) Modifier else Modifier.focusRequester(focusRequester),
+                testTag = "guide-empty-settings",
+            )
+        }
+        if (hasSources) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.guide_empty_sync_hint),
+                color = palette.textMuted,
+                fontSize = 13.sp,
+            )
+        }
     }
 }
+
+/** One line of import status, in the words the settings health rows use. */
+internal fun sourceHealthLine(resources: Resources, health: SourceRefreshHealth?, kind: String): String =
+    when (health?.status) {
+        null -> resources.getString(R.string.health_never, kind)
+        "success" -> resources.getQuantityString(R.plurals.health_success, health.itemCount, kind, health.itemCount)
+        "failed" -> com.streammate.tv.feature.settings.readableImportError(resources, health.lastError)
+            ?.let { resources.getString(R.string.health_failed_detail, kind, it) }
+            ?: resources.getString(R.string.health_failed, kind, health.consecutiveFailures)
+        else -> resources.getString(R.string.health_updating, kind)
+    }
 
 internal fun preferredGuideSourceId(
     sourceIds: List<String>,
@@ -850,3 +1020,16 @@ internal fun preferredGuideSourceId(
 
 /** Between the hero and the grid below it. */
 private val GUIDE_HERO_GAP = 12.dp
+
+@Composable
+private fun LoadingGuide() {
+    val palette = StreamMateThemeTokens.palette
+    Text(
+        text = stringResource(R.string.guide_loading),
+        color = palette.textMuted,
+        modifier = Modifier.padding(28.dp).testTag("guide-loading"),
+    )
+}
+
+/** A source as the guide's switcher names it. */
+private data class GuideSourceOption(val sourceId: String, val sourceName: String)

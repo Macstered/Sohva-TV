@@ -132,5 +132,32 @@ AND COALESCE((SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' A
     (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(p.customOrganizationGroupKey, m.organizationNameKey) AND r.itemKey = m.channelId), 1) = 1
 """
 
+/**
+ * The rule predicate of [ORGANIZATION_VISIBLE_LIVE_SQL] over a channel row
+ * aliased `c` with its preference row aliased `preference`, for queries that
+ * must narrow the channels before the rules run. Joined through the view,
+ * SQLite evaluates the sixteen lookups for every channel of a source before an
+ * outer group filter is applied; inlined after the filter, only the group's
+ * channels pay. A unit test keeps this in step with the view.
+ */
+const val ORGANIZATION_VISIBLE_LIVE_PREDICATE = """
+COALESCE((SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = '' AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = '' AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = '' AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = '' AND r.itemKey = c.channelId), 1 - COALESCE(preference.hidden, 0)) = 1
+AND COALESCE((SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey) AND r.itemKey = ''),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = ''),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey) AND r.itemKey = ''),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = ''), 1) = 1
+AND COALESCE((SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = c.sourceId AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = c.channelId),
+    (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = c.channelId), 1) = 1
+"""
+
 @DatabaseView(value = ORGANIZATION_VISIBLE_LIVE_SQL, viewName = "organization_visible_channels")
 data class OrganizationVisibleChannel(@androidx.room.Embedded val item: IptvChannelEntity)

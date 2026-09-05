@@ -77,6 +77,12 @@ fun <T : LocalizedException> localizedTransportFailure(
     error: Throwable,
     build: (Int, List<Any>, String?, Throwable?) -> T,
 ): T {
+    // A failure that already speaks the viewer's language is passed through in
+    // its own type; wrapping it again produced "could not complete the
+    // request: resource:2131558691" on screen.
+    if (error is LocalizedException) {
+        return build(error.messageResource, error.messageArguments, error.message, error)
+    }
     val detail = SecretRedactor.redact(error.message)
     return if (detail == null) {
         build(R.string.error_transport_failed, emptyList(), null, error)

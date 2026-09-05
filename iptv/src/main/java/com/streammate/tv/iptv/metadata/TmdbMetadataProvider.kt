@@ -46,7 +46,7 @@ internal class TmdbMetadataProvider(
         }
         val url = "$apiRoot/search/$searchType".toHttpUrl().newBuilder()
             .addQueryParameter("query", lookup.title.take(MAX_QUERY_LENGTH))
-            .addQueryParameter("language", lookup.language)
+            .addQueryParameter("language", lookup.languageOrDefault)
             .addQueryParameter("include_adult", "false")
             .addQueryParameter("page", "1")
             .build()
@@ -61,7 +61,7 @@ internal class TmdbMetadataProvider(
         if (lookup.mediaType == MetadataMediaType.SERIES) {
             val selected = MetadataMatcher.choose(lookup, shows)?.candidate ?: return shows
             val detailed = try {
-                seriesDetails(selected, lookup.language, settings.tmdbReadAccessToken)
+                seriesDetails(selected, lookup.languageOrDefault, settings.tmdbReadAccessToken)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
@@ -85,7 +85,7 @@ internal class TmdbMetadataProvider(
         val candidate = try {
             val detailsUrl = "$apiRoot/tv/${show.externalId}/season/$season/episode/$episode"
                 .toHttpUrl().newBuilder()
-                .addQueryParameter("language", lookup.language)
+                .addQueryParameter("language", lookup.languageOrDefault)
                 .build()
             val details = httpClient.getMetadataJson(
                 request(detailsUrl.toString(), settings.tmdbReadAccessToken),

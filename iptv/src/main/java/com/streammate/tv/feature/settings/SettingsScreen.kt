@@ -1,5 +1,15 @@
 package com.streammate.tv.feature.settings
 
+import android.content.res.Resources
+import com.streammate.tv.app.MetadataLanguages
+import androidx.compose.ui.focus.onFocusChanged
+import com.streammate.tv.app.RemoteAction
+import com.streammate.tv.app.RemoteActionGroup
+import com.streammate.tv.app.RemoteActionScope
+import com.streammate.tv.app.RemoteButton
+import com.streammate.tv.app.RemoteGesture
+import com.streammate.tv.app.RemoteMappings
+import com.streammate.tv.app.RemoteSlot
 import com.streammate.tv.app.ArtworkCacheSettings
 import com.streammate.tv.app.ArtworkCacheLimit
 import com.streammate.tv.core.R as CoreR
@@ -73,7 +83,6 @@ import com.streammate.tv.app.PlaybackReconnectPolicy
 import com.streammate.tv.app.PlaylistEpgRefreshInterval
 import com.streammate.tv.app.AppLocale
 import com.streammate.tv.app.PreferredLanguageSlot
-import com.streammate.tv.app.RemoteChannelKeyMode
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.app.StartupScreen
 import com.streammate.tv.core.model.CatalogueCustomGroup
@@ -105,6 +114,7 @@ import kotlinx.coroutines.launch
 private enum class SettingsSection {
     SOURCES,
     PLAYBACK,
+    REMOTE,
     METADATA,
     SPORT,
     PARENTAL,
@@ -169,6 +179,14 @@ fun SettingsScreen(
     onExportBackup: suspend (Uri, String) -> Result<Unit>,
     onRestoreBackup: suspend (Uri, String) -> Result<Unit>,
     onLegalInformation: () -> Unit,
+    /** Starts a full background sync, channels then guide then catalogue, for one source. */
+    onSyncNow: (String) -> Unit = {},
+    /** After the metadata language changed and was stored: clear derived titles and re-run the worker. */
+    onMetadataLanguageChanged: () -> Unit = {},
+    appUpdate: AppUpdateUiState = AppUpdateUiState(),
+    appUpdateActions: AppUpdateActions = AppUpdateActions(),
+    phoneSetup: PhoneSetupUiState = PhoneSetupUiState(),
+    phoneSetupActions: PhoneSetupActions = PhoneSetupActions(),
     onBack: () -> Unit,
     onManageLibrary: (() -> Unit)? = null,
 ) {
@@ -242,6 +260,22 @@ fun SettingsScreen(
     var selectedSection by remember { mutableStateOf(SettingsSection.SOURCES) }
     var refreshIntervalMenuOpen by remember { mutableStateOf(false) }
     var languageMenuSlot by remember { mutableStateOf<PreferredLanguageSlot?>(null) }
+    var metadataLanguageMenuOpen by remember { mutableStateOf(false) }
+    // A source that arrived from the phone page was saved outside this
+    // screen's own state; pick it up and show it in the list.
+    LaunchedEffect(phoneSetup.receivedCount) {
+        if (phoneSetup.receivedCount > 0) {
+            sources = secretSettingsStore.loadSources()
+            status = phoneSetup.lastSourceName?.let { resources.getString(R.string.phone_setup_received, it) }
+                ?: resources.getString(R.string.phone_setup_received_keys)
+        }
+    }
+    val metadataLanguageButtonFocusRequester = remember { FocusRequester() }
+    val metadataLanguageOptionFocusRequester = remember { FocusRequester() }
+    BackHandler(enabled = metadataLanguageMenuOpen) { metadataLanguageMenuOpen = false }
+    LaunchedEffect(metadataLanguageMenuOpen) {
+        if (metadataLanguageMenuOpen) metadataLanguageOptionFocusRequester.requestFocus()
+    }
     var sectionFocusGeneration by remember { mutableIntStateOf(0) }
     val sectionFocusRequesters = remember {
         SettingsSection.entries.associateWith { FocusRequester() }
@@ -380,14 +414,17 @@ fun SettingsScreen(
             }
         }
 
-    suspend fun persistSource(source: IptvSourceConfiguration) {
+    /** Saves [source]; true when it was new to this device. */
+    suspend fun persistSource(source: IptvSourceConfiguration): Boolean {
+        val existed = sources.any { it.id == source.id }
         secretSettingsStore.upsertSource(source)
         guideRepository.upsertSourceState(source)
-        sources = if (sources.any { it.id == source.id }) {
+        sources = if (existed) {
             sources.map { if (it.id == source.id) source else it }
         } else {
             sources + source
         }
+        return !existed
     }
 
     val selectedHealth = sourceHealth.filter { it.sourceId == selectedSourceId }
@@ -404,7 +441,11 @@ fun SettingsScreen(
                 kind,
                 health.itemCount,
             )
-            "failed" -> resources.getString(R.string.health_failed, kind, health.consecutiveFailures)
+            // The reason, when the import left one: "error (1)" told a tester
+            // nothing about a catalogue the provider had just refused.
+            "failed" -> readableImportError(resources, health.lastError)
+                ?.let { resources.getString(R.string.health_failed_detail, kind, it) }
+                ?: resources.getString(R.string.health_failed, kind, health.consecutiveFailures)
             else -> resources.getString(R.string.health_updating, kind)
         }
     }
@@ -493,6 +534,45 @@ fun SettingsScreen(
                     contentPadding = PaddingValues(bottom = 14.dp),
                 ) {
             if (selectedSection == SettingsSection.METADATA) {
+            item {
+                val displayLocale = LocalResources.current.configuration.locales[0]
+                val options = remember(displayLocale) {
+                    MetadataLanguages.TAGS.map { tag ->
+                        val locale = java.util.Locale.forLanguageTag(tag)
+                        val name = locale.getDisplayName(displayLocale)
+                            .replaceFirstChar { it.titlecase(displayLocale) }
+                        (tag as String?) to name
+                    }
+                }
+                SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.metadata_language_title))
+                    Text(
+                        text = stringResource(R.string.metadata_language_help),
+                        color = palette.textMuted,
+                        fontSize = 12.sp,
+                    )
+                    PreferredLanguageRow(
+                        label = stringResource(R.string.metadata_language_label),
+                        selectedCode = appPreferences.metadataLanguage,
+                        options = options,
+                        menuOpen = metadataLanguageMenuOpen,
+                        onToggleMenu = { metadataLanguageMenuOpen = !metadataLanguageMenuOpen },
+                        onSelect = { tag ->
+                            metadataLanguageMenuOpen = false
+                            if (tag != null && tag != appPreferences.metadataLanguage) {
+                                scope.launch {
+                                    preferencesRepository.setMetadataLanguage(tag)
+                                    onMetadataLanguageChanged()
+                                }
+                            }
+                            metadataLanguageButtonFocusRequester.requestFocus()
+                        },
+                        buttonFocusRequester = metadataLanguageButtonFocusRequester,
+                        optionFocusRequester = metadataLanguageOptionFocusRequester,
+                        testTag = "settings-metadata-language",
+                    )
+                }
+            }
             item {
                 SettingsGroup {
                     SettingsGroupHeading(stringResource(R.string.preferred_copy_title))
@@ -967,47 +1047,6 @@ fun SettingsScreen(
             }
             if (selectedSection == SettingsSection.PLAYBACK) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.remote_channel_change),
-                        color = palette.textMuted,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    RemoteChannelKeyMode.entries.forEach { mode ->
-                        TvActionButton(
-                            label = when (mode) {
-                                RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS -> {
-                                    stringResource(R.string.remote_dpad_and_channel)
-                                }
-                                RemoteChannelKeyMode.CHANNEL_KEYS_ONLY -> {
-                                    stringResource(R.string.remote_channel_only)
-                                }
-                            },
-                            selected = appPreferences.remoteChannelKeyMode == mode,
-                            onClick = {
-                                scope.launch { preferencesRepository.setRemoteChannelKeyMode(mode) }
-                            },
-                            focusRequester = if (mode == RemoteChannelKeyMode.entries.first()) {
-                                sectionFocusRequesters.getValue(SettingsSection.PLAYBACK)
-                            } else {
-                                null
-                            },
-                            compact = true,
-                            testTag = "settings-remote-${mode.name.lowercase()}",
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.remote_track_help),
-                        color = palette.textMuted,
-                        fontSize = 13.sp,
-                    )
-                }
-            }
-            item {
                 SettingsGroup {
                     SettingsGroupHeading(stringResource(R.string.playback_buffer_title))
                     FlowRow(
@@ -1025,6 +1064,11 @@ fun SettingsScreen(
                                 },
                                 compact = true,
                                 selected = appPreferences.playbackBufferProfile == profile,
+                                focusRequester = if (profile == PlaybackBufferProfile.entries.first()) {
+                                    sectionFocusRequesters.getValue(SettingsSection.PLAYBACK)
+                                } else {
+                                    null
+                                },
                                 testTag = "settings-buffer-${profile.name.lowercase()}",
                             )
                         }
@@ -1224,6 +1268,18 @@ fun SettingsScreen(
                 }
             }
             }
+            if (selectedSection == SettingsSection.REMOTE) {
+            item {
+                RemoteMappingSection(
+                    mappings = appPreferences.remoteMappings,
+                    firstCellFocusRequester = sectionFocusRequesters.getValue(SettingsSection.REMOTE),
+                    onAssign = { slot, action ->
+                        scope.launch { preferencesRepository.setRemoteMapping(slot, action) }
+                    },
+                    onReset = { scope.launch { preferencesRepository.resetRemoteMappings() } },
+                )
+            }
+            }
             if (selectedSection == SettingsSection.PARENTAL) {
             item {
                 Row(
@@ -1396,7 +1452,22 @@ fun SettingsScreen(
                             testTag = "source-add-xtream",
                         )
                     }
+                    item {
+                        TvActionButton(
+                            label = stringResource(
+                                if (phoneSetup.running) R.string.phone_setup_stop else R.string.phone_setup_start,
+                            ),
+                            icon = TvIcons.Link,
+                            onClick = if (phoneSetup.running) phoneSetupActions.onStop else phoneSetupActions.onStart,
+                            testTag = "source-add-phone",
+                        )
+                    }
                 }
+            }
+            if (phoneSetup.running || phoneSetup.noNetwork) {
+            item {
+                PhoneSetupPanel(state = phoneSetup)
+            }
             }
             item {
                 SettingsOverline(
@@ -1739,8 +1810,15 @@ fun SettingsScreen(
                                     scope.launch {
                                         busy = true
                                         status = runCatching {
-                                            persistSource(source)
-                                            resources.getString(R.string.source_saved)
+                                            // A new source is synced straight away, in the
+                                            // background: nobody should have to find three
+                                            // refresh buttons to see their first channel.
+                                            if (persistSource(source)) {
+                                                onSyncNow(source.id)
+                                                resources.getString(R.string.source_saved_syncing)
+                                            } else {
+                                                resources.getString(R.string.source_saved)
+                                            }
                                         }.getOrElse { it.userMessage(context) }
                                         busy = false
                                     }
@@ -1782,6 +1860,28 @@ fun SettingsScreen(
                             testTag = "settings-test-xtream",
                         )
                     }
+                    TvActionButton(
+                        label = stringResource(R.string.source_sync_everything),
+                        icon = TvIcons.Refresh,
+                        enabled = !busy,
+                        onClick = {
+                            validatedSource().fold(
+                                onSuccess = { source ->
+                                    scope.launch {
+                                        busy = true
+                                        status = runCatching {
+                                            persistSource(source)
+                                            onSyncNow(source.id)
+                                            resources.getString(R.string.source_sync_started)
+                                        }.getOrElse { it.userMessage(context) }
+                                        busy = false
+                                    }
+                                },
+                                onFailure = { status = it.userMessage(context) },
+                            )
+                        },
+                        testTag = "settings-sync-everything",
+                    )
                     if (importScope.importsLiveTv) {
                         TvActionButton(
                             label = if (sourceType == IptvSourceType.M3U) {
@@ -1963,6 +2063,13 @@ fun SettingsScreen(
             }
             if (selectedSection == SettingsSection.ABOUT) {
             item {
+                AppUpdateSection(
+                    state = appUpdate,
+                    actions = appUpdateActions,
+                    focusRequester = sectionFocusRequesters.getValue(SettingsSection.ABOUT),
+                )
+            }
+            item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -1971,7 +2078,6 @@ fun SettingsScreen(
                         label = stringResource(R.string.settings_about_licenses),
                         icon = TvIcons.Info,
                         onClick = onLegalInformation,
-                        focusRequester = sectionFocusRequesters.getValue(SettingsSection.ABOUT),
                         testTag = "settings-about-licenses",
                     )
                 }
@@ -2151,6 +2257,7 @@ private fun SettingsSection.localizedLabel(): String = stringResource(
     when (this) {
         SettingsSection.SOURCES -> R.string.settings_section_sources
         SettingsSection.PLAYBACK -> R.string.settings_section_playback
+        SettingsSection.REMOTE -> R.string.settings_section_remote
         SettingsSection.METADATA -> R.string.settings_section_metadata
         SettingsSection.SPORT -> R.string.settings_section_sport
         SettingsSection.PARENTAL -> R.string.settings_section_parental
@@ -2163,6 +2270,7 @@ private val SettingsSection.icon: Int
     get() = when (this) {
         SettingsSection.SOURCES -> TvIcons.Channels
         SettingsSection.PLAYBACK -> TvIcons.Play
+        SettingsSection.REMOTE -> TvIcons.Settings
         SettingsSection.METADATA -> TvIcons.Info
         SettingsSection.SPORT -> TvIcons.Target
         SettingsSection.PARENTAL -> TvIcons.Lock
@@ -2388,3 +2496,464 @@ private val SETTINGS_HEADER_GAP = 14.dp
 private const val SETTINGS_BREADCRUMB_SEPARATOR = "\u203a  "
 
 private fun newXtreamSourceId(): String = "xtream-${UUID.randomUUID()}"
+
+/**
+ * The remote grid: one row per button, a press cell and a hold cell. Selecting
+ * a cell swaps the grid for the action list; Back, or a choice, brings the
+ * grid back with focus on the cell that was edited.
+ */
+@Composable
+private fun RemoteMappingSection(
+    mappings: RemoteMappings,
+    firstCellFocusRequester: FocusRequester,
+    onAssign: (RemoteSlot, RemoteAction) -> Unit,
+    onReset: () -> Unit,
+) {
+    val palette = StreamMateThemeTokens.palette
+    var editingSlot by remember { mutableStateOf<RemoteSlot?>(null) }
+    var focusedSlot by remember { mutableStateOf<RemoteSlot?>(null) }
+    var returnFocusTo by remember { mutableStateOf<RemoteSlot?>(null) }
+    var resetArmed by remember { mutableStateOf(false) }
+    val cellFocusRequesters = remember { RemoteSlot.MAPPABLE.associateWith { FocusRequester() } }
+    val firstSlot = RemoteSlot.MAPPABLE.first()
+
+    BackHandler(enabled = editingSlot != null) {
+        returnFocusTo = editingSlot
+        editingSlot = null
+    }
+    LaunchedEffect(editingSlot, returnFocusTo) {
+        if (editingSlot == null) {
+            returnFocusTo?.let { slot -> cellFocusRequesters.getValue(slot).requestFocus() }
+            returnFocusTo = null
+        }
+    }
+
+    val slot = editingSlot
+    if (slot != null) {
+        RemoteActionPicker(
+            slot = slot,
+            current = mappings[slot],
+            onPick = { action ->
+                onAssign(slot, action)
+                returnFocusTo = slot
+                editingSlot = null
+            },
+        )
+        return
+    }
+
+    SettingsGroup {
+        SettingsGroupHeading(stringResource(R.string.settings_section_remote))
+        Text(
+            text = stringResource(R.string.remote_mapping_help),
+            color = palette.textMuted,
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(6.dp))
+        RemoteGridHeader()
+        RemoteButton.entries.forEach { button ->
+            if (button == RemoteButton.entries.first { it.optional }) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.remote_optional_heading),
+                    color = palette.textMuted,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = button.localizedLabel(),
+                    modifier = Modifier.width(REMOTE_BUTTON_COLUMN_WIDTH),
+                    color = palette.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+                RemoteGesture.entries.forEach { gesture ->
+                    val cell = RemoteSlot(button, gesture)
+                    if (cell.fixed) {
+                        Text(
+                            text = stringResource(R.string.remote_back_fixed),
+                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                            color = palette.textMuted,
+                        )
+                    } else {
+                        TvActionButton(
+                            label = mappings[cell].localizedLabel(),
+                            onClick = { editingSlot = cell },
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged { state -> if (state.isFocused) focusedSlot = cell },
+                            focusRequester = if (cell == firstSlot) {
+                                firstCellFocusRequester
+                            } else {
+                                cellFocusRequesters.getValue(cell)
+                            },
+                            compact = true,
+                            testTag = "settings-remote-slot-" +
+                                "${button.name.lowercase()}-${gesture.name.lowercase()}",
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = focusedSlot?.let { focused ->
+                stringResource(
+                    R.string.remote_slot_preview,
+                    focused.button.localizedLabel(),
+                    focused.gesture.localizedLabel(),
+                    mappings[focused].localizedLabel(),
+                )
+            } ?: stringResource(R.string.remote_back_hold_note),
+            color = palette.textMuted,
+            fontSize = 13.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (resetArmed) {
+                Text(
+                    text = stringResource(R.string.remote_reset_confirm),
+                    color = palette.textPrimary,
+                )
+                TvActionButton(
+                    label = stringResource(R.string.remote_reset_confirm_action),
+                    onClick = {
+                        onReset()
+                        resetArmed = false
+                    },
+                    compact = true,
+                    danger = true,
+                    testTag = "settings-remote-reset-confirm",
+                )
+                TvActionButton(
+                    label = stringResource(R.string.remote_reset_cancel),
+                    onClick = { resetArmed = false },
+                    compact = true,
+                    testTag = "settings-remote-reset-cancel",
+                )
+            } else {
+                TvActionButton(
+                    label = stringResource(R.string.remote_reset),
+                    onClick = { resetArmed = true },
+                    compact = true,
+                    testTag = "settings-remote-reset",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RemoteGridHeader() {
+    val palette = StreamMateThemeTokens.palette
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Spacer(Modifier.width(REMOTE_BUTTON_COLUMN_WIDTH))
+        RemoteGesture.entries.forEach { gesture ->
+            Text(
+                text = gesture.localizedLabel(),
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                color = palette.textMuted,
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RemoteActionPicker(
+    slot: RemoteSlot,
+    current: RemoteAction,
+    onPick: (RemoteAction) -> Unit,
+) {
+    val palette = StreamMateThemeTokens.palette
+    val currentFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(slot) { currentFocusRequester.requestFocus() }
+    SettingsGroup {
+        SettingsGroupHeading(
+            stringResource(R.string.remote_slot_title, slot.button.localizedLabel(), slot.gesture.localizedLabel()),
+        )
+        RemoteActionGroup.entries.forEach { group ->
+            val actions = RemoteAction.entries.filter { it.group == group }
+            if (group != RemoteActionGroup.NOTHING) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = group.localizedLabel(),
+                    color = palette.textMuted,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                )
+            }
+            actions.forEach { action ->
+                val scopeHint = when (action.scope) {
+                    RemoteActionScope.LIVE -> stringResource(R.string.remote_scope_live)
+                    RemoteActionScope.TIMESHIFT -> stringResource(R.string.remote_scope_timeshift)
+                    RemoteActionScope.ANY -> null
+                }
+                TvActionButton(
+                    label = scopeHint?.let { hint -> "${action.localizedLabel()} · $hint" }
+                        ?: action.localizedLabel(),
+                    onClick = { onPick(action) },
+                    selected = action == current,
+                    focusRequester = if (action == current) currentFocusRequester else null,
+                    compact = true,
+                    testTag = "settings-remote-action-${action.name.lowercase()}",
+                )
+            }
+        }
+    }
+}
+
+private val REMOTE_BUTTON_COLUMN_WIDTH = 110.dp
+
+@Composable
+private fun RemoteButton.localizedLabel(): String = stringResource(
+    when (this) {
+        RemoteButton.UP -> R.string.remote_button_up
+        RemoteButton.DOWN -> R.string.remote_button_down
+        RemoteButton.LEFT -> R.string.remote_button_left
+        RemoteButton.RIGHT -> R.string.remote_button_right
+        RemoteButton.OK -> R.string.remote_button_ok
+        RemoteButton.BACK -> R.string.remote_button_back
+        RemoteButton.CHANNEL_UP -> R.string.remote_button_channel_up
+        RemoteButton.CHANNEL_DOWN -> R.string.remote_button_channel_down
+        RemoteButton.INFO -> R.string.remote_button_info
+        RemoteButton.AUDIO -> R.string.remote_button_audio
+        RemoteButton.CAPTIONS -> R.string.remote_button_captions
+        RemoteButton.MENU -> R.string.remote_button_menu
+    },
+)
+
+@Composable
+private fun RemoteGesture.localizedLabel(): String = stringResource(
+    when (this) {
+        RemoteGesture.PRESS -> R.string.remote_column_press
+        RemoteGesture.HOLD -> R.string.remote_column_hold
+    },
+)
+
+@Composable
+private fun RemoteActionGroup.localizedLabel(): String = stringResource(
+    when (this) {
+        RemoteActionGroup.CHANNELS -> R.string.remote_group_channels
+        RemoteActionGroup.INFORMATION -> R.string.remote_group_information
+        RemoteActionGroup.PLAYBACK -> R.string.remote_group_playback
+        RemoteActionGroup.SOUND_AND_PICTURE -> R.string.remote_group_sound_and_picture
+        RemoteActionGroup.LEAVE -> R.string.remote_group_leave
+        RemoteActionGroup.NOTHING -> R.string.remote_group_nothing
+    },
+)
+
+@Composable
+private fun RemoteAction.localizedLabel(): String = stringResource(
+    when (this) {
+        RemoteAction.NOTHING -> R.string.remote_action_nothing
+        RemoteAction.NEXT_CHANNEL -> R.string.remote_action_next_channel
+        RemoteAction.PREVIOUS_CHANNEL -> R.string.remote_action_previous_channel
+        RemoteAction.SWITCH_TO_PREVIOUS_CHANNEL -> R.string.remote_action_switch_to_previous_channel
+        RemoteAction.OPEN_CHANNEL_BROWSER -> R.string.remote_action_open_channel_browser
+        RemoteAction.OPEN_GROUP_BROWSER -> R.string.remote_action_open_group_browser
+        RemoteAction.PROGRAMME_INFO -> R.string.remote_action_programme_info
+        RemoteAction.TOGGLE_STATS -> R.string.remote_action_toggle_stats
+        RemoteAction.GUIDE_AT_CHANNEL -> R.string.remote_action_guide_at_channel
+        RemoteAction.QUICK_ACTIONS -> R.string.remote_action_quick_actions
+        RemoteAction.PLAY_PAUSE -> R.string.remote_action_play_pause
+        RemoteAction.SEEK_BACK -> R.string.remote_action_seek_back
+        RemoteAction.SEEK_FORWARD -> R.string.remote_action_seek_forward
+        RemoteAction.RESTART -> R.string.remote_action_restart
+        RemoteAction.SHOW_CONTROLS -> R.string.remote_action_show_controls
+        RemoteAction.AUDIO_PICKER -> R.string.remote_action_audio_picker
+        RemoteAction.NEXT_AUDIO_TRACK -> R.string.remote_action_next_audio_track
+        RemoteAction.SUBTITLE_PICKER -> R.string.remote_action_subtitle_picker
+        RemoteAction.TOGGLE_SUBTITLES -> R.string.remote_action_toggle_subtitles
+        RemoteAction.CYCLE_PICTURE_SHAPE -> R.string.remote_action_cycle_picture_shape
+        RemoteAction.LEAVE_PLAYER -> R.string.remote_action_leave_player
+        RemoteAction.GO_HOME -> R.string.remote_action_go_home
+        RemoteAction.GO_GUIDE -> R.string.remote_action_go_guide
+        RemoteAction.GO_SPORT -> R.string.remote_action_go_sport
+    },
+)
+
+/**
+ * Updates, in About. One line says where things stand, one button does the
+ * next thing: check, download, install, or open the permission page Android
+ * wants first. The release notes show once a newer beta is known.
+ */
+@Composable
+private fun AppUpdateSection(
+    state: AppUpdateUiState,
+    actions: AppUpdateActions,
+    focusRequester: FocusRequester,
+) {
+    val palette = StreamMateThemeTokens.palette
+    SettingsGroup {
+        SettingsGroupHeading(stringResource(R.string.update_title))
+        Text(
+            text = stringResource(R.string.update_installed, state.installedVersionName),
+            color = palette.textMuted,
+            fontSize = 13.sp,
+        )
+        val statusText = when (state.phase) {
+            AppUpdateUiState.Phase.IDLE -> stringResource(R.string.update_idle)
+            AppUpdateUiState.Phase.CHECKING -> stringResource(R.string.update_checking)
+            AppUpdateUiState.Phase.UP_TO_DATE -> stringResource(R.string.update_up_to_date)
+            AppUpdateUiState.Phase.AVAILABLE -> stringResource(R.string.update_available, state.versionName.orEmpty())
+            AppUpdateUiState.Phase.DOWNLOADING ->
+                stringResource(R.string.update_downloading, state.versionName.orEmpty(), state.percent ?: 0)
+            AppUpdateUiState.Phase.DOWNLOADED -> stringResource(R.string.update_downloaded, state.versionName.orEmpty())
+            AppUpdateUiState.Phase.NEEDS_PERMISSION -> stringResource(R.string.update_needs_permission)
+            AppUpdateUiState.Phase.FAILED -> when (state.failure) {
+                AppUpdateUiState.Failure.NO_CHECKSUMS -> stringResource(R.string.update_failed_no_checksums)
+                AppUpdateUiState.Failure.CHECKSUM_MISMATCH -> stringResource(R.string.update_failed_checksum)
+                AppUpdateUiState.Failure.INSTALL_BLOCKED -> stringResource(R.string.update_failed_install)
+                AppUpdateUiState.Failure.NETWORK, null -> stringResource(R.string.update_failed_network)
+            }
+        }
+        Text(
+            text = statusText,
+            color = if (state.phase == AppUpdateUiState.Phase.FAILED) palette.danger else palette.textPrimary,
+            modifier = Modifier.testTag("settings-update-status"),
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            when (state.phase) {
+                AppUpdateUiState.Phase.AVAILABLE -> TvActionButton(
+                    label = stringResource(R.string.update_download),
+                    icon = TvIcons.Save,
+                    onClick = actions.onDownload,
+                    focusRequester = focusRequester,
+                    testTag = "settings-update-download",
+                )
+                AppUpdateUiState.Phase.DOWNLOADED -> TvActionButton(
+                    label = stringResource(R.string.update_install),
+                    icon = TvIcons.Play,
+                    onClick = actions.onInstall,
+                    focusRequester = focusRequester,
+                    testTag = "settings-update-install",
+                )
+                AppUpdateUiState.Phase.NEEDS_PERMISSION -> {
+                    TvActionButton(
+                        label = stringResource(R.string.update_open_permission),
+                        icon = TvIcons.Settings,
+                        onClick = actions.onOpenInstallPermission,
+                        focusRequester = focusRequester,
+                        testTag = "settings-update-permission",
+                    )
+                    TvActionButton(
+                        label = stringResource(R.string.update_install),
+                        icon = TvIcons.Play,
+                        onClick = actions.onInstall,
+                        testTag = "settings-update-install",
+                    )
+                }
+                AppUpdateUiState.Phase.DOWNLOADING -> TvActionButton(
+                    label = stringResource(R.string.update_checking_button),
+                    onClick = {},
+                    enabled = false,
+                    focusRequester = focusRequester,
+                )
+                else -> TvActionButton(
+                    label = stringResource(R.string.update_check),
+                    icon = TvIcons.Refresh,
+                    onClick = actions.onCheck,
+                    enabled = state.phase != AppUpdateUiState.Phase.CHECKING,
+                    focusRequester = focusRequester,
+                    testTag = "settings-update-check",
+                )
+            }
+        }
+        state.notes?.takeIf { state.phase != AppUpdateUiState.Phase.UP_TO_DATE }?.let { notes ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = notes.take(MAX_UPDATE_NOTES_LENGTH),
+                color = palette.textMuted,
+                fontSize = 12.sp,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.update_help),
+            color = palette.textMuted,
+            fontSize = 12.sp,
+        )
+    }
+}
+
+private const val MAX_UPDATE_NOTES_LENGTH = 1_200
+
+/**
+ * The QR code and address a phone opens to type a playlist in. Shown under
+ * the source list while the page is being served; the status line above the
+ * list says when something arrives.
+ */
+@Composable
+private fun PhoneSetupPanel(state: PhoneSetupUiState) {
+    val palette = StreamMateThemeTokens.palette
+    SettingsGroup {
+        SettingsGroupHeading(stringResource(R.string.phone_setup_title))
+        if (state.noNetwork) {
+            Text(
+                text = stringResource(R.string.phone_setup_no_network),
+                color = palette.danger,
+                modifier = Modifier.testTag("phone-setup-no-network"),
+            )
+            return@SettingsGroup
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            state.qrCode?.let { code ->
+                Image(
+                    bitmap = code,
+                    contentDescription = stringResource(R.string.phone_setup_qr_description),
+                    modifier = Modifier
+                        .size(180.dp)
+                        .background(androidx.compose.ui.graphics.Color.White)
+                        .padding(8.dp)
+                        .testTag("phone-setup-qr"),
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.phone_setup_help),
+                    color = palette.textMuted,
+                    fontSize = 13.sp,
+                )
+                Text(
+                    text = state.url.orEmpty(),
+                    color = palette.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.testTag("phone-setup-url"),
+                )
+                Text(
+                    text = stringResource(R.string.phone_setup_privacy),
+                    color = palette.textMuted,
+                    fontSize = 12.sp,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The import services store a LocalizedException's message, which is
+ * "resource:<id>" for a translatable failure. Resolve it back into words for
+ * this build; a stale id from an older build resolves to nothing rather than
+ * to the wrong sentence.
+ */
+internal fun readableImportError(resources: Resources, lastError: String?): String? {
+    val text = lastError?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val resourceId = Regex("""^resource:\s*(\d+)$""").find(text)?.groupValues?.get(1)?.toIntOrNull()
+        ?: return text
+    return runCatching { resources.getString(resourceId) }.getOrNull()
+        ?.takeIf { it.isNotBlank() }
+}

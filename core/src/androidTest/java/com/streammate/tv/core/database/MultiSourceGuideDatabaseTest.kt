@@ -213,6 +213,59 @@ class MultiSourceGuideDatabaseTest {
     }
 
     @Test
+    fun railAndFilteredTimelinesReadOnlyWhatTheScreenShows() = runBlocking {
+        val dao = database.guideDao()
+        dao.upsertSourceState(source("source-a", "Primary", priority = 10))
+        dao.upsertSourceState(source("source-b", "Backup", priority = 0))
+        dao.upsertChannels(
+            listOf(
+                channel("source-a", "playlist", "source-a:one", "One", tvgId = "one.fi").copy(groupTitle = "News"),
+                channel("source-a", "playlist", "source-a:two", "Two", tvgId = "two.fi").copy(groupTitle = "News"),
+                channel("source-a", "playlist", "source-a:three", "Three").copy(groupTitle = "Sport"),
+                channel("source-a", "stale", "source-a:old", "Old").copy(groupTitle = "News"),
+            ),
+        )
+        dao.upsertChannels(listOf(channel("source-b", "playlist", "source-b:four", "Four").copy(groupTitle = "News")))
+        dao.activatePlaylistSnapshot("source-a", "playlist", 3, 1)
+        dao.activatePlaylistSnapshot("source-b", "playlist", 1, 1)
+        dao.upsertProgrammes(
+            listOf(
+                programme("source-a", "epg", "p1", "one.fi", 100, 200, "On one"),
+                programme("source-a", "epg", "p2", "two.fi", 100, 200, "On two"),
+            ),
+        )
+        dao.activateEpgSnapshot("source-a", "epg", 2, 1)
+
+        val rail = dao.observeGuideRail().first()
+        assertEquals(
+            listOf("source-a/News/2", "source-a/Sport/1", "source-b/News/1"),
+            rail.map { "${it.sourceId}/${it.groupTitle}/${it.channelCount}" },
+        )
+
+        val news = dao.observeGuideTimelineForSource(150, 300, "source-a", "News").first()
+        assertEquals(listOf("One", "Two"), news.map { it.channelName }.distinct())
+        assertEquals("On one", news.first { it.channelName == "One" }.programmeTitle)
+        // The whole source, in no particular order: the seeded channels share a playlist position.
+        assertEquals(
+            setOf("One", "Two", "Three"),
+            dao.observeGuideTimelineForSource(150, 300, "source-a", null).first().map { it.channelName }.toSet(),
+        )
+        assertEquals(0, dao.observeGuideTimelineForSource(150, 300, "source-a", "Films").first().size)
+        // The player's browser: one group by title across the sources, with
+        // the programme on now; null for the channels without a group.
+        assertEquals(
+            listOf("One", "Two", "Four"),
+            dao.observeGuideForGroup("News", 150).first().map { it.name },
+        )
+        assertEquals("On one", dao.observeGuideForGroup("News", 150).first().first { it.name == "One" }.currentProgrammeTitle)
+        assertEquals(0, dao.observeGuideForGroup(null, 150).first().size)
+        assertEquals(
+            listOf("Two", "Four"),
+            dao.observeGuideTimelineForChannels(150, 300, listOf("source-a:two", "source-b:four")).first().map { it.channelName },
+        )
+    }
+
+    @Test
     fun stagedEpgMatchCountsProgrammesAgainstActiveChannelsOnly() = runBlocking {
         val dao = database.guideDao()
         dao.upsertSourceState(source("source-a", "Primary", priority = 10))

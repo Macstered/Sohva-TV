@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,7 +67,14 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.streammate.tv.iptv.R
 import com.streammate.tv.app.StreamMateBackground
-import com.streammate.tv.app.RemoteChannelKeyMode
+import com.streammate.tv.app.RemoteAction
+import com.streammate.tv.app.RemoteButton
+import com.streammate.tv.app.RemoteGesture
+import com.streammate.tv.app.RemoteKeyAction
+import com.streammate.tv.app.RemoteKeyGesture
+import com.streammate.tv.app.RemoteKeyGestureResolver
+import com.streammate.tv.app.RemoteMappings
+import com.streammate.tv.app.RemoteSlot
 import com.streammate.tv.app.PlaybackReconnectPolicy
 import com.streammate.tv.core.security.SecretRedactor
 import com.streammate.tv.feature.common.tickerFlow
@@ -77,11 +85,13 @@ import com.streammate.tv.iptv.metadata.MetadataMediaType
 import com.streammate.tv.iptv.metadata.MetadataRepository
 import com.streammate.tv.iptv.playback.PlaybackRequestExtras
 import com.streammate.tv.iptv.repository.GuideChannel
+import com.streammate.tv.iptv.repository.GuideRailGroup
 import com.streammate.tv.iptv.repository.GuideRepository
 import com.streammate.tv.iptv.repository.GuideTimelineChannel
 import java.util.concurrent.Executor
 import java.util.Locale
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private sealed interface PlayerLoadState {
@@ -116,30 +126,26 @@ internal fun playerBackAction(
     else -> PlayerBackAction.EXIT_PLAYER
 }
 
-internal fun playerBrowserGroup(channels: List<GuideChannel>, channelId: String): String? =
-    channels.firstOrNull { it.id == channelId }?.groupTitle?.takeIf(String::isNotBlank)
-
-/** Provider groups in playlist order, without an artificial "all" category. */
-internal fun playerBrowserGroups(channels: List<GuideChannel>): List<String> =
-    channels.mapNotNull { it.groupTitle?.takeIf(String::isNotBlank) }.distinct()
-
-internal fun playerBrowserChannelsForGroup(
-    channels: List<GuideChannel>,
-    group: String?,
-): List<GuideChannel> = if (group == null) channels else channels.filter { it.groupTitle == group }
-
 /**
- * The channels the browser offers while [channelId] is playing: the ones in the
- * same group, or all of them where the channel being watched has no group to
- * narrow to.
+ * The browser's groups from the guide's rail: provider order, merged across
+ * sources by their shown title, without an artificial "all" category and
+ * without the groups a rule has switched off. Each carries its channel count.
  */
-internal fun playerBrowserChannels(
-    channels: List<GuideChannel>,
-    channelId: String,
-): List<GuideChannel> = playerBrowserChannelsForGroup(
-    channels = channels,
-    group = playerBrowserGroup(channels, channelId),
-)
+internal fun playerBrowserGroups(
+    rail: List<GuideRailGroup>,
+    groupEnabled: (GuideRailGroup) -> Boolean = { true },
+): List<Pair<String, Int>> {
+    val counts = LinkedHashMap<String, Int>()
+    rail.forEach { row ->
+        val title = row.groupTitle?.takeIf(String::isNotBlank) ?: return@forEach
+        if (!groupEnabled(row)) return@forEach
+        counts[title] = (counts[title] ?: 0) + row.channelCount
+    }
+    return counts.map { (title, count) -> title to count }
+}
+
+/** The group the playing channel is shown under, once it is known; null before that. */
+internal data class PlayerChannelPlacement(val groupTitle: String?)
 
 internal fun playerKeyRevealsChrome(keyCode: Int): Boolean =
     keyCode != KeyEvent.KEYCODE_BACK
@@ -156,7 +162,7 @@ fun PlayerScreen(
     guideRepository: GuideRepository,
     metadataRepository: MetadataRepository,
     timeZoneId: String,
-    remoteChannelKeyMode: RemoteChannelKeyMode,
+    remoteMappings: RemoteMappings = RemoteMappings.DEFAULTS,
     playbackReconnectPolicy: PlaybackReconnectPolicy,
     autoFrameRateEnabled: Boolean,
     preferredAudioLanguage: String? = null,
@@ -168,6 +174,11 @@ fun PlayerScreen(
     onBack: () -> Unit,
     onPlaybackEnded: () -> Unit = {},
     previewArtworkUrl: String? = null,
+    onSwitchToPreviousChannel: (() -> Unit)? = null,
+    onOpenGuideAtChannel: (() -> Unit)? = null,
+    onGoHome: (() -> Unit)? = null,
+    onGoGuide: (() -> Unit)? = null,
+    onGoSport: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val serviceDisconnectedMessage = stringResource(R.string.player_service_disconnected)
@@ -184,14 +195,47 @@ fun PlayerScreen(
     // loads a seven-hour window, so where that window is anchored barely
     // matters and it can re-run far less often.
     val guideNowBucket = now / PLAYER_EPG_NOW_BUCKET_MILLIS
-    val channels by remember(guideRepository, guideNowBucket) {
-        guideRepository.observeGuide(guideNowBucket * PLAYER_EPG_NOW_BUCKET_MILLIS)
+    // Only the playing channel's group is read: channel up and down stay in
+    // it, and the browser opens in it. Reading the whole guide here cost every
+    // channel and its programme on each opening, fifty thousand for a large
+    // provider. The groups on offer come from the rail, which is a count per
+    // group and cheap to keep observed.
+    val placement by produceState<PlayerChannelPlacement?>(initialValue = null, guideRepository, channelId) {
+        value = PlayerChannelPlacement(guideRepository.channelPlacement(channelId)?.groupTitle?.takeIf(String::isNotBlank))
+    }
+    val channels by remember(guideRepository, guideNowBucket, placement) {
+        val known = placement
+        if (known == null) {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        } else {
+            guideRepository.observeGuideForGroup(known.groupTitle, guideNowBucket * PLAYER_EPG_NOW_BUCKET_MILLIS)
+        }
     }
         .collectAsStateWithLifecycle(initialValue = emptyList())
+    val rail by remember(guideRepository) { guideRepository.observeRail() }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val organization by remember(guideRepository) {
+        guideRepository.organization?.state?.map { it.organization }
+            ?: kotlinx.coroutines.flow.flowOf(com.streammate.tv.core.model.LibraryOrganization())
+    }.collectAsStateWithLifecycle(initialValue = com.streammate.tv.core.model.LibraryOrganization())
+    val browserGroups = remember(rail, organization) {
+        playerBrowserGroups(rail) { row ->
+            organization.groupRule(
+                com.streammate.tv.core.model.LibraryRoom.LIVE,
+                com.streammate.tv.core.model.OrganizationItem("", row.sourceId, row.groupTitle.orEmpty(), row.groupTitle, row.organizationGroupKey),
+            ).enabled != false
+        }
+    }
+    val observeGroupChannels: (String?) -> kotlinx.coroutines.flow.Flow<List<GuideChannel>> = remember(guideRepository, guideNowBucket) {
+        { group -> guideRepository.observeGuideForGroup(group, guideNowBucket * PLAYER_EPG_NOW_BUCKET_MILLIS) }
+    }
     val guideWindowStart = (now / PLAYER_EPG_WINDOW_BUCKET_MILLIS) *
         PLAYER_EPG_WINDOW_BUCKET_MILLIS - PLAYER_EPG_HISTORY_MILLIS
-    val guideTimeline by remember(guideRepository, guideWindowStart) {
-        guideRepository.observeTimeline(
+    // Only the playing channel's programmes: this used to read the whole
+    // library's window to pick one channel out of it.
+    val guideTimeline by remember(guideRepository, guideWindowStart, channelId) {
+        guideRepository.observeTimelineForChannels(
+            channelIds = listOf(channelId),
             fromEpochMillis = guideWindowStart,
             toEpochMillis = guideWindowStart + PLAYER_EPG_WINDOW_MILLIS,
         )
@@ -275,11 +319,15 @@ fun PlayerScreen(
             resumePositionMillis = resumePositionMillis,
             showTransportControls = showTransportControls,
             channels = channels,
+            currentBrowserGroup = placement?.groupTitle,
+            browserGroups = browserGroups.map { it.first },
+            browserGroupCounts = browserGroups.toMap(),
+            observeGroupChannels = observeGroupChannels,
             guideChannel = guideTimeline.firstOrNull { it.id == channelId },
             nowEpochMillis = now,
             timeZoneId = timeZoneId,
             metadataRepository = metadataRepository,
-            remoteChannelKeyMode = remoteChannelKeyMode,
+            remoteMappings = remoteMappings,
             playbackReconnectPolicy = playbackReconnectPolicy,
             preferredAudioLanguage = preferredAudioLanguage,
             secondaryAudioLanguage = secondaryAudioLanguage,
@@ -288,6 +336,11 @@ fun PlayerScreen(
             onChannelChange = onChannelChange,
             onPreviousChannel = previousChannelId?.let { id -> { onChannelChange(id) } },
             onNextChannel = nextChannelId?.let { id -> { onChannelChange(id) } },
+            onSwitchToPreviousChannel = onSwitchToPreviousChannel,
+            onOpenGuideAtChannel = onOpenGuideAtChannel,
+            onGoHome = onGoHome,
+            onGoGuide = onGoGuide,
+            onGoSport = onGoSport,
             onOpenExternal = onOpenExternal.takeUnless { showTransportControls },
             onBack = onBack,
             onPlaybackEnded = onPlaybackEnded,
@@ -321,11 +374,15 @@ private fun ActivePlayer(
     resumePositionMillis: Long,
     showTransportControls: Boolean,
     channels: List<GuideChannel>,
+    currentBrowserGroup: String?,
+    browserGroups: List<String>,
+    browserGroupCounts: Map<String, Int>,
+    observeGroupChannels: (String?) -> kotlinx.coroutines.flow.Flow<List<GuideChannel>>,
     guideChannel: GuideTimelineChannel?,
     nowEpochMillis: Long,
     timeZoneId: String,
     metadataRepository: MetadataRepository,
-    remoteChannelKeyMode: RemoteChannelKeyMode,
+    remoteMappings: RemoteMappings,
     playbackReconnectPolicy: PlaybackReconnectPolicy,
     autoFrameRateEnabled: Boolean,
     preferredAudioLanguage: String?,
@@ -339,6 +396,11 @@ private fun ActivePlayer(
     onBack: () -> Unit,
     onPlaybackEnded: () -> Unit,
     previewArtworkUrl: String?,
+    onSwitchToPreviousChannel: (() -> Unit)?,
+    onOpenGuideAtChannel: (() -> Unit)?,
+    onGoHome: (() -> Unit)?,
+    onGoGuide: (() -> Unit)?,
+    onGoSport: (() -> Unit)?,
 ) {
     KeepScreenOnEffect()
     val context = LocalContext.current
@@ -359,22 +421,18 @@ private fun ActivePlayer(
     )
     // Every opening starts in the group of the channel actually playing. A
     // group picked inside the browser is deliberately temporary until a
-    // channel is tuned from it.
-    val currentBrowserGroup = remember(channels, channelId) {
-        playerBrowserGroup(channels, channelId)
-    }
-    val browserGroups = remember(channels) { playerBrowserGroups(channels) }
-    val browserGroupCounts = remember(channels) {
-        channels.mapNotNull { channel ->
-            channel.groupTitle?.takeIf(String::isNotBlank)
-        }.groupingBy { it }.eachCount()
-    }
+    // channel is tuned from it, and is read on its own while it is shown.
     var browserGroup by remember(channelId, currentBrowserGroup) {
         mutableStateOf(currentBrowserGroup)
     }
-    val browserChannels = remember(channels, browserGroup) {
-        playerBrowserChannelsForGroup(channels, browserGroup)
-    }
+    val otherGroupChannels by remember(browserGroup, currentBrowserGroup, observeGroupChannels) {
+        if (browserGroup == currentBrowserGroup) {
+            kotlinx.coroutines.flow.flowOf<List<GuideChannel>?>(null)
+        } else {
+            observeGroupChannels(browserGroup)
+        }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val browserChannels = if (browserGroup == currentBrowserGroup) channels else otherGroupChannels ?: emptyList()
     val browserCurrentIndex = browserChannels.indexOfFirst { it.id == channelId }
     val guideChannelName = channels.firstOrNull { it.id == channelId }?.name
     var channelName by remember(channelId, defaultChannelName, guideChannelName) {
@@ -501,9 +559,8 @@ private fun ActivePlayer(
     }
 
     fun openChannelBrowser() {
-        val defaultChannels = playerBrowserChannelsForGroup(channels, currentBrowserGroup)
         browserGroup = currentBrowserGroup
-        browserSelectionIndex = defaultChannels.indexOfFirst { it.id == channelId }.coerceAtLeast(0)
+        browserSelectionIndex = channels.indexOfFirst { it.id == channelId }.coerceAtLeast(0)
         browserGroupSelectionIndex = browserGroups.indexOf(currentBrowserGroup).coerceAtLeast(0)
         channelGroupBrowserVisible = false
         channelBrowserVisible = true
@@ -513,6 +570,147 @@ private fun ActivePlayer(
         channelBrowserVisible = false
         channelGroupBrowserVisible = false
         browserGroup = currentBrowserGroup
+    }
+
+    // What the remote's buttons do on the clean screen comes from Settings.
+    // The resolver turns raw downs and ups into presses and holds; the
+    // dispatcher below turns an action into what this screen can do.
+    val remoteKeys = remember(channelId) { RemoteKeyGestureResolver() }
+    // A press is decided on release, but the down that started it has already
+    // revealed the chrome. Whether the info box was open is judged as it was
+    // when the key went down, or every press would find a box to step into.
+    var liveInfoOpenAtKeyDown by remember(channelId) { mutableStateOf(false) }
+    val liveScreen = !showTransportControls
+
+    fun run(callback: (() -> Unit)?): Boolean {
+        callback ?: return false
+        callback()
+        return true
+    }
+
+    fun performRemoteAction(action: RemoteAction): Boolean {
+        if (!action.appliesTo(live = liveScreen)) return false
+        when (action) {
+            RemoteAction.NOTHING -> return false
+            RemoteAction.NEXT_CHANNEL -> return run(onNextChannel)
+            RemoteAction.PREVIOUS_CHANNEL -> return run(onPreviousChannel)
+            RemoteAction.SWITCH_TO_PREVIOUS_CHANNEL -> return run(onSwitchToPreviousChannel)
+            RemoteAction.OPEN_CHANNEL_BROWSER -> {
+                if (browserChannels.isEmpty()) return false
+                openChannelBrowser()
+            }
+            RemoteAction.OPEN_GROUP_BROWSER -> {
+                if (browserChannels.isEmpty() || browserGroups.isEmpty()) return false
+                openChannelBrowser()
+                browserGroupSelectionIndex = browserGroups.indexOf(browserGroup).coerceAtLeast(0)
+                scrollBrowserGroupToSelection(browserGroupSelectionIndex)
+                channelGroupBrowserVisible = true
+            }
+            RemoteAction.PROGRAMME_INFO, RemoteAction.SHOW_CONTROLS -> {
+                chromeVersion += 1
+                if (showTransportControls) controlsFocusVersion += 1
+            }
+            RemoteAction.TOGGLE_STATS -> statsVisible = !statsVisible
+            RemoteAction.GUIDE_AT_CHANNEL -> return run(onOpenGuideAtChannel)
+            RemoteAction.QUICK_ACTIONS -> quickActionsVisible = true
+            RemoteAction.PLAY_PAUSE -> if (controller.isPlaying) controller.pause() else controller.play()
+            RemoteAction.SEEK_BACK -> controller.seekBy(-SEEK_INCREMENT_MILLIS)
+            RemoteAction.SEEK_FORWARD -> controller.seekBy(SEEK_INCREMENT_MILLIS)
+            RemoteAction.RESTART -> controller.seekTo(0L)
+            RemoteAction.AUDIO_PICKER -> trackPickerType = TrackPickerType.AUDIO
+            RemoteAction.NEXT_AUDIO_TRACK -> {
+                if (!selectNextTrack(controller, C.TRACK_TYPE_AUDIO, displayLocale, fallbackTrackLabel)) return false
+                manualAudioSelection = true
+            }
+            RemoteAction.SUBTITLE_PICKER -> trackPickerType = TrackPickerType.SUBTITLES
+            RemoteAction.TOGGLE_SUBTITLES -> {
+                if (!toggleSubtitles(controller, displayLocale, fallbackTrackLabel)) return false
+                manualSubtitleSelection = true
+            }
+            RemoteAction.CYCLE_PICTURE_SHAPE -> resizeModeIndex = (resizeModeIndex + 1) % RESIZE_MODES.size
+            RemoteAction.LEAVE_PLAYER -> onBack()
+            RemoteAction.GO_HOME -> return run(onGoHome)
+            RemoteAction.GO_GUIDE -> return run(onGoGuide)
+            RemoteAction.GO_SPORT -> return run(onGoSport)
+        }
+        return true
+    }
+
+    /** Up and down step into whichever box is open before any mapping is consulted. */
+    fun overlayTakesPress(button: RemoteButton): Boolean = when {
+        button != RemoteButton.UP && button != RemoteButton.DOWN -> false
+        liveInfoOpenAtKeyDown -> {
+            liveInfoFocusVersion += 1
+            true
+        }
+        showTransportControls -> {
+            chromeVersion += 1
+            controlsFocusVersion += 1
+            true
+        }
+        else -> false
+    }
+
+    /**
+     * What an unmapped press falls back to: on catch-up and films OK still
+     * reaches the controls, and anywhere else the press shows the chrome, as
+     * any key did before mapping existed.
+     */
+    fun unmappedPress(button: RemoteButton): Boolean {
+        chromeVersion += 1
+        if (showTransportControls && button == RemoteButton.OK) controlsFocusVersion += 1
+        return true
+    }
+
+    fun handleCleanScreenKey(keyCode: Int, action: RemoteKeyAction, repeatCount: Int): Boolean {
+        val button = RemoteButton.fromKeyCode(keyCode)
+        if (button == null) {
+            // Not in the grid: reveals the chrome on the way down, as before,
+            // and is otherwise left to the system.
+            if (action == RemoteKeyAction.DOWN && repeatCount == 0 && playerKeyRevealsChrome(keyCode)) {
+                chromeVersion += 1
+            }
+            return false
+        }
+        val holdAction = remoteMappings[RemoteSlot(button, RemoteGesture.HOLD)]
+        if (button == RemoteButton.BACK) {
+            // Back press is fixed and travels the system route to the
+            // BackHandler, so its down and up must not be consumed. Only a
+            // hold is ours, and only when it is mapped to something that
+            // applies here.
+            if (!holdAction.appliesTo(live = liveScreen)) {
+                remoteKeys.reset()
+                return false
+            }
+            val wasHolding = remoteKeys.isHolding(keyCode)
+            return when (remoteKeys.resolve(keyCode, action, repeatCount)) {
+                is RemoteKeyGesture.Hold -> {
+                    performRemoteAction(holdAction)
+                    true
+                }
+                is RemoteKeyGesture.Press -> false
+                null -> (action == RemoteKeyAction.UP && wasHolding) ||
+                    (action == RemoteKeyAction.DOWN && repeatCount > 0)
+            }
+        }
+        // The chrome is not revealed on the way down any more: a press that
+        // opens the channel list would otherwise flash the info box first.
+        // Whatever the press ends up doing reveals what it needs on release.
+        if (action == RemoteKeyAction.DOWN && repeatCount == 0) {
+            liveInfoOpenAtKeyDown = liveInfoVisible
+        }
+        return when (remoteKeys.resolve(keyCode, action, repeatCount)) {
+            is RemoteKeyGesture.Hold -> {
+                performRemoteAction(holdAction)
+                true
+            }
+            is RemoteKeyGesture.Press -> overlayTakesPress(button) ||
+                performRemoteAction(remoteMappings[RemoteSlot(button, RemoteGesture.PRESS)]) ||
+                unmappedPress(button)
+            // A first down, a later repeat, or the release after a hold:
+            // the button is ours either way, so nothing else may move focus on it.
+            null -> true
+        }
     }
     val resizeMode = RESIZE_MODES[resizeModeIndex]
     val liveProgramme = guideChannel?.currentProgrammeAt(nowEpochMillis)
@@ -559,9 +757,7 @@ private fun ActivePlayer(
     LaunchedEffect(channelId, channels.map(GuideChannel::id), currentBrowserGroup) {
         if (!channelBrowserVisible) {
             browserGroup = currentBrowserGroup
-            browserSelectionIndex = playerBrowserChannelsForGroup(channels, currentBrowserGroup)
-                .indexOfFirst { it.id == channelId }
-                .coerceAtLeast(0)
+            browserSelectionIndex = channels.indexOfFirst { it.id == channelId }.coerceAtLeast(0)
             browserGroupSelectionIndex = browserGroups.indexOf(currentBrowserGroup).coerceAtLeast(0)
         }
     }
@@ -759,13 +955,19 @@ private fun ActivePlayer(
                 playerView.useController = false
                 playerView.hideController()
                 playerView.setOnKeyListener { _, keyCode, event ->
-                    if (event.action != KeyEvent.ACTION_DOWN) {
+                    val keyAction = when (event.action) {
+                        KeyEvent.ACTION_DOWN -> RemoteKeyAction.DOWN
+                        KeyEvent.ACTION_UP -> RemoteKeyAction.UP
+                        else -> null
+                    }
+                    if (keyAction == null) {
                         false
-                    } else {
-                        if (playerKeyRevealsChrome(keyCode)) {
-                            chromeVersion += 1
-                        }
-                        if (channelBrowserVisible) {
+                    } else if (channelBrowserVisible) {
+                        // The list owns every key while it is up, on the down as before.
+                        remoteKeys.reset()
+                        if (keyAction != RemoteKeyAction.DOWN) {
+                            false
+                        } else {
                             if (channelGroupBrowserVisible) {
                                 when (keyCode) {
                                     KeyEvent.KEYCODE_DPAD_UP -> {
@@ -784,10 +986,11 @@ private fun ActivePlayer(
                                     KeyEvent.KEYCODE_ENTER -> {
                                         browserGroups.getOrNull(browserGroupSelectionIndex)?.let { group ->
                                             browserGroup = group
-                                            browserSelectionIndex =
-                                                playerBrowserChannelsForGroup(channels, group)
-                                                    .indexOfFirst { it.id == channelId }
-                                                    .coerceAtLeast(0)
+                                            browserSelectionIndex = if (group == currentBrowserGroup) {
+                                                channels.indexOfFirst { it.id == channelId }.coerceAtLeast(0)
+                                            } else {
+                                                0
+                                            }
                                             scrollBrowserToSelection(browserSelectionIndex)
                                         }
                                         channelGroupBrowserVisible = false
@@ -841,71 +1044,9 @@ private fun ActivePlayer(
                                     else -> false
                                 }
                             }
-                        } else when (keyCode) {
-                            KeyEvent.KEYCODE_CHANNEL_UP -> onPreviousChannel?.let { it(); true } ?: false
-                            KeyEvent.KEYCODE_CHANNEL_DOWN -> onNextChannel?.let { it(); true } ?: false
-                            KeyEvent.KEYCODE_DPAD_UP,
-                            KeyEvent.KEYCODE_DPAD_DOWN -> when {
-                                showTransportControls -> {
-                                    controlsFocusVersion += 1
-                                    true
-                                }
-                                // While the box is up, up and down belong to
-                                // it: they step into the row of buttons along
-                                // its bottom, which were otherwise unreachable.
-                                // The channel list is still a key away from a
-                                // clear screen, and has a button here besides.
-                                liveInfoVisible -> {
-                                    liveInfoFocusVersion += 1
-                                    true
-                                }
-                                remoteChannelKeyMode == RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS &&
-                                    browserChannels.isNotEmpty() -> {
-                                    openChannelBrowser()
-                                    true
-                                }
-                                else -> false
-                            }
-                            KeyEvent.KEYCODE_DPAD_CENTER,
-                            KeyEvent.KEYCODE_ENTER -> when {
-                                // A held key repeats; the first repeat is the
-                                // long press, about half a second in.
-                                event.repeatCount > 0 -> {
-                                    quickActionsVisible = true
-                                    true
-                                }
-                                showTransportControls -> {
-                                    controlsFocusVersion += 1
-                                    true
-                                }
-                                else -> false
-                            }
-                            KeyEvent.KEYCODE_DPAD_LEFT -> if (showTransportControls) {
-                                controller.seekBy(-SEEK_INCREMENT_MILLIS)
-                                true
-                            } else {
-                                false
-                            }
-                            KeyEvent.KEYCODE_DPAD_RIGHT -> if (showTransportControls) {
-                                controller.seekBy(SEEK_INCREMENT_MILLIS)
-                                true
-                            } else {
-                                false
-                            }
-                            KeyEvent.KEYCODE_INFO -> {
-                                statsVisible = !statsVisible
-                                true
-                            }
-                            KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK -> {
-                                trackPickerType = TrackPickerType.AUDIO
-                                true
-                            }
-                            KeyEvent.KEYCODE_CAPTIONS -> {
-                                trackPickerType = TrackPickerType.SUBTITLES
-                                true
-                            }
-                            else -> false
                         }
+                    } else {
+                        handleCleanScreenKey(keyCode, keyAction, event.repeatCount)
                     }
                 }
             },
@@ -1384,6 +1525,35 @@ private fun selectTrackOption(player: Player, trackType: Int, option: PlayerTrac
         builder.setOverrideForType(TrackSelectionOverride(option.group.mediaTrackGroup, option.trackIndex))
     }
     player.trackSelectionParameters = builder.build()
+}
+
+/** Steps to the next track of [trackType]; false when there is nothing to step to. */
+@OptIn(UnstableApi::class)
+private fun selectNextTrack(
+    player: Player,
+    trackType: Int,
+    displayLocale: Locale,
+    fallbackTrackLabel: (Int) -> String,
+): Boolean {
+    val options = trackOptions(player, trackType, displayLocale, fallbackTrackLabel)
+    if (options.size < 2) return false
+    val selected = options.indexOfFirst { option -> option.group.isTrackSelected(option.trackIndex) }
+    selectTrackOption(player, trackType, options[(selected + 1) % options.size])
+    return true
+}
+
+/** Subtitles off if any are on, otherwise the first available; false when the stream has none. */
+@OptIn(UnstableApi::class)
+private fun toggleSubtitles(
+    player: Player,
+    displayLocale: Locale,
+    fallbackTrackLabel: (Int) -> String,
+): Boolean {
+    val options = trackOptions(player, C.TRACK_TYPE_TEXT, displayLocale, fallbackTrackLabel)
+    if (options.isEmpty()) return false
+    val selected = options.firstOrNull { option -> option.group.isTrackSelected(option.trackIndex) }
+    selectTrackOption(player, C.TRACK_TYPE_TEXT, if (selected == null) options.first() else null)
+    return true
 }
 
 @OptIn(UnstableApi::class)

@@ -27,6 +27,9 @@ data class ManagedLibrary(
     val loadError: Boolean = false,
 )
 
+/** How long the metadata worker's matches are left to settle before identities are folded in. */
+private const val METADATA_MATCH_SETTLE_MILLIS = 60_000L
+
 class OrganizationRepository(
     private val dao: OrganizationDao,
     private val preferences: com.streammate.tv.app.AppPreferencesRepository? = null,
@@ -36,11 +39,32 @@ class OrganizationRepository(
     suspend fun saveManagerLocation(room: LibraryRoom, group: String?, source: String?) {
         preferences?.setManagerLocation(room.name, group, source)
     }
-    val state: Flow<OrganizationReadState> = dao.observeRecords().map { records ->
-        OrganizationReadState(LibraryOrganization(records.filter { it.kind == 0 }.map {
-            OrganizationRule(OrganizationKey(LibraryRoom.valueOf(it.room), it.sourceId, it.groupKey, it.itemKey), it.enabled, LibrarySort.parse(it.sortMode), it.position)
-        }), records.filter { it.kind == 1 }.associate { it.alias to it.identity })
+    /**
+     * The rules alone: a few hundred rows at most. Film identities are looked
+     * up per list by [identified], because the alias table holds one row per
+     * film copy and reading it whole for every guide read took ten seconds
+     * with a large provider, and every alias write during an import re-read it.
+     */
+    val state: Flow<OrganizationReadState> = dao.observeRules().map { rules ->
+        OrganizationReadState(LibraryOrganization(rules.map { it.toRule() }))
     }.flowOn(Dispatchers.Default)
+
+    /**
+     * The rows paired with their organisation items, carrying the film
+     * identity for the movie room. Only movies have aliases; the other rooms
+     * pass through without a lookup, and only the movie room re-runs on an
+     * alias write.
+     */
+    private fun <T> identified(flow: Flow<List<T>>, room: LibraryRoom, item: (T) -> OrganizationItem): Flow<List<Pair<T, OrganizationItem>>> =
+        if (room == LibraryRoom.MOVIES) {
+            combine(flow, dao.observeAliasCount()) { rows, _ -> rows }.map { rows ->
+                val items = rows.map(item)
+                val identities = dao.identities(items.map { it.id })
+                rows.zip(items) { row, current -> row to current.copy(identity = identities[current.id] ?: current.identity) }
+            }
+        } else {
+            flow.map { rows -> rows.map { it to item(it) } }
+        }
 
     /** Idempotent compatibility import. Old values stay intact for portable old backups. */
     suspend fun migrateLegacy(preferences: AppPreferences) {
@@ -74,8 +98,18 @@ class OrganizationRepository(
         })
     }
 
-    fun movieIdentityUpdates(): Flow<Unit> = dao.observeMovies().distinctUntilChanged().map { movies ->
-        val groups = movies.groupBy { catalogueWorkKey(it.name, it.year, it.externalId) }
+    /**
+     * Folds the metadata worker's matches into the film identities. Triggered
+     * by a catalogue activation or, settling after a minute, by the count of
+     * matched titles: observing the film list itself re-read every film on
+     * every batch an import wrote and on every title the worker matched.
+     */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    fun movieIdentityUpdates(): Flow<Unit> = combine(
+        dao.observeActiveCatalogueSnapshots().distinctUntilChanged(),
+        dao.observeMatchedMetadataCount().distinctUntilChanged().debounce(METADATA_MATCH_SETTLE_MILLIS),
+    ) { snapshots, matched -> snapshots to matched }.distinctUntilChanged().map {
+        val groups = dao.movies().groupBy { catalogueWorkKey(it.name, it.year, it.externalId) }
         dao.registerFilmAliases(groups.map { (key, copies) ->
             listOf("work:$key") + copies.map { "vod:movie:${it.sourceId}:${it.itemId}" }
         })
@@ -96,7 +130,18 @@ class OrganizationRepository(
                 }, rows.associate { it.sourceId to it.sourceName })
             }
         }
-        return combine(content, state, guide.observeCustomChannelLists(), guide.observeChannelListMemberships()) { library, current, lists, members ->
+        // The manager works on every item of a room, so its identities are
+        // looked up once per emission and carried in the state it hands on.
+        val identified: Flow<Pair<ManagedLibrary, Map<String, String>>> =
+            if (room == LibraryRoom.MOVIES) {
+                combine(content, dao.observeAliasCount()) { library, _ -> library }.map { library ->
+                    library to dao.identities(library.items.map { it.id })
+                }
+            } else {
+                content.map { it to emptyMap() }
+            }
+        return combine(identified, state, guide.observeCustomChannelLists(), guide.observeChannelListMemberships()) { (library, identities), rules, lists, members ->
+            val current = rules.copy(identities = identities)
             library.copy(items = library.items.map(current::identify), state = current,
                 customLists = if (room == LibraryRoom.LIVE) lists else emptyList(),
                 listMemberships = if (room == LibraryRoom.LIVE) members else emptyList())
@@ -106,8 +151,7 @@ class OrganizationRepository(
     fun <T> organize(
         flow: Flow<List<T>>, room: LibraryRoom, item: (T) -> OrganizationItem,
         viewKey: String? = null, chronological: Boolean = false,
-    ): Flow<List<T>> = combine(flow, state) { rows, current ->
-        val pairs = rows.map { it to current.identify(item(it)) }
+    ): Flow<List<T>> = combine(identified(flow, room, item), state) { pairs, current ->
         val byId = pairs.associate { it.second.id to it.first }
         current.organization.orderedItems(room, pairs.map { it.second }, viewKey, chronological = chronological)
             .mapNotNull { byId[it.id] }

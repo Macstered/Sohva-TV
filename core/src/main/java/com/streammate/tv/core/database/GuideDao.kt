@@ -3,6 +3,8 @@ package com.streammate.tv.core.database
 import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -31,6 +33,32 @@ abstract class GuideDao {
 
     @Upsert
     abstract suspend fun upsertProgrammes(programmes: List<TvProgrammeEntity>)
+
+    /**
+     * A staged guide snapshot is new, so nothing can conflict except a
+     * duplicate inside the feed itself, which the first copy wins. Plain
+     * inserts in one transaction per batch are several times cheaper than
+     * upserts of the same rows.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    abstract suspend fun insertProgrammes(programmes: List<TvProgrammeEntity>)
+
+    /** The guide ids the source's active channels answer to, by id or manual mapping. */
+    @Query(
+        """
+        SELECT DISTINCT COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId) AS xmltvChannelId
+        FROM iptv_channels c
+        INNER JOIN import_state state
+            ON state.sourceId = c.sourceId
+            AND state.kind = 'playlist'
+            AND c.snapshotId = state.activeSnapshotId
+        LEFT JOIN channel_preferences preference
+            ON preference.channelId = c.channelId
+        WHERE c.sourceId = :sourceId
+        AND COALESCE(NULLIF(preference.manualXmltvChannelId, ''), NULLIF(c.tvgId, '')) IS NOT NULL
+        """,
+    )
+    abstract suspend fun referencedXmltvChannelIds(sourceId: String): List<String>
 
     @Upsert
     protected abstract suspend fun upsertImportState(state: ImportStateEntity)
@@ -146,6 +174,105 @@ abstract class GuideDao {
     )
     abstract fun observeGuide(nowEpochMillis: Long): Flow<List<GuideChannelRow>>
 
+    /** [observeGuide] for a handful of channels: the home rows, not the whole library. */
+    @Query(
+        """
+        SELECT
+            c.sourceId AS sourceId,
+            source_state.name AS sourceName,
+            source_state.priority AS sourcePriority,
+            c.channelId AS channelId,
+            COALESCE(NULLIF(preference.customName, ''), c.name) AS name,
+            COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
+            c.logoUrl AS logoUrl,
+            c.playlistOrder AS playlistOrder,
+            preference.sortOrder AS legacyPosition,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
+            p.title AS currentProgrammeTitle,
+            p.subtitle AS currentProgrammeSubtitle,
+            (p.startEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStartEpochMillis,
+            (p.stopEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStopEpochMillis
+        FROM organization_visible_channels c
+        INNER JOIN iptv_source_state source_state
+            ON source_state.sourceId = c.sourceId
+            AND source_state.enabled = 1
+        INNER JOIN import_state playlist_state
+            ON playlist_state.sourceId = c.sourceId
+            AND playlist_state.kind = 'playlist'
+            AND c.snapshotId = playlist_state.activeSnapshotId
+        LEFT JOIN channel_preferences preference
+            ON preference.channelId = c.channelId
+        LEFT JOIN import_state epg_state
+            ON epg_state.sourceId = c.sourceId
+            AND epg_state.kind = 'epg'
+        LEFT JOIN tv_programmes p
+            ON p.sourceId = c.sourceId
+            AND p.snapshotId = epg_state.activeSnapshotId
+            AND p.xmltvChannelId = COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
+            AND p.startEpochMillis + source_state.epgOffsetMinutes * 60000 <= :nowEpochMillis
+            AND p.stopEpochMillis + source_state.epgOffsetMinutes * 60000 > :nowEpochMillis
+        WHERE c.channelId IN (:channelIds)
+        ORDER BY source_state.priority DESC, source_state.name,
+            COALESCE(preference.sortOrder, 2147483647),
+            c.playlistOrder,
+            COALESCE(NULLIF(preference.customName, ''), c.name)
+        """,
+    )
+    abstract fun observeGuideForChannels(channelIds: List<String>, nowEpochMillis: Long): Flow<List<GuideChannelRow>>
+
+    /**
+     * [observeGuide] for one group by its shown title, across every enabled
+     * source: the player's channel browser. A null title gives the channels
+     * that have no group. Read from the channel table with the rule predicate
+     * inlined after the group filter, as [observeGuideTimelineForSource] is.
+     */
+    @Query(
+        """
+        SELECT
+            c.sourceId AS sourceId,
+            source_state.name AS sourceName,
+            source_state.priority AS sourcePriority,
+            c.channelId AS channelId,
+            COALESCE(NULLIF(preference.customName, ''), c.name) AS name,
+            COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
+            c.logoUrl AS logoUrl,
+            c.playlistOrder AS playlistOrder,
+            preference.sortOrder AS legacyPosition,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
+            p.title AS currentProgrammeTitle,
+            p.subtitle AS currentProgrammeSubtitle,
+            (p.startEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStartEpochMillis,
+            (p.stopEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStopEpochMillis
+        FROM iptv_channels c
+        INNER JOIN iptv_source_state source_state
+            ON source_state.sourceId = c.sourceId
+            AND source_state.enabled = 1
+        INNER JOIN import_state playlist_state
+            ON playlist_state.sourceId = c.sourceId
+            AND playlist_state.kind = 'playlist'
+            AND c.snapshotId = playlist_state.activeSnapshotId
+        LEFT JOIN channel_preferences preference
+            ON preference.channelId = c.channelId
+        LEFT JOIN import_state epg_state
+            ON epg_state.sourceId = c.sourceId
+            AND epg_state.kind = 'epg'
+        LEFT JOIN tv_programmes p
+            ON p.sourceId = c.sourceId
+            AND p.snapshotId = epg_state.activeSnapshotId
+            AND p.xmltvChannelId = COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
+            AND p.startEpochMillis + source_state.epgOffsetMinutes * 60000 <= :nowEpochMillis
+            AND p.stopEpochMillis + source_state.epgOffsetMinutes * 60000 > :nowEpochMillis
+        WHERE ((:groupTitle IS NULL AND COALESCE(NULLIF(preference.customGroupTitle, ''), NULLIF(c.groupTitle, '')) IS NULL)
+            OR COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) = :groupTitle)
+        AND (""" + ORGANIZATION_VISIBLE_LIVE_PREDICATE + """)
+        ORDER BY source_state.priority DESC, source_state.name,
+            COALESCE(preference.sortOrder, 2147483647),
+            c.playlistOrder,
+            COALESCE(NULLIF(preference.customName, ''), c.name)
+        """,
+    )
+    abstract fun observeGuideForGroup(groupTitle: String?, nowEpochMillis: Long): Flow<List<GuideChannelRow>>
+
     @Query(
         """
         SELECT
@@ -200,6 +327,159 @@ abstract class GuideDao {
         fromEpochMillis: Long,
         toEpochMillis: Long,
     ): Flow<List<GuideTimelineRow>>
+
+    /**
+     * [observeGuideTimeline] for one source, and one of its groups when [groupTitle]
+     * is given. The organisation view runs its rule lookups per channel, so the
+     * filter belongs in the query: the guide shows one group, and reading a
+     * library of fifty thousand channels to show forty took a minute.
+     */
+    @Query(
+        """
+        SELECT
+            c.sourceId AS sourceId,
+            source_state.name AS sourceName,
+            source_state.priority AS sourcePriority,
+            c.channelId AS channelId,
+            COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName,
+            COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
+            c.logoUrl AS logoUrl,
+            c.playlistOrder AS playlistOrder,
+            preference.sortOrder AS legacyPosition,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
+            c.catchupType AS catchupType,
+            c.catchupSource AS catchupSource,
+            c.catchupDays AS catchupDays,
+            p.programmeId AS programmeId,
+            p.title AS programmeTitle,
+            p.subtitle AS programmeSubtitle,
+            p.description AS programmeDescription,
+            p.categories AS programmeCategories,
+            (p.startEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStartEpochMillis,
+            (p.stopEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStopEpochMillis
+        FROM iptv_channels c
+        INNER JOIN iptv_source_state source_state
+            ON source_state.sourceId = c.sourceId
+            AND source_state.enabled = 1
+        INNER JOIN import_state playlist_state
+            ON playlist_state.sourceId = c.sourceId
+            AND playlist_state.kind = 'playlist'
+            AND c.snapshotId = playlist_state.activeSnapshotId
+        LEFT JOIN channel_preferences preference
+            ON preference.channelId = c.channelId
+        LEFT JOIN import_state epg_state
+            ON epg_state.sourceId = c.sourceId
+            AND epg_state.kind = 'epg'
+        LEFT JOIN tv_programmes p
+            ON p.sourceId = c.sourceId
+            AND p.snapshotId = epg_state.activeSnapshotId
+            AND p.xmltvChannelId = COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
+            AND p.startEpochMillis + source_state.epgOffsetMinutes * 60000 < :toEpochMillis
+            AND p.stopEpochMillis + source_state.epgOffsetMinutes * 60000 > :fromEpochMillis
+        WHERE c.sourceId = :sourceId
+        AND (:groupTitle IS NULL OR COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) = :groupTitle)
+        AND (""" + ORGANIZATION_VISIBLE_LIVE_PREDICATE + """)
+        ORDER BY source_state.priority DESC, source_state.name,
+            COALESCE(preference.sortOrder, 2147483647),
+            c.playlistOrder,
+            COALESCE(NULLIF(preference.customName, ''), c.name),
+            p.startEpochMillis + source_state.epgOffsetMinutes * 60000
+        """,
+    )
+    abstract fun observeGuideTimelineForSource(
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+        sourceId: String,
+        groupTitle: String?,
+    ): Flow<List<GuideTimelineRow>>
+
+    /** [observeGuideTimeline] for named channels: favourites, recent, a custom list, the one playing. */
+    @Query(
+        """
+        SELECT
+            c.sourceId AS sourceId,
+            source_state.name AS sourceName,
+            source_state.priority AS sourcePriority,
+            c.channelId AS channelId,
+            COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName,
+            COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
+            c.logoUrl AS logoUrl,
+            c.playlistOrder AS playlistOrder,
+            preference.sortOrder AS legacyPosition,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
+            c.catchupType AS catchupType,
+            c.catchupSource AS catchupSource,
+            c.catchupDays AS catchupDays,
+            p.programmeId AS programmeId,
+            p.title AS programmeTitle,
+            p.subtitle AS programmeSubtitle,
+            p.description AS programmeDescription,
+            p.categories AS programmeCategories,
+            (p.startEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStartEpochMillis,
+            (p.stopEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStopEpochMillis
+        FROM organization_visible_channels c
+        INNER JOIN iptv_source_state source_state
+            ON source_state.sourceId = c.sourceId
+            AND source_state.enabled = 1
+        INNER JOIN import_state playlist_state
+            ON playlist_state.sourceId = c.sourceId
+            AND playlist_state.kind = 'playlist'
+            AND c.snapshotId = playlist_state.activeSnapshotId
+        LEFT JOIN channel_preferences preference
+            ON preference.channelId = c.channelId
+        LEFT JOIN import_state epg_state
+            ON epg_state.sourceId = c.sourceId
+            AND epg_state.kind = 'epg'
+        LEFT JOIN tv_programmes p
+            ON p.sourceId = c.sourceId
+            AND p.snapshotId = epg_state.activeSnapshotId
+            AND p.xmltvChannelId = COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
+            AND p.startEpochMillis + source_state.epgOffsetMinutes * 60000 < :toEpochMillis
+            AND p.stopEpochMillis + source_state.epgOffsetMinutes * 60000 > :fromEpochMillis
+        WHERE c.channelId IN (:channelIds)
+        ORDER BY source_state.priority DESC, source_state.name,
+            COALESCE(preference.sortOrder, 2147483647),
+            c.playlistOrder,
+            COALESCE(NULLIF(preference.customName, ''), c.name),
+            p.startEpochMillis + source_state.epgOffsetMinutes * 60000
+        """,
+    )
+    abstract fun observeGuideTimelineForChannels(
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+        channelIds: List<String>,
+    ): Flow<List<GuideTimelineRow>>
+
+    /**
+     * The rail: every group of every enabled source with its channel count,
+     * read from the channel table without the organisation view, so it costs
+     * one pass over the channels rather than sixteen lookups per channel.
+     * Rules that hide a whole group are applied by the screen.
+     */
+    @Query(
+        """
+        SELECT c.sourceId AS sourceId,
+            source_state.name AS sourceName,
+            source_state.priority AS sourcePriority,
+            COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
+            COUNT(*) AS channelCount
+        FROM iptv_channels c
+        INNER JOIN iptv_source_state source_state
+            ON source_state.sourceId = c.sourceId
+            AND source_state.enabled = 1
+        INNER JOIN import_state playlist_state
+            ON playlist_state.sourceId = c.sourceId
+            AND playlist_state.kind = 'playlist'
+            AND c.snapshotId = playlist_state.activeSnapshotId
+        LEFT JOIN channel_preferences preference
+            ON preference.channelId = c.channelId
+        WHERE COALESCE(preference.hidden, 0) = 0
+        GROUP BY c.sourceId, groupTitle, organizationGroupKey
+        ORDER BY source_state.priority DESC, source_state.name, MIN(c.playlistOrder)
+        """,
+    )
+    abstract fun observeGuideRail(): Flow<List<GuideRailRow>>
 
     @Query(
         """

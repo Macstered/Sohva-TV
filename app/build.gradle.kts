@@ -28,8 +28,8 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 3
-        versionName = "0.1.0-beta.2"
+        versionCode = 4
+        versionName = "0.1.0-beta.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // AGP leaves the instrumentation timeout at a year, so one hung test
@@ -130,6 +130,8 @@ dependencies {
 
     implementation(composeBom)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.zxing.core)
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)

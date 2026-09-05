@@ -28,6 +28,25 @@ class MetadataRepository(
     httpClient: OkHttpClient,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
+    /** The language lookups use unless they name one; Settings keeps it current. */
+    @Volatile
+    var defaultLanguage: String = DEFAULT_LANGUAGE
+
+    /**
+     * Forgets every title and poster the background worker wrote into the
+     * catalogue, and the worker's queue, so the next pass redoes them in the
+     * current language. The lookup cache stays: its keys carry the language.
+     */
+    suspend fun resetCatalogueEnrichment() {
+        synchronized(memoryCacheLock) { memoryCache.clear() }
+        dao.clearCatalogueMetadataOverrides()
+        dao.clearCatalogueMetadataWork()
+    }
+
+    /** A sanitized lookup always carries a language; this is that language. */
+    private val MetadataLookup.resolvedLanguage: String
+        get() = language ?: defaultLanguage
+
     private data class MemoryCacheEntry(
         val metadata: EnrichedMetadata,
         val expiresAtEpochMillis: Long,
@@ -377,7 +396,7 @@ class MetadataRepository(
             tmdbProvider.detailsById(
                 externalId = result.externalId,
                 mediaType = result.mediaType,
-                language = sanitized.language,
+                language = sanitized.resolvedLanguage,
                 credential = settings.tmdbReadAccessToken,
             )
         }.getOrNull() ?: return null
@@ -425,7 +444,7 @@ class MetadataRepository(
         val mediaType = MetadataMediaType.entries.firstOrNull { it.wireValue == entry.mediaType }
             ?: return entry
         val candidate = runCatching {
-            tmdbProvider.detailsById(externalId, mediaType, lookup.language, settings.tmdbReadAccessToken)
+            tmdbProvider.detailsById(externalId, mediaType, lookup.resolvedLanguage, settings.tmdbReadAccessToken)
         }.getOrNull() ?: return entry
         val updated = entry.copy(
             genresJson = encodeGenres(candidate.genres),
@@ -516,7 +535,7 @@ class MetadataRepository(
         val details = try {
             tmdbProvider.movieDetails(
                 externalId = base.externalId,
-                language = sanitized.language,
+                language = sanitized.resolvedLanguage,
                 credential = settings.tmdbReadAccessToken,
             )
         } catch (cancelled: CancellationException) {
@@ -554,7 +573,7 @@ class MetadataRepository(
                 ?.takeIf { it in MIN_YEAR..MAX_YEAR },
             seasonNumber = lookup.seasonNumber?.takeIf { it in 0..MAX_SEASON_NUMBER },
             episodeNumber = lookup.episodeNumber?.takeIf { it in 0..MAX_EPISODE_NUMBER },
-            language = lookup.language.takeIf(LANGUAGE_PATTERN::matches) ?: DEFAULT_LANGUAGE,
+            language = (lookup.language ?: defaultLanguage).takeIf(LANGUAGE_PATTERN::matches) ?: DEFAULT_LANGUAGE,
         )
         return sanitized.takeIf {
             MetadataMatcher.normalizeTitle(it.title).length >= MIN_TITLE_LENGTH
@@ -689,7 +708,7 @@ class MetadataRepository(
             lookup.year?.toString().orEmpty(),
             lookup.seasonNumber?.toString().orEmpty(),
             lookup.episodeNumber?.toString().orEmpty(),
-            lookup.language.lowercase(),
+            lookup.resolvedLanguage.lowercase(),
         ).joinToString("\u001F")
         return MessageDigest.getInstance("SHA-256")
             .digest(canonical.toByteArray(Charsets.UTF_8))

@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Policy packaged: 3 September 2026. Applies to Sohva TV 0.1.0-beta.1 and 0.1.0-beta.2.
+Policy packaged: 3 September 2026, updated 5 September 2026. Applies to Sohva TV 0.1.0-beta.1, 0.1.0-beta.2 and 0.1.0-beta.3.
 
 Sohva TV plays media sources configured by the user. It contains no channels
 or media and does not provide an IPTV subscription. There is no
@@ -58,3 +58,16 @@ collect personal information from children.
 Questions, privacy requests and issue reports:
 [hello@luontra.fi](mailto:hello@luontra.fi).
 Material changes will update the policy distributed with the app package.
+
+## Update check
+
+From beta 3 on, the app asks GitHub for Sohva TV's public release list when
+**Check for updates** is chosen and, at most once a day, while the app is
+open. The request carries no account, playlist or device information beyond
+what any web request carries. A download happens only when you choose it, is
+checked against the published checksum, and is installed only when you choose
+**Install**. GitHub's own privacy practices apply to that request.
+
+## Setting up from a phone
+
+The optional "Set up from a phone" page is served by the TV itself, on the home network only, while the settings screen shows it, and only to a browser that opened it through the code on the TV screen. What is typed there is saved on the TV and sent nowhere else. The page uses plain HTTP inside the home network.

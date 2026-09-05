@@ -1,43 +1,56 @@
-# Sohva TV 0.1.0-beta.2
+# Sohva TV 0.1.0-beta.3
 
-Prepared: **4 September 2026**. Android version code: **3**.
+Prepared: **5 September 2026**. Android version code: **4**.
 
-Second numbered Sohva TV tester package. Install it over beta 1 without
+Third Sohva TV tester package. Install it over beta 1 or beta 2 without
 uninstalling or clearing data. This is a non-commercial beta, not a public-launch
 announcement.
 
-## Changed since beta 1
+## Changed since beta 2
 
-- The home screen's continue-watching row, and the movie and series history
-  views, no longer take seconds to fill on a large library. A query reached the
-  series table without its key and walked every series per watched episode; the
-  joins are now pinned and a build-time test keeps them that way.
-- A programme-guide refresh that brings back nothing usable no longer replaces
-  the guide on screen. When the provider's feed is empty, or matches none of a
-  source's channels, the previous guide is kept and the source's EPG row in
-  Settings reports the failure instead of a success.
-- AFL scores show the totals in the score slot, with goals and behinds on a
-  line beneath, so the team marks on match cards and the home sport row are no
-  longer pushed aside by a long scoreline.
-- Backing out of a stream chosen on a Sohva Sport match card returns to that
-  match card. It used to land on the programme guide.
+- A new source syncs as soon as it is saved, and **Sync everything** on the
+  Playlists page refreshes all sources at once.
+- The first sync is much faster: a playlist and its guide arrive in a minute or
+  two instead of ten. Only the programmes the channels can show are kept.
+- Very large Xtream movie and series lists import instead of being refused as
+  too big.
+- The guide no longer says there are no channels while the first sync is still
+  running; it shows each source's progress, and a failed import says why.
+- The app can fetch the next beta itself: **Settings > About > Check for
+  updates**.
+- Playlist details can be typed in from a phone: **Set up from a phone** on
+  the Playlists page.
+- TMDB titles, plots and artwork can be asked for in any of 22 languages under
+  **Programme data & artwork**.
+- The remote's D-pad and channel buttons, on a press and on a hold, can be
+  mapped to the channel list, programme info, previous channel and other
+  actions under **Playback & remote**.
+- The guide and the programme info during playback open at once on a large
+  library; they used to take ten seconds or more, and the guide could stop
+  responding. The player's channel list reads one group at a time, and channel
+  up and down stay within the group.
+- Moving between groups in the guide keeps the rows and the info box in place
+  until the new group is read.
+- Saved source addresses and keys are protected by one wrapped data key rather
+  than a keystore round trip per address, which is part of the faster sync.
 
 ## Included
 
 - Sohva TV name, couch/play logo, TV launcher banner and accessible wordmarks.
 - Sohva Sport name and orange companion branding.
-- Revised movie/series browsing, provider and main-genre groups, poster
-  fallback handling and library-organization controls.
 - Live TV, programme guide, movies, series, playback resume and optional
   TMDB / TVmaze / API-Sports integrations using the tester's own credentials.
+- Library organisation, custom channel lists, remote button mapping, phone
+  setup and in-app update check.
 - English and Finnish app interface; English installation and testing guide.
 
 ## Update compatibility
 
 Future Sohva TV betas should be installed over this one without uninstalling or
-clearing data. This beta uses Android build 3; every later distributed build
-must use a higher build number. There is no database, preference, key or
-backup-format migration between beta 1 and beta 2.
+clearing data, or fetched from **Settings > About**. This beta uses Android
+build 4; every later distributed build must use a higher build number. Existing
+settings, sources and backups carry over; saved addresses are re-protected
+with the new data key on first use.
 
 Release certificate SHA-256:
 
@@ -49,17 +62,15 @@ The APK's own checksum is in the accompanying `SHA256SUMS.txt`.
 
 ## Testing context
 
-The beta passed its build gate and the unit-test suite, including new tests for
-the pinned home-row queries, the guide-refresh guard and the AFL score format.
-The guide and catalogue database tests were also run on a Shield against its own
-SQLite, and the build was installed on a Shield over beta 1 with data intact.
-These are bounded results, not a guarantee for every device or source.
+The beta passed its build gate and the unit-test suite, and a full emulator run
+of the database and UI tests on the released source. The build was installed
+on a Shield over beta 2 with data intact and used against real playlists,
+including one with tens of thousands of channels. These are bounded results,
+not a guarantee for every device or source.
 
 See [known limitations and the feedback checklist](TESTING.md). A missing
 poster can still require selecting the correct TMDB match again. Provider
-availability, quotas and stream compatibility remain outside the app's control:
-on 4 September one provider's guide feed went empty for a day, which is the
-case the new refresh guard is for.
+availability, quotas and stream compatibility remain outside the app's control.
 
 ## Source publication
 

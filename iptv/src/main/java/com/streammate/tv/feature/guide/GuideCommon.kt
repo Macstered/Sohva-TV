@@ -30,6 +30,9 @@ internal const val MAX_SEARCH_LENGTH = 80
 internal const val MAX_CATCHUP_DAYS = 365
 internal const val METADATA_SELECTION_DELAY_MILLIS = 350L
 
+/** How long a timeline read may take before the stale rows give way to the reading notice. */
+internal const val TIMELINE_READING_NOTICE_MILLIS = 400L
+
 /** The revealable rail down the left, wide enough for longer provider groups. */
 internal val GUIDE_RAIL_WIDTH = 200.dp
 

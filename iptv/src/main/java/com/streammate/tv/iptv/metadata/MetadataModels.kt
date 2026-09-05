@@ -16,8 +16,12 @@ data class MetadataLookup(
     val year: Int? = null,
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
-    val language: String = "fi-FI",
-)
+    /** Null asks for the language chosen in Settings. */
+    val language: String? = null,
+) {
+    /** For providers, which are only ever handed sanitized lookups; English if somehow not. */
+    val languageOrDefault: String get() = language ?: "en-US"
+}
 
 data class MetadataCastMember(
     val name: String,

@@ -162,6 +162,35 @@ class OrganizationDaoTest {
         } finally { db.close() }
     }
 
+    @Test fun aliasRegistrationReadsOnlyTheTouchedAliasesAndStillMergesAcrossBatches() = runBlocking {
+        val db = database()
+        try {
+            seed(db)
+            val dao = db.organizationDao()
+            // Two thousand unrelated films, more than one query's worth of parameters.
+            val crowd = (1..2000).map { listOf("vod:movie:one:crowd$it", "work:crowd$it") }
+            dao.registerFilmAliases(crowd)
+            assertEquals(4000, dao.aliases().size)
+            assertEquals(2000, dao.identities(crowd.map { it.first() }).size)
+            assertEquals("film:vod:movie:one:crowd7", dao.identities(listOf("vod:movie:one:crowd7"))["vod:movie:one:crowd7"])
+            // Two films registered apart, then proven the same in a later batch
+            // that names only one copy of each.
+            dao.registerFilmAliases(listOf(listOf("vod:movie:one:x", "vod:movie:one:x2", "work:x"), listOf("vod:movie:two:y", "work:y")))
+            dao.registerFilmAliases(listOf(listOf("vod:movie:one:x", "vod:movie:two:y", "work:tmdb:9")))
+            val aliases = dao.aliases().associate { it.alias to it.identity }
+            assertEquals(aliases["vod:movie:one:x"], aliases["vod:movie:one:x2"])
+            assertEquals(aliases["vod:movie:one:x"], aliases["work:y"])
+            assertEquals(aliases["vod:movie:one:x"], aliases["work:tmdb:9"])
+            // One call that merges a film and then merges the result again keeps
+            // the moved aliases on their final identity.
+            dao.registerFilmAliases(listOf(listOf("vod:movie:one:p", "work:p"), listOf("vod:movie:two:q", "work:q"), listOf("vod:movie:one:r", "work:r")))
+            dao.registerFilmAliases(listOf(listOf("vod:movie:one:p", "vod:movie:two:q"), listOf("vod:movie:two:q", "vod:movie:one:r")))
+            val merged = dao.aliases().associate { it.alias to it.identity }
+            assertEquals(1, listOf("vod:movie:one:p", "work:p", "vod:movie:two:q", "work:q", "vod:movie:one:r", "work:r").map { merged[it] }.distinct().size)
+            assertEquals(4000, dao.identities(crowd.flatten()).size)
+        } finally { db.close() }
+    }
+
     private fun database() = Room.inMemoryDatabaseBuilder(InstrumentationRegistry.getInstrumentation().targetContext, StreamMateDatabase::class.java).build()
     private suspend fun seed(db: StreamMateDatabase) {
         for (source in listOf("one", "two")) {

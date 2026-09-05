@@ -11,6 +11,7 @@ import com.streammate.tv.core.network.IptvSourceUrlPolicy
 import com.streammate.tv.core.security.SecretRedactor
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.DecodeSequenceMode
@@ -109,6 +110,31 @@ interface XtreamCatalogueSource {
     suspend fun movies(source: IptvSourceConfiguration): List<XtreamMovie>
     suspend fun series(source: IptvSourceConfiguration): List<XtreamSeries>
     suspend fun seriesEpisodes(source: IptvSourceConfiguration, seriesId: String): List<XtreamEpisode>
+
+    /**
+     * The movie list in chunks as it streams in, so a provider with a
+     * hundred thousand films never has to fit in memory at once. Returns the
+     * count. The default reads everything first; the real client streams.
+     */
+    suspend fun streamMovies(
+        source: IptvSourceConfiguration,
+        chunkSize: Int,
+        consume: suspend (List<XtreamMovie>) -> Unit,
+    ): Int {
+        val all = movies(source)
+        all.chunked(chunkSize).forEach { consume(it) }
+        return all.size
+    }
+
+    suspend fun streamSeries(
+        source: IptvSourceConfiguration,
+        chunkSize: Int,
+        consume: suspend (List<XtreamSeries>) -> Unit,
+    ): Int {
+        val all = series(source)
+        all.chunked(chunkSize).forEach { consume(it) }
+        return all.size
+    }
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -182,6 +208,32 @@ class XtreamClient(
         }
     }
 
+    override suspend fun streamMovies(
+        source: IptvSourceConfiguration,
+        chunkSize: Int,
+        consume: suspend (List<XtreamMovie>) -> Unit,
+    ): Int {
+        val credentials = source.credentials()
+        authenticate(source)
+        val categoryNames = categories(credentials, "get_vod_categories")
+        return requestJsonArrayChunked(apiUrl(credentials, "get_vod_streams"), chunkSize, consume) { element ->
+            element.toMovie(credentials, categoryNames)
+        }
+    }
+
+    override suspend fun streamSeries(
+        source: IptvSourceConfiguration,
+        chunkSize: Int,
+        consume: suspend (List<XtreamSeries>) -> Unit,
+    ): Int {
+        val credentials = source.credentials()
+        authenticate(source)
+        val categoryNames = categories(credentials, "get_series_categories")
+        return requestJsonArrayChunked(apiUrl(credentials, "get_series"), chunkSize, consume) { element ->
+            element.toSeries(categoryNames)
+        }
+    }
+
     override suspend fun seriesEpisodes(
         source: IptvSourceConfiguration,
         seriesId: String,
@@ -219,6 +271,37 @@ class XtreamClient(
                     DecodeSequenceMode.ARRAY_WRAPPED,
                 ).mapNotNull(transform).toList()
             }.getOrElse(::invalidResponse)
+        }
+    }
+
+    /**
+     * Like [requestJsonArray], but hands the items over in chunks while the
+     * body is still arriving, and never holds the whole list. The consumer is
+     * called on the IO dispatcher with the response open.
+     */
+    private suspend fun <T : Any> requestJsonArrayChunked(
+        url: HttpUrl,
+        chunkSize: Int,
+        consume: suspend (List<T>) -> Unit,
+        transform: (JsonElement) -> T?,
+    ): Int = withContext(Dispatchers.IO) {
+        withResponseStream(url) { input ->
+            var count = 0
+            val chunk = ArrayList<T>(chunkSize)
+            runCatching {
+                json.decodeToSequence(input, JsonElement.serializer(), DecodeSequenceMode.ARRAY_WRAPPED)
+                    .mapNotNull(transform)
+                    .forEach { item ->
+                        chunk += item
+                        count += 1
+                        if (chunk.size >= chunkSize) {
+                            runBlocking { consume(chunk.toList()) }
+                            chunk.clear()
+                        }
+                    }
+                if (chunk.isNotEmpty()) runBlocking { consume(chunk.toList()) }
+            }.getOrElse(::invalidResponse)
+            count
         }
     }
 
@@ -427,7 +510,10 @@ class XtreamClient(
         val ID_PATTERN = Regex("[A-Za-z0-9._-]{1,128}")
         val EXTENSION_PATTERN = Regex("[a-z0-9]{1,8}")
         const val MAX_ARCHIVE_DAYS = 365
-        const val MAX_XTREAM_RESPONSE_BYTES = 64L * 1024L * 1024L
+        // Arrays are streamed element by element, so this guards against a
+        // runaway body rather than sizing memory. A 56,000-channel provider's
+        // movie list passed 64 MB and was refused outright.
+        const val MAX_XTREAM_RESPONSE_BYTES = 1024L * 1024L * 1024L
     }
 }
 

@@ -193,6 +193,20 @@ data class ChannelListMembership(
     val sortOrder: Int,
 )
 
+data class GuideSource(val id: String, val name: String, val enabled: Boolean)
+
+data class GuideChannelPlacement(val sourceId: String, val groupTitle: String?)
+
+/** One group of one source on the guide's rail, with how many channels it holds. */
+data class GuideRailGroup(
+    val sourceId: String,
+    val sourceName: String,
+    val sourcePriority: Int,
+    val groupTitle: String?,
+    val organizationGroupKey: String,
+    val channelCount: Int,
+)
+
 data class SourceRefreshHealth(
     val sourceId: String,
     val kind: String,
@@ -220,6 +234,12 @@ interface GuideStore {
     suspend fun insertChannels(sourceId: String, snapshotId: String, channels: List<StoredIptvChannel>)
     suspend fun insertXmlTvChannels(sourceId: String, snapshotId: String, channels: List<StoredXmlTvChannel>)
     suspend fun insertProgrammes(sourceId: String, snapshotId: String, programmes: List<StoredProgramme>)
+    /**
+     * The guide ids the source's active channels answer to; empty when the
+     * playlist has not been imported yet, in which case nothing can be
+     * skipped and every programme is kept.
+     */
+    suspend fun referencedXmltvChannelIds(sourceId: String): Set<String>
     suspend fun activatePlaylist(sourceId: String, snapshotId: String, itemCount: Int)
     suspend fun activateEpg(sourceId: String, snapshotId: String, itemCount: Int)
     suspend fun discardPlaylist(sourceId: String, snapshotId: String)
@@ -282,7 +302,7 @@ class RoomGuideStore(
         snapshotId: String,
         programmes: List<StoredProgramme>,
     ) {
-        dao.upsertProgrammes(programmes.map { programme ->
+        dao.insertProgrammes(programmes.map { programme ->
             TvProgrammeEntity(
                 sourceId = sourceId,
                 snapshotId = snapshotId,
@@ -301,6 +321,9 @@ class RoomGuideStore(
     override suspend fun activatePlaylist(sourceId: String, snapshotId: String, itemCount: Int) {
         dao.activatePlaylistSnapshot(sourceId, snapshotId, itemCount, clock())
     }
+
+    override suspend fun referencedXmltvChannelIds(sourceId: String): Set<String> =
+        dao.referencedXmltvChannelIds(sourceId).toSet()
 
     override suspend fun activateEpg(sourceId: String, snapshotId: String, itemCount: Int) {
         dao.activateEpgSnapshot(sourceId, snapshotId, itemCount, clock())
@@ -378,6 +401,25 @@ class GuideRepository(
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
 
+    /** The named channels only, with their current programme; empty ids give an empty guide without a query. */
+    fun observeGuideChannels(channelIds: List<String>, nowEpochMillis: Long): Flow<List<GuideChannel>> =
+        if (channelIds.isEmpty()) {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        } else {
+            dao.observeGuideForChannels(channelIds, nowEpochMillis)
+                .map { rows -> rows.map { it.toDomain() }.distinctBy(GuideChannel::id) }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Default)
+        }
+
+    /** One group by its shown title across the enabled sources; null for the channels without one. */
+    fun observeGuideForGroup(groupTitle: String?, nowEpochMillis: Long): Flow<List<GuideChannel>> =
+        dao.observeGuideForGroup(groupTitle, nowEpochMillis)
+            .map { rows -> rows.map { it.toDomain() }.distinctBy(GuideChannel::id) }
+            .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideChannel::organizationItem) ?: it }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
     fun observeTimeline(
         fromEpochMillis: Long,
         toEpochMillis: Long,
@@ -385,6 +427,46 @@ class GuideRepository(
         dao.observeGuideTimeline(fromEpochMillis, toEpochMillis)
             .map(::timelineChannels)
             .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
+    /** One source, and one of its groups when [groupTitle] is given: what the guide shows at a time. */
+    fun observeTimeline(
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+        sourceId: String,
+        groupTitle: String?,
+    ): Flow<List<GuideTimelineChannel>> =
+        dao.observeGuideTimelineForSource(fromEpochMillis, toEpochMillis, sourceId, groupTitle)
+            .map(::timelineChannels)
+            .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
+    /** Named channels only; empty ids give an empty timeline without a query. */
+    fun observeTimelineForChannels(
+        channelIds: List<String>,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): Flow<List<GuideTimelineChannel>> =
+        if (channelIds.isEmpty()) {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        } else {
+            dao.observeGuideTimelineForChannels(fromEpochMillis, toEpochMillis, channelIds)
+                .map(::timelineChannels)
+                .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Default)
+        }
+
+    /** The rail's groups and counts, cheap enough to keep observed. */
+    fun observeRail(): Flow<List<GuideRailGroup>> =
+        dao.observeGuideRail()
+            .map { rows ->
+                rows.map {
+                    GuideRailGroup(it.sourceId, it.sourceName, it.sourcePriority, it.groupTitle, it.organizationGroupKey, it.channelCount)
+                }
+            }
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
 
@@ -405,6 +487,13 @@ class GuideRepository(
         }
 
     suspend fun activeChannel(channelId: String): IptvChannelEntity? = dao.getActiveChannel(channelId)
+
+    /** The source and the group a channel is shown under, custom name included; null if it is not active. */
+    suspend fun channelPlacement(channelId: String): GuideChannelPlacement? {
+        val channel = dao.getActiveChannel(channelId) ?: return null
+        val custom = dao.channelPreference(channelId)?.customGroupTitle?.takeIf(String::isNotBlank)
+        return GuideChannelPlacement(channel.sourceId, custom ?: channel.groupTitle)
+    }
 
     suspend fun search(query: String, limit: Int = 80): List<GuideSearchResult> {
         val normalized = query.trim().take(MAX_SEARCH_QUERY_LENGTH)
@@ -534,6 +623,16 @@ class GuideRepository(
 
     fun observeSourceRefreshHealth(): Flow<List<SourceRefreshHealth>> =
         dao.observeSourceRefreshStates().map { states -> states.map { it.toDomain() } }
+
+    /** The sources the guide draws from, by name, for screens that must say which one is empty. */
+    fun observeSourceStates(): Flow<List<GuideSource>> =
+        dao.observeSourceStates().map { states ->
+            states.map { GuideSource(id = it.sourceId, name = it.name, enabled = it.enabled) }
+        }
+
+    /** Whether a playlist import has ever completed for [sourceId]. */
+    suspend fun hasImportedPlaylist(sourceId: String): Boolean =
+        dao.sourceRefreshState(sourceId, GuideDao.PLAYLIST_KIND)?.lastSuccessAtEpochMillis != null
 
     private fun GuideChannelRow.toDomain() = GuideChannel(
         legacyPosition = legacyPosition,

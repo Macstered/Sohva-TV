@@ -202,6 +202,8 @@ class StreamMateBackupManager(
         put("startupScreen", startupScreen.name)
         put("lockedChannelIds", lockedChannelIds.toJsonArray())
         put("remoteChannelKeyMode", remoteChannelKeyMode.name)
+        put("remoteMappings", remoteMappings.encode().sorted().toJsonArray())
+        put("metadataLanguage", metadataLanguage)
         put("followedSports", followedSports.map { it.name }.toSet().toJsonArray())
         put("followedCompetitionKeys", followedCompetitionKeys.toJsonArray())
         put("playlistEpgRefreshInterval", playlistEpgRefreshInterval.name)
@@ -252,6 +254,15 @@ class StreamMateBackupManager(
             RemoteChannelKeyMode.entries.firstOrNull { it.name == stored }
                 ?: throw IllegalArgumentException(applicationContext.getString(R.string.backup_error_remote))
         },
+        // Absent from backups written before button mapping existed: those
+        // restore to the defaults the legacy setting implies. Entries a newer
+        // build wrote for buttons or actions this one lacks are dropped.
+        metadataLanguage = optionalString("metadataLanguage")?.takeIf(MetadataLanguages::isSupported)
+            ?: MetadataLanguages.defaultFor(AppLocale.stored(applicationContext)),
+        remoteMappings = optionalStringList("remoteMappings")?.toSet()?.let(RemoteMappings::decode)
+            ?: RemoteMappings.migrated(
+                RemoteChannelKeyMode.entries.first { it.name == requiredString("remoteChannelKeyMode") },
+            ),
         followedSports = optionalStringList("followedSports")
             ?.map { stored ->
                 SportType.entries.firstOrNull { it.name == stored }

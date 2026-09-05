@@ -82,7 +82,7 @@
     <string name="about_api_sports_notice">Sohva Sport uses the user’s own API-Sports key. Sports data, logos and trademarks may belong to leagues, clubs or other rights holders.</string>
     <string name="about_provider_rights">Sohva TV claims no ownership of provider data or images and is not endorsed by their owners. Public or commercial use may require separate permission; commercial release is blocked until licensing is resolved.</string>
     <string name="about_open_source_title">Open-source software</string>
-    <string name="about_open_source_notice">Sohva TV uses AndroidX, Jetpack Compose, Media3, Room, DataStore, WorkManager, Kotlin, kotlinx.serialization, OkHttp, Coil and kXML2 under their respective licences. The third-party notice accompanying a release lists the projects and licence links.</string>
+    <string name="about_open_source_notice">Sohva TV uses AndroidX, Jetpack Compose, Media3, Room, DataStore, WorkManager, Kotlin, kotlinx.serialization, OkHttp, Coil, kXML2 and ZXing under their respective licences. The third-party notice accompanying a release lists the projects and licence links.</string>
     <string name="about_no_affiliation">Sohva TV is not an IPTV provider and is not affiliated with Google, TMDB, TVmaze, API-Sports, sports leagues or channel owners.</string>
     <string name="about_open_tmdb">Open TMDB</string>
     <string name="about_open_tvmaze">Open TVmaze</string>

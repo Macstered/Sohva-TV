@@ -26,4 +26,22 @@ class GuideRefreshSchedulerTest {
         assertTrue(GuideRefreshScheduler.shouldDeferAutomaticRefresh(isAppForeground = true))
         assertFalse(GuideRefreshScheduler.shouldDeferAutomaticRefresh(isAppForeground = false))
     }
+
+    @Test
+    fun `a requested sync and a first import run even in the foreground`() {
+        assertFalse(GuideRefreshScheduler.shouldDeferAutomaticRefresh(isAppForeground = true, immediate = true))
+        assertFalse(GuideRefreshScheduler.shouldDeferAutomaticRefresh(isAppForeground = true, awaitingFirstImport = true))
+        assertTrue(GuideRefreshScheduler.shouldDeferAutomaticRefresh(isAppForeground = true, immediate = false, awaitingFirstImport = false))
+    }
+
+    @Test
+    fun `a work request names one kind or all three in import order`() {
+        assertEquals(listOf(RefreshKind.EPG), GuideRefreshWorker.refreshKindsFor("EPG"))
+        assertEquals(
+            listOf(RefreshKind.PLAYLIST, RefreshKind.EPG, RefreshKind.CATALOGUE),
+            GuideRefreshWorker.refreshKindsFor(GuideRefreshWorker.KIND_ALL),
+        )
+        assertEquals(null, GuideRefreshWorker.refreshKindsFor(null))
+        assertEquals(null, GuideRefreshWorker.refreshKindsFor("garbage"))
+    }
 }

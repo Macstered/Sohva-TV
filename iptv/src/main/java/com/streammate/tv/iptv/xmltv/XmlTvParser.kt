@@ -94,7 +94,10 @@ class XmlTvParser {
         }
         val safeTitle = title?.takeIf(String::isNotEmpty) ?: return null
         return XmlTvRecord.Programme(
-            id = sha256("$channelId|${start.toEpochMilli()}|${stop.toEpochMilli()}|$safeTitle"),
+            // Sixty-four bits of the digest: a quarter of the primary-key index
+            // of a full digest, and a collision inside one snapshot is a
+            // once-in-the-lifetime-of-the-universe event that drops a listing.
+            id = sha256("$channelId|${start.toEpochMilli()}|${stop.toEpochMilli()}|$safeTitle").take(PROGRAMME_ID_LENGTH),
             channelId = channelId,
             startEpochMillis = start.toEpochMilli(),
             stopEpochMillis = stop.toEpochMilli(),
@@ -113,7 +116,24 @@ class XmlTvParser {
         }
     }
 
-    private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
-        .digest(value.toByteArray(Charsets.UTF_8))
-        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    // One digest per parse and a lookup table for the hex: a million
+    // programmes used to mean a million digest instances and thirty-two
+    // Formatter round trips each, which was most of the parser's time.
+    private val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+
+    private fun sha256(value: String): String {
+        val bytes = digest.digest(value.toByteArray(Charsets.UTF_8))
+        val encoded = CharArray(bytes.size * 2)
+        bytes.forEachIndexed { index, byte ->
+            val unsigned = byte.toInt() and 0xff
+            encoded[index * 2] = HEX_DIGITS[unsigned ushr 4]
+            encoded[index * 2 + 1] = HEX_DIGITS[unsigned and 0x0f]
+        }
+        return encoded.concatToString()
+    }
+
+    private companion object {
+        const val HEX_DIGITS = "0123456789abcdef"
+        const val PROGRAMME_ID_LENGTH = 16
+    }
 }

@@ -71,6 +71,12 @@ data class OrganizationChange(
     val changePosition: Boolean = false,
 )
 
+/** Under SQLite's classic 999-variable limit, with room for the query's own parameters. */
+internal const val ALIAS_QUERY_CHUNK = 900
+
+/** Past this many aliases, one full read is cheaper than the chunked lookups. */
+internal const val FULL_ALIAS_READ_THRESHOLD = 5_000
+
 @Dao
 abstract class OrganizationDao {
     // One query gives an atomic revision even when aliases and preferences merge together.
@@ -106,6 +112,33 @@ abstract class OrganizationDao {
 
     @Query("SELECT * FROM organization_aliases")
     abstract suspend fun aliases(): List<OrganizationAliasEntity>
+
+    @Query("SELECT * FROM organization_aliases WHERE alias IN (:aliases)")
+    protected abstract suspend fun aliasesFor(aliases: List<String>): List<OrganizationAliasEntity>
+
+    @Query("SELECT * FROM organization_aliases WHERE identity IN (:identities)")
+    protected abstract suspend fun aliasesWithIdentity(identities: List<String>): List<OrganizationAliasEntity>
+
+    /**
+     * Re-emits on every alias write. Screens that need a list's identities
+     * combine with this and look the identities up again, instead of holding
+     * the whole table: one row per film copy, hundreds of thousands for a
+     * large provider, which used to be read in full for every guide read.
+     */
+    @Query("SELECT COUNT(*) FROM organization_aliases")
+    abstract fun observeAliasCount(): Flow<Long>
+
+    /** The identities of [aliases] only, read in chunks the parameter limit allows. */
+    open suspend fun identities(aliases: Collection<String>): Map<String, String> {
+        if (aliases.isEmpty()) return emptyMap()
+        if (aliases.size > FULL_ALIAS_READ_THRESHOLD) {
+            val wanted = aliases.toHashSet()
+            return aliases().filter { it.alias in wanted }.associate { it.alias to it.identity }
+        }
+        return aliases.distinct().chunked(ALIAS_QUERY_CHUNK)
+            .flatMap { chunk -> aliasesFor(chunk) }
+            .associate { it.alias to it.identity }
+    }
 
     @Upsert
     abstract suspend fun upsertRules(rules: List<OrganizationRuleEntity>)
@@ -150,10 +183,15 @@ abstract class OrganizationDao {
         upsertRules(updated)
     }
 
-    /** Deterministic union of proven same-film aliases, retaining all customization fields. */
+    /**
+     * Deterministic union of proven same-film aliases, retaining all
+     * customization fields. Only the aliases of the given groups are read, plus
+     * every alias of an identity a group merges away; an import registers a
+     * batch at a time and used to read the whole table for each.
+     */
     @Transaction
     open suspend fun registerFilmAliases(groups: List<List<String>>) {
-        val known = aliases().associate { it.alias to it.identity }.toMutableMap()
+        val known = identities(groups.flatten()).toMutableMap()
         val existingRules = rules().toMutableList()
         var rulesChanged = false
         val writes = mutableMapOf<String, OrganizationAliasEntity>()
@@ -163,6 +201,10 @@ abstract class OrganizationDao {
             val identity = identities.firstOrNull() ?: "film:${group.sorted().first()}"
             val merged = identities.filter { it != identity }.toSet()
             if (merged.isNotEmpty() || existingRules.any { it.room == "MOVIES" && it.itemKey in group && it.itemKey != identity }) {
+                // Aliases already moved in this call keep their new identity;
+                // the table still says the old one for them.
+                merged.toList().chunked(ALIAS_QUERY_CHUNK).flatMap { aliasesWithIdentity(it) }
+                    .forEach { known.putIfAbsent(it.alias, it.identity) }
                 known.filterValues { it in merged }.keys.toList().forEach { alias ->
                     known[alias] = identity
                     writes[alias] = OrganizationAliasEntity(alias, identity)
@@ -192,6 +234,17 @@ abstract class OrganizationDao {
         if (writes.isNotEmpty()) upsertAliases(writes.values.toList())
     }
 
+    /**
+     * The active catalogue snapshot of every source, as a cheap signal that the
+     * film list changed; a batch written to an inactive snapshot does not fire it.
+     */
+    @Query("SELECT sourceId || ':' || COALESCE(activeSnapshotId, '') FROM import_state WHERE kind = 'catalogue' ORDER BY sourceId")
+    abstract fun observeActiveCatalogueSnapshots(): Flow<List<String>>
+
+    /** How many titles the metadata worker has matched to a record so far. */
+    @Query("SELECT COUNT(*) FROM catalogue_metadata_overrides WHERE externalId IS NOT NULL")
+    abstract fun observeMatchedMetadataCount(): Flow<Long>
+
     @Query("""
         SELECT movie.sourceId, source.name AS sourceName, source.enabled AS sourceEnabled, movie.movieId AS itemId,
             movie.name, movie.categoryName, movie.organizationGroupKey, movie.posterUrl,
@@ -204,6 +257,19 @@ abstract class OrganizationDao {
         ORDER BY movie.name, movie.sourceId, movie.movieId
     """)
     abstract fun observeMovies(): Flow<List<OrganizationCatalogueRow>>
+
+    @Query("""
+        SELECT movie.sourceId, source.name AS sourceName, source.enabled AS sourceEnabled, movie.movieId AS itemId,
+            movie.name, movie.categoryName, movie.organizationGroupKey, movie.posterUrl,
+            movie.year, movie.rating, metadata.externalId
+        FROM vod_movies movie
+        INNER JOIN iptv_source_state source ON source.sourceId = movie.sourceId
+        INNER JOIN import_state state ON state.sourceId = movie.sourceId
+            AND state.kind = 'catalogue' AND state.activeSnapshotId = movie.snapshotId
+        LEFT JOIN catalogue_metadata_overrides metadata ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
+        ORDER BY movie.name, movie.sourceId, movie.movieId
+    """)
+    abstract suspend fun movies(): List<OrganizationCatalogueRow>
 
     @Query("""
         SELECT item.sourceId, source.name AS sourceName, source.enabled AS sourceEnabled, item.seriesId AS itemId,

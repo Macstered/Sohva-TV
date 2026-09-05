@@ -577,6 +577,16 @@ data class EditableChannelRow(
     val sourceEnabled: Boolean = true,
 )
 
+/** One group of one source with its channel count: what the guide's rail is drawn from. */
+data class GuideRailRow(
+    val sourceId: String,
+    val sourceName: String,
+    val sourcePriority: Int,
+    val groupTitle: String?,
+    val organizationGroupKey: String,
+    val channelCount: Int,
+)
+
 /** See [GuideDao.stagedEpgMatch]. */
 data class StagedEpgMatchRow(
     val matchedProgrammes: Int,

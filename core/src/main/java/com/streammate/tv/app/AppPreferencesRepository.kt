@@ -28,6 +28,10 @@ data class AppPreferences(
     val lockedChannelIds: Set<String> = emptySet(),
     val parentalPinConfigured: Boolean = false,
     val remoteChannelKeyMode: RemoteChannelKeyMode = RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
+    /** What each remote button does while watching; see [RemoteMappings]. */
+    val remoteMappings: RemoteMappings = RemoteMappings.DEFAULTS,
+    /** TMDB language for titles, plots and artwork; see [MetadataLanguages]. */
+    val metadataLanguage: String = "en-US",
     val autoFrameRateEnabled: Boolean = true,
     val autoPlayNextEpisodeEnabled: Boolean = true,
     val followedSports: Set<SportType> = SportsFollowDefaults.sports,
@@ -149,6 +153,14 @@ class AppPreferencesRepository(
             remoteChannelKeyMode = values[REMOTE_CHANNEL_KEY_MODE]
                 ?.let { stored -> RemoteChannelKeyMode.entries.firstOrNull { it.name == stored } }
                 ?: RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
+            remoteMappings = RemoteMappings.fromStored(
+                values[REMOTE_MAPPINGS],
+                values[REMOTE_CHANNEL_KEY_MODE]
+                    ?.let { stored -> RemoteChannelKeyMode.entries.firstOrNull { it.name == stored } }
+                    ?: RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
+            ),
+            metadataLanguage = values[METADATA_LANGUAGE]?.takeIf(MetadataLanguages::isSupported)
+                ?: MetadataLanguages.defaultFor(AppLocale.stored(context)),
             autoFrameRateEnabled = values[AUTO_FRAME_RATE] ?: true,
             autoPlayNextEpisodeEnabled = values[AUTO_PLAY_NEXT_EPISODE] ?: true,
             followedSports = values[FOLLOWED_SPORTS]
@@ -255,6 +267,27 @@ class AppPreferencesRepository(
 
     suspend fun setRemoteChannelKeyMode(mode: RemoteChannelKeyMode) {
         context.sportMatePreferences.edit { values -> values[REMOTE_CHANNEL_KEY_MODE] = mode.name }
+    }
+
+    suspend fun setRemoteMapping(slot: RemoteSlot, action: RemoteAction) {
+        context.sportMatePreferences.edit { values ->
+            val current = RemoteMappings.fromStored(
+                values[REMOTE_MAPPINGS],
+                values[REMOTE_CHANNEL_KEY_MODE]
+                    ?.let { stored -> RemoteChannelKeyMode.entries.firstOrNull { it.name == stored } }
+                    ?: RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
+            )
+            values[REMOTE_MAPPINGS] = current.with(slot, action).encode()
+        }
+    }
+
+    suspend fun setMetadataLanguage(tag: String) {
+        require(MetadataLanguages.isSupported(tag)) { "Unsupported metadata language" }
+        context.sportMatePreferences.edit { values -> values[METADATA_LANGUAGE] = tag }
+    }
+
+    suspend fun resetRemoteMappings() {
+        context.sportMatePreferences.edit { values -> values[REMOTE_MAPPINGS] = RemoteMappings.DEFAULTS.encode() }
     }
 
     suspend fun setAutoFrameRateEnabled(enabled: Boolean) {
@@ -380,6 +413,8 @@ class AppPreferencesRepository(
             values[STARTUP_SCREEN] = restored.startupScreen.name
             values[PARENTAL_PIN_CONFIGURED] = restored.parentalPinConfigured
             values[REMOTE_CHANNEL_KEY_MODE] = restored.remoteChannelKeyMode.name
+            values[REMOTE_MAPPINGS] = restored.remoteMappings.encode()
+            values[METADATA_LANGUAGE] = restored.metadataLanguage
             values[AUTO_FRAME_RATE] = restored.autoFrameRateEnabled
             values[AUTO_PLAY_NEXT_EPISODE] = restored.autoPlayNextEpisodeEnabled
             values[FOLLOWED_SPORTS] = restored.followedSports.mapTo(mutableSetOf()) { it.name }
@@ -417,6 +452,8 @@ class AppPreferencesRepository(
             "parental_pin_configured",
         )
         val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")
+        val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
+        val METADATA_LANGUAGE = stringPreferencesKey("metadata_language")
         val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
         val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")

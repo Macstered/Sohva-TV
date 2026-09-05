@@ -30,6 +30,7 @@ class GuideImportService(
     private val xmlTvParser: XmlTvParser,
     private val store: GuideStore,
     private val secretCipher: SecretCipher,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     suspend fun refreshPlaylist(source: IptvSourceConfiguration): ImportSummary {
         if (source.type != IptvSourceType.M3U) {
@@ -114,8 +115,18 @@ class GuideImportService(
         store.markRefreshStarted(sourceId, GuideDao.EPG_KIND)
         var channelCount = 0
         var programmeCount = 0
+        var parsedProgrammes = 0
         val channelBatch = mutableListOf<StoredXmlTvChannel>()
         val programmeBatch = mutableListOf<StoredProgramme>()
+        // A provider's guide carries every channel it has, not only the ones
+        // in this subscription, and a week either side of today. Only the
+        // programmes an active channel can show, inside the window the guide
+        // can reach, are written; the channel list itself is kept whole so
+        // manual mapping can still offer every channel.
+        val referenced = store.referencedXmltvChannelIds(sourceId)
+        val now = clock()
+        val keepFrom = now - PROGRAMME_HISTORY_MILLIS
+        val keepUntil = now + PROGRAMME_HORIZON_MILLIS
         return try {
             sourceClient.withSource(url) { input ->
                 for (record in xmlTvParser.records(input)) {
@@ -133,6 +144,9 @@ class GuideImportService(
                             }
                         }
                         is XmlTvRecord.Programme -> {
+                            parsedProgrammes += 1
+                            if (referenced.isNotEmpty() && record.channelId !in referenced) continue
+                            if (record.stopEpochMillis < keepFrom || record.startEpochMillis > keepUntil) continue
                             programmeBatch += StoredProgramme(
                                 id = record.id,
                                 channelId = record.channelId,
@@ -144,7 +158,7 @@ class GuideImportService(
                                 categories = record.categories,
                             )
                             programmeCount += 1
-                            if (programmeBatch.size >= BATCH_SIZE) {
+                            if (programmeBatch.size >= PROGRAMME_BATCH_SIZE) {
                                 store.insertProgrammes(sourceId, snapshotId, programmeBatch.toList())
                                 programmeBatch.clear()
                             }
@@ -164,14 +178,14 @@ class GuideImportService(
             // the place of the guide that is already on screen. A provider that
             // served an empty document, or renamed every channel id, used to
             // wipe a working guide and report success for it.
-            if (programmeCount == 0) {
+            if (parsedProgrammes == 0) {
                 throw GuideImportException(
                     CoreR.string.error_epg_empty,
                     logMessage = "The programme guide contained no programmes",
                 )
             }
             val match = store.stagedEpgMatch(sourceId, snapshotId)
-            if (match.mappableChannels > 0 && match.matchedProgrammes == 0) {
+            if (programmeCount == 0 || (match.mappableChannels > 0 && match.matchedProgrammes == 0)) {
                 throw GuideImportException(
                     CoreR.string.error_epg_unmatched,
                     logMessage = "The programme guide matched none of the source's ${match.mappableChannels} channels",
@@ -198,6 +212,10 @@ class GuideImportService(
 
     private companion object {
         const val BATCH_SIZE = 250
+        const val PROGRAMME_BATCH_SIZE = 2_000
+        /** Programmes that ended before this are unreachable: catch-up windows are days, the grid pages back hours. */
+        const val PROGRAMME_HISTORY_MILLIS = 12L * 60 * 60 * 1_000
+        const val PROGRAMME_HORIZON_MILLIS = 8L * 24 * 60 * 60 * 1_000
     }
 }
 
