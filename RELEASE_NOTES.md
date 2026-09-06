@@ -1,20 +1,18 @@
-# Sohva TV 0.1.0-beta.5
+# Sohva TV 0.1.0-beta.6
 
-Prepared: **5 September 2026**. Android version code: **6**.
+Prepared: **6 September 2026**. Android version code: **7**.
 
-Fifth Sohva TV tester package. On beta 3 or later, fetch it from **Settings >
+Sixth Sohva TV tester package. On beta 3 or later, fetch it from **Settings >
 About > Check for updates**; on earlier betas, install it over the existing
 app without uninstalling or clearing data. This is a non-commercial beta, not
 a public-launch announcement.
 
-## Changed since beta 4
+## Changed since beta 5
 
-- **Interface size** under **Playback & remote**: Normal, Compact or Small
-  draws the whole app a step smaller, for a projector or a very large screen.
-- A long channel name in the programme guide now actually wraps onto a second
-  line; beta 4 announced this but the wrap never triggered.
-- The channel list during playback is wider, so long custom names fit next to
-  their logos.
+- Programme guide, catch-up and Sohva Sport times are shown in the TV's own
+  time zone unless one is chosen. They used to default to Finnish time, so a
+  tester elsewhere read every programme hours off. The setting is now
+  labelled **Time zone** under Sohva Sport, with a "TV's own" option.
 
 ## Included
 
@@ -30,9 +28,10 @@ a public-launch announcement.
 
 Future Sohva TV betas should be installed over this one without uninstalling or
 clearing data, or fetched from **Settings > About**. This beta uses Android
-build 6; every later distributed build must use a higher build number. One new
-preference, the interface size, is carried by the backup format with a default
-of Normal; nothing else changed since beta 4.
+build 7; every later distributed build must use a higher build number. A zone
+chosen earlier is kept; a TV that never chose one now follows its own zone.
+Backups record which of the two applies; older backups restore the zone they
+carry.
 
 Release certificate SHA-256:
 
@@ -45,9 +44,8 @@ The APK's own checksum is in the accompanying `SHA256SUMS.txt`.
 ## Testing context
 
 The beta passed its build gate and the unit-test suite, and a full emulator run
-of the database and UI tests on the released source. The guide wrap and the
-wider channel list were confirmed on a Shield against real playlists. These
-are bounded results, not a guarantee for every device or source.
+of the database and UI tests on the released source. These are bounded
+results, not a guarantee for every device or source.
 
 See [known limitations and the feedback checklist](TESTING.md). A missing
 poster can still require selecting the correct TMDB match again. Provider

@@ -83,6 +83,7 @@ import com.streammate.tv.app.PlaybackReconnectPolicy
 import com.streammate.tv.app.PlaylistEpgRefreshInterval
 import com.streammate.tv.app.AppLocale
 import com.streammate.tv.app.InterfaceScale
+import com.streammate.tv.app.deviceTimeZoneId
 import com.streammate.tv.app.PreferredLanguageSlot
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.app.StartupScreen
@@ -804,11 +805,25 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                     )
+                    Text(
+                        text = stringResource(R.string.sports_timezone_help),
+                        color = palette.textMuted,
+                        fontSize = 12.sp,
+                    )
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        item(key = DEVICE_TIME_ZONE) {
+                            TvActionButton(
+                                label = stringResource(R.string.sports_timezone_device, deviceTimeZoneId()),
+                                selected = appPreferences.timeZoneFollowsDevice,
+                                compact = true,
+                                onClick = { scope.launch { preferencesRepository.followDeviceTimeZone() } },
+                                testTag = "settings-sports-timezone-device",
+                            )
+                        }
                         items(SPORTS_TIME_ZONES, key = { it.id }) { timeZone ->
                             TvActionButton(
                                 label = timeZone.label,
-                                selected = appPreferences.timeZoneId == timeZone.id,
+                                selected = !appPreferences.timeZoneFollowsDevice && appPreferences.timeZoneId == timeZone.id,
                                 compact = true,
                                 focusRequester = if (timeZone == SPORTS_TIME_ZONES.first()) {
                                     sectionFocusRequesters.getValue(SettingsSection.SPORT)
@@ -2491,6 +2506,8 @@ private val SportType.settingsLabelRes: Int
     }
 
 private data class SportsTimeZone(val id: String, val label: String)
+
+private const val DEVICE_TIME_ZONE = "@device"
 
 private val SPORTS_TIME_ZONES = listOf(
     SportsTimeZone("Europe/Helsinki", "Helsinki"),

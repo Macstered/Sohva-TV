@@ -222,7 +222,9 @@
     <string name="sports_key_removed">API-Sports-avain poistettu</string>
     <string name="sports_key_saved">API-Sports-avain tallennettu suojatusti</string>
     <string name="sports_disclosure">Avain salataan Android Keystorella ja lähetetään vain HTTPS-otsakkeessa API-Sportsille. Sovellus seuraa palvelun kiintiöotsakkeita ja käyttää häiriössä enintään 24 tuntia vanhaa välimuistia. Logot ja tavaramerkit kuuluvat oikeudenhaltijoilleen; julkinen tai kaupallinen käyttö voi vaatia erillisen luvan.</string>
-    <string name="sports_timezone_title">Sohva Sportin aikavyöhyke</string>
+    <string name="sports_timezone_title">Aikavyöhyke</string>
+    <string name="sports_timezone_help">Ohjelmaoppaan, jälkikatselun ja Sohva Sportin ajat näytetään tällä vyöhykkeellä. Television oma vyöhyke seuraa television asetuksia.</string>
+    <string name="sports_timezone_device">Television oma (%1$s)</string>
     <string name="sports_follow_requires_key">Tallenna API-Sports-avain, jotta urheilulajien ja kilpailujen valinta voidaan avata.</string>
     <string name="sports_follow_open">Valitse seurattavat lajit ja kilpailut</string>
     <string name="sports_follow_title">Seurattavat lajit ja kilpailut</string>

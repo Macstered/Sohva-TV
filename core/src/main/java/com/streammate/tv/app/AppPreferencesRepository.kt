@@ -18,7 +18,10 @@ import org.json.JSONObject
 private val Context.sportMatePreferences by preferencesDataStore(name = "streammate_preferences")
 
 data class AppPreferences(
+    /** The zone the guide, catch-up and Sohva Sport show times in: the TV's own unless one is chosen. */
     val timeZoneId: String = DEFAULT_TIME_ZONE,
+    /** True while no zone has been chosen and [timeZoneId] is the TV's own. */
+    val timeZoneFollowsDevice: Boolean = false,
     val favouriteEventIds: Set<String> = emptySet(),
     val favouriteChannelIds: Set<String> = emptySet(),
     val recentChannelIds: List<String> = emptyList(),
@@ -138,7 +141,10 @@ class AppPreferencesRepository(
 ) {
     val preferences: Flow<AppPreferences> = context.sportMatePreferences.data.map { values ->
         AppPreferences(
-            timeZoneId = values[TIME_ZONE] ?: AppPreferences.DEFAULT_TIME_ZONE,
+            // Nothing chosen means the TV's own zone. This used to fall back to
+            // Helsinki, and a tester six hours away read every programme wrong.
+            timeZoneId = values[TIME_ZONE] ?: deviceTimeZoneId(),
+            timeZoneFollowsDevice = values[TIME_ZONE] == null,
             favouriteEventIds = values[FAVOURITE_EVENT_IDS]?.toSet().orEmpty(),
             favouriteChannelIds = values[FAVOURITE_CHANNEL_IDS]?.toSet().orEmpty(),
             recentChannelIds = values[RECENT_CHANNEL_IDS]
@@ -193,6 +199,11 @@ class AppPreferencesRepository(
 
     suspend fun setTimeZone(timeZoneId: String) {
         context.sportMatePreferences.edit { values -> values[TIME_ZONE] = timeZoneId }
+    }
+
+    /** Back to the TV's own zone, now and whenever it changes. */
+    suspend fun followDeviceTimeZone() {
+        context.sportMatePreferences.edit { values -> values.remove(TIME_ZONE) }
     }
 
     suspend fun setFavourite(eventId: String, favourite: Boolean) {
@@ -409,7 +420,7 @@ class AppPreferencesRepository(
     suspend fun restore(restored: AppPreferences) {
         context.sportMatePreferences.edit { values ->
             values.clear()
-            values[TIME_ZONE] = restored.timeZoneId
+            if (restored.timeZoneFollowsDevice) values.remove(TIME_ZONE) else values[TIME_ZONE] = restored.timeZoneId
             values[FAVOURITE_EVENT_IDS] = restored.favouriteEventIds
             values[FAVOURITE_CHANNEL_IDS] = restored.favouriteChannelIds
             values[RECENT_CHANNEL_IDS] = restored.recentChannelIds
@@ -551,3 +562,6 @@ enum class PreferredLanguageSlot {
     PRIMARY_SUBTITLE,
     SECONDARY_SUBTITLE,
 }
+
+/** The TV's own zone as an id the rest of the app formats with. */
+fun deviceTimeZoneId(): String = java.util.TimeZone.getDefault().id

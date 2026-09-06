@@ -194,6 +194,7 @@ class StreamMateBackupManager(
 
     private fun AppPreferences.toJson(): JsonObject = buildJsonObject {
         put("timeZoneId", timeZoneId)
+        put("timeZoneFollowsDevice", timeZoneFollowsDevice)
         put("favouriteEventIds", favouriteEventIds.toJsonArray())
         put("favouriteChannelIds", favouriteChannelIds.toJsonArray())
         put("recentChannelIds", recentChannelIds.toJsonArray())
@@ -241,6 +242,9 @@ class StreamMateBackupManager(
 
     private fun JsonObject.toPreferences(): AppPreferences = AppPreferences(
         timeZoneId = requiredString("timeZoneId").also { require(it.length <= 100) },
+        // Absent from backups written before the zone followed the device;
+        // those restore the zone they carry, as they always did.
+        timeZoneFollowsDevice = optionalBoolean("timeZoneFollowsDevice") ?: false,
         favouriteEventIds = requiredStringSet("favouriteEventIds"),
         favouriteChannelIds = requiredStringSet("favouriteChannelIds"),
         recentChannelIds = requiredStringList("recentChannelIds").take(20),

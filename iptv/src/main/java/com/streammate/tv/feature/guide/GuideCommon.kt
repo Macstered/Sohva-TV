@@ -111,8 +111,7 @@ internal fun formatRange(start: Long, stop: Long, timeZoneId: String?): String =
     formatTime(start, timeZoneId) + "–" + formatTime(stop, timeZoneId)
 
 internal fun formatTime(epochMillis: Long, timeZoneId: String?): String {
-    val zone = runCatching { ZoneId.of(timeZoneId ?: DEFAULT_ZONE_ID) }
-        .getOrDefault(ZoneId.of(DEFAULT_ZONE_ID))
+    val zone = timeZoneId?.let { id -> runCatching { ZoneId.of(id) }.getOrNull() } ?: ZoneId.systemDefault()
     return TIME_FORMATTER.format(Instant.ofEpochMilli(epochMillis).atZone(zone))
 }
 
@@ -167,7 +166,6 @@ private val GENRE_ACCENTS: Map<String, Color> = linkedMapOf(
     "draama" to GENRE_FILM,
 )
 
-private const val DEFAULT_ZONE_ID = "Europe/Helsinki"
 
 internal val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH.mm")
 internal val WINDOW_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d.M.")

@@ -222,7 +222,9 @@
     <string name="sports_key_removed">API-Sports key removed</string>
     <string name="sports_key_saved">API-Sports key saved securely</string>
     <string name="sports_disclosure">The key is encrypted with Android Keystore and sent to API-Sports only in an HTTPS header. The app tracks provider quota headers and can use cached data up to 24 hours old during an outage. Logos and trademarks belong to their respective rights holders; public or commercial use may require separate permission.</string>
-    <string name="sports_timezone_title">Sohva Sport timezone</string>
+    <string name="sports_timezone_title">Time zone</string>
+    <string name="sports_timezone_help">Programme guide, catch-up and Sohva Sport times are shown in this zone. The TV\'s own zone follows the TV\'s settings.</string>
+    <string name="sports_timezone_device">TV\'s own (%1$s)</string>
     <string name="sports_follow_requires_key">Save an API-Sports key to open sport and competition selection.</string>
     <string name="sports_follow_open">Choose followed sports and competitions</string>
     <string name="sports_follow_title">Followed sports and competitions</string>
