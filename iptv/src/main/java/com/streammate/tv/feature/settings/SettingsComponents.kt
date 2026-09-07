@@ -161,6 +161,7 @@ internal fun SettingsSwitch(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    focusRequester: androidx.compose.ui.focus.FocusRequester? = null,
     testTag: String? = null,
 ) {
     val palette = StreamMateThemeTokens.palette
@@ -172,6 +173,7 @@ internal fun SettingsSwitch(
         enabled = enabled,
         resting = Color.Transparent,
         focusScale = 1f,
+        focusRequester = focusRequester,
         testTag = testTag,
         contentPadding = PaddingValues(5.dp),
         contentAlignment = Alignment.Center,
@@ -375,7 +377,7 @@ internal val SETTINGS_ROW_HEIGHT = 74.dp
 internal val SETTINGS_ROW_PADDING = 14.dp
 internal val SETTINGS_ICON_SIZE = 20.dp
 internal val SETTINGS_CHIP_HEIGHT = 44.dp
-internal val SETTINGS_RAIL_ROW_HEIGHT = 52.dp
+internal val SETTINGS_RAIL_ROW_HEIGHT = 46.dp
 
 private val SWITCH_WIDTH = 52.dp
 private val SWITCH_HEIGHT = 30.dp

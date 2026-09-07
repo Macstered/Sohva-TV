@@ -1,6 +1,6 @@
 # Install and set up Sohva TV
 
-For **0.1.0-beta.6**, Android build **7**.
+For **0.1.0-beta.7**, Android build **8**.
 
 ## Before you start
 
@@ -18,7 +18,7 @@ For **0.1.0-beta.6**, Android build **7**.
 
 ## Install using your TV
 
-1. Download `sohva-tv-0.1.0-beta.6.apk` from the developer's supplied package
+1. Download `sohva-tv-0.1.0-beta.7.apk` from the developer's supplied package
    or the approved release page. Do not use an APK from an unknown mirror.
 2. Transfer that file to the TV using a USB drive or your existing trusted
    file-transfer method, then open it with a file manager on the TV.
@@ -30,7 +30,7 @@ For **0.1.0-beta.6**, Android build **7**.
 5. Open **Sohva TV** from the TV's app list. You may turn off the file manager's
    install permission afterwards.
 6. Check **Settings > About > About, privacy and licences**. The version must
-   be **0.1.0-beta.6**.
+   be **0.1.0-beta.7**.
 
 If your TV does not offer APK installation, record the TV model, Android
 version and exact message and contact the developer. Device installation
@@ -49,7 +49,7 @@ Android asks you to allow Sohva TV to install unknown apps; that permission
 applies to Sohva TV only and can be turned off again afterwards. The download
 comes from this repository's Releases page and nothing else.
 
-For extra safety, use **Settings > Backup > Save backup**, set a strong
+For extra safety, use **Settings > Backup & tools > Save backup**, set a strong
 password and store the encrypted `.smbak` file somewhere private. This is a
 configuration backup, not a complete copy of all cached media or viewing state.
 Keep the password yourself; the developer cannot recover it. Never upload the
@@ -70,7 +70,7 @@ authorize debugging on your device. In PowerShell, from the APK's directory:
 
 ```powershell
 adb devices -l
-adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.1.0-beta.6.apk
+adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.1.0-beta.7.apk
 ```
 
 Replace `YOUR_DEVICE_SERIAL` with the exact serial shown by ADB. Always select
@@ -80,7 +80,7 @@ options. Disable debugging again when finished if you no longer need it.
 To check file integrity before installation:
 
 ```powershell
-Get-FileHash .\sohva-tv-0.1.0-beta.6.apk -Algorithm SHA256
+Get-FileHash .\sohva-tv-0.1.0-beta.7.apk -Algorithm SHA256
 ```
 
 Compare with the APK entry in `SHA256SUMS.txt` from the same trusted package.
@@ -92,8 +92,8 @@ A checksum detects a changed file; it does not make an untrusted download safe.
 
 Open **Settings > Playlists**.
 
-- **M3U:** choose **+ Add M3U source**, enter a friendly source name and your
-  playlist address. Add an XMLTV programme-guide address if you have one.
+- **M3U:** choose **+ Add M3U source**. The source's own page opens; enter a
+  friendly source name and your playlist address. Add an XMLTV programme-guide address if you have one.
 - **Xtream:** choose **+ Add Xtream source**, enter a source name, server
   address, username and password supplied by your provider.
 
@@ -108,10 +108,10 @@ your details before import.
 
 A newly saved source starts syncing at once: channels, then the guide, then
 movies and series. The guide screen shows each source's progress until the
-first channels arrive. **Sync everything** on the Playlists page refreshes all
-sources; each source also keeps its own **Refresh playlist** / **Refresh
+first channels arrive. The Playlists page lists your sources; open one to see
+its details and its **Sync everything**, **Refresh playlist** / **Refresh
 channels**, **Refresh movies and series** and **Refresh programme guide**
-actions. Wait for the import result before judging the library. Metadata
+actions, and **All playlists** or Back to return to the list. Wait for the import result before judging the library. Metadata
 matching fills in over time after the first sync, especially with large
 sources. Avoid repeatedly pressing Refresh while an import is running.
 
@@ -121,7 +121,7 @@ series recognition also depends on the provider's naming and categorization.
 
 ### 2. Optional artwork and title information
 
-Open **Settings > Programme data & artwork**. Enter your TMDB API key or Read
+Open **Settings > Library**. Enter your TMDB API key or Read
 Access Token, enable TMDB and choose **Save metadata settings**. **Test TMDB**
 checks the connection. TVmaze can be enabled without a key.
 
@@ -140,9 +140,7 @@ the whole library just to repair one poster.
 
 Open **Settings > Sohva Sport**, enter your own direct API-Sports key and choose
 **Save key**. Open **Choose followed sports and competitions**, select the
-sports and competitions you want. **Time zone** on the same page is what the
-programme guide, catch-up and Sohva Sport show times in; it follows the TV's
-own zone unless you pick one.
+sports and competitions you want.
 
 Sports results, schedules and matching depend on provider coverage, the key's
 quota and your own TV channels. A sports listing does not include a stream or
@@ -151,16 +149,18 @@ share keys or repeatedly refresh to try to bypass a provider quota.
 
 ### 4. Language and basic controls
 
-Under **Settings > Playback & remote**, use **Interface language** to choose
-English if necessary; the app restarts to apply the change. **Interface size**
-on the same page draws everything a step smaller, Compact or Small, which
-suits a projector or a very large screen; it applies at once.
+Under **Settings > General**, use **Interface language** to choose English if
+necessary; the app restarts to apply the change. **Interface size** on the
+same page draws everything a step smaller, Compact or Small, which suits a
+projector or a very large screen. **Time zone** is what the programme guide,
+catch-up and Sohva Sport show times in: the TV's own unless you pick one from
+the full list. The startup screen and the refresh interval are there too.
 
 - **D-pad arrows:** move focus. **OK / Select:** open or activate an item.
 - **Back:** close the current view or return to the previous screen.
 - During playback, use OK to bring up the controls, then navigate with the
   D-pad. Available audio, subtitle and picture options depend on the stream.
-- **Remote buttons** under the same settings section choose what each D-pad
+- **Remote buttons** under **Settings > Remote buttons** choose what each D-pad
   direction, the channel keys and a press or a hold do during playback, such as
   the channel list, the programme info or the previous channel. Channel up and
   down stay within the current group.

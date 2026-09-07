@@ -1,18 +1,33 @@
-# Sohva TV 0.1.0-beta.6
+# Sohva TV 0.1.0-beta.7
 
-Prepared: **6 September 2026**. Android version code: **7**.
+Prepared: **7 September 2026**. Android version code: **8**.
 
-Sixth Sohva TV tester package. On beta 3 or later, fetch it from **Settings >
+Seventh Sohva TV tester package. On beta 3 or later, fetch it from **Settings >
 About > Check for updates**; on earlier betas, install it over the existing
 app without uninstalling or clearing data. This is a non-commercial beta, not
 a public-launch announcement.
 
-## Changed since beta 5
+## Changed since beta 6
 
-- Programme guide, catch-up and Sohva Sport times are shown in the TV's own
-  time zone unless one is chosen. They used to default to Finnish time, so a
-  tester elsewhere read every programme hours off. The setting is now
-  labelled **Time zone** under Sohva Sport, with a "TV's own" option.
+Settings were rebuilt after testers found them scattered and cluttered.
+
+- A new **General** section holds the interface language and size, the time
+  zone, the startup screen and the refresh interval. The time zone opens a
+  picker over every zone the TV knows, by region, with a search field; the
+  TV's own zone is the first choice.
+- Sections are now General, Playlists, Playback, Remote buttons, Library,
+  Sohva Sport, Parental controls, Backup & tools and About. Sohva Sport keeps
+  only sport; Library holds TMDB, TVmaze, the metadata language, film copies,
+  your own groups, the image cache and **Manage groups & content**; "Clear
+  all guide data" sits under Backup & tools.
+- Every setting is one row: what it is, one line of help, and its value on
+  the right. OK opens a list of choices with the current one marked. Yes/no
+  settings are switches and apply at once; only addresses and keys keep a
+  Save button.
+- The Playlists page lists your sources. Opening one shows its details and
+  actions alone; **All playlists** or Back returns to the list.
+- The keystore, HTTPS and licence explanations moved from the settings pages
+  to the privacy page, under "Notes on services".
 
 ## Included
 
@@ -28,10 +43,9 @@ a public-launch announcement.
 
 Future Sohva TV betas should be installed over this one without uninstalling or
 clearing data, or fetched from **Settings > About**. This beta uses Android
-build 7; every later distributed build must use a higher build number. A zone
-chosen earlier is kept; a TV that never chose one now follows its own zone.
-Backups record which of the two applies; older backups restore the zone they
-carry.
+build 8; every later distributed build must use a higher build number. No
+preference, database or backup-format change since beta 6: this is a screen
+change, and every setting keeps the value it had.
 
 Release certificate SHA-256:
 
@@ -44,8 +58,10 @@ The APK's own checksum is in the accompanying `SHA256SUMS.txt`.
 ## Testing context
 
 The beta passed its build gate and the unit-test suite, and a full emulator run
-of the database and UI tests on the released source. These are bounded
-results, not a guarantee for every device or source.
+of the database and UI tests on the released source, with the settings tests
+rewritten for the new rows and pickers. Each settings page was reviewed from
+emulator screenshots and on a Shield. These are bounded results, not a
+guarantee for every device or source.
 
 See [known limitations and the feedback checklist](TESTING.md). A missing
 poster can still require selecting the correct TMDB match again. Provider

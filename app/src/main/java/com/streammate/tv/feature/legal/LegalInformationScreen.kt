@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.streammate.tv.R
+import com.streammate.tv.iptv.R as IptvR
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.feature.common.SohvaTvBrand
 import com.streammate.tv.feature.common.StreamMateScreenBackground
@@ -173,6 +174,16 @@ fun LegalInformationScreen(onBack: () -> Unit) {
                             testTag = "legal-open-api-sports",
                         )
                     }
+                }
+                item {
+                    LegalSection(
+                        title = stringResource(IptvR.string.about_service_notes_title),
+                        body = listOf(
+                            stringResource(IptvR.string.settings_http_disclosure),
+                            stringResource(IptvR.string.metadata_disclosure),
+                            stringResource(IptvR.string.sports_disclosure),
+                        ).joinToString("\n\n"),
+                    )
                 }
                 item {
                     LegalSection(

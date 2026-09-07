@@ -101,6 +101,7 @@ import com.streammate.tv.feature.common.TvActionButton
 import com.streammate.tv.feature.common.TvIcons
 import com.streammate.tv.feature.common.TvListRow
 import com.streammate.tv.feature.common.TvUrlField
+import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.iptv.repository.GuideImportService
 import com.streammate.tv.iptv.repository.GuideImportException
 import com.streammate.tv.iptv.repository.GuideRepository
@@ -112,17 +113,6 @@ import com.streammate.tv.iptv.metadata.MetadataRepository
 import com.streammate.tv.iptv.xtream.derivedXtreamSourceOrNull
 import java.util.UUID
 import kotlinx.coroutines.launch
-
-private enum class SettingsSection {
-    SOURCES,
-    PLAYBACK,
-    REMOTE,
-    METADATA,
-    SPORT,
-    PARENTAL,
-    BACKUP,
-    ABOUT,
-}
 
 private class SettingsColumnScope {
     @Composable
@@ -260,9 +250,21 @@ fun SettingsScreen(
     var competitionLoadGeneration by remember { mutableIntStateOf(0) }
     var competitionQuery by remember { mutableStateOf("") }
     var selectedSection by remember { mutableStateOf(SettingsSection.SOURCES) }
-    var refreshIntervalMenuOpen by remember { mutableStateOf(false) }
-    var languageMenuSlot by remember { mutableStateOf<PreferredLanguageSlot?>(null) }
-    var metadataLanguageMenuOpen by remember { mutableStateOf(false) }
+    var timeZonePickerOpen by remember { mutableStateOf(false) }
+    var maintenanceStatus by remember { mutableStateOf("") }
+    // A source is a page: the Playlists section lists them, and opening one
+    // shows its form and actions alone. Back returns to the row it came from.
+    var sourcePageOpen by remember { mutableStateOf(false) }
+    val sourceRowFocus = remember { mutableMapOf<String, FocusRequester>() }
+    val sourcePageFocus = remember { FocusRequester() }
+    LaunchedEffect(sourcePageOpen, selectedSourceId) {
+        if (sourcePageOpen) sourcePageFocus.requestFocusWhenAttached()
+    }
+    // One picker at a time, over the page; the row that opened it gets focus back.
+    var openPicker by remember { mutableStateOf<SettingsPickerTarget?>(null) }
+    val pickerRowFocus = remember { mutableMapOf<String, FocusRequester>() }
+    fun rowFocus(key: String): FocusRequester = pickerRowFocus.getOrPut(key) { FocusRequester() }
+    var interfaceLanguage by remember { mutableStateOf(AppLocale.stored(context)) }
     // A source that arrived from the phone page was saved outside this
     // screen's own state; pick it up and show it in the list.
     LaunchedEffect(phoneSetup.receivedCount) {
@@ -272,23 +274,17 @@ fun SettingsScreen(
                 ?: resources.getString(R.string.phone_setup_received_keys)
         }
     }
-    val metadataLanguageButtonFocusRequester = remember { FocusRequester() }
-    val metadataLanguageOptionFocusRequester = remember { FocusRequester() }
-    BackHandler(enabled = metadataLanguageMenuOpen) { metadataLanguageMenuOpen = false }
-    LaunchedEffect(metadataLanguageMenuOpen) {
-        if (metadataLanguageMenuOpen) metadataLanguageOptionFocusRequester.requestFocus()
-    }
     var sectionFocusGeneration by remember { mutableIntStateOf(0) }
     val sectionFocusRequesters = remember {
         SettingsSection.entries.associateWith { FocusRequester() }
     }
-    val sportsFollowFocusRequester = remember { FocusRequester() }
-    val refreshIntervalButtonFocusRequester = remember { FocusRequester() }
-    val refreshIntervalOptionFocusRequester = remember { FocusRequester() }
-    val languageButtonFocusRequesters = remember {
-        PreferredLanguageSlot.entries.associateWith { FocusRequester() }
+    // The first row of a section is also where the section's focus lands.
+    remember {
+        pickerRowFocus[SettingsPickerTarget.InterfaceLanguage.key] = sectionFocusRequesters.getValue(SettingsSection.GENERAL)
+        pickerRowFocus[SettingsPickerTarget.Buffer.key] = sectionFocusRequesters.getValue(SettingsSection.PLAYBACK)
+        true
     }
-    val languageOptionFocusRequester = remember { FocusRequester() }
+    val sportsFollowFocusRequester = remember { FocusRequester() }
     val sourceHealth by guideRepository.observeSourceRefreshHealth()
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val appPreferences by preferencesRepository.preferences.collectAsStateWithLifecycle(
@@ -300,6 +296,173 @@ fun SettingsScreen(
         metadataRepository.observeCatalogueGenres()
     }.collectAsStateWithLifecycle(initialValue = emptyMap())
     val uriHandler = LocalUriHandler.current
+
+    fun saveMetadataSettings(clearCache: Boolean) {
+        scope.launch {
+            busy = true
+            val result = runCatching {
+                secretSettingsStore.saveMetadataSettings(
+                    MetadataSettings(
+                        tmdbEnabled = tmdbEnabled,
+                        tmdbReadAccessToken = tmdbToken,
+                        tvmazeEnabled = tvmazeEnabled,
+                    ),
+                )
+                if (clearCache) metadataRepository.clearCache()
+                resources.getString(R.string.metadata_saved)
+            }.getOrElse { it.userMessage(context) }
+            metadataStatus = result
+            status = result
+            busy = false
+        }
+    }
+
+    val metadataDisplayLocale = LocalResources.current.configuration.locales[0]
+    val metadataLanguageOptions = remember(metadataDisplayLocale) {
+        MetadataLanguages.TAGS.map { tag ->
+            val name = java.util.Locale.forLanguageTag(tag).getDisplayName(metadataDisplayLocale)
+                .replaceFirstChar { it.titlecase(metadataDisplayLocale) }
+            tag to name
+        }
+    }
+    val languageOptions = preferredLanguageOptions()
+    val interfaceLanguageChoices = interfaceLanguageOptions()
+    val interfaceScaleChoices = interfaceScaleOptions()
+    fun closePicker(target: SettingsPickerTarget) {
+        openPicker = null
+        scope.launch { rowFocus(target.key).requestFocusWhenAttached() }
+    }
+    fun intervalLabel(interval: PlaylistEpgRefreshInterval): String =
+        resources.getQuantityString(R.plurals.source_refresh_interval_hours, interval.hours.toInt(), interval.hours.toInt())
+    openPicker?.let { target ->
+        when (target) {
+            SettingsPickerTarget.InterfaceLanguage -> SettingsPickerDialog(
+                title = stringResource(R.string.interface_language_title),
+                options = interfaceLanguageChoices.map { (tag, label) ->
+                    SettingsPickerOption(tag, label, testTag = "settings-interface-language-${tag ?: "system"}")
+                },
+                selected = interfaceLanguage,
+                onSelect = { tag ->
+                    closePicker(target)
+                    interfaceLanguage = tag
+                    // Only the pre-33 path needs this; from Tiramisu the framework restarts us.
+                    if (AppLocale.apply(context, tag)) context.findActivity()?.recreate()
+                },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.InterfaceScale -> SettingsPickerDialog(
+                title = stringResource(R.string.interface_scale_title),
+                options = interfaceScaleChoices.map { (scale, label) ->
+                    SettingsPickerOption(scale, label, testTag = "settings-interface-scale-${scale.name.lowercase()}")
+                },
+                selected = appPreferences.interfaceScale,
+                onSelect = { scale -> closePicker(target); scope.launch { preferencesRepository.setInterfaceScale(scale) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.Startup -> SettingsPickerDialog(
+                title = stringResource(R.string.startup_title),
+                options = StartupScreen.entries.map { screen ->
+                    SettingsPickerOption(
+                        screen, screen.localizedLabel(),
+                        description = if (screen == StartupScreen.LAST_CHANNEL) stringResource(R.string.startup_last_channel_help) else null,
+                        testTag = "settings-startup-${screen.name.lowercase()}",
+                    )
+                },
+                selected = appPreferences.startupScreen,
+                onSelect = { screen -> closePicker(target); scope.launch { preferencesRepository.setStartupScreen(screen) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.RefreshInterval -> SettingsPickerDialog(
+                title = stringResource(R.string.source_refresh_schedule),
+                options = PlaylistEpgRefreshInterval.entries.map { interval ->
+                    SettingsPickerOption(interval, intervalLabel(interval), testTag = "settings-refresh-interval-${interval.hours}")
+                },
+                selected = appPreferences.playlistEpgRefreshInterval,
+                onSelect = { interval ->
+                    closePicker(target)
+                    scope.launch {
+                        preferencesRepository.setPlaylistEpgRefreshInterval(interval)
+                        status = resources.getString(R.string.source_refresh_schedule_saved, intervalLabel(interval))
+                    }
+                },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.Buffer -> SettingsPickerDialog(
+                title = stringResource(R.string.playback_buffer_title),
+                options = PlaybackBufferProfile.entries.map { profile ->
+                    SettingsPickerOption(
+                        profile, profile.localizedLabel(), description = profile.localizedHelp(),
+                        testTag = "settings-buffer-${profile.name.lowercase()}",
+                    )
+                },
+                selected = appPreferences.playbackBufferProfile,
+                onSelect = { profile -> closePicker(target); scope.launch { preferencesRepository.setPlaybackBufferProfile(profile) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.Reconnect -> SettingsPickerDialog(
+                title = stringResource(R.string.playback_reconnect_title),
+                options = PlaybackReconnectPolicy.entries.map { policy ->
+                    SettingsPickerOption(
+                        policy, policy.localizedLabel(), description = policy.localizedHelp(),
+                        testTag = "settings-reconnect-${policy.name.lowercase()}",
+                    )
+                },
+                selected = appPreferences.playbackReconnectPolicy,
+                onSelect = { policy -> closePicker(target); scope.launch { preferencesRepository.setPlaybackReconnectPolicy(policy) } },
+                onDismiss = { closePicker(target) },
+            )
+            is SettingsPickerTarget.Language -> SettingsPickerDialog(
+                title = stringResource(target.slot.labelResource()),
+                options = languageOptions.mapIndexed { index, (code, label) ->
+                    SettingsPickerOption(code, label, testTag = "settings-${target.key}-option-$index")
+                },
+                selected = appPreferences.languageFor(target.slot),
+                onSelect = { code ->
+                    closePicker(target)
+                    scope.launch {
+                        preferencesRepository.setPreferredLanguage(target.slot, code)
+                        val duplicateSlot = target.slot.pairedSlot()
+                        if (code != null && code == appPreferences.languageFor(duplicateSlot)) {
+                            preferencesRepository.setPreferredLanguage(duplicateSlot, null)
+                        }
+                    }
+                },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.MetadataLanguage -> SettingsPickerDialog(
+                title = stringResource(R.string.metadata_language_title),
+                options = metadataLanguageOptions.map { (tag, name) ->
+                    SettingsPickerOption(tag, name, testTag = "settings-metadata-language-$tag")
+                },
+                selected = appPreferences.metadataLanguage,
+                onSelect = { tag ->
+                    closePicker(target)
+                    if (tag != appPreferences.metadataLanguage) {
+                        scope.launch {
+                            preferencesRepository.setMetadataLanguage(tag)
+                            onMetadataLanguageChanged()
+                        }
+                    }
+                },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.PreferredCopy -> SettingsPickerDialog(
+                title = stringResource(R.string.preferred_copy_title),
+                options = CataloguePreferredCopy.entries.map { preferred ->
+                    SettingsPickerOption(preferred, preferred.localizedLabel(), testTag = "settings-preferred-copy-${preferred.name.lowercase()}")
+                },
+                selected = appPreferences.preferredCatalogueCopy,
+                onSelect = { preferred -> closePicker(target); scope.launch { preferencesRepository.setPreferredCatalogueCopy(preferred) } },
+                onDismiss = { closePicker(target) },
+            )
+        }
+    }
+    fun closeSourcePage() {
+        sourcePageOpen = false
+        val target = sourceRowFocus[selectedSourceId] ?: sectionFocusRequesters.getValue(SettingsSection.SOURCES)
+        scope.launch { target.requestFocusWhenAttached() }
+    }
+    BackHandler(enabled = sourcePageOpen && selectedSection == SettingsSection.SOURCES) { closeSourcePage() }
     LaunchedEffect(selectedSection, sectionFocusGeneration, sportsFollowMenuOpen) {
         val requester = if (selectedSection == SettingsSection.SPORT && sportsFollowMenuOpen) {
             sportsFollowFocusRequester
@@ -307,21 +470,6 @@ fun SettingsScreen(
             sectionFocusRequesters.getValue(selectedSection)
         }
         requester.requestFocus()
-    }
-    LaunchedEffect(refreshIntervalMenuOpen) {
-        if (refreshIntervalMenuOpen) refreshIntervalOptionFocusRequester.requestFocus()
-    }
-    BackHandler(enabled = refreshIntervalMenuOpen) {
-        refreshIntervalMenuOpen = false
-        refreshIntervalButtonFocusRequester.requestFocus()
-    }
-    LaunchedEffect(languageMenuSlot) {
-        if (languageMenuSlot != null) languageOptionFocusRequester.requestFocus()
-    }
-    BackHandler(enabled = languageMenuSlot != null) {
-        val slot = languageMenuSlot
-        languageMenuSlot = null
-        slot?.let { languageButtonFocusRequesters.getValue(it).requestFocus() }
     }
     LaunchedEffect(
         sportsFollowMenuOpen,
@@ -502,13 +650,6 @@ fun SettingsScreen(
                     testTag = "settings-back",
                     compact = true,
                 )
-                if (onManageLibrary != null) TvActionButton(
-                    label = stringResource(R.string.manager_title),
-                    onClick = onManageLibrary,
-                    compact = true,
-                    modifier = Modifier.padding(start = 8.dp, bottom = 4.dp),
-                    testTag = "settings-library-manager",
-                )
             }
             Spacer(Modifier.height(SETTINGS_HEADER_GAP))
             Row(
@@ -519,8 +660,8 @@ fun SettingsScreen(
                     modifier = Modifier.width(SETTINGS_SIDEBAR_WIDTH).fillMaxHeight(),
                     selected = selectedSection,
                     onSelected = { section ->
-                        refreshIntervalMenuOpen = false
-                        languageMenuSlot = null
+                        openPicker = null
+                        sourcePageOpen = false
                         selectedSection = section
                         sectionFocusGeneration += 1
                     },
@@ -535,73 +676,208 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 14.dp),
                 ) {
+            if (selectedSection == SettingsSection.GENERAL) {
+            item {
+                SettingsGroup {
+                    SettingsValueRow(
+                        title = stringResource(R.string.interface_language_title),
+                        subtitle = stringResource(R.string.interface_language_help),
+                        value = interfaceLanguageChoices.firstOrNull { it.first == interfaceLanguage }?.second.orEmpty(),
+                        icon = TvIcons.Info,
+                        onClick = { openPicker = SettingsPickerTarget.InterfaceLanguage },
+                        focusRequester = rowFocus(SettingsPickerTarget.InterfaceLanguage.key),
+                        divider = false,
+                        testTag = "settings-interface-language",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.interface_scale_title),
+                        subtitle = stringResource(R.string.interface_scale_help),
+                        value = interfaceScaleChoices.firstOrNull { it.first == appPreferences.interfaceScale }?.second.orEmpty(),
+                        icon = TvIcons.Aspect,
+                        onClick = { openPicker = SettingsPickerTarget.InterfaceScale },
+                        focusRequester = rowFocus(SettingsPickerTarget.InterfaceScale.key),
+                        testTag = "settings-interface-scale",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.sports_timezone_title),
+                        subtitle = stringResource(R.string.sports_timezone_help),
+                        value = if (appPreferences.timeZoneFollowsDevice) {
+                            stringResource(R.string.sports_timezone_device, timeZoneLabel(appPreferences.timeZoneId))
+                        } else {
+                            timeZoneLabel(appPreferences.timeZoneId)
+                        },
+                        icon = TvIcons.Epg,
+                        onClick = { timeZonePickerOpen = true },
+                        focusRequester = rowFocus("time-zone"),
+                        testTag = "settings-time-zone",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.startup_title),
+                        value = appPreferences.startupScreen.localizedLabel(),
+                        icon = TvIcons.Home,
+                        onClick = { openPicker = SettingsPickerTarget.Startup },
+                        focusRequester = rowFocus(SettingsPickerTarget.Startup.key),
+                        testTag = "settings-startup",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.source_refresh_schedule),
+                        subtitle = stringResource(R.string.source_refresh_schedule_help),
+                        value = intervalLabel(appPreferences.playlistEpgRefreshInterval),
+                        icon = TvIcons.Refresh,
+                        onClick = { openPicker = SettingsPickerTarget.RefreshInterval },
+                        focusRequester = rowFocus(SettingsPickerTarget.RefreshInterval.key),
+                        testTag = "settings-refresh-interval",
+                    )
+                }
+                if (timeZonePickerOpen) {
+                    TimeZonePickerDialog(
+                        currentZoneId = appPreferences.timeZoneId,
+                        followsDevice = appPreferences.timeZoneFollowsDevice,
+                        onFollowDevice = {
+                            timeZonePickerOpen = false
+                            scope.launch { rowFocus("time-zone").requestFocusWhenAttached() }
+                            scope.launch { preferencesRepository.followDeviceTimeZone() }
+                        },
+                        onSelect = { id ->
+                            timeZonePickerOpen = false
+                            scope.launch { rowFocus("time-zone").requestFocusWhenAttached() }
+                            scope.launch { preferencesRepository.setTimeZone(id) }
+                        },
+                        onDismiss = {
+                            timeZonePickerOpen = false
+                            scope.launch { rowFocus("time-zone").requestFocusWhenAttached() }
+                        },
+                    )
+                }
+            }
+            }
             if (selectedSection == SettingsSection.METADATA) {
             item {
-                val displayLocale = LocalResources.current.configuration.locales[0]
-                val options = remember(displayLocale) {
-                    MetadataLanguages.TAGS.map { tag ->
-                        val locale = java.util.Locale.forLanguageTag(tag)
-                        val name = locale.getDisplayName(displayLocale)
-                            .replaceFirstChar { it.titlecase(displayLocale) }
-                        (tag as String?) to name
-                    }
-                }
                 SettingsGroup {
-                    SettingsGroupHeading(stringResource(R.string.metadata_language_title))
-                    Text(
-                        text = stringResource(R.string.metadata_language_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    PreferredLanguageRow(
-                        label = stringResource(R.string.metadata_language_label),
-                        selectedCode = appPreferences.metadataLanguage,
-                        options = options,
-                        menuOpen = metadataLanguageMenuOpen,
-                        onToggleMenu = { metadataLanguageMenuOpen = !metadataLanguageMenuOpen },
-                        onSelect = { tag ->
-                            metadataLanguageMenuOpen = false
-                            if (tag != null && tag != appPreferences.metadataLanguage) {
-                                scope.launch {
-                                    preferencesRepository.setMetadataLanguage(tag)
-                                    onMetadataLanguageChanged()
-                                }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SettingsGroupHeading(stringResource(R.string.metadata_title))
+                        AsyncImage(
+                            model = "file:///android_asset/tmdb_attribution.svg",
+                            contentDescription = "TMDB",
+                            modifier = Modifier.width(137.dp).height(18.dp),
+                        )
+                    }
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.metadata_tmdb_switch),
+                        subtitle = stringResource(R.string.metadata_description),
+                        checked = tmdbEnabled,
+                        enabled = !busy,
+                        onCheckedChange = { on ->
+                            if (on && tmdbToken.isBlank()) {
+                                metadataStatus = resources.getString(R.string.metadata_key_required)
+                            } else {
+                                tmdbEnabled = on
+                                saveMetadataSettings(clearCache = false)
                             }
-                            metadataLanguageButtonFocusRequester.requestFocus()
                         },
-                        buttonFocusRequester = metadataLanguageButtonFocusRequester,
-                        optionFocusRequester = metadataLanguageOptionFocusRequester,
-                        testTag = "settings-metadata-language",
+                        icon = TvIcons.Star,
+                        divider = false,
+                        focusRequester = sectionFocusRequesters.getValue(SettingsSection.METADATA),
+                        testTag = "settings-metadata-tmdb-enabled",
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = SETTINGS_ROW_PADDING),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TvUrlField(
+                            value = tmdbToken,
+                            onValueChange = { tmdbToken = it.take(MAX_METADATA_TOKEN_LENGTH) },
+                            label = stringResource(R.string.metadata_tmdb_token),
+                            modifier = Modifier.weight(1f),
+                            testTag = "settings-metadata-tmdb-token",
+                            leadingIconRes = TvIcons.Key,
+                            keyboardType = KeyboardType.Password,
+                            visualTransformation = PasswordVisualTransformation(),
+                            editOnClickOnly = true,
+                            compact = true,
+                        )
+                        TvActionButton(
+                            label = stringResource(R.string.metadata_save_key),
+                            icon = TvIcons.Save,
+                            enabled = !busy,
+                            compact = true,
+                            onClick = { saveMetadataSettings(clearCache = true) },
+                            testTag = "settings-metadata-save",
+                        )
+                        TvActionButton(
+                            label = stringResource(R.string.metadata_test_tmdb),
+                            enabled = !busy && tmdbToken.isNotBlank(),
+                            compact = true,
+                            onClick = {
+                                scope.launch {
+                                    busy = true
+                                    val result = runCatching {
+                                        metadataRepository.verifyTmdbCredential(tmdbToken)
+                                        resources.getString(R.string.metadata_tmdb_test_ok)
+                                    }.getOrElse { it.userMessage(context) }
+                                    metadataStatus = result
+                                    status = result
+                                    busy = false
+                                }
+                            },
+                            testTag = "settings-metadata-test-tmdb",
+                        )
+                    }
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.metadata_tvmaze_switch),
+                        checked = tvmazeEnabled,
+                        enabled = !busy,
+                        onCheckedChange = { on -> tvmazeEnabled = on; saveMetadataSettings(clearCache = false) },
+                        icon = TvIcons.Guide,
+                        testTag = "settings-metadata-tvmaze-enabled",
+                    )
+                    metadataStatus?.let { message ->
+                        Text(
+                            text = message,
+                            color = palette.focus,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = SETTINGS_ROW_PADDING).testTag("settings-metadata-status"),
+                        )
+                    }
                 }
             }
             item {
                 SettingsGroup {
-                    SettingsGroupHeading(stringResource(R.string.preferred_copy_title))
-                    FlowRow(
-                        modifier = Modifier.focusGroup(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        CataloguePreferredCopy.entries.forEach { preferred ->
-                            TvActionButton(
-                                label = preferred.localizedLabel(),
-                                onClick = {
-                                    scope.launch {
-                                        preferencesRepository.setPreferredCatalogueCopy(preferred)
-                                    }
-                                },
-                                compact = true,
-                                selected = appPreferences.preferredCatalogueCopy == preferred,
-                                testTag = "settings-preferred-copy-${preferred.name.lowercase()}",
-                            )
-                        }
-                    }
-                    Text(
-                        text = stringResource(R.string.preferred_copy_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
+                    SettingsValueRow(
+                        title = stringResource(R.string.metadata_language_title),
+                        subtitle = stringResource(R.string.metadata_language_help),
+                        value = metadataLanguageOptions.firstOrNull { it.first == appPreferences.metadataLanguage }?.second
+                            ?: appPreferences.metadataLanguage,
+                        icon = TvIcons.Info,
+                        onClick = { openPicker = SettingsPickerTarget.MetadataLanguage },
+                        focusRequester = rowFocus(SettingsPickerTarget.MetadataLanguage.key),
+                        divider = false,
+                        testTag = "settings-metadata-language",
                     )
+                    SettingsValueRow(
+                        title = stringResource(R.string.preferred_copy_title),
+                        subtitle = stringResource(R.string.preferred_copy_help),
+                        value = appPreferences.preferredCatalogueCopy.localizedLabel(),
+                        icon = TvIcons.Channels,
+                        onClick = { openPicker = SettingsPickerTarget.PreferredCopy },
+                        focusRequester = rowFocus(SettingsPickerTarget.PreferredCopy.key),
+                        testTag = "settings-preferred-copy",
+                    )
+                    if (onManageLibrary != null) {
+                        SettingsValueRow(
+                            title = stringResource(R.string.manager_title),
+                            subtitle = stringResource(R.string.manager_row_help),
+                            value = "",
+                            icon = TvIcons.Settings,
+                            onClick = onManageLibrary,
+                            testTag = "settings-library-manager",
+                        )
+                    }
                 }
             }
             item {
@@ -634,94 +910,14 @@ fun SettingsScreen(
                 }
             }
             item {
+                ArtworkCacheGroup(
+                    onCleared = { status = resources.getString(R.string.artwork_cache_cleared) },
+                )
+            }
+            item {
                 SettingsGroup {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SettingsGroupHeading(stringResource(R.string.metadata_title))
-                        AsyncImage(
-                            model = "file:///android_asset/tmdb_attribution.svg",
-                            contentDescription = "TMDB",
-                            modifier = Modifier.width(137.dp).height(18.dp),
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.metadata_description),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TvActionButton(
-                            label = stringResource(
-                                if (tmdbEnabled) {
-                                    R.string.metadata_tmdb_enabled
-                                } else {
-                                    R.string.metadata_tmdb_disabled
-                                },
-                            ),
-                            onClick = { tmdbEnabled = !tmdbEnabled },
-                            focusRequester = sectionFocusRequesters.getValue(SettingsSection.METADATA),
-                            compact = true,
-                            testTag = "settings-metadata-tmdb-enabled",
-                        )
-                        TvUrlField(
-                            value = tmdbToken,
-                            onValueChange = { tmdbToken = it.take(MAX_METADATA_TOKEN_LENGTH) },
-                            label = stringResource(R.string.metadata_tmdb_token),
-                            modifier = Modifier.weight(1f),
-                            testTag = "settings-metadata-tmdb-token",
-                            leadingIconRes = TvIcons.Key,
-                            keyboardType = KeyboardType.Password,
-                            visualTransformation = PasswordVisualTransformation(),
-                            editOnClickOnly = true,
-                            compact = true,
-                        )
-                        TvActionButton(
-                            label = stringResource(
-                                if (tvmazeEnabled) {
-                                    R.string.metadata_tvmaze_enabled
-                                } else {
-                                    R.string.metadata_tvmaze_disabled
-                                },
-                            ),
-                            onClick = { tvmazeEnabled = !tvmazeEnabled },
-                            compact = true,
-                            testTag = "settings-metadata-tvmaze-enabled",
-                        )
-                    }
+                    SettingsGroupHeading(stringResource(R.string.maintenance_title))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        TvActionButton(
-                            label = stringResource(R.string.metadata_save),
-                            icon = TvIcons.Save,
-                            enabled = !busy && (!tmdbEnabled || tmdbToken.isNotBlank()),
-                            compact = true,
-                            onClick = {
-                                scope.launch {
-                                    busy = true
-                                    val result = runCatching {
-                                        secretSettingsStore.saveMetadataSettings(
-                                            MetadataSettings(
-                                                tmdbEnabled = tmdbEnabled,
-                                                tmdbReadAccessToken = tmdbToken,
-                                                tvmazeEnabled = tvmazeEnabled,
-                                            ),
-                                        )
-                                        metadataRepository.clearCache()
-                                        resources.getString(R.string.metadata_saved)
-                                    }.getOrElse { it.userMessage(context) }
-                                    metadataStatus = result
-                                    status = result
-                                    busy = false
-                                }
-                            },
-                            testTag = "settings-metadata-save",
-                        )
                         TvActionButton(
                             label = stringResource(R.string.metadata_clear_cache),
                             enabled = !busy,
@@ -737,24 +933,6 @@ fun SettingsScreen(
                             testTag = "settings-metadata-clear-cache",
                         )
                         TvActionButton(
-                            label = stringResource(R.string.metadata_test_tmdb),
-                            enabled = !busy && tmdbToken.isNotBlank(),
-                            compact = true,
-                            onClick = {
-                                scope.launch {
-                                    busy = true
-                                    val result = runCatching {
-                                        metadataRepository.verifyTmdbCredential(tmdbToken)
-                                        resources.getString(R.string.metadata_tmdb_test_ok)
-                                    }.getOrElse { it.userMessage(context) }
-                                    metadataStatus = result
-                                    status = result
-                                    busy = false
-                                }
-                            },
-                            testTag = "settings-metadata-test-tmdb",
-                        )
-                        TvActionButton(
                             label = "TMDB",
                             compact = true,
                             onClick = { runCatching { uriHandler.openUri("https://www.themoviedb.org") } },
@@ -765,25 +943,7 @@ fun SettingsScreen(
                             onClick = { runCatching { uriHandler.openUri("https://www.tvmaze.com") } },
                         )
                     }
-                    metadataStatus?.let { message ->
-                        Text(
-                            text = message,
-                            color = palette.focus,
-                            fontSize = 12.sp,
-                            modifier = Modifier.testTag("settings-metadata-status"),
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.metadata_disclosure),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
                 }
-            }
-            item {
-                ArtworkCacheGroup(
-                    onCleared = { status = resources.getString(R.string.artwork_cache_cleared) },
-                )
             }
             }
             if (selectedSection == SettingsSection.SPORT) {
@@ -800,43 +960,6 @@ fun SettingsScreen(
                         color = palette.textMuted,
                         fontSize = 12.sp,
                     )
-                    Text(
-                        text = stringResource(R.string.sports_timezone_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                    )
-                    Text(
-                        text = stringResource(R.string.sports_timezone_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        item(key = DEVICE_TIME_ZONE) {
-                            TvActionButton(
-                                label = stringResource(R.string.sports_timezone_device, deviceTimeZoneId()),
-                                selected = appPreferences.timeZoneFollowsDevice,
-                                compact = true,
-                                onClick = { scope.launch { preferencesRepository.followDeviceTimeZone() } },
-                                testTag = "settings-sports-timezone-device",
-                            )
-                        }
-                        items(SPORTS_TIME_ZONES, key = { it.id }) { timeZone ->
-                            TvActionButton(
-                                label = timeZone.label,
-                                selected = !appPreferences.timeZoneFollowsDevice && appPreferences.timeZoneId == timeZone.id,
-                                compact = true,
-                                focusRequester = if (timeZone == SPORTS_TIME_ZONES.first()) {
-                                    sectionFocusRequesters.getValue(SettingsSection.SPORT)
-                                } else {
-                                    null
-                                },
-                                onClick = {
-                                    scope.launch { preferencesRepository.setTimeZone(timeZone.id) }
-                                },
-                                testTag = "settings-sports-timezone-${timeZone.id}",
-                            )
-                        }
-                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -863,6 +986,7 @@ fun SettingsScreen(
                             icon = TvIcons.Save,
                             enabled = !busy,
                             compact = true,
+                            focusRequester = sectionFocusRequesters.getValue(SettingsSection.SPORT),
                             onClick = {
                                 status = runCatching {
                                     secretSettingsStore.saveSportsApiSettings(
@@ -1053,253 +1177,64 @@ fun SettingsScreen(
                             }
                         }
                     }
-                    Text(
-                        text = stringResource(R.string.sports_disclosure),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
                 }
             }
             }
             if (selectedSection == SettingsSection.PLAYBACK) {
             item {
                 SettingsGroup {
-                    SettingsGroupHeading(stringResource(R.string.playback_buffer_title))
-                    FlowRow(
-                        modifier = Modifier.focusGroup(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        PlaybackBufferProfile.entries.forEach { profile ->
-                            TvActionButton(
-                                label = profile.localizedLabel(),
-                                onClick = {
-                                    scope.launch {
-                                        preferencesRepository.setPlaybackBufferProfile(profile)
-                                    }
-                                },
-                                compact = true,
-                                selected = appPreferences.playbackBufferProfile == profile,
-                                focusRequester = if (profile == PlaybackBufferProfile.entries.first()) {
-                                    sectionFocusRequesters.getValue(SettingsSection.PLAYBACK)
-                                } else {
-                                    null
-                                },
-                                testTag = "settings-buffer-${profile.name.lowercase()}",
-                            )
-                        }
-                    }
-                    Text(
-                        text = stringResource(R.string.playback_buffer_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
+                    SettingsValueRow(
+                        title = stringResource(R.string.playback_buffer_title),
+                        subtitle = stringResource(R.string.playback_buffer_help),
+                        value = appPreferences.playbackBufferProfile.localizedLabel(),
+                        icon = TvIcons.Play,
+                        onClick = { openPicker = SettingsPickerTarget.Buffer },
+                        focusRequester = rowFocus(SettingsPickerTarget.Buffer.key),
+                        divider = false,
+                        testTag = "settings-buffer",
                     )
-                    Text(
-                        text = stringResource(R.string.auto_frame_rate_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(top = 6.dp),
+                    SettingsValueRow(
+                        title = stringResource(R.string.playback_reconnect_title),
+                        subtitle = stringResource(R.string.playback_reconnect_help),
+                        value = appPreferences.playbackReconnectPolicy.localizedLabel(),
+                        icon = TvIcons.Refresh,
+                        onClick = { openPicker = SettingsPickerTarget.Reconnect },
+                        focusRequester = rowFocus(SettingsPickerTarget.Reconnect.key),
+                        testTag = "settings-reconnect",
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(true, false).forEach { on ->
-                            TvActionButton(
-                                label = stringResource(
-                                    if (on) R.string.auto_frame_rate_on else R.string.auto_frame_rate_off,
-                                ),
-                                onClick = {
-                                    scope.launch { preferencesRepository.setAutoFrameRateEnabled(on) }
-                                },
-                                compact = true,
-                                selected = appPreferences.autoFrameRateEnabled == on,
-                                testTag = "settings-auto-frame-rate-${if (on) "on" else "off"}",
-                            )
-                        }
-                    }
-                    Text(
-                        text = stringResource(R.string.auto_frame_rate_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.auto_frame_rate_title),
+                        subtitle = stringResource(R.string.auto_frame_rate_help),
+                        checked = appPreferences.autoFrameRateEnabled,
+                        onCheckedChange = { on -> scope.launch { preferencesRepository.setAutoFrameRateEnabled(on) } },
+                        icon = TvIcons.Aspect,
+                        testTag = "settings-auto-frame-rate",
                     )
-                    Text(
-                        text = stringResource(R.string.auto_play_next_episode_title),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(true, false).forEach { on ->
-                            TvActionButton(
-                                label = stringResource(
-                                    if (on) {
-                                        R.string.auto_play_next_episode_on
-                                    } else {
-                                        R.string.auto_play_next_episode_off
-                                    },
-                                ),
-                                onClick = {
-                                    scope.launch {
-                                        preferencesRepository.setAutoPlayNextEpisodeEnabled(on)
-                                    }
-                                },
-                                compact = true,
-                                selected = appPreferences.autoPlayNextEpisodeEnabled == on,
-                                testTag = "settings-auto-next-episode-${if (on) "on" else "off"}",
-                            )
-                        }
-                    }
-                    Text(
-                        text = stringResource(R.string.auto_play_next_episode_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    Text(
-                        text = stringResource(R.string.playback_decoder_fallback_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.auto_play_next_episode_title),
+                        subtitle = stringResource(R.string.auto_play_next_episode_help),
+                        checked = appPreferences.autoPlayNextEpisodeEnabled,
+                        onCheckedChange = { on -> scope.launch { preferencesRepository.setAutoPlayNextEpisodeEnabled(on) } },
+                        icon = TvIcons.Forward,
+                        testTag = "settings-auto-next-episode",
                     )
                 }
             }
             item {
-                SettingsGroup {
-                    SettingsGroupHeading(stringResource(R.string.playback_reconnect_title))
-                    FlowRow(
-                        modifier = Modifier.focusGroup(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        PlaybackReconnectPolicy.entries.forEach { policy ->
-                            TvActionButton(
-                                label = policy.localizedLabel(),
-                                onClick = {
-                                    scope.launch {
-                                        preferencesRepository.setPlaybackReconnectPolicy(policy)
-                                    }
-                                },
-                                compact = true,
-                                selected = appPreferences.playbackReconnectPolicy == policy,
-                                testTag = "settings-reconnect-${policy.name.lowercase()}",
-                            )
-                        }
-                    }
-                    Text(
-                        text = stringResource(R.string.playback_reconnect_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.startup_title),
-                        color = palette.textMuted,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    StartupScreen.entries.forEach { startupScreen ->
-                        TvActionButton(
-                            label = startupScreen.localizedLabel(),
-                            selected = appPreferences.startupScreen == startupScreen,
-                            onClick = {
-                                scope.launch { preferencesRepository.setStartupScreen(startupScreen) }
-                            },
-                            compact = true,
-                            testTag = "settings-startup-${startupScreen.name.lowercase()}",
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.startup_last_channel_help),
-                        color = palette.textMuted,
-                        fontSize = 13.sp,
-                    )
-                }
-            }
-            item {
-                var interfaceLanguage by remember { mutableStateOf(AppLocale.stored(context)) }
-                SettingsGroup {
-                    SettingsGroupHeading(stringResource(R.string.interface_language_title))
-                    Text(
-                        text = stringResource(R.string.interface_language_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        interfaceLanguageOptions().forEach { (tag, label) ->
-                            TvActionButton(
-                                label = label,
-                                selected = interfaceLanguage == tag,
-                                onClick = {
-                                    interfaceLanguage = tag
-                                    // Only the pre-33 path needs this; from
-                                    // Tiramisu the framework restarts us.
-                                    if (AppLocale.apply(context, tag)) {
-                                        context.findActivity()?.recreate()
-                                    }
-                                },
-                                compact = true,
-                                testTag = "settings-interface-language-${tag ?: "system"}",
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                SettingsGroup {
-                    SettingsGroupHeading(stringResource(R.string.interface_scale_title))
-                    Text(
-                        text = stringResource(R.string.interface_scale_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        interfaceScaleOptions().forEach { (scale, label) ->
-                            TvActionButton(
-                                label = label,
-                                selected = appPreferences.interfaceScale == scale,
-                                onClick = { scope.launch { preferencesRepository.setInterfaceScale(scale) } },
-                                compact = true,
-                                testTag = "settings-interface-scale-${scale.name.lowercase()}",
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                val languageOptions = preferredLanguageOptions()
                 SettingsGroup {
                     SettingsGroupHeading(stringResource(R.string.preferred_languages_title))
-                    Text(
-                        text = stringResource(R.string.preferred_languages_help),
-                        color = palette.textMuted,
-                        fontSize = 12.sp,
-                    )
-                    PreferredLanguageSlot.entries.forEach { slot ->
-                        val selectedCode = appPreferences.languageFor(slot)
-                        PreferredLanguageRow(
-                            label = stringResource(slot.labelResource()),
-                            selectedCode = selectedCode,
-                            options = languageOptions,
-                            menuOpen = languageMenuSlot == slot,
-                            onToggleMenu = {
-                                languageMenuSlot = if (languageMenuSlot == slot) null else slot
-                            },
-                            onSelect = { code ->
-                                scope.launch {
-                                    preferencesRepository.setPreferredLanguage(slot, code)
-                                    val duplicateSlot = slot.pairedSlot()
-                                    if (code != null && code == appPreferences.languageFor(duplicateSlot)) {
-                                        preferencesRepository.setPreferredLanguage(duplicateSlot, null)
-                                    }
-                                }
-                                languageMenuSlot = null
-                                languageButtonFocusRequesters.getValue(slot).requestFocus()
-                            },
-                            buttonFocusRequester = languageButtonFocusRequesters.getValue(slot),
-                            optionFocusRequester = languageOptionFocusRequester,
-                            testTag = "settings-language-${slot.name.lowercase()}",
+                    PreferredLanguageSlot.entries.forEachIndexed { index, slot ->
+                        val target = SettingsPickerTarget.Language(slot)
+                        val code = appPreferences.languageFor(slot)
+                        SettingsValueRow(
+                            title = stringResource(slot.labelResource()),
+                            subtitle = if (index == 0) stringResource(R.string.preferred_languages_help) else null,
+                            value = languageOptions.firstOrNull { it.first == code }?.second ?: languageOptions.first().second,
+                            icon = if (slot == PreferredLanguageSlot.PRIMARY_AUDIO || slot == PreferredLanguageSlot.SECONDARY_AUDIO) TvIcons.Audio else TvIcons.Subtitles,
+                            onClick = { openPicker = target },
+                            focusRequester = rowFocus(target.key),
+                            divider = index > 0,
+                            testTag = "settings-${target.key}",
                         )
                     }
                 }
@@ -1439,36 +1374,80 @@ fun SettingsScreen(
                     )
                 }
             }
+            item {
+                SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.maintenance_title))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.guide_clear_all_help),
+                            color = palette.textMuted,
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TvActionButton(
+                            label = stringResource(R.string.guide_clear_all),
+                            icon = TvIcons.Delete,
+                            danger = true,
+                            enabled = !busy,
+                            compact = true,
+                            onClick = {
+                                scope.launch {
+                                    guideRepository.clear()
+                                    maintenanceStatus = resources.getString(R.string.guide_cache_cleared)
+                                }
+                            },
+                            testTag = "settings-clear-guide",
+                        )
+                    }
+                    if (maintenanceStatus.isNotBlank()) {
+                        Text(text = maintenanceStatus, color = palette.focus, fontSize = 12.sp, modifier = Modifier.testTag("settings-maintenance-status"))
+                    }
+                }
+            }
             }
             if (selectedSection == SettingsSection.SOURCES) {
+            if (!sourcePageOpen) {
             item { SettingsOverline(stringResource(R.string.settings_overline_sources)) }
             item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(horizontal = SETTINGS_ROW_PADDING),
-                ) {
-                    items(sources, key = { it.id }) { source ->
+                SettingsGroup {
+                    if (sources.isEmpty()) {
+                        SettingsRow(title = stringResource(R.string.source_none), icon = TvIcons.Info, divider = false)
+                    }
+                    sources.forEachIndexed { index, source ->
+                        val health = sourceChipStatus(source, sourceHealth)
                         // Only the name the viewer gave the source. Its address
-                        // and credentials never leave the editor, and the dot
-                        // carries the state instead of a word that would.
-                        SettingsSourceChip(
-                            label = source.name,
-                            status = sourceChipStatus(source, sourceHealth),
-                            selected = source.id == selectedSourceId,
-                            onClick = { selectedSourceId = source.id },
-                            focusRequester = if (source == sources.firstOrNull()) {
+                        // and credentials never leave its page.
+                        SettingsValueRow(
+                            title = source.name,
+                            subtitle = sourceRowSubtitle(source, health, sourceHealth, resources),
+                            value = stringResource(if (source.enabled) R.string.source_row_on else R.string.source_row_off),
+                            icon = if (source.type == IptvSourceType.M3U) TvIcons.Channels else TvIcons.Link,
+                            onClick = {
+                                selectedSourceId = source.id
+                                sourcePageOpen = true
+                            },
+                            focusRequester = if (index == 0) {
                                 sectionFocusRequesters.getValue(SettingsSection.SOURCES)
                             } else {
-                                null
+                                sourceRowFocus.getOrPut(source.id) { FocusRequester() }
                             },
+                            divider = index > 0,
                             testTag = "source-${source.id}",
                         )
                     }
-                    item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = SETTINGS_ROW_PADDING, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         TvActionButton(
                             label = stringResource(R.string.source_add_m3u),
                             onClick = {
                                 selectedSourceId = newM3uSourceId()
+                                sourcePageOpen = true
                                 status = resources.getString(R.string.source_new_m3u)
                             },
                             focusRequester = if (sources.isEmpty()) {
@@ -1476,26 +1455,26 @@ fun SettingsScreen(
                             } else {
                                 null
                             },
+                            compact = true,
                             testTag = "source-add-m3u",
                         )
-                    }
-                    item {
                         TvActionButton(
                             label = stringResource(R.string.source_add_xtream),
                             onClick = {
                                 selectedSourceId = newXtreamSourceId()
+                                sourcePageOpen = true
                                 status = resources.getString(R.string.source_new_xtream)
                             },
+                            compact = true,
                             testTag = "source-add-xtream",
                         )
-                    }
-                    item {
                         TvActionButton(
                             label = stringResource(
                                 if (phoneSetup.running) R.string.phone_setup_stop else R.string.phone_setup_start,
                             ),
                             icon = TvIcons.Link,
                             onClick = if (phoneSetup.running) phoneSetupActions.onStop else phoneSetupActions.onStart,
+                            compact = true,
                             testTag = "source-add-phone",
                         )
                     }
@@ -1506,14 +1485,30 @@ fun SettingsScreen(
                 PhoneSetupPanel(state = phoneSetup)
             }
             }
+            }
+            if (sourcePageOpen) {
             item {
-                SettingsOverline(
-                    text = if (sourceType == IptvSourceType.M3U) {
-                        stringResource(R.string.source_type_m3u_overline, sourceName)
-                    } else {
-                        stringResource(R.string.source_type_xtream_overline, sourceName)
-                    },
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SettingsOverline(
+                        text = if (sourceType == IptvSourceType.M3U) {
+                            stringResource(R.string.source_type_m3u_overline, sourceName)
+                        } else {
+                            stringResource(R.string.source_type_xtream_overline, sourceName)
+                        },
+                    )
+                    TvActionButton(
+                        label = stringResource(R.string.source_back_to_list),
+                        icon = TvIcons.Back,
+                        onClick = ::closeSourcePage,
+                        focusRequester = sourcePageFocus,
+                        compact = true,
+                        testTag = "source-page-back",
+                    )
+                }
             }
 // Where a source is actually configured, so it sits directly under the
             // source's own overline: someone who has just pressed "Add Xtream
@@ -1600,72 +1595,6 @@ fun SettingsScreen(
                 }
             }
             item {
-                val selectedInterval = appPreferences.playlistEpgRefreshInterval
-                val selectedIntervalLabel = pluralStringResource(
-                    R.plurals.source_refresh_interval_hours,
-                    selectedInterval.hours.toInt(),
-                    selectedInterval.hours.toInt(),
-                )
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    SettingsValueRow(
-                        title = stringResource(R.string.source_refresh_schedule),
-                        subtitle = stringResource(R.string.source_refresh_schedule_help),
-                        value = selectedIntervalLabel,
-                        icon = TvIcons.Refresh,
-                        chevron = TvIcons.ChevronDown,
-                        onClick = { refreshIntervalMenuOpen = !refreshIntervalMenuOpen },
-                        focusRequester = refreshIntervalButtonFocusRequester,
-                        divider = false,
-                        testTag = "settings-refresh-interval",
-                    )
-                    if (refreshIntervalMenuOpen) {
-                        Column(
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .width(220.dp)
-                                .background(palette.panel, StreamMateThemeTokens.shapes.medium)
-                                .padding(7.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            PlaylistEpgRefreshInterval.entries.forEach { interval ->
-                                val intervalLabel = pluralStringResource(
-                                    R.plurals.source_refresh_interval_hours,
-                                    interval.hours.toInt(),
-                                    interval.hours.toInt(),
-                                )
-                                TvActionButton(
-                                    label = intervalLabel,
-                                    selected = interval == selectedInterval,
-                                    onClick = {
-                                        refreshIntervalMenuOpen = false
-                                        scope.launch {
-                                            preferencesRepository.setPlaylistEpgRefreshInterval(interval)
-                                            status = resources.getString(
-                                                R.string.source_refresh_schedule_saved,
-                                                resources.getQuantityString(
-                                                    R.plurals.source_refresh_interval_hours,
-                                                    interval.hours.toInt(),
-                                                    interval.hours.toInt(),
-                                                ),
-                                            )
-                                            refreshIntervalButtonFocusRequester.requestFocus()
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    focusRequester = if (interval == selectedInterval) {
-                                        refreshIntervalOptionFocusRequester
-                                    } else {
-                                        null
-                                    },
-                                    compact = true,
-                                    testTag = "settings-refresh-interval-${interval.hours}",
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            item {
                 SettingsRow(
                     title = stringResource(R.string.source_name),
                     subtitle = stringResource(R.string.source_name_help),
@@ -1748,6 +1677,7 @@ fun SettingsScreen(
                                         sources = sources.filterNot { it.id == selectedSourceId }
                                         selectedSourceId = sources.firstOrNull { it.type == IptvSourceType.M3U }?.id
                                             ?: newM3uSourceId()
+                                        sourcePageOpen = false
                                         resources.getString(R.string.source_deleted)
                                     }.getOrElse { it.userMessage(context) }
                                     busy = false
@@ -2053,6 +1983,7 @@ fun SettingsScreen(
                     }
                 }
             }
+            }
             item {
                 SettingsGroup {
                     Row(
@@ -2080,20 +2011,6 @@ fun SettingsScreen(
                                 lineHeight = StreamMateThemeTokens.typography.caption.lineHeight,
                             )
                         }
-                        Spacer(Modifier.width(20.dp))
-                        TvActionButton(
-                            label = stringResource(R.string.guide_clear_all),
-                            icon = TvIcons.Delete,
-                            danger = true,
-                            enabled = !busy,
-                            onClick = {
-                                scope.launch {
-                                    guideRepository.clear()
-                                    status = resources.getString(R.string.guide_cache_cleared)
-                                }
-                            },
-                            testTag = "settings-clear-guide",
-                        )
                     }
                 }
             }
@@ -2119,404 +2036,12 @@ fun SettingsScreen(
                     )
                 }
             }
-            item {
-                SettingsGroup {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(TvIcons.Info),
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(palette.focus),
-                            modifier = Modifier.size(22.dp),
-                        )
-                        Spacer(Modifier.width(14.dp))
-                        Text(
-                            text = stringResource(R.string.settings_http_disclosure),
-                            color = palette.textMuted,
-                            fontSize = 13.sp,
-                        )
-                    }
-                }
-            }
             }
                 }
             }
         }
     }
 }
-
-private fun formatEpgOffset(minutes: Int): String {
-    if (minutes == 0) return "0 min"
-    val sign = if (minutes > 0) "+" else "−"
-    val absoluteMinutes = kotlin.math.abs(minutes)
-    val hours = absoluteMinutes / 60
-    val remainingMinutes = absoluteMinutes % 60
-    return when {
-        remainingMinutes == 0 -> "$sign$hours h"
-        hours == 0 -> "$sign$remainingMinutes min"
-        else -> "$sign$hours h $remainingMinutes min"
-    }
-}
-
-@Composable
-private fun PreferredLanguageRow(
-    label: String,
-    selectedCode: String?,
-    options: List<Pair<String?, String>>,
-    menuOpen: Boolean,
-    onToggleMenu: () -> Unit,
-    onSelect: (String?) -> Unit,
-    buttonFocusRequester: FocusRequester,
-    optionFocusRequester: FocusRequester,
-    testTag: String,
-) {
-    val palette = StreamMateThemeTokens.palette
-    val selectedIndex = options.indexOfFirst { it.first == selectedCode }.coerceAtLeast(0)
-    val selectedLabel = options[selectedIndex].second
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(text = label, color = palette.textMuted, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            TvActionButton(
-                label = "$selectedLabel  ▾",
-                onClick = onToggleMenu,
-                focusRequester = buttonFocusRequester,
-                compact = true,
-                testTag = testTag,
-            )
-        }
-        if (menuOpen) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .width(260.dp)
-                    .background(palette.panel, StreamMateThemeTokens.shapes.medium)
-                    .padding(7.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                options.forEachIndexed { index, (code, optionLabel) ->
-                    TvActionButton(
-                        label = optionLabel,
-                        selected = code == selectedCode,
-                        onClick = { onSelect(code) },
-                        modifier = Modifier.fillMaxWidth(),
-                        focusRequester = if (index == selectedIndex) optionFocusRequester else null,
-                        compact = true,
-                        testTag = "$testTag-option-$index",
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun interfaceScaleOptions(): List<Pair<InterfaceScale, String>> = listOf(
-    InterfaceScale.NORMAL to stringResource(R.string.interface_scale_normal),
-    InterfaceScale.COMPACT to stringResource(R.string.interface_scale_compact),
-    InterfaceScale.SMALL to stringResource(R.string.interface_scale_small),
-)
-
-@Composable
-private fun interfaceLanguageOptions(): List<Pair<String?, String>> = listOf(
-    null to stringResource(R.string.interface_language_system),
-    "en" to stringResource(R.string.interface_language_en),
-    "fi" to stringResource(R.string.interface_language_fi),
-)
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
-@Composable
-private fun preferredLanguageOptions(): List<Pair<String?, String>> = listOf(
-    null to stringResource(R.string.language_automatic),
-    "fi" to stringResource(R.string.language_finnish),
-    "en" to stringResource(R.string.language_english),
-    "sv" to stringResource(R.string.language_swedish),
-    "da" to stringResource(R.string.language_danish),
-    "no" to stringResource(R.string.language_norwegian),
-    "et" to stringResource(R.string.language_estonian),
-    "de" to stringResource(R.string.language_german),
-    "fr" to stringResource(R.string.language_french),
-    "es" to stringResource(R.string.language_spanish),
-    "it" to stringResource(R.string.language_italian),
-    "nl" to stringResource(R.string.language_dutch),
-)
-
-private fun AppPreferences.languageFor(slot: PreferredLanguageSlot): String? = when (slot) {
-    PreferredLanguageSlot.PRIMARY_AUDIO -> preferredAudioLanguage
-    PreferredLanguageSlot.SECONDARY_AUDIO -> secondaryAudioLanguage
-    PreferredLanguageSlot.PRIMARY_SUBTITLE -> preferredSubtitleLanguage
-    PreferredLanguageSlot.SECONDARY_SUBTITLE -> secondarySubtitleLanguage
-}
-
-private fun PreferredLanguageSlot.pairedSlot(): PreferredLanguageSlot = when (this) {
-    PreferredLanguageSlot.PRIMARY_AUDIO -> PreferredLanguageSlot.SECONDARY_AUDIO
-    PreferredLanguageSlot.SECONDARY_AUDIO -> PreferredLanguageSlot.PRIMARY_AUDIO
-    PreferredLanguageSlot.PRIMARY_SUBTITLE -> PreferredLanguageSlot.SECONDARY_SUBTITLE
-    PreferredLanguageSlot.SECONDARY_SUBTITLE -> PreferredLanguageSlot.PRIMARY_SUBTITLE
-}
-
-private fun PreferredLanguageSlot.labelResource(): Int = when (this) {
-    PreferredLanguageSlot.PRIMARY_AUDIO -> R.string.preferred_audio_primary
-    PreferredLanguageSlot.SECONDARY_AUDIO -> R.string.preferred_audio_secondary
-    PreferredLanguageSlot.PRIMARY_SUBTITLE -> R.string.preferred_subtitle_primary
-    PreferredLanguageSlot.SECONDARY_SUBTITLE -> R.string.preferred_subtitle_secondary
-}
-
-@Composable
-private fun SettingsSectionRail(
-    modifier: Modifier = Modifier,
-    selected: SettingsSection,
-    onSelected: (SettingsSection) -> Unit,
-) {
-    LazyColumn(
-        modifier = modifier.testTag("settings-sections"),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        contentPadding = PaddingValues(vertical = 4.dp),
-    ) {
-        items(SettingsSection.entries) { section ->
-            TvListRow(
-                label = section.localizedLabel(),
-                icon = section.icon,
-                onClick = { onSelected(section) },
-                modifier = Modifier.height(SETTINGS_RAIL_ROW_HEIGHT),
-                selected = selected == section,
-                testTag = "settings-section-${section.name.lowercase()}",
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsSection.localizedLabel(): String = stringResource(
-    when (this) {
-        SettingsSection.SOURCES -> R.string.settings_section_sources
-        SettingsSection.PLAYBACK -> R.string.settings_section_playback
-        SettingsSection.REMOTE -> R.string.settings_section_remote
-        SettingsSection.METADATA -> R.string.settings_section_metadata
-        SettingsSection.SPORT -> R.string.settings_section_sport
-        SettingsSection.PARENTAL -> R.string.settings_section_parental
-        SettingsSection.BACKUP -> R.string.settings_section_backup
-        SettingsSection.ABOUT -> R.string.settings_section_about
-    },
-)
-
-private val SettingsSection.icon: Int
-    get() = when (this) {
-        SettingsSection.SOURCES -> TvIcons.Channels
-        SettingsSection.PLAYBACK -> TvIcons.Play
-        SettingsSection.REMOTE -> TvIcons.Settings
-        SettingsSection.METADATA -> TvIcons.Info
-        SettingsSection.SPORT -> TvIcons.Target
-        SettingsSection.PARENTAL -> TvIcons.Lock
-        SettingsSection.BACKUP -> TvIcons.Save
-        SettingsSection.ABOUT -> TvIcons.Guide
-    }
-
-/**
- * Settings groups read as sections of one list, separated by a hairline, rather
- * than as a stack of filled panels. The only filled surface on the screen is
- * whatever currently has focus.
- */
-/**
- * The artwork cache: how much it may take, how much it has taken, and a way to
- * take it back.
- *
- * A library of a few thousand titles will fill whatever ceiling it is given, and
- * on a set-top box that disk is shared with recordings and every other app. It
- * was a flat gigabyte before, chosen by nobody.
- */
-@Composable
-private fun ArtworkCacheGroup(onCleared: () -> Unit) {
-    val palette = StreamMateThemeTokens.palette
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var limit by remember { mutableStateOf(ArtworkCacheSettings.limit(context)) }
-    var usageBytes by remember { mutableStateOf<Long?>(null) }
-    var clearing by remember { mutableStateOf(false) }
-
-    suspend fun refreshUsage() {
-        usageBytes = ArtworkCache.usageBytes(context)
-    }
-    LaunchedEffect(Unit) { refreshUsage() }
-
-    SettingsGroup {
-        SettingsGroupHeading(stringResource(R.string.artwork_cache_title))
-        Text(
-            text = stringResource(R.string.artwork_cache_help),
-            color = palette.textMuted,
-            fontSize = 12.sp,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ArtworkCacheLimit.entries.forEach { option ->
-                TvActionButton(
-                    label = stringResource(R.string.artwork_cache_limit, option.megabytes),
-                    selected = limit == option,
-                    onClick = {
-                        limit = option
-                        ArtworkCacheSettings.setLimit(context, option)
-                    },
-                    compact = true,
-                    testTag = "settings-artwork-cache-${option.name.lowercase()}",
-                )
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = usageBytes?.let {
-                    stringResource(R.string.artwork_cache_usage, ArtworkCache.formatBytes(it))
-                }.orEmpty(),
-                color = palette.textMuted,
-                fontSize = 12.sp,
-                modifier = Modifier.weight(1f).testTag("settings-artwork-cache-usage"),
-            )
-            TvActionButton(
-                label = stringResource(R.string.artwork_cache_clear),
-                icon = TvIcons.Delete,
-                enabled = !clearing && (usageBytes ?: 0L) > 0L,
-                onClick = {
-                    scope.launch {
-                        clearing = true
-                        ArtworkCache.clear(context)
-                        refreshUsage()
-                        clearing = false
-                        onCleared()
-                    }
-                },
-                compact = true,
-                testTag = "settings-artwork-cache-clear",
-            )
-        }
-    }
-}
-
-/** The uppercase label naming a group, inside the group's own margin. */
-@Composable
-private fun SettingsGroupHeading(text: String) {
-    val palette = StreamMateThemeTokens.palette
-    val typography = StreamMateThemeTokens.typography
-    Text(
-        text = text.uppercase(),
-        color = palette.textDim,
-        fontSize = typography.overline.fontSize,
-        lineHeight = typography.overline.lineHeight,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = typography.overline.letterSpacing,
-    )
-}
-
-/**
- * One group of settings.
- *
- * A hairline above it and the pane's own left margin down the side: no panel,
- * no outline, no second background. The screen reads as one list whose only
- * filled surface is whatever currently has focus.
- */
-@Composable
-private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
-    val palette = StreamMateThemeTokens.palette
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = SETTINGS_ROW_PADDING)
-                .height(1.dp)
-                .background(palette.divider),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = SETTINGS_ROW_PADDING, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            content = content,
-        )
-    }
-}
-
-/**
- * What the dot on a source chip should say.
- *
- * A source switched off is dim whatever its history; one whose last refresh
- * failed is red; everything else is fine. The message never carries the error
- * text, which can contain a URL with credentials in it.
- */
-private fun sourceChipStatus(
-    source: IptvSourceConfiguration,
-    health: List<SourceRefreshHealth>,
-): SettingsSourceStatus = when {
-    !source.enabled -> SettingsSourceStatus.DISABLED
-    health.any { it.sourceId == source.id && it.status == "failed" } -> SettingsSourceStatus.FAILING
-    else -> SettingsSourceStatus.HEALTHY
-}
-
-private fun newM3uSourceId(): String = "m3u-${UUID.randomUUID()}"
-
-@Composable
-private fun StartupScreen.localizedLabel(): String = when (this) {
-    StartupScreen.HOME -> stringResource(R.string.startup_home)
-    StartupScreen.GUIDE -> stringResource(R.string.startup_guide)
-    StartupScreen.LAST_CHANNEL -> stringResource(R.string.startup_last_channel)
-}
-
-/**
- * Named for what the viewer wants rather than for what the app measures: the
- * ranking behind these reads a provider's claim, and saying so in a button
- * would be a paragraph.
- */
-@Composable
-private fun CataloguePreferredCopy.localizedLabel(): String = when (this) {
-    CataloguePreferredCopy.NONE -> stringResource(R.string.preferred_copy_none)
-    CataloguePreferredCopy.FINNISH_AUDIO -> stringResource(R.string.preferred_copy_finnish_audio)
-    CataloguePreferredCopy.FINNISH_SUBTITLES -> stringResource(R.string.preferred_copy_finnish_subtitles)
-    CataloguePreferredCopy.LARGEST_PICTURE -> stringResource(R.string.preferred_copy_largest_picture)
-}
-
-@Composable
-private fun PlaybackBufferProfile.localizedLabel(): String = when (this) {
-    PlaybackBufferProfile.DEFAULT -> stringResource(R.string.playback_buffer_default)
-    PlaybackBufferProfile.LOW_LATENCY -> stringResource(R.string.playback_buffer_low_latency)
-    PlaybackBufferProfile.STABILITY -> stringResource(R.string.playback_buffer_stability)
-}
-
-@Composable
-private fun PlaybackReconnectPolicy.localizedLabel(): String = when (this) {
-    PlaybackReconnectPolicy.STANDARD -> stringResource(R.string.playback_reconnect_standard)
-    PlaybackReconnectPolicy.PERSISTENT -> stringResource(R.string.playback_reconnect_persistent)
-}
-
-private val SportType.settingsLabelRes: Int
-    get() = when (this) {
-        SportType.FOOTBALL -> R.string.sports_follow_football
-        SportType.ICE_HOCKEY -> R.string.sports_follow_hockey
-        SportType.AUSTRALIAN_FOOTBALL -> R.string.sports_follow_afl
-        SportType.BASKETBALL -> R.string.sports_follow_basketball
-        SportType.BASEBALL -> R.string.sports_follow_baseball
-        SportType.HANDBALL -> R.string.sports_follow_handball
-        SportType.RUGBY -> R.string.sports_follow_rugby
-        SportType.VOLLEYBALL -> R.string.sports_follow_volleyball
-    }
-
-private data class SportsTimeZone(val id: String, val label: String)
-
-private const val DEVICE_TIME_ZONE = "@device"
-
-private val SPORTS_TIME_ZONES = listOf(
-    SportsTimeZone("Europe/Helsinki", "Helsinki"),
-    SportsTimeZone("Europe/Stockholm", "Stockholm"),
-    SportsTimeZone("Europe/Berlin", "Berlin"),
-    SportsTimeZone("Europe/London", "London"),
-    SportsTimeZone("America/New_York", "New York"),
-    SportsTimeZone("UTC", "UTC"),
-)
 
 private const val BACKUP_MIME_TYPE = "application/vnd.streammate.backup"
 private const val DEFAULT_BACKUP_FILE_NAME = "sohva-tv-backup.smbak"
@@ -2540,466 +2065,3 @@ private val SETTINGS_SIDEBAR_WIDTH = 214.dp
 private val SETTINGS_CONTENT_GAP = 26.dp
 private val SETTINGS_HEADER_GAP = 14.dp
 private const val SETTINGS_BREADCRUMB_SEPARATOR = "\u203a  "
-
-private fun newXtreamSourceId(): String = "xtream-${UUID.randomUUID()}"
-
-/**
- * The remote grid: one row per button, a press cell and a hold cell. Selecting
- * a cell swaps the grid for the action list; Back, or a choice, brings the
- * grid back with focus on the cell that was edited.
- */
-@Composable
-private fun RemoteMappingSection(
-    mappings: RemoteMappings,
-    firstCellFocusRequester: FocusRequester,
-    onAssign: (RemoteSlot, RemoteAction) -> Unit,
-    onReset: () -> Unit,
-) {
-    val palette = StreamMateThemeTokens.palette
-    var editingSlot by remember { mutableStateOf<RemoteSlot?>(null) }
-    var focusedSlot by remember { mutableStateOf<RemoteSlot?>(null) }
-    var returnFocusTo by remember { mutableStateOf<RemoteSlot?>(null) }
-    var resetArmed by remember { mutableStateOf(false) }
-    val cellFocusRequesters = remember { RemoteSlot.MAPPABLE.associateWith { FocusRequester() } }
-    val firstSlot = RemoteSlot.MAPPABLE.first()
-
-    BackHandler(enabled = editingSlot != null) {
-        returnFocusTo = editingSlot
-        editingSlot = null
-    }
-    LaunchedEffect(editingSlot, returnFocusTo) {
-        if (editingSlot == null) {
-            returnFocusTo?.let { slot -> cellFocusRequesters.getValue(slot).requestFocus() }
-            returnFocusTo = null
-        }
-    }
-
-    val slot = editingSlot
-    if (slot != null) {
-        RemoteActionPicker(
-            slot = slot,
-            current = mappings[slot],
-            onPick = { action ->
-                onAssign(slot, action)
-                returnFocusTo = slot
-                editingSlot = null
-            },
-        )
-        return
-    }
-
-    SettingsGroup {
-        SettingsGroupHeading(stringResource(R.string.settings_section_remote))
-        Text(
-            text = stringResource(R.string.remote_mapping_help),
-            color = palette.textMuted,
-            fontSize = 13.sp,
-        )
-        Spacer(Modifier.height(6.dp))
-        RemoteGridHeader()
-        RemoteButton.entries.forEach { button ->
-            if (button == RemoteButton.entries.first { it.optional }) {
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.remote_optional_heading),
-                    color = palette.textMuted,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = button.localizedLabel(),
-                    modifier = Modifier.width(REMOTE_BUTTON_COLUMN_WIDTH),
-                    color = palette.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
-                RemoteGesture.entries.forEach { gesture ->
-                    val cell = RemoteSlot(button, gesture)
-                    if (cell.fixed) {
-                        Text(
-                            text = stringResource(R.string.remote_back_fixed),
-                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                            color = palette.textMuted,
-                        )
-                    } else {
-                        TvActionButton(
-                            label = mappings[cell].localizedLabel(),
-                            onClick = { editingSlot = cell },
-                            modifier = Modifier
-                                .weight(1f)
-                                .onFocusChanged { state -> if (state.isFocused) focusedSlot = cell },
-                            focusRequester = if (cell == firstSlot) {
-                                firstCellFocusRequester
-                            } else {
-                                cellFocusRequesters.getValue(cell)
-                            },
-                            compact = true,
-                            testTag = "settings-remote-slot-" +
-                                "${button.name.lowercase()}-${gesture.name.lowercase()}",
-                        )
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = focusedSlot?.let { focused ->
-                stringResource(
-                    R.string.remote_slot_preview,
-                    focused.button.localizedLabel(),
-                    focused.gesture.localizedLabel(),
-                    mappings[focused].localizedLabel(),
-                )
-            } ?: stringResource(R.string.remote_back_hold_note),
-            color = palette.textMuted,
-            fontSize = 13.sp,
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (resetArmed) {
-                Text(
-                    text = stringResource(R.string.remote_reset_confirm),
-                    color = palette.textPrimary,
-                )
-                TvActionButton(
-                    label = stringResource(R.string.remote_reset_confirm_action),
-                    onClick = {
-                        onReset()
-                        resetArmed = false
-                    },
-                    compact = true,
-                    danger = true,
-                    testTag = "settings-remote-reset-confirm",
-                )
-                TvActionButton(
-                    label = stringResource(R.string.remote_reset_cancel),
-                    onClick = { resetArmed = false },
-                    compact = true,
-                    testTag = "settings-remote-reset-cancel",
-                )
-            } else {
-                TvActionButton(
-                    label = stringResource(R.string.remote_reset),
-                    onClick = { resetArmed = true },
-                    compact = true,
-                    testTag = "settings-remote-reset",
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RemoteGridHeader() {
-    val palette = StreamMateThemeTokens.palette
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Spacer(Modifier.width(REMOTE_BUTTON_COLUMN_WIDTH))
-        RemoteGesture.entries.forEach { gesture ->
-            Text(
-                text = gesture.localizedLabel(),
-                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                color = palette.textMuted,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun RemoteActionPicker(
-    slot: RemoteSlot,
-    current: RemoteAction,
-    onPick: (RemoteAction) -> Unit,
-) {
-    val palette = StreamMateThemeTokens.palette
-    val currentFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(slot) { currentFocusRequester.requestFocus() }
-    SettingsGroup {
-        SettingsGroupHeading(
-            stringResource(R.string.remote_slot_title, slot.button.localizedLabel(), slot.gesture.localizedLabel()),
-        )
-        RemoteActionGroup.entries.forEach { group ->
-            val actions = RemoteAction.entries.filter { it.group == group }
-            if (group != RemoteActionGroup.NOTHING) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = group.localizedLabel(),
-                    color = palette.textMuted,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                )
-            }
-            actions.forEach { action ->
-                val scopeHint = when (action.scope) {
-                    RemoteActionScope.LIVE -> stringResource(R.string.remote_scope_live)
-                    RemoteActionScope.TIMESHIFT -> stringResource(R.string.remote_scope_timeshift)
-                    RemoteActionScope.ANY -> null
-                }
-                TvActionButton(
-                    label = scopeHint?.let { hint -> "${action.localizedLabel()} · $hint" }
-                        ?: action.localizedLabel(),
-                    onClick = { onPick(action) },
-                    selected = action == current,
-                    focusRequester = if (action == current) currentFocusRequester else null,
-                    compact = true,
-                    testTag = "settings-remote-action-${action.name.lowercase()}",
-                )
-            }
-        }
-    }
-}
-
-private val REMOTE_BUTTON_COLUMN_WIDTH = 110.dp
-
-@Composable
-private fun RemoteButton.localizedLabel(): String = stringResource(
-    when (this) {
-        RemoteButton.UP -> R.string.remote_button_up
-        RemoteButton.DOWN -> R.string.remote_button_down
-        RemoteButton.LEFT -> R.string.remote_button_left
-        RemoteButton.RIGHT -> R.string.remote_button_right
-        RemoteButton.OK -> R.string.remote_button_ok
-        RemoteButton.BACK -> R.string.remote_button_back
-        RemoteButton.CHANNEL_UP -> R.string.remote_button_channel_up
-        RemoteButton.CHANNEL_DOWN -> R.string.remote_button_channel_down
-        RemoteButton.INFO -> R.string.remote_button_info
-        RemoteButton.AUDIO -> R.string.remote_button_audio
-        RemoteButton.CAPTIONS -> R.string.remote_button_captions
-        RemoteButton.MENU -> R.string.remote_button_menu
-    },
-)
-
-@Composable
-private fun RemoteGesture.localizedLabel(): String = stringResource(
-    when (this) {
-        RemoteGesture.PRESS -> R.string.remote_column_press
-        RemoteGesture.HOLD -> R.string.remote_column_hold
-    },
-)
-
-@Composable
-private fun RemoteActionGroup.localizedLabel(): String = stringResource(
-    when (this) {
-        RemoteActionGroup.CHANNELS -> R.string.remote_group_channels
-        RemoteActionGroup.INFORMATION -> R.string.remote_group_information
-        RemoteActionGroup.PLAYBACK -> R.string.remote_group_playback
-        RemoteActionGroup.SOUND_AND_PICTURE -> R.string.remote_group_sound_and_picture
-        RemoteActionGroup.LEAVE -> R.string.remote_group_leave
-        RemoteActionGroup.NOTHING -> R.string.remote_group_nothing
-    },
-)
-
-@Composable
-private fun RemoteAction.localizedLabel(): String = stringResource(
-    when (this) {
-        RemoteAction.NOTHING -> R.string.remote_action_nothing
-        RemoteAction.NEXT_CHANNEL -> R.string.remote_action_next_channel
-        RemoteAction.PREVIOUS_CHANNEL -> R.string.remote_action_previous_channel
-        RemoteAction.SWITCH_TO_PREVIOUS_CHANNEL -> R.string.remote_action_switch_to_previous_channel
-        RemoteAction.OPEN_CHANNEL_BROWSER -> R.string.remote_action_open_channel_browser
-        RemoteAction.OPEN_GROUP_BROWSER -> R.string.remote_action_open_group_browser
-        RemoteAction.PROGRAMME_INFO -> R.string.remote_action_programme_info
-        RemoteAction.TOGGLE_STATS -> R.string.remote_action_toggle_stats
-        RemoteAction.GUIDE_AT_CHANNEL -> R.string.remote_action_guide_at_channel
-        RemoteAction.QUICK_ACTIONS -> R.string.remote_action_quick_actions
-        RemoteAction.PLAY_PAUSE -> R.string.remote_action_play_pause
-        RemoteAction.SEEK_BACK -> R.string.remote_action_seek_back
-        RemoteAction.SEEK_FORWARD -> R.string.remote_action_seek_forward
-        RemoteAction.RESTART -> R.string.remote_action_restart
-        RemoteAction.SHOW_CONTROLS -> R.string.remote_action_show_controls
-        RemoteAction.AUDIO_PICKER -> R.string.remote_action_audio_picker
-        RemoteAction.NEXT_AUDIO_TRACK -> R.string.remote_action_next_audio_track
-        RemoteAction.SUBTITLE_PICKER -> R.string.remote_action_subtitle_picker
-        RemoteAction.TOGGLE_SUBTITLES -> R.string.remote_action_toggle_subtitles
-        RemoteAction.CYCLE_PICTURE_SHAPE -> R.string.remote_action_cycle_picture_shape
-        RemoteAction.LEAVE_PLAYER -> R.string.remote_action_leave_player
-        RemoteAction.GO_HOME -> R.string.remote_action_go_home
-        RemoteAction.GO_GUIDE -> R.string.remote_action_go_guide
-        RemoteAction.GO_SPORT -> R.string.remote_action_go_sport
-    },
-)
-
-/**
- * Updates, in About. One line says where things stand, one button does the
- * next thing: check, download, install, or open the permission page Android
- * wants first. The release notes show once a newer beta is known.
- */
-@Composable
-private fun AppUpdateSection(
-    state: AppUpdateUiState,
-    actions: AppUpdateActions,
-    focusRequester: FocusRequester,
-) {
-    val palette = StreamMateThemeTokens.palette
-    SettingsGroup {
-        SettingsGroupHeading(stringResource(R.string.update_title))
-        Text(
-            text = stringResource(R.string.update_installed, state.installedVersionName),
-            color = palette.textMuted,
-            fontSize = 13.sp,
-        )
-        val statusText = when (state.phase) {
-            AppUpdateUiState.Phase.IDLE -> stringResource(R.string.update_idle)
-            AppUpdateUiState.Phase.CHECKING -> stringResource(R.string.update_checking)
-            AppUpdateUiState.Phase.UP_TO_DATE -> stringResource(R.string.update_up_to_date)
-            AppUpdateUiState.Phase.AVAILABLE -> stringResource(R.string.update_available, state.versionName.orEmpty())
-            AppUpdateUiState.Phase.DOWNLOADING ->
-                stringResource(R.string.update_downloading, state.versionName.orEmpty(), state.percent ?: 0)
-            AppUpdateUiState.Phase.DOWNLOADED -> stringResource(R.string.update_downloaded, state.versionName.orEmpty())
-            AppUpdateUiState.Phase.NEEDS_PERMISSION -> stringResource(R.string.update_needs_permission)
-            AppUpdateUiState.Phase.FAILED -> when (state.failure) {
-                AppUpdateUiState.Failure.NO_CHECKSUMS -> stringResource(R.string.update_failed_no_checksums)
-                AppUpdateUiState.Failure.CHECKSUM_MISMATCH -> stringResource(R.string.update_failed_checksum)
-                AppUpdateUiState.Failure.INSTALL_BLOCKED -> stringResource(R.string.update_failed_install)
-                AppUpdateUiState.Failure.NETWORK, null -> stringResource(R.string.update_failed_network)
-            }
-        }
-        Text(
-            text = statusText,
-            color = if (state.phase == AppUpdateUiState.Phase.FAILED) palette.danger else palette.textPrimary,
-            modifier = Modifier.testTag("settings-update-status"),
-        )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            when (state.phase) {
-                AppUpdateUiState.Phase.AVAILABLE -> TvActionButton(
-                    label = stringResource(R.string.update_download),
-                    icon = TvIcons.Save,
-                    onClick = actions.onDownload,
-                    focusRequester = focusRequester,
-                    testTag = "settings-update-download",
-                )
-                AppUpdateUiState.Phase.DOWNLOADED -> TvActionButton(
-                    label = stringResource(R.string.update_install),
-                    icon = TvIcons.Play,
-                    onClick = actions.onInstall,
-                    focusRequester = focusRequester,
-                    testTag = "settings-update-install",
-                )
-                AppUpdateUiState.Phase.NEEDS_PERMISSION -> {
-                    TvActionButton(
-                        label = stringResource(R.string.update_open_permission),
-                        icon = TvIcons.Settings,
-                        onClick = actions.onOpenInstallPermission,
-                        focusRequester = focusRequester,
-                        testTag = "settings-update-permission",
-                    )
-                    TvActionButton(
-                        label = stringResource(R.string.update_install),
-                        icon = TvIcons.Play,
-                        onClick = actions.onInstall,
-                        testTag = "settings-update-install",
-                    )
-                }
-                AppUpdateUiState.Phase.DOWNLOADING -> TvActionButton(
-                    label = stringResource(R.string.update_checking_button),
-                    onClick = {},
-                    enabled = false,
-                    focusRequester = focusRequester,
-                )
-                else -> TvActionButton(
-                    label = stringResource(R.string.update_check),
-                    icon = TvIcons.Refresh,
-                    onClick = actions.onCheck,
-                    enabled = state.phase != AppUpdateUiState.Phase.CHECKING,
-                    focusRequester = focusRequester,
-                    testTag = "settings-update-check",
-                )
-            }
-        }
-        state.notes?.takeIf { state.phase != AppUpdateUiState.Phase.UP_TO_DATE }?.let { notes ->
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = notes.take(MAX_UPDATE_NOTES_LENGTH),
-                color = palette.textMuted,
-                fontSize = 12.sp,
-            )
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = stringResource(R.string.update_help),
-            color = palette.textMuted,
-            fontSize = 12.sp,
-        )
-    }
-}
-
-private const val MAX_UPDATE_NOTES_LENGTH = 1_200
-
-/**
- * The QR code and address a phone opens to type a playlist in. Shown under
- * the source list while the page is being served; the status line above the
- * list says when something arrives.
- */
-@Composable
-private fun PhoneSetupPanel(state: PhoneSetupUiState) {
-    val palette = StreamMateThemeTokens.palette
-    SettingsGroup {
-        SettingsGroupHeading(stringResource(R.string.phone_setup_title))
-        if (state.noNetwork) {
-            Text(
-                text = stringResource(R.string.phone_setup_no_network),
-                color = palette.danger,
-                modifier = Modifier.testTag("phone-setup-no-network"),
-            )
-            return@SettingsGroup
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            state.qrCode?.let { code ->
-                Image(
-                    bitmap = code,
-                    contentDescription = stringResource(R.string.phone_setup_qr_description),
-                    modifier = Modifier
-                        .size(180.dp)
-                        .background(androidx.compose.ui.graphics.Color.White)
-                        .padding(8.dp)
-                        .testTag("phone-setup-qr"),
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(R.string.phone_setup_help),
-                    color = palette.textMuted,
-                    fontSize = 13.sp,
-                )
-                Text(
-                    text = state.url.orEmpty(),
-                    color = palette.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.testTag("phone-setup-url"),
-                )
-                Text(
-                    text = stringResource(R.string.phone_setup_privacy),
-                    color = palette.textMuted,
-                    fontSize = 12.sp,
-                )
-            }
-        }
-    }
-}
-
-/**
- * The import services store a LocalizedException's message, which is
- * "resource:<id>" for a translatable failure. Resolve it back into words for
- * this build; a stale id from an older build resolves to nothing rather than
- * to the wrong sentence.
- */
-internal fun readableImportError(resources: Resources, lastError: String?): String? {
-    val text = lastError?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val resourceId = Regex("""^resource:\s*(\d+)$""").find(text)?.groupValues?.get(1)?.toIntOrNull()
-        ?: return text
-    return runCatching { resources.getString(resourceId) }.getOrNull()
-        ?.takeIf { it.isNotBlank() }
-}

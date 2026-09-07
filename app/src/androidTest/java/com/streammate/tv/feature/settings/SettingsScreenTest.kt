@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isNotSelected
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -71,6 +72,8 @@ class SettingsScreenTest {
     fun vodOnlyM3uSourceShowsCatalogueImportWithoutLiveOrEpgControls() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        // A source is a page now: the form opens from the Add button.
+        composeRule.onNodeWithTag("source-add-m3u").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-import-vod"))
         composeRule.onNodeWithTag("settings-import-vod").performClick()
@@ -88,6 +91,8 @@ class SettingsScreenTest {
     fun epgCorrectionUsesThirtyMinuteStepsForLiveSources() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        // A source is a page now: the form opens from the Add button.
+        composeRule.onNodeWithTag("source-add-m3u").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-epg-offset-up"))
 
@@ -103,6 +108,8 @@ class SettingsScreenTest {
     fun settingsFieldsRequireSelectBeforeEditing() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        // A source is a page now: the form opens from the Add button.
+        composeRule.onNodeWithTag("source-add-m3u").performClick()
 
         composeRule.onNodeWithTag("settings-source-name")
             .assert(hasClickAction() and !hasSetTextAction())
@@ -148,7 +155,10 @@ class SettingsScreenTest {
     fun playlistRefreshIntervalOpensDropdownAndPersistsSelection() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.onNodeWithTag("settings-section-general").performClick()
 
+        composeRule.onNodeWithTag("settings-list")
+            .performScrollToNode(hasTestTag("settings-refresh-interval"))
         composeRule.onNodeWithTag("settings-refresh-interval")
             .assertIsDisplayed()
             .performClick()
@@ -188,11 +198,14 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
         composeRule.onNodeWithTag("settings-section-metadata").performClick()
         composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-preferred-copy-finnish_audio"))
+            .performScrollToNode(hasTestTag("settings-preferred-copy"))
 
+        composeRule.onNodeWithTag("settings-preferred-copy").performClick()
         composeRule.onNodeWithTag("settings-preferred-copy-finnish_audio").performClick()
+        // Reopened, the picker marks what was stored.
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runCatching {
+                composeRule.onNodeWithTag("settings-preferred-copy").performClick()
                 composeRule.onNodeWithTag("settings-preferred-copy-finnish_audio").assertIsSelected()
                 true
             }.getOrDefault(false)
@@ -201,6 +214,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-preferred-copy-none").performClick()
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runCatching {
+                composeRule.onNodeWithTag("settings-preferred-copy").performClick()
                 composeRule.onNodeWithTag("settings-preferred-copy-none").assertIsSelected()
                 true
             }.getOrDefault(false)
@@ -212,37 +226,32 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
-        composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-buffer-default"))
-
-        composeRule.onNodeWithTag("settings-buffer-default").performClick()
-        composeRule.awaitUntil(timeoutMillis = 10_000) {
-            runCatching {
-                composeRule.onNodeWithTag("settings-buffer-default").assertIsSelected()
-                true
-            }.getOrDefault(false)
-        }
+        composeRule.onNodeWithTag("settings-buffer").performClick()
+        composeRule.onNodeWithTag("settings-buffer-default").assertIsSelected()
         composeRule.onNodeWithTag("settings-buffer-low_latency").performClick()
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runCatching {
+                composeRule.onNodeWithTag("settings-buffer").performClick()
                 composeRule.onNodeWithTag("settings-buffer-low_latency").assertIsSelected()
                 true
             }.getOrDefault(false)
         }
+        composeRule.onNodeWithTag("settings-buffer-low_latency").performClick()
 
         composeRule.onNodeWithTag("settings-section-sources").performClick()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
-        composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-buffer-low_latency"))
+        composeRule.onNodeWithTag("settings-buffer").performClick()
         composeRule.onNodeWithTag("settings-buffer-low_latency").assertIsSelected()
 
         composeRule.onNodeWithTag("settings-buffer-default").performClick()
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runCatching {
+                composeRule.onNodeWithTag("settings-buffer").performClick()
                 composeRule.onNodeWithTag("settings-buffer-default").assertIsSelected()
                 true
             }.getOrDefault(false)
         }
+        composeRule.onNodeWithTag("settings-buffer-default").performClick()
     }
 
     @Test
@@ -250,37 +259,32 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
-        composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-reconnect-standard"))
-
-        composeRule.onNodeWithTag("settings-reconnect-standard").performClick()
-        composeRule.awaitUntil(timeoutMillis = 10_000) {
-            runCatching {
-                composeRule.onNodeWithTag("settings-reconnect-standard").assertIsSelected()
-                true
-            }.getOrDefault(false)
-        }
+        composeRule.onNodeWithTag("settings-reconnect").performClick()
+        composeRule.onNodeWithTag("settings-reconnect-standard").assertIsSelected()
         composeRule.onNodeWithTag("settings-reconnect-persistent").performClick()
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runCatching {
+                composeRule.onNodeWithTag("settings-reconnect").performClick()
                 composeRule.onNodeWithTag("settings-reconnect-persistent").assertIsSelected()
                 true
             }.getOrDefault(false)
         }
+        composeRule.onNodeWithTag("settings-reconnect-persistent").performClick()
 
         composeRule.onNodeWithTag("settings-section-sources").performClick()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
-        composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-reconnect-persistent"))
+        composeRule.onNodeWithTag("settings-reconnect").performClick()
         composeRule.onNodeWithTag("settings-reconnect-persistent").assertIsSelected()
 
         composeRule.onNodeWithTag("settings-reconnect-standard").performClick()
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runCatching {
+                composeRule.onNodeWithTag("settings-reconnect").performClick()
                 composeRule.onNodeWithTag("settings-reconnect-standard").assertIsSelected()
                 true
             }.getOrDefault(false)
         }
+        composeRule.onNodeWithTag("settings-reconnect-standard").performClick()
     }
 
     @Test
@@ -289,13 +293,16 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
 
         composeRule.onNodeWithTag("settings-section-playback").performClick()
-        composeRule.onNodeWithTag("settings-buffer-default").assertIsFocused()
+        composeRule.onNodeWithTag("settings-buffer").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-metadata").performClick()
         composeRule.onNodeWithTag("settings-metadata-tmdb-enabled").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-sport").performClick()
-        composeRule.onNodeWithTag("settings-sports-timezone-Europe/Helsinki").assertIsFocused()
+        composeRule.onNodeWithTag("settings-sports-api-save").assertIsFocused()
+
+        composeRule.onNodeWithTag("settings-section-general").performClick()
+        composeRule.onNodeWithTag("settings-interface-language").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-parental").performClick()
         composeRule.onNodeWithTag("settings-parental-pin").assertIsFocused()
@@ -311,13 +318,12 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun interfaceLanguageCanBeChosenFromPlaybackSettings() {
+    fun interfaceLanguageCanBeChosenFromGeneralSettings() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
-        composeRule.onNodeWithTag("settings-section-playback").performClick()
+        composeRule.onNodeWithTag("settings-section-general").performClick()
 
-        composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-interface-language-system"))
+        composeRule.onNodeWithTag("settings-interface-language").performClick()
         // System, plus one entry per language the app actually ships.
         composeRule.onNodeWithTag("settings-interface-language-system").assertIsDisplayed()
         AppLocale.SUPPORTED_TAGS.forEach { tag ->
@@ -331,16 +337,23 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-list")
-            .performScrollToNode(hasTestTag("settings-auto-frame-rate-off"))
+            .performScrollToNode(hasTestTag("settings-auto-frame-rate"))
 
         // On by default: it is the point of the feature, and a setting nobody
         // finds is not a feature.
-        composeRule.onNodeWithTag("settings-auto-frame-rate-on").assertIsSelected()
+        composeRule.onNodeWithTag("settings-auto-frame-rate").assertIsSelected()
 
-        composeRule.onNodeWithTag("settings-auto-frame-rate-off").performClick()
+        composeRule.onNodeWithTag("settings-auto-frame-rate").performClick()
         composeRule.awaitUntil {
             composeRule.onAllNodes(
-                hasTestTag("settings-auto-frame-rate-off") and isSelected(),
+                hasTestTag("settings-auto-frame-rate") and isNotSelected(),
+            ).fetchSemanticsNodes().isNotEmpty()
+        }
+        // Back on: the preference outlives this test on the same device.
+        composeRule.onNodeWithTag("settings-auto-frame-rate").performClick()
+        composeRule.awaitUntil {
+            composeRule.onAllNodes(
+                hasTestTag("settings-auto-frame-rate") and isSelected(),
             ).fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -353,10 +366,11 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-artwork-cache-clear"))
 
+        composeRule.onNodeWithTag("settings-artwork-cache-usage").assertIsDisplayed()
+        composeRule.onNodeWithTag("settings-artwork-cache").performClick()
         composeRule.onNodeWithTag("settings-artwork-cache-small").assertIsDisplayed()
         composeRule.onNodeWithTag("settings-artwork-cache-medium").assertIsDisplayed()
         composeRule.onNodeWithTag("settings-artwork-cache-large").assertIsDisplayed()
-        composeRule.onNodeWithTag("settings-artwork-cache-usage").assertIsDisplayed()
 
         composeRule.onNodeWithTag("settings-artwork-cache-small").performClick()
 
