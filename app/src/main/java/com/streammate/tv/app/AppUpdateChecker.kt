@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -75,8 +76,14 @@ class AppUpdateChecker(
         }
         preferences.edit().putLong(KEY_LAST_CHECK, clock()).apply()
         mutableState.value = result.fold(
-            onSuccess = { update -> update?.let(AppUpdateState::Available) ?: AppUpdateState.UpToDate },
-            onFailure = { AppUpdateState.Failed(AppUpdateFailure.NETWORK, null) },
+            onSuccess = { update ->
+                DiagnosticsLog.i("update", update?.let { "available: ${it.versionName}" } ?: "up to date")
+                update?.let(AppUpdateState::Available) ?: AppUpdateState.UpToDate
+            },
+            onFailure = { error ->
+                DiagnosticsLog.w("update", "check failed", error)
+                AppUpdateState.Failed(AppUpdateFailure.NETWORK, null)
+            },
         )
     }
 

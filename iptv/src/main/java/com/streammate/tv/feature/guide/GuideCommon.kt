@@ -169,3 +169,40 @@ private val GENRE_ACCENTS: Map<String, Color> = linkedMapOf(
 
 internal val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH.mm")
 internal val WINDOW_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d.M.")
+
+/**
+ * Past this many channels a selection is read as rows first and programmes
+ * for the rows on screen; below it one timeline read is cheaper and steadier.
+ */
+internal const val GUIDE_WINDOWED_READ_THRESHOLD = 400
+
+/** Rows above and below the visible ones whose programmes are read along with them. */
+internal const val GUIDE_PROGRAMME_WINDOW_MARGIN = 30
+
+/** The window moves in steps of this many rows, so a row-by-row scroll does not re-read per row. */
+internal const val GUIDE_PROGRAMME_WINDOW_STEP = 10
+
+/**
+ * The channel ids whose programmes the grid wants: the visible rows plus a
+ * margin either side, snapped to a step so scrolling one row at a time does
+ * not re-read on every row.
+ */
+internal fun programmeWindowIds(
+    ids: List<String>,
+    firstVisible: Int,
+    visibleCount: Int,
+    margin: Int = GUIDE_PROGRAMME_WINDOW_MARGIN,
+    step: Int = GUIDE_PROGRAMME_WINDOW_STEP,
+): List<String> {
+    if (ids.isEmpty()) return emptyList()
+    val start = ((firstVisible - margin).coerceAtLeast(0) / step) * step
+    val end = (((firstVisible + visibleCount + margin) / step) * step + step).coerceAtMost(ids.size)
+    return if (start >= end) emptyList() else ids.subList(start, end)
+}
+
+/** [rows] with the programmes read for them so far; rows nothing was read for keep none. */
+internal fun mergeProgrammes(
+    rows: List<GuideTimelineChannel>,
+    programmes: Map<String, List<GuideTimelineProgramme>>,
+): List<GuideTimelineChannel> =
+    if (programmes.isEmpty()) rows else rows.map { row -> programmes[row.id]?.let { row.copy(programmes = it) } ?: row }

@@ -64,6 +64,8 @@ internal fun GuideHero(
     searchVisible: Boolean,
     onOpenMetadata: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    reminderSet: Boolean = false,
+    onToggleReminder: (() -> Unit)? = null,
 ) {
     val spacing = StreamMateThemeTokens.spacing
     val programme = selection.programme
@@ -87,6 +89,8 @@ internal fun GuideHero(
             onWatch = onWatch,
             onToggleFavourite = onToggleFavourite,
             onPlayCatchup = onPlayCatchup,
+            reminderSet = reminderSet,
+            onToggleReminder = onToggleReminder,
             onSearch = onSearch,
             searchVisible = searchVisible,
             onOpenMetadata = onOpenMetadata,
@@ -215,6 +219,8 @@ private fun GuideHeroDetail(
     onWatch: () -> Unit,
     onToggleFavourite: () -> Unit,
     onPlayCatchup: (() -> Unit)?,
+    reminderSet: Boolean = false,
+    onToggleReminder: (() -> Unit)? = null,
     onSearch: () -> Unit,
     searchVisible: Boolean,
     onOpenMetadata: (() -> Unit)?,
@@ -305,6 +311,18 @@ private fun GuideHeroDetail(
                     selected = favourite,
                     testTag = "guide-toggle-favourite",
                 )
+                // A programme still ahead can set a reminder: a notification a
+                // minute before it starts that opens the channel.
+                if (onToggleReminder != null) {
+                    TvActionButton(
+                        label = stringResource(if (reminderSet) R.string.guide_reminder_set else R.string.guide_remind),
+                        icon = TvIcons.Epg,
+                        onClick = onToggleReminder,
+                        compact = true,
+                        selected = reminderSet,
+                        testTag = "guide-preview-remind",
+                    )
+                }
                 // Catch-up appears only where the source says the channel has
                 // it and the programme is inside the window it reaches back to.
                 if (onPlayCatchup != null) {

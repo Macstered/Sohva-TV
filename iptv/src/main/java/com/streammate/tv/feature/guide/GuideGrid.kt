@@ -89,6 +89,8 @@ internal fun GuideGrid(
     pagedFocusAtEnd: Boolean,
     onSelection: (GuideTimelineChannel, GuideTimelineProgramme?) -> Unit,
     onPlay: (GuideTimelineChannel, GuideTimelineProgramme?) -> Unit,
+    /** OK on a programme not yet started, or OK held on any: what can be done with it. */
+    onProgrammeActions: (GuideTimelineChannel, GuideTimelineProgramme) -> Unit = { _, _ -> },
     onPageForward: () -> Unit,
     onPageBack: (() -> Unit)?,
     onTransportKey: (Key) -> Boolean,
@@ -139,6 +141,7 @@ internal fun GuideGrid(
                         selection = selection,
                         onSelection = { programme -> onSelection(channel, programme) },
                         onPlay = { programme -> onPlay(channel, programme) },
+                        onActions = { programme -> onProgrammeActions(channel, programme) },
                         focusRequester = if (index == initialFocusIndex) firstFocusRequester else null,
                         returnFocusRequester = returnFocusRequester.takeIf {
                             channel.id == selection?.channel?.id
@@ -248,6 +251,7 @@ private fun GuideChannelRow(
     selection: GuideSelection?,
     onSelection: (GuideTimelineProgramme?) -> Unit,
     onPlay: (GuideTimelineProgramme?) -> Unit,
+    onActions: (GuideTimelineProgramme) -> Unit = {},
     focusRequester: FocusRequester?,
     returnFocusRequester: FocusRequester?,
     onOpenGroupRail: () -> Unit,
@@ -329,7 +333,10 @@ private fun GuideChannelRow(
                         progress = programme.progressAt(now),
                         accent = genreAccent(programme.categories),
                         onFocus = { onSelection(programme) },
-                        onClick = { onPlay(programme) },
+                        // A programme still ahead has nothing to play yet, so
+                        // OK offers what can be done with it instead.
+                        onClick = { if (programme.startEpochMillis > now) onActions(programme) else onPlay(programme) },
+                        onLongPress = { onActions(programme) },
                         onPageForward = onPageForward.takeIf { index == visible.lastIndex },
                         onPageBack = onPageBack.takeIf { index == 0 },
                         pagedFocusRequester = pagedFocusRequester?.takeIf {
@@ -493,10 +500,14 @@ private fun ProgrammeCell(
     onPageForward: (() -> Unit)? = null,
     onPageBack: (() -> Unit)? = null,
     pagedFocusRequester: FocusRequester? = null,
+    onLongPress: (() -> Unit)? = null,
 ) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     val shape = StreamMateThemeTokens.shapes.small
+    // OK held fires once on the first repeat; the release that follows is
+    // swallowed so the click underneath does not fire as well.
+    var selectHeld by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .zIndex(if (selected) 1f else 0f)
@@ -506,6 +517,22 @@ private fun ProgrammeCell(
             // first thing anyone tries, and the transport keys this used to
             // need are not on the remote that ships with the box.
             .onPreviewKeyEvent { event ->
+                val isSelect = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
+                if (isSelect && onLongPress != null) {
+                    when (event.type) {
+                        KeyEventType.KeyDown -> if (event.nativeKeyEvent.repeatCount >= 1) {
+                            if (!selectHeld) {
+                                selectHeld = true
+                                onLongPress()
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                        KeyEventType.KeyUp -> if (selectHeld) {
+                            selectHeld = false
+                            return@onPreviewKeyEvent true
+                        }
+                    }
+                }
                 if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (event.key) {
                     Key.DirectionRight -> onPageForward?.let { it(); true } ?: false

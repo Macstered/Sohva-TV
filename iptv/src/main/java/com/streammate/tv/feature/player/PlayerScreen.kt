@@ -1,5 +1,7 @@
 package com.streammate.tv.feature.player
 
+import com.streammate.tv.core.model.TodayEvent
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.LifecycleEventObserver
 import com.streammate.tv.core.R as CoreR
@@ -179,6 +181,10 @@ fun PlayerScreen(
     onGoHome: (() -> Unit)? = null,
     onGoGuide: (() -> Unit)? = null,
     onGoSport: (() -> Unit)? = null,
+    /** Followed matches for the score ticker; null where the ticker is not offered. */
+    scoreTickerEvents: List<TodayEvent>? = null,
+    scoreTickerVisible: Boolean = false,
+    onToggleScoreTicker: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val serviceDisconnectedMessage = stringResource(R.string.player_service_disconnected)
@@ -341,6 +347,9 @@ fun PlayerScreen(
             onGoHome = onGoHome,
             onGoGuide = onGoGuide,
             onGoSport = onGoSport,
+            scoreTickerEvents = scoreTickerEvents,
+            scoreTickerVisible = scoreTickerVisible,
+            onToggleScoreTicker = onToggleScoreTicker,
             onOpenExternal = onOpenExternal.takeUnless { showTransportControls },
             onBack = onBack,
             onPlaybackEnded = onPlaybackEnded,
@@ -401,6 +410,9 @@ private fun ActivePlayer(
     onGoHome: (() -> Unit)?,
     onGoGuide: (() -> Unit)?,
     onGoSport: (() -> Unit)?,
+    scoreTickerEvents: List<TodayEvent>? = null,
+    scoreTickerVisible: Boolean = false,
+    onToggleScoreTicker: (() -> Unit)? = null,
 ) {
     KeepScreenOnEffect()
     val context = LocalContext.current
@@ -611,6 +623,7 @@ private fun ActivePlayer(
                 if (showTransportControls) controlsFocusVersion += 1
             }
             RemoteAction.TOGGLE_STATS -> statsVisible = !statsVisible
+            RemoteAction.SCORE_TICKER -> return run(onToggleScoreTicker)
             RemoteAction.GUIDE_AT_CHANNEL -> return run(onOpenGuideAtChannel)
             RemoteAction.QUICK_ACTIONS -> quickActionsVisible = true
             RemoteAction.PLAY_PAUSE -> if (controller.isPlaying) controller.pause() else controller.play()
@@ -821,6 +834,7 @@ private fun ActivePlayer(
             override fun onPlayerError(error: PlaybackException) {
                 playbackError = resources.getString(R.string.player_playback_failed, error.errorCodeName)
                 reconnectAttempt += 1
+                DiagnosticsLog.w("player", "$channelId: ${error.errorCodeName}, attempt $reconnectAttempt", error)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1184,6 +1198,16 @@ private fun ActivePlayer(
                     .padding(start = 40.dp, top = 24.dp),
             )
         }
+        // Followed matches while watching something else. Below the clock
+        // when playback info is up, so the two never overlap.
+        if (scoreTickerVisible && scoreTickerEvents != null) {
+            ScoreTickerOverlay(
+                events = scoreTickerEvents,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 40.dp, top = if (statsVisible) 72.dp else 24.dp),
+            )
+        }
         ChannelBrowserOverlay(
             channels = browserChannels,
             listState = browserListState,
@@ -1320,6 +1344,20 @@ private fun ActivePlayer(
                             close()
                         },
                     ),
+                ) + listOfNotNull(
+                    onToggleScoreTicker?.let { toggle ->
+                        PlayerQuickAction(
+                            label = stringResource(R.string.player_quick_ticker),
+                            value = stringResource(
+                                if (scoreTickerVisible) R.string.player_quick_stats_on else R.string.player_quick_stats_off,
+                            ),
+                            testTag = "quick-ticker",
+                            onSelect = {
+                                toggle()
+                                close()
+                            },
+                        )
+                    },
                 ),
                 onDismiss = ::close,
             )

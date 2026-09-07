@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.today
 
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasTestTag
 import com.streammate.tv.core.model.FootballIncidentKind
@@ -83,6 +84,42 @@ class MatchHubTest {
         composeRule.awaitUntil {
             composeRule.onAllNodesWithTag("streams-panel").fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    @Test
+    fun remindMeReportsTheEventAndShowsItSet() {
+        val reminded = mutableListOf<String>()
+        var reminderIds by mutableStateOf(emptySet<String>())
+        composeRule.activity.setContent {
+            StreamMateTheme {
+                TodayScreen(
+                    uiState = TodayUiState(
+                        events = listOf(EVENT.copy(status = TodayEventStatus.SCHEDULED, startEpochMillis = System.currentTimeMillis() + 3_600_000L)),
+                        matches = mapOf(EVENT.id to MATCHES),
+                        followedSports = setOf(SportType.FOOTBALL),
+                    ),
+                    onRefresh = {},
+                    onLoadDetails = {},
+                    onRefreshDetails = {},
+                    onMatchDecision = { _, _, _ -> },
+                    onGuide = {},
+                    onSettings = {},
+                    onPlay = {},
+                    reminderIds = reminderIds,
+                    onToggleReminder = { event ->
+                        reminded += event.id
+                        reminderIds = setOf("event:${event.id}")
+                    },
+                )
+            }
+        }
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("event-${EVENT.id}").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("event-${EVENT.id}").performClick()
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("match-remind").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("match-remind").performClick()
+        composeRule.awaitUntil { reminded.isNotEmpty() }
+        assertEquals(listOf(EVENT.id), reminded)
+        composeRule.onNodeWithTag("match-remind").assertIsSelected()
     }
 
     @Test

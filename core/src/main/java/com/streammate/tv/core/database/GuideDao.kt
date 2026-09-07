@@ -328,6 +328,10 @@ abstract class GuideDao {
         toEpochMillis: Long,
     ): Flow<List<GuideTimelineRow>>
 
+    /** The channels of a source or group alone; see [GUIDE_CHANNELS_FOR_SOURCE_SQL]. */
+    @Query(GUIDE_CHANNELS_FOR_SOURCE_SQL)
+    abstract fun observeGuideChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineRow>>
+
     /**
      * [observeGuideTimeline] for one source, and one of its groups when [groupTitle]
      * is given. The organisation view runs its rule lookups per channel, so the

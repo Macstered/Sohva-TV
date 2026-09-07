@@ -1,5 +1,7 @@
 package com.streammate.tv.feature.guide
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.compose.runtime.snapshotFlow
 import com.streammate.tv.iptv.repository.GuideRailGroup
 import com.streammate.tv.iptv.repository.SourceRefreshHealth
 import com.streammate.tv.iptv.repository.GuideSource
@@ -103,6 +105,9 @@ fun GuideScreen(
     onManagementReturnHandled: () -> Unit = {},
     /** Starts a full background sync of every source. */
     onSyncNow: () -> Unit = {},
+    /** Ids, as ReminderEntity.programmeId makes them, with a reminder set. */
+    reminderIds: Set<String> = emptySet(),
+    onToggleReminder: ((GuideTimelineChannel, GuideTimelineProgramme) -> Unit)? = null,
 ) {
     val palette = StreamMateThemeTokens.palette
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -165,6 +170,8 @@ fun GuideScreen(
         if (selectedListId != null && !organization.shortcutEnabled(liveRoom, "@list:$selectedListId")) selectedListId = null
     }
     var selection by remember { mutableStateOf<GuideSelection?>(null) }
+    // The programme whose actions are open over the grid, if any.
+    var programmeActions by remember { mutableStateOf<GuideSelection?>(null) }
     var selectedMetadata by remember { mutableStateOf<EnrichedMetadata?>(null) }
     var categoryEditMode by remember { mutableStateOf(false) }
     var groupRailVisible by rememberSaveable { mutableStateOf(false) }
@@ -222,11 +229,20 @@ fun GuideScreen(
             else -> null
         }
     }
-    val loadedTimeline by remember(windowStart, selectedSourceId, selectedGroup, timelineChannelIds) {
+    // A big selection, a whole large source or a group past the threshold,
+    // is read as its rows first and programmes for the rows on screen: the
+    // full timeline of a 56,000-channel source was 170,000 rows per emission.
+    val expectedCount = if (selectedGroup != null) groupCounts[selectedGroup] ?: 0 else sourceChannelCount
+    val windowedRead = timelineChannelIds == null && selectedSourceId != null && expectedCount > GUIDE_WINDOWED_READ_THRESHOLD
+    // The rows of a windowed read do not depend on the time window, so paging
+    // time must not re-read them.
+    val rowsWindowKey = if (windowedRead) null else windowStart
+    val loadedTimeline by remember(rowsWindowKey, selectedSourceId, selectedGroup, timelineChannelIds, windowedRead) {
         val ids = timelineChannelIds
         val sourceId = selectedSourceId
         when {
             ids != null -> guideRepository.observeTimelineForChannels(ids, windowStart, windowEnd)
+            sourceId != null && windowedRead -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
             sourceId != null -> guideRepository.observeTimeline(windowStart, windowEnd, sourceId, selectedGroup)
             else -> kotlinx.coroutines.flow.flowOf<List<GuideTimelineChannel>?>(null)
         }
@@ -250,7 +266,29 @@ fun GuideScreen(
         }
     }
     val timelineStale = loadedTimeline == null && shownTimeline != null
-    val guide = loadedTimeline ?: shownTimeline ?: emptyList()
+    val baseGuide = loadedTimeline ?: shownTimeline ?: emptyList()
+    // The programmes of a windowed read: for the rows the grid shows, kept
+    // for this time window as the list scrolls so rows scrolled past do not
+    // go blank again.
+    var programmeWindowIds by remember(selectedSourceId, selectedGroup) { mutableStateOf<List<String>>(emptyList()) }
+    var programmeCache by remember(windowStart, selectedSourceId, selectedGroup) {
+        mutableStateOf<Map<String, List<GuideTimelineProgramme>>>(emptyMap())
+    }
+    val windowProgrammes by remember(windowedRead, programmeWindowIds, windowStart) {
+        if (!windowedRead || programmeWindowIds.isEmpty()) {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        } else {
+            guideRepository.observeTimelineForChannels(programmeWindowIds, windowStart, windowEnd)
+        }
+    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    LaunchedEffect(windowProgrammes) {
+        if (windowProgrammes.isNotEmpty()) {
+            programmeCache = programmeCache + windowProgrammes.associate { it.id to it.programmes }
+        }
+    }
+    val guide = remember(baseGuide, programmeCache, windowedRead) {
+        if (windowedRead) mergeProgrammes(baseGuide, programmeCache) else baseGuide
+    }
     val timelineLoading = loadedTimeline == null && shownTimeline == null
     val showReadingNotice = timelineStale && readingForLong
     val guideLoaded = railLoaded && (libraryEmpty || shownTimeline != null)
@@ -330,6 +368,14 @@ fun GuideScreen(
                     }
                 }
             }
+    }
+    // Which rows' programmes to read: follows the grid's scroll position.
+    LaunchedEffect(windowedRead, filteredGuide.map(GuideTimelineChannel::id)) {
+        if (!windowedRead) return@LaunchedEffect
+        val ids = filteredGuide.map { it.id }
+        snapshotFlow { channelListState.firstVisibleItemIndex to channelListState.layoutInfo.visibleItemsInfo.size }
+            .distinctUntilChanged()
+            .collect { (first, count) -> programmeWindowIds = programmeWindowIds(ids, first, count) }
     }
     val initialFocusIndex = remember(filteredGuide, initialChannelId) {
         filteredGuide
@@ -451,6 +497,37 @@ fun GuideScreen(
     // Back peels one layer at a time: the options sheet, then category editing,
     // then out of the guide the way any other screen leaves.
     BackHandler(enabled = optionsVisible) { optionsVisible = false }
+    programmeActions?.let { actions ->
+        val programme = actions.programme
+        fun close() {
+            programmeActions = null
+            coroutineScope.launch { pagedFocus.requestFocusWhenAttached() }
+        }
+        GuideProgrammeActionsDialog(
+            selection = actions,
+            now = now,
+            timeZoneId = preferences.timeZoneId,
+            favourite = actions.channel.id in favouriteChannelIds,
+            reminderSet = programme?.let { "programme:${actions.channel.id}:${it.id}" } in reminderIds,
+            canRemind = onToggleReminder != null && programme != null && programme.startEpochMillis > now,
+            canCatchup = programme != null && actions.channel.canCatchup(programme, now),
+            onWatch = { close(); onPlay(actions.channel.id) },
+            onPlayCatchup = {
+                close()
+                programme?.let { onPlayCatchup(actions.channel.id, it.startEpochMillis, it.stopEpochMillis) }
+            },
+            onToggleReminder = {
+                close()
+                programme?.let { onToggleReminder?.invoke(actions.channel, it) }
+            },
+            onToggleFavourite = {
+                coroutineScope.launch {
+                    preferencesRepository.setFavouriteChannel(actions.channel.id, actions.channel.id !in favouriteChannelIds)
+                }
+            },
+            onDismiss = ::close,
+        )
+    }
     BackHandler(enabled = !optionsVisible && categoryEditMode) { categoryEditMode = false }
 
     StreamMateScreenBackground { contentModifier ->
@@ -487,6 +564,10 @@ fun GuideScreen(
                         favourite = selected.channel.id in favouriteChannelIds,
                         metadata = selectedMetadata,
                         onWatch = { onPlay(selected.channel.id) },
+                        reminderSet = selected.programme?.let { "programme:${selected.channel.id}:${it.id}" } in reminderIds,
+                        onToggleReminder = selected.programme
+                            ?.takeIf { onToggleReminder != null && it.startEpochMillis > now }
+                            ?.let { programme -> { onToggleReminder?.invoke(selected.channel, programme) } },
                         onToggleFavourite = {
                             coroutineScope.launch {
                                 preferencesRepository.setFavouriteChannel(
@@ -646,6 +727,10 @@ fun GuideScreen(
                                     groupRailFocusRequest += 1
                                 },
                                 pagedFocusRequester = pagedFocus,
+                                onProgrammeActions = { channel, programme ->
+                                    selection = GuideSelection(channel, programme)
+                                    programmeActions = GuideSelection(channel, programme)
+                                },
                                 pagedFocusAtEnd = pendingPageDirection < 0,
                                 onSelection = { channel, programme ->
                                     // Focus is back in the EPG. The rail is a

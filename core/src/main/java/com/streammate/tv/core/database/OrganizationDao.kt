@@ -53,6 +53,15 @@ data class OrganizationCatalogueRow(
     val sourceEnabled: Boolean = true,
 )
 
+/** What the film-identity pass needs of a film: enough to name the work, nothing else. */
+data class MovieIdentityRow(
+    val sourceId: String,
+    val itemId: String,
+    val name: String,
+    val year: Int?,
+    val externalId: String?,
+)
+
 data class OrganizationGroupRow(val room: String, val sourceId: String, val groupKey: String, val nameKey: String, val name: String?)
 
 data class OrganizationRecord(
@@ -258,18 +267,23 @@ abstract class OrganizationDao {
     """)
     abstract fun observeMovies(): Flow<List<OrganizationCatalogueRow>>
 
+    /**
+     * The active films a page at a time, in key order so the offset walks an
+     * index. Loading every film at once, with a large provider's catalogue,
+     * was more than the app's heap: the identity pass reads these pages and
+     * registers each page's aliases before the next.
+     */
     @Query("""
-        SELECT movie.sourceId, source.name AS sourceName, source.enabled AS sourceEnabled, movie.movieId AS itemId,
-            movie.name, movie.categoryName, movie.organizationGroupKey, movie.posterUrl,
-            movie.year, movie.rating, metadata.externalId
+        SELECT movie.sourceId, movie.movieId AS itemId, movie.name, movie.year, metadata.externalId
         FROM vod_movies movie
         INNER JOIN iptv_source_state source ON source.sourceId = movie.sourceId
         INNER JOIN import_state state ON state.sourceId = movie.sourceId
             AND state.kind = 'catalogue' AND state.activeSnapshotId = movie.snapshotId
         LEFT JOIN catalogue_metadata_overrides metadata ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-        ORDER BY movie.name, movie.sourceId, movie.movieId
+        ORDER BY movie.sourceId, movie.snapshotId, movie.movieId
+        LIMIT :limit OFFSET :offset
     """)
-    abstract suspend fun movies(): List<OrganizationCatalogueRow>
+    abstract suspend fun movieIdentityRows(limit: Int, offset: Int): List<MovieIdentityRow>
 
     @Query("""
         SELECT item.sourceId, source.name AS sourceName, source.enabled AS sourceEnabled, item.seriesId AS itemId,

@@ -1,5 +1,7 @@
 package com.streammate.tv.iptv.metadata
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
+import kotlinx.coroutines.flow.flowOf
 import com.streammate.tv.core.database.CatalogueGenreEntity
 import com.streammate.tv.core.database.CatalogueMetadataOverrideEntity
 import com.streammate.tv.core.database.CatalogueMetadataWorkEntity
@@ -21,6 +23,9 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
+
+/** Keys per IN query when reading a page's queue rows; under SQLite's variable limit. */
+private const val WORK_KEY_CHUNK = 900
 
 class MetadataRepository(
     private val dao: MetadataDao,
@@ -135,18 +140,41 @@ class MetadataRepository(
     suspend fun synchronizeCatalogueMetadataWork(
         candidates: List<CatalogueMetadataCandidate>,
         targetGenresVersion: Int = CatalogueGenre.VERSION,
+    ): Int = synchronizeCatalogueMetadataWork(flowOf(candidates), targetGenresVersion)
+
+    /**
+     * The same, a page at a time: each page's rows are reconciled against
+     * their own queue rows and written, and the rows no page touched are
+     * swept at the end. A large provider's catalogue, held whole three times
+     * over (candidates, queue, result), was more than the app's heap.
+     */
+    suspend fun synchronizeCatalogueMetadataWork(
+        pages: Flow<List<CatalogueMetadataCandidate>>,
+        targetGenresVersion: Int = CatalogueGenre.VERSION,
     ): Int {
-        val rows = synchronizedCatalogueMetadataWork(
-            candidates = candidates,
-            existing = dao.catalogueMetadataWork(),
-            targetGenresVersion = targetGenresVersion,
-            nowEpochMillis = clock(),
-        )
-        dao.replaceCatalogueMetadataWork(rows)
-        return rows.count {
-            it.state == CatalogueMetadataWorkEntity.STATE_PENDING ||
-                it.state == CatalogueMetadataWorkEntity.STATE_RETRY
+        val started = System.currentTimeMillis()
+        // Every row this pass writes carries this stamp; the sweep keeps only those.
+        val stamp = maxOf(clock(), dao.latestCatalogueMetadataWorkUpdate() + 1)
+        var titles = 0
+        var pageCount = 0
+        pages.collect { page ->
+            if (page.isEmpty()) return@collect
+            val existing = page.map { it.contentKey }.chunked(WORK_KEY_CHUNK).flatMap { dao.catalogueMetadataWorkFor(it) }
+            dao.upsertCatalogueMetadataWork(
+                synchronizedCatalogueMetadataWork(
+                    candidates = page,
+                    existing = existing,
+                    targetGenresVersion = targetGenresVersion,
+                    nowEpochMillis = stamp,
+                ),
+            )
+            titles += page.size
+            pageCount++
         }
+        dao.deleteCatalogueMetadataWorkUpdatedBefore(stamp)
+        val pending = dao.pendingCatalogueMetadataWorkCount()
+        DiagnosticsLog.i("Metadata", "queue synced: $titles titles in $pageCount pages, $pending to look up, ${System.currentTimeMillis() - started} ms")
+        return pending
     }
 
     suspend fun nextCatalogueMetadataWork(

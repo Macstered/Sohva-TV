@@ -5,6 +5,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,6 +19,31 @@ class StreamMateDatabaseMigrationTest {
         emptyList(),
         FrameworkSQLiteOpenHelperFactory(),
     )
+
+    @Test
+    fun migrationFromTwentyThreeAddsRemindersAndKeepsChannels() {
+        helper.createDatabase(TEST_DATABASE_FROM_TWENTY_THREE, 23).apply {
+            execSQL(
+                "INSERT INTO iptv_source_state (sourceId, name, type, enabled, connectionLimit, priority, updatedAtEpochMillis, epgOffsetMinutes)" +
+                    " VALUES ('s', 'Source', 'm3u', 1, 1, 0, 1, 0)",
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DATABASE_FROM_TWENTY_THREE, 24, true, StreamMateDatabase.MIGRATION_23_24)
+        db.query("SELECT name FROM iptv_source_state").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("Source", cursor.getString(0))
+        }
+        db.execSQL(
+            "INSERT INTO reminders (id, kind, eventId, channelId, title, subtitle, startEpochMillis, createdAtEpochMillis)" +
+                " VALUES ('event:1', 'event', '1', NULL, 'Match', NULL, 5, 1)",
+        )
+        db.query("SELECT COUNT(*) FROM reminders").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+        }
+        db.close()
+    }
 
     @Test
     fun migrationFromOneToEightPreservesGuideAndAddsMatchingTables() {
@@ -833,6 +859,7 @@ class StreamMateDatabaseMigrationTest {
         const val TEST_DATABASE_FROM_FIFTEEN = "migration-test-from-fifteen"
         const val TEST_DATABASE_FROM_FOURTEEN = "migration-test-from-fourteen"
         const val TEST_DATABASE_FROM_ONE = "migration-test-from-one"
+        const val TEST_DATABASE_FROM_TWENTY_THREE = "migration-from-23"
         const val TEST_DATABASE_FROM_TWO = "migration-test-from-two"
         const val TEST_DATABASE_FROM_THREE = "migration-test-from-three"
         const val TEST_DATABASE_FROM_FOUR = "migration-test-from-four"

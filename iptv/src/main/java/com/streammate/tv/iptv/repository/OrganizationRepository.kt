@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.repository
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.app.AppPreferences
 import com.streammate.tv.core.database.OrganizationChange
 import com.streammate.tv.core.database.OrganizationDao
@@ -29,6 +30,9 @@ data class ManagedLibrary(
 
 /** How long the metadata worker's matches are left to settle before identities are folded in. */
 private const val METADATA_MATCH_SETTLE_MILLIS = 60_000L
+
+/** Films per page of the identity pass: a few thousand keeps each page's aliases to a few chunks. */
+private const val IDENTITY_PAGE_SIZE = 2_000
 
 class OrganizationRepository(
     private val dao: OrganizationDao,
@@ -108,12 +112,40 @@ class OrganizationRepository(
     fun movieIdentityUpdates(): Flow<Unit> = combine(
         dao.observeActiveCatalogueSnapshots().distinctUntilChanged(),
         dao.observeMatchedMetadataCount().distinctUntilChanged().debounce(METADATA_MATCH_SETTLE_MILLIS),
-    ) { snapshots, matched -> snapshots to matched }.distinctUntilChanged().map {
-        val groups = dao.movies().groupBy { catalogueWorkKey(it.name, it.year, it.externalId) }
-        dao.registerFilmAliases(groups.map { (key, copies) ->
-            listOf("work:$key") + copies.map { "vod:movie:${it.sourceId}:${it.itemId}" }
-        })
+    ) { snapshots, matched -> snapshots to matched }.distinctUntilChanged().map { (snapshots, matched) ->
+        // A pass over a large catalogue is minutes of disk work, so one that
+        // completed for this same state is not repeated at the next start.
+        val mark = "${snapshots.joinToString("|")}#$matched"
+        if (preferences?.movieIdentityMark() != mark) {
+            registerAllMovieIdentities()
+            preferences?.setMovieIdentityMark(mark)
+        }
     }.flowOn(Dispatchers.Default)
+
+    /**
+     * Folds every active film into the alias table, a page at a time. A copy
+     * of a film on another page still meets its fellows through the shared
+     * `work:` alias every group carries, so the pages need no overlap. This
+     * used to load the whole catalogue and, with a large provider, ran the
+     * app out of memory a minute after every start.
+     */
+    suspend fun registerAllMovieIdentities(pageSize: Int = IDENTITY_PAGE_SIZE) {
+        val started = System.currentTimeMillis()
+        var offset = 0
+        var pages = 0
+        while (true) {
+            val rows = dao.movieIdentityRows(pageSize, offset)
+            if (rows.isEmpty()) break
+            pages++
+            val groups = rows.groupBy { catalogueWorkKey(it.name, it.year, it.externalId) }
+            dao.registerFilmAliases(groups.map { (key, copies) ->
+                listOf("work:$key") + copies.map { "vod:movie:${it.sourceId}:${it.itemId}" }
+            })
+            offset += rows.size
+            if (rows.size < pageSize) break
+        }
+        DiagnosticsLog.i("Identity", "film identities: $offset films in $pages pages, ${System.currentTimeMillis() - started} ms")
+    }
 
     fun observeLibrary(room: LibraryRoom, guide: GuideRepository): Flow<ManagedLibrary> {
         val content = when (room) {

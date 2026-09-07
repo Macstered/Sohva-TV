@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.guide
 
+import androidx.compose.ui.test.onAllNodesWithText
 import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.isFocused
@@ -480,6 +481,96 @@ class GuideScreenTest {
     }
 
     @Test
+    fun aLargeSourceShowsItsRowsAndThenTheProgrammesOnScreen() {
+        // Past the windowed-read threshold: rows come first, programmes for
+        // the rows on screen follow from a second, small read.
+        runBlocking {
+            val now = System.currentTimeMillis()
+            val dao = database.guideDao()
+            dao.upsertChannels(
+                (1..GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST).map { index ->
+                    IptvChannelEntity(
+                        sourceId = "test", snapshotId = "playlist", channelId = "test:big-$index",
+                        tvgId = "big$index.fi", name = "Big $index", normalizedName = "big $index",
+                        groupTitle = "Big", logoUrl = null, encryptedStreamUrl = "encrypted-big-$index",
+                        userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = 100 + index,
+                    )
+                },
+            )
+            dao.activatePlaylistSnapshot("test", "playlist", 2 + GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST, now)
+            dao.upsertProgrammes(
+                listOf(
+                    TvProgrammeEntity(
+                        sourceId = "test", snapshotId = "epg", programmeId = "big-now", xmltvChannelId = "big1.fi",
+                        startEpochMillis = now - 20 * 60_000, stopEpochMillis = now + 40 * 60_000,
+                        title = "Big programme now", subtitle = null, description = null, categories = "Sport",
+                    ),
+                ),
+            )
+            dao.activateEpgSnapshot("test", "epg", 7, now)
+        }
+        showGuide()
+        // The guide opens on the whole source, 403 channels: past the threshold.
+        composeRule.awaitUntil(timeoutMillis = 15_000) {
+            composeRule.onAllNodesWithTag("guide-channel-test:big-1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.awaitUntil(timeoutMillis = 15_000) {
+            composeRule.onAllNodesWithText("Big programme now", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun okOnAProgrammeStillAheadOffersItsActions() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val reminded = mutableListOf<String>()
+        composeRule.setContent {
+            StreamMateTheme {
+                GuideScreen(
+                    guideRepository = GuideRepository(database.guideDao()),
+                    preferencesRepository = AppPreferencesRepository(context),
+                    metadataRepository = MetadataRepository(
+                        database.metadataDao(),
+                        SecretSettingsStore(context, TestSecretCipher),
+                        OkHttpClient(),
+                    ),
+                    onBack = {},
+                    onSettings = {},
+                    onChannels = {},
+                    onPlay = {},
+                    onPlayCatchup = { _, _, _ -> },
+                    onToggleReminder = { _, programme -> reminded += programme.id },
+                )
+            }
+        }
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag("guide-programme-bulletin-1").fetchSemanticsNodes().isNotEmpty()
+        }
+        // Bulletin 1 starts in half an hour: OK on it offers actions rather than playing.
+        composeRule.onNodeWithTag("guide-programme-bulletin-1").performClick()
+        composeRule.awaitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag("guide-action-remind").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("guide-action-favourite").assertIsDisplayed()
+        composeRule.onNodeWithTag("guide-action-remind").performClick()
+        composeRule.awaitUntil(timeoutMillis = 5_000) { reminded.isNotEmpty() }
+        assertEquals(listOf("bulletin-1"), reminded)
+    }
+
+    @Test
+    fun upFromTheTopRowReachesTheInfoBoxButtons() {
+        showGuide()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag("guide-channel-test:one").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("guide-channel-test:one").assertIsFocused()
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionUp) }
+        composeRule.awaitUntil(timeoutMillis = 5_000) {
+            runCatching { composeRule.onNodeWithTag("guide-preview-watch").assertIsFocused(); true }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("guide-preview-watch").assertIsFocused()
+    }
+
+    @Test
     fun theGuideCanBePagedThroughTimeAndSaysWhichDayItIsShowing() {
         showGuide()
         composeRule.awaitFocused("guide-channel-test:one")
@@ -552,3 +643,6 @@ private object TestSecretCipher : SecretCipher {
     override fun encrypt(plainText: String): String = "test:$plainText"
     override fun decrypt(encoded: String): String = encoded.removePrefix("test:")
 }
+
+/** One more than the guide's windowed-read threshold. */
+private const val GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST = 401

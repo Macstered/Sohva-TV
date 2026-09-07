@@ -56,6 +56,8 @@
     <string name="streams_available_count">%1$d katsottavissa</string>
     <string name="streams_empty">XMLTV-oppaasta tai M3U-kanavien nimistä ei löytynyt tähän otteluun sopivaa lähetystä.</string>
     <string name="action_watch">Katso</string>
+    <string name="match_remind">Muistuta</string>
+    <string name="match_reminder_set">Muistutus asetettu</string>
     <string name="action_confirm">Vahvista</string>
     <string name="action_reject">Hylkää</string>
     <string name="action_restore">Palauta</string>

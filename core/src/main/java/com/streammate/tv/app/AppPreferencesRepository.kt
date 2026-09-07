@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -239,6 +240,22 @@ class AppPreferencesRepository(
         context.sportMatePreferences.data.map { values ->
             values[stringPreferencesKey("manager_group_$room")] to values[stringPreferencesKey("manager_source_$room")]
         }
+
+    /** Whether the viewer has been shown, once, how to let reminders open the app. */
+    suspend fun reminderOverlayAsked(): Boolean =
+        context.sportMatePreferences.data.map { values -> values[booleanPreferencesKey("reminder_overlay_asked")] ?: false }.first()
+
+    suspend fun setReminderOverlayAsked() {
+        context.sportMatePreferences.edit { values -> values[booleanPreferencesKey("reminder_overlay_asked")] = true }
+    }
+
+    /** The catalogue state the film-identity pass last completed for; see OrganizationRepository. */
+    suspend fun movieIdentityMark(): String? =
+        context.sportMatePreferences.data.map { values -> values[stringPreferencesKey("movie_identity_mark")] }.first()
+
+    suspend fun setMovieIdentityMark(mark: String) {
+        context.sportMatePreferences.edit { values -> values[stringPreferencesKey("movie_identity_mark")] = mark.take(4096) }
+    }
 
     suspend fun setManagerLocation(room: String, group: String?, source: String?) {
         context.sportMatePreferences.edit { values ->

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="fi">
     <string name="app_name">Sohva TV</string>
+    <string name="reminders_channel_name">Otteluiden ja ohjelmien muistutukset</string>
+    <string name="reminder_notification_title">%1$s alkaa nyt</string>
+    <string name="reminder_notification_watch">Paina katsoaksesi.</string>
+    <string name="reminder_notification_open_card">Paina avataksesi ottelukortin ja valitaksesi kanavan.</string>
+    <string name="reminder_alert_title_soon">%1$s alkaa minuutin kuluttua</string>
+    <string name="reminder_alert_title_now">%1$s alkaa nyt</string>
+    <string name="reminder_alert_watch">Katso</string>
+    <string name="reminder_alert_open_card">Avaa ottelukortti</string>
+    <string name="reminder_alert_later">Ei nyt</string>
+    <string name="reminder_overlay_title">Anna muistutusten avata Sohva TV</string>
+    <string name="reminder_overlay_body">Sohva TV:n sisällä muistutus näkyy aina, kun ohjelma on alkamassa. Android TV ei näytä ponnahdusikkunaa sovellukselle, joka ei ole ruudulla, joten jotta Sohva TV nousisi esiin muun ollessa päällä, salli sen näkyminen muiden sovellusten päällä TV:n asetuksissa. Muuten muistutus odottaa TV:n ilmoituspaneelissa.</string>
+    <string name="reminder_overlay_open">Avaa TV:n asetukset</string>
     <string name="catalogue_demo_refreshed">Demokirjasto palautettu</string>
     <string name="home_live_tv">Suora TV</string>
     <string name="home_live_tv_description">Kanavat ja ohjelmaopas</string>

@@ -83,6 +83,20 @@ interface MetadataDao {
     @Query("SELECT * FROM catalogue_metadata_work")
     suspend fun catalogueMetadataWork(): List<CatalogueMetadataWorkEntity>
 
+    /** The queue rows for one page of titles; callers keep [keys] under SQLite's variable limit. */
+    @Query("SELECT * FROM catalogue_metadata_work WHERE contentKey IN (:keys)")
+    suspend fun catalogueMetadataWorkFor(keys: List<String>): List<CatalogueMetadataWorkEntity>
+
+    /** Drops the rows a synchronisation pass did not touch: titles no longer in an active catalogue. */
+    @Query("DELETE FROM catalogue_metadata_work WHERE updatedAtEpochMillis < :stamp")
+    suspend fun deleteCatalogueMetadataWorkUpdatedBefore(stamp: Long)
+
+    @Query("SELECT COUNT(*) FROM catalogue_metadata_work WHERE state = 'pending' OR state = 'retry'")
+    suspend fun pendingCatalogueMetadataWorkCount(): Int
+
+    @Query("SELECT COALESCE(MAX(updatedAtEpochMillis), 0) FROM catalogue_metadata_work")
+    suspend fun latestCatalogueMetadataWorkUpdate(): Long
+
     @Query(
         "SELECT * FROM catalogue_metadata_work " +
             "WHERE (state = 'pending' OR state = 'retry') " +

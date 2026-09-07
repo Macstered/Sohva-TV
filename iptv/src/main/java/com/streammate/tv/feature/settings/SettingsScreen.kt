@@ -181,6 +181,11 @@ fun SettingsScreen(
     phoneSetupActions: PhoneSetupActions = PhoneSetupActions(),
     onBack: () -> Unit,
     onManageLibrary: (() -> Unit)? = null,
+    /** Writes the redacted diagnostics file to the location the tester chose. */
+    onSaveDiagnostics: (suspend (Uri) -> Result<Unit>)? = null,
+    /** Whether a due reminder may bring the app forward over another app; null where that is not offered. */
+    reminderOpenAllowed: Boolean? = null,
+    onOpenReminderSettings: () -> Unit = {},
 ) {
     val resources = LocalResources.current
     val context = LocalContext.current
@@ -509,6 +514,20 @@ fun SettingsScreen(
             }
         }
     }
+    var diagnosticsStatus by remember { mutableStateOf<String?>(null) }
+    val saveDiagnosticsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        val save = onSaveDiagnostics
+        if (uri != null && save != null) {
+            scope.launch {
+                diagnosticsStatus = save(uri).fold(
+                    onSuccess = { resources.getString(R.string.diagnostics_saved) },
+                    onFailure = { it.userMessage(context) },
+                )
+            }
+        }
+    }
     val restoreBackupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -728,6 +747,17 @@ fun SettingsScreen(
                         focusRequester = rowFocus(SettingsPickerTarget.RefreshInterval.key),
                         testTag = "settings-refresh-interval",
                     )
+                    if (reminderOpenAllowed != null) {
+                        SettingsValueRow(
+                            title = stringResource(R.string.reminders_open_title),
+                            subtitle = stringResource(R.string.reminders_open_help),
+                            value = stringResource(if (reminderOpenAllowed) R.string.reminders_open_allowed else R.string.reminders_open_not_allowed),
+                            icon = TvIcons.Info,
+                            onClick = onOpenReminderSettings,
+                            focusRequester = rowFocus("reminders-open"),
+                            testTag = "settings-reminders-open",
+                        )
+                    }
                 }
                 if (timeZonePickerOpen) {
                     TimeZonePickerDialog(
@@ -2036,6 +2066,35 @@ fun SettingsScreen(
                     )
                 }
             }
+            if (onSaveDiagnostics != null) {
+            item {
+                SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.diagnostics_title))
+                    SettingsRow(
+                        title = stringResource(R.string.diagnostics_save),
+                        subtitle = stringResource(R.string.diagnostics_help),
+                        icon = TvIcons.Save,
+                        divider = false,
+                    ) {
+                        TvActionButton(
+                            label = stringResource(R.string.diagnostics_save),
+                            icon = TvIcons.Save,
+                            compact = true,
+                            onClick = { saveDiagnosticsLauncher.launch(diagnosticsFileName()) },
+                            testTag = "settings-diagnostics-save",
+                        )
+                    }
+                    diagnosticsStatus?.let { message ->
+                        Text(
+                            text = message,
+                            color = palette.focus,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = SETTINGS_ROW_PADDING).testTag("settings-diagnostics-status"),
+                        )
+                    }
+                }
+            }
+            }
             }
                 }
             }
@@ -2065,3 +2124,8 @@ private val SETTINGS_SIDEBAR_WIDTH = 214.dp
 private val SETTINGS_CONTENT_GAP = 26.dp
 private val SETTINGS_HEADER_GAP = 14.dp
 private const val SETTINGS_BREADCRUMB_SEPARATOR = "\u203a  "
+
+/** "sohva-tv-diagnostics-20260907-1130.txt": the day and minute, so two files do not collide. */
+private fun diagnosticsFileName(): String =
+    "sohva-tv-diagnostics-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmm")
+        .format(java.time.LocalDateTime.now()) + ".txt"

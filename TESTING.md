@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.7 (8)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.8 (9)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Suggested first session
@@ -29,6 +29,18 @@ Test at your own pace; note failures rather than repeatedly resetting the app.
 9. **Restart:** exit and reopen the app; then restart the Android TV device
    completely. Check sources, keys/settings, groups, favourites and resume
    points again. Standby/sleep alone is not a cold-restart test.
+10. **Reminders:** in the guide, press OK on a programme that has not started
+    (or hold OK on any programme) and choose **Remind me**; on a Sohva Sport
+    match card use **Remind me**. The first reminder explains how a reminder
+    can open Sohva TV; try both answers. Then let one fire while watching
+    another channel, and one while another app is on screen. Note what
+    appeared and when, relative to the programme's start.
+11. **Score ticker:** while a followed match is on, open the player's quick
+    actions and switch the **Score ticker** on; check it updates and that it
+    does not cover the playback information panel.
+12. **Very large libraries:** if your provider has tens of thousands of films,
+    leave the app in the background for ten minutes after the first import and
+    then reopen it; note whether it came back where you left it or restarted.
 
 For library performance, report the sequence of actions, approximate movie /
 series count, whether an import or metadata refresh was running, and whether
@@ -46,18 +58,27 @@ different issues.
 - A movie is assigned to its main genre rather than every reported genre.
 - No recording, downloads, local timeshift or multiview. Catch-up needs provider
   support; it is not local recording.
-- There is no automatic in-app updater or automatic crash-report upload in
-  this beta. Install each newer signed beta manually over the existing app.
+- Newer betas are fetched from **Settings > About > Check for updates**; there
+  is no automatic crash-report upload. Diagnostics are saved only when you
+  choose to.
+- Android TV shows no popup for an app that is not on screen. Inside Sohva TV a
+  reminder appears as a dialog. For Sohva TV to come forward over another app,
+  allow it to **display over other apps** when the first reminder asks
+  (Settings > General shows the state). Without that, the reminder waits in the
+  TV's notification panel.
 - Shield and Android TV emulator testing does not establish compatibility with
   every TV, remote, accessibility service or codec.
 
 ## Report a problem
 
-Email [hello@luontra.fi](mailto:hello@luontra.fi). If a public issue tracker is
+Email [hello@luontra.fi](mailto:hello@luontra.fi). If the developer asks for
+diagnostics, **Settings > About > Save diagnostics** writes a text file of
+recent events and refresh states with addresses and keys removed; attach
+that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.7 (8)
+Version: 0.1.0-beta.8 (9)
 Device model:
 Android / Google TV version:
 Fresh install or update:

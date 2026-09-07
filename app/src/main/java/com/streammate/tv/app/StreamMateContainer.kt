@@ -1,5 +1,8 @@
 package com.streammate.tv.app
 
+import com.streammate.tv.core.database.RemindersDao
+import kotlinx.coroutines.withContext
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import android.content.Context
 import com.streammate.tv.core.database.StreamMateDatabase
 import com.streammate.tv.core.network.GuideSourceClient
@@ -92,24 +95,37 @@ class StreamMateContainer(context: Context) {
         settingsStore = secretSettingsStore,
         httpClient = httpClient,
     )
+    // The planner statistics an import leaves behind. Room never runs
+    // ANALYZE on its own, and every query used to be planned without any.
+    private val analyzeAfterImport: suspend () -> Unit = {
+        withContext(Dispatchers.IO) {
+            val started = System.currentTimeMillis()
+            runCatching { database.analyze() }
+                .onSuccess { DiagnosticsLog.i("database", "analyze: ${System.currentTimeMillis() - started} ms") }
+                .onFailure { DiagnosticsLog.w("database", "analyze failed", it) }
+        }
+    }
     val guideImportService = GuideImportService(
         sourceClient = guideSourceClient,
         m3uParser = m3uParser,
         xmlTvParser = XmlTvParser(),
         store = guideStore,
         secretCipher = secretCipher,
+        afterImport = analyzeAfterImport,
     )
     val xtreamImportService = XtreamImportService(
         client = xtreamClient,
         store = guideStore,
         secretCipher = secretCipher,
         guideImportService = guideImportService,
+        afterImport = analyzeAfterImport,
     )
     val xtreamCatalogueImportService = XtreamCatalogueImportService(
         organization = organizationRepository,
         client = xtreamClient,
         dao = database.catalogueDao(),
         secretCipher = secretCipher,
+        afterImport = analyzeAfterImport,
     )
     val m3uCatalogueImportService = M3uCatalogueImportService(
         organization = organizationRepository,
@@ -117,6 +133,7 @@ class StreamMateContainer(context: Context) {
         parser = m3uParser,
         dao = database.catalogueDao(),
         secretCipher = secretCipher,
+        afterImport = analyzeAfterImport,
     )
     val playbackRepository = PlaybackRepository(
         guideRepository,
@@ -132,6 +149,22 @@ class StreamMateContainer(context: Context) {
         guideRepository,
     )
     val appUpdateChecker = AppUpdateChecker(applicationContext, httpClient)
+    val remindersDao: RemindersDao get() = database.remindersDao()
+    val reminderRepository = ReminderRepository(applicationContext, database.remindersDao())
+    /** What a notification asked the app to open; the app takes it once it is up. */
+    val openRequests = OpenRequests()
+    val reminderAlerts = ReminderAlerts()
+    val diagnosticsReport = DiagnosticsReport(
+        applicationContext,
+        preferencesRepository,
+        secretSettingsStore,
+        guideRepository,
+        sqliteVersion = {
+            database.openHelper.readableDatabase.query("SELECT sqlite_version()").use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else "?"
+            }
+        },
+    )
     val phoneSetupServer = PhoneSetupServer(applicationContext) { submission ->
         submission.source?.let { source ->
             secretSettingsStore.upsertSource(source)

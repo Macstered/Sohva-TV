@@ -68,6 +68,7 @@ enum class RemoteAction(val group: RemoteActionGroup, val scope: RemoteActionSco
 
     PROGRAMME_INFO(RemoteActionGroup.INFORMATION, RemoteActionScope.ANY),
     TOGGLE_STATS(RemoteActionGroup.INFORMATION, RemoteActionScope.ANY),
+    SCORE_TICKER(RemoteActionGroup.INFORMATION, RemoteActionScope.ANY),
     GUIDE_AT_CHANNEL(RemoteActionGroup.INFORMATION, RemoteActionScope.LIVE),
     QUICK_ACTIONS(RemoteActionGroup.INFORMATION, RemoteActionScope.ANY),
 

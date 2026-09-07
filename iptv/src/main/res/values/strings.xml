@@ -108,6 +108,9 @@
     <string name="guide_programme_no_details">No programme details are available.</string>
     <string name="guide_favourite">Favourite</string>
     <string name="guide_add_favourite">Add favourite</string>
+    <string name="guide_remind">Remind me</string>
+    <string name="guide_actions_watch_channel">Watch the channel now</string>
+    <string name="guide_reminder_set">Reminder set</string>
     <string name="guide_watch_from_start">Watch from start</string>
     <string name="guide_watch_recording">Watch recording</string>
     <string name="guide_live_broadcast">Live broadcast</string>
@@ -267,6 +270,8 @@
     <string name="player_quick_subtitles">Subtitles</string>
     <string name="player_quick_picture">Picture</string>
     <string name="player_quick_stats">Playback info</string>
+    <string name="player_quick_ticker">Score ticker</string>
+    <string name="player_score_ticker_empty">No followed matches on or starting soon.</string>
     <string name="player_quick_stats_on">Shown</string>
     <string name="player_quick_stats_off">Hidden</string>
     <string name="playback_buffer_title">Playback buffer</string>
@@ -362,6 +367,10 @@
     <string name="source_epg_offset_help">Shifts this source\'s guide times; applies after saving.</string>
     <string name="source_refresh_schedule">Playlist and EPG refresh interval</string>
     <string name="source_refresh_schedule_help">Updates run in the background when a network connection is available.</string>
+    <string name="reminders_open_title">Reminders can open Sohva TV</string>
+    <string name="reminders_open_help">Lets a due reminder bring Sohva TV forward while another app is on. Set in the TV settings under display over other apps.</string>
+    <string name="reminders_open_allowed">Allowed</string>
+    <string name="reminders_open_not_allowed">Not allowed</string>
     <string name="source_refresh_schedule_saved">Refresh interval set to %1$s</string>
     <plurals name="source_refresh_interval_hours">
         <item quantity="one">%1$d hour</item>
@@ -412,6 +421,10 @@
     <string name="settings_http_disclosure">HTTP is allowed for IPTV compatibility. With HTTP, credentials and streams are visible on the local network, so use only a trusted network or HTTPS. Sohva Sport always connects to API-Sports over HTTPS.</string>
     <string name="about_service_notes_title">Notes on services and connections</string>
     <string name="settings_about_licenses">About, privacy and licences</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_save">Save diagnostics</string>
+    <string name="diagnostics_help">Recent events and refresh states as a file, with addresses and keys removed.</string>
+    <string name="diagnostics_saved">Diagnostics saved. Share the file with the developer if asked.</string>
     <string name="player_stats_video">Video</string>
     <string name="player_stats_video_codec">Video codec</string>
     <string name="player_stats_bitrate">Bitrate</string>
@@ -656,6 +669,7 @@
     <string name="remote_action_open_group_browser">Group list</string>
     <string name="remote_action_programme_info">Programme info</string>
     <string name="remote_action_toggle_stats">Playback info on/off</string>
+    <string name="remote_action_score_ticker">Score ticker on/off</string>
     <string name="remote_action_guide_at_channel">Guide at this channel</string>
     <string name="remote_action_quick_actions">Quick actions</string>
     <string name="remote_action_play_pause">Play / pause</string>

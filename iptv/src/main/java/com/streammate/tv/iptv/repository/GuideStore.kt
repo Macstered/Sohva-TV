@@ -443,6 +443,18 @@ class GuideRepository(
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
 
+    /**
+     * The channels of one source, or one of its groups, with no programmes:
+     * the rows of a very large selection, whose programmes the screen reads
+     * for the rows in view with [observeTimelineForChannels].
+     */
+    fun observeChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineChannel>> =
+        dao.observeGuideChannelsForSource(sourceId, groupTitle)
+            .map(::timelineChannels)
+            .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+
     /** Named channels only; empty ids give an empty timeline without a query. */
     fun observeTimelineForChannels(
         channelIds: List<String>,

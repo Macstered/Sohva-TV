@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.repository
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.error.localizedTransportFailure
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
@@ -31,6 +32,8 @@ class GuideImportService(
     private val store: GuideStore,
     private val secretCipher: SecretCipher,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Runs once an import has activated: the database refreshes its planner statistics here. */
+    private val afterImport: suspend () -> Unit = {},
 ) {
     suspend fun refreshPlaylist(source: IptvSourceConfiguration): ImportSummary {
         if (source.type != IptvSourceType.M3U) {
@@ -94,6 +97,8 @@ class GuideImportService(
                 }
             }
             store.activatePlaylist(sourceId, snapshotId, channelCount)
+            DiagnosticsLog.i("playlist", "$sourceId: $channelCount channels")
+            afterImport()
             ImportSummary(channels = channelCount)
         } catch (cancellation: CancellationException) {
             // Cancellation is not an import failure. Converting it into a
@@ -106,6 +111,7 @@ class GuideImportService(
             store.discardPlaylist(sourceId, snapshotId)
             val redactedError = SecretRedactor.redact(error.message)
             runCatching { store.markRefreshFailed(sourceId, GuideDao.PLAYLIST_KIND, redactedError) }
+            DiagnosticsLog.w("playlist", "$sourceId: failed", error)
             throw localizedTransportFailure(error, ::GuideImportException)
         }
     }
@@ -192,6 +198,8 @@ class GuideImportService(
                 )
             }
             store.activateEpg(sourceId, snapshotId, programmeCount)
+            DiagnosticsLog.i("epg", "$sourceId: $programmeCount programmes for $channelCount channels")
+            afterImport()
             ImportSummary(channels = channelCount, programmes = programmeCount)
         } catch (cancellation: CancellationException) {
             // Cancellation is not an import failure. Converting it into a
@@ -204,6 +212,7 @@ class GuideImportService(
             store.discardEpg(sourceId, snapshotId)
             val redactedError = SecretRedactor.redact(error.message)
             runCatching { store.markRefreshFailed(sourceId, GuideDao.EPG_KIND, redactedError) }
+            DiagnosticsLog.w("epg", "$sourceId: failed", error)
             // A guard failure already carries its own message; only transport
             // failures need the "could not complete the request" frame.
             throw error as? GuideImportException ?: localizedTransportFailure(error, ::GuideImportException)

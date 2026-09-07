@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.repository
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.error.localizedTransportFailure
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
@@ -17,6 +18,8 @@ class XtreamImportService(
     private val store: GuideStore,
     private val secretCipher: SecretCipher,
     private val guideImportService: GuideImportService,
+    /** Runs once an import has activated: the database refreshes its planner statistics here. */
+    private val afterImport: suspend () -> Unit = {},
 ) {
     suspend fun refreshPlaylist(source: IptvSourceConfiguration): ImportSummary {
         if (source.type != IptvSourceType.XTREAM) {
@@ -55,6 +58,8 @@ class XtreamImportService(
                 )
             }
             store.activatePlaylist(source.id, snapshotId, channels.size)
+            DiagnosticsLog.i("playlist", "${source.id}: ${channels.size} channels (xtream)")
+            afterImport()
             ImportSummary(channels = channels.size)
         } catch (error: Throwable) {
             store.discardPlaylist(source.id, snapshotId)
@@ -62,6 +67,7 @@ class XtreamImportService(
             runCatching {
                 store.markRefreshFailed(source.id, GuideDao.PLAYLIST_KIND, redactedError)
             }
+            DiagnosticsLog.w("playlist", "${source.id}: failed (xtream)", error)
             throw localizedTransportFailure(error, ::GuideImportException)
         }
     }

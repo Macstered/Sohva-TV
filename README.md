@@ -10,9 +10,9 @@ to access.
 
 ## Download
 
-The current tester build is **0.1.0-beta.7 (build 8)**. It is an early beta, not
+The current tester build is **0.1.0-beta.8 (build 9)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.7)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.8)
 and verify the published SHA-256 value.
 
 - [Installation and setup](INSTALL.md)

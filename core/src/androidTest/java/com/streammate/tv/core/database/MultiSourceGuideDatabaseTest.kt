@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -259,6 +260,11 @@ class MultiSourceGuideDatabaseTest {
         )
         assertEquals("On one", dao.observeGuideForGroup("News", 150).first().first { it.name == "One" }.currentProgrammeTitle)
         assertEquals(0, dao.observeGuideForGroup(null, 150).first().size)
+        // The rows-only read of a large selection: every channel, no programme.
+        val rowsOnly = dao.observeGuideChannelsForSource("source-a", null).first()
+        assertEquals(setOf("One", "Two", "Three"), rowsOnly.map { it.channelName }.toSet())
+        assertTrue(rowsOnly.all { it.programmeId == null && it.programmeTitle == null })
+        assertEquals(listOf("One", "Two"), dao.observeGuideChannelsForSource("source-a", "News").first().map { it.channelName })
         assertEquals(
             listOf("Two", "Four"),
             dao.observeGuideTimelineForChannels(150, 300, listOf("source-a:two", "source-b:four")).first().map { it.channelName },

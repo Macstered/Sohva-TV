@@ -56,6 +56,8 @@
     <string name="streams_available_count">%1$d watchable</string>
     <string name="streams_empty">No matching stream was found in the XMLTV guide or M3U channel names.</string>
     <string name="action_watch">Watch</string>
+    <string name="match_remind">Remind me</string>
+    <string name="match_reminder_set">Reminder set</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_reject">Reject</string>
     <string name="action_restore">Restore</string>

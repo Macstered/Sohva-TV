@@ -1,5 +1,6 @@
 package com.streammate.tv.core.network
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.error.ResourceArgument
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
@@ -27,10 +28,12 @@ class GuideSourceClient(
             val response = try {
                 client.newCall(request).execute()
             } catch (error: IOException) {
+                DiagnosticsLog.w("http", "GET $normalizedUrl: no response", error)
                 throw transportFailure(error)
             }
             try {
                 if (!response.isSuccessful) {
+                    DiagnosticsLog.w("http", "GET $normalizedUrl: HTTP ${response.code}")
                     throw GuideSourceException(CoreR.string.error_source_http, listOf(response.code))
                 }
                 CompressionAwareInputStream.wrap(response.body.byteStream()).use { stream -> block(stream) }

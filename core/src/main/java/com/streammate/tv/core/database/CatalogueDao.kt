@@ -937,10 +937,11 @@ abstract class CatalogueDao {
     abstract suspend fun activeMovieCopies(title: String, limit: Int): List<CatalogueCopyRow>
 
     /**
-     * One compact row per active movie or series for rebuilding the durable
-     * metadata queue. This runs once after a catalogue change (or the v20
-     * upgrade), not once per worker page, and deliberately leaves out plots,
-     * encrypted URLs and every other field enrichment does not need.
+     * One compact row per active film, a page at a time in key order, for
+     * rebuilding the durable metadata queue. It deliberately leaves out plots,
+     * encrypted URLs and every other field enrichment does not need; and it
+     * is paged because a large provider's catalogue read whole was more than
+     * the app's heap.
      */
     @Query(
         """
@@ -955,7 +956,15 @@ abstract class CatalogueDao {
             AND state.kind = 'catalogue' AND state.activeSnapshotId = movie.snapshotId
         LEFT JOIN catalogue_metadata_overrides metadata
             ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-        UNION ALL
+        ORDER BY movie.sourceId, movie.snapshotId, movie.movieId
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    abstract suspend fun movieMetadataCandidates(limit: Int, offset: Int): List<CatalogueMetadataCandidateRow>
+
+    /** The series counterpart of [movieMetadataCandidates]. */
+    @Query(
+        """
         SELECT 'series:' || item.sourceId || ':' || item.seriesId AS contentKey,
             'series' AS mediaType, item.name AS title, item.year AS year,
             item.posterUrl AS providerPosterUrl,
@@ -967,10 +976,11 @@ abstract class CatalogueDao {
             AND state.kind = 'catalogue' AND state.activeSnapshotId = item.snapshotId
         LEFT JOIN catalogue_metadata_overrides metadata
             ON metadata.contentKey = 'series:' || item.sourceId || ':' || item.seriesId
-        ORDER BY contentKey
+        ORDER BY item.sourceId, item.snapshotId, item.seriesId
+        LIMIT :limit OFFSET :offset
         """,
     )
-    abstract suspend fun catalogueMetadataCandidates(): List<CatalogueMetadataCandidateRow>
+    abstract suspend fun seriesMetadataCandidates(limit: Int, offset: Int): List<CatalogueMetadataCandidateRow>
 
     @Query(
         """

@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Policy packaged: 3 September 2026, updated 7 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.7.
+Policy packaged: 3 September 2026, updated 7 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.8.
 
 Sohva TV plays media sources configured by the user. It contains no channels
 or media and does not provide an IPTV subscription. There is no
@@ -67,6 +67,24 @@ open. The request carries no account, playlist or device information beyond
 what any web request carries. A download happens only when you choose it, is
 checked against the published checksum, and is installed only when you choose
 **Install**. GitHub's own privacy practices apply to that request.
+
+## Diagnostics file
+
+**Save diagnostics** under About writes a text file only when you choose it,
+to the location you pick. It holds the app version, device model and Android
+version, your settings, the names and refresh states of your sources, and the
+app's last few hundred event lines. Addresses, user names, passwords and keys
+are removed before the file is written. The app never sends the file anywhere;
+sharing it is your choice.
+
+## Reminders
+
+A reminder is stored on the TV as the programme or match title, its channel
+and start time, and is removed once it has fired or is half an hour past its
+start. It uses the TV's alarm service and its notification panel, and nothing
+leaves the device. "Display over other apps" is an optional grant, made in the
+TV's own settings, that lets a due reminder bring Sohva TV to the front; the
+app draws nothing over other apps except its own screen when it opens.
 
 ## Setting up from a phone
 

@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -139,8 +140,10 @@ class GuideRefreshWorker(
                 awaitingFirstImport = awaitingFirstImport,
             )
         ) {
+            DiagnosticsLog.i("refresh", "deferred: app in the foreground")
             return Result.retry()
         }
+        DiagnosticsLog.i("refresh", "start ${kinds.joinToString("+") { it.name.lowercase() }}, ${sources.size} source(s), immediate=$immediate")
         var failedSources = 0
         kinds.forEach { kind ->
             sources.forEach { source ->
@@ -160,6 +163,7 @@ class GuideRefreshWorker(
         }
         // An immediate sync reports through the refresh states the screens
         // show; retrying it would only repeat a failure the viewer can see.
+        DiagnosticsLog.i("refresh", "done, $failedSources failed")
         return when {
             failedSources == 0 || immediate -> Result.success()
             else -> Result.retry()
@@ -207,11 +211,13 @@ class GuideRefreshWorker(
                     }
                 }
             0
-        } catch (_: GuideImportException) {
+        } catch (error: GuideImportException) {
+            DiagnosticsLog.w("refresh", "${kind.name.lowercase()} ${source.id}: failed", error)
             1
-        } catch (_: LocalizedException) {
+        } catch (error: LocalizedException) {
             // The catalogue services raise their own type; either way the
             // refresh state carries the message and the loop moves on.
+            DiagnosticsLog.w("refresh", "${kind.name.lowercase()} ${source.id}: failed", error)
             1
         }
     }

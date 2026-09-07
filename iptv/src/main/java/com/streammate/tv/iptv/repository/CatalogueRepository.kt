@@ -1,5 +1,7 @@
 package com.streammate.tv.iptv.repository
 
+import kotlinx.coroutines.flow.flow
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.error.localizedTransportFailure
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
@@ -214,6 +216,9 @@ data class PlayableVod(
     val encryptedStreamUrl: String,
 )
 
+/** Titles per page of the metadata queue rebuild; a few thousand keeps each page to a few IN chunks. */
+private const val METADATA_CANDIDATE_PAGE_SIZE = 2_000
+
 class CatalogueRepository(
     private val dao: CatalogueDao,
     private val clock: () -> Long = System::currentTimeMillis,
@@ -418,8 +423,22 @@ class CatalogueRepository(
      * narrow synchronization projection used after a refresh or schema upgrade;
      * individual worker pages come from the indexed durable queue instead.
      */
-    suspend fun catalogueMetadataCandidates(): List<CatalogueMetadataCandidate> =
-        dao.catalogueMetadataCandidates().mapNotNull(CatalogueMetadataCandidateRow::toMetadataCandidate)
+    /**
+     * Every active film and series as the metadata queue sees them, in pages:
+     * films first, then series. The whole catalogue never sits in memory.
+     */
+    fun catalogueMetadataCandidatePages(pageSize: Int = METADATA_CANDIDATE_PAGE_SIZE): Flow<List<CatalogueMetadataCandidate>> = flow {
+        for (read in listOf(dao::movieMetadataCandidates, dao::seriesMetadataCandidates)) {
+            var offset = 0
+            while (true) {
+                val rows = read(pageSize, offset)
+                if (rows.isEmpty()) break
+                emit(rows.mapNotNull(CatalogueMetadataCandidateRow::toMetadataCandidate))
+                offset += rows.size
+                if (rows.size < pageSize) break
+            }
+        }
+    }
 
     fun observeEpisodes(sourceId: String, seriesId: String): Flow<List<VodEpisode>> =
         dao.observeEpisodes(sourceId, seriesId)
@@ -865,6 +884,8 @@ class XtreamCatalogueImportService(
     private val secretCipher: SecretCipher,
     private val organization: OrganizationRepository? = null,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Runs once an import has activated: the database refreshes its planner statistics here. */
+    private val afterImport: suspend () -> Unit = {},
 ) {
     // Both import paths fetch over the network and then run a Keystore
     // encryption per row while building the entity list. That work ran on
@@ -928,12 +949,15 @@ class XtreamCatalogueImportService(
                 })
             }
             dao.activateCatalogueSnapshot(source.id, snapshotId, movieCount + seriesCount, clock())
+            DiagnosticsLog.i("catalogue", "${source.id}: $movieCount films, $seriesCount series (xtream)")
+            afterImport()
             CatalogueImportSummary(movieCount, seriesCount)
         } catch (error: Throwable) {
             dao.deleteMovieSnapshot(source.id, snapshotId)
             dao.deleteSeriesSnapshot(source.id, snapshotId)
             val redacted = SecretRedactor.redact(error.message)
             runCatching { dao.markCatalogueRefreshFailed(source.id, clock(), redacted) }
+            DiagnosticsLog.w("catalogue", "${source.id}: failed (xtream)", error)
             throw localizedTransportFailure(error, ::GuideImportException)
         }
     }

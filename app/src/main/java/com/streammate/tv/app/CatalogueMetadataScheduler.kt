@@ -103,7 +103,7 @@ class CatalogueMetadataWorker(
             metadataRepository.catalogueMetadataWorkNeedsSync()
         if (synchronizeQueue) {
             metadataRepository.synchronizeCatalogueMetadataWork(
-                container.catalogueRepository.catalogueMetadataCandidates(),
+                container.catalogueRepository.catalogueMetadataCandidatePages(),
             )
         }
 

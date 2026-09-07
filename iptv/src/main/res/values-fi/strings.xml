@@ -108,6 +108,9 @@
     <string name="guide_programme_no_details">Ohjelman lisätietoja ei ole saatavilla.</string>
     <string name="guide_favourite">Suosikki</string>
     <string name="guide_add_favourite">Suosikiksi</string>
+    <string name="guide_remind">Muistuta</string>
+    <string name="guide_actions_watch_channel">Katso kanavaa nyt</string>
+    <string name="guide_reminder_set">Muistutus asetettu</string>
     <string name="guide_watch_from_start">Katso alusta</string>
     <string name="guide_watch_recording">Katso tallenne</string>
     <string name="guide_live_broadcast">Suora lähetys</string>
@@ -267,6 +270,8 @@
     <string name="player_quick_subtitles">Tekstitys</string>
     <string name="player_quick_picture">Kuva</string>
     <string name="player_quick_stats">Toistotiedot</string>
+    <string name="player_quick_ticker">Tulosnauha</string>
+    <string name="player_score_ticker_empty">Ei seurattuja otteluita käynnissä tai alkamassa.</string>
     <string name="player_quick_stats_on">Näkyvissä</string>
     <string name="player_quick_stats_off">Piilotettu</string>
     <string name="playback_buffer_title">Toistopuskuri</string>
@@ -362,6 +367,10 @@
     <string name="source_epg_offset_help">Siirtää tämän lähteen oppaan aikoja; voimaan tallennuksen jälkeen.</string>
     <string name="source_refresh_schedule">Soittolistan ja EPG:n päivitysväli</string>
     <string name="source_refresh_schedule_help">Päivitys tehdään taustalla, kun verkkoyhteys on käytettävissä.</string>
+    <string name="reminders_open_title">Muistutukset voivat avata Sohva TV:n</string>
+    <string name="reminders_open_help">Antaa muistutuksen nostaa Sohva TV:n esiin, kun toinen sovellus on päällä. Asetetaan TV:n asetuksissa kohdassa näyttäminen muiden sovellusten päällä.</string>
+    <string name="reminders_open_allowed">Sallittu</string>
+    <string name="reminders_open_not_allowed">Ei sallittu</string>
     <string name="source_refresh_schedule_saved">Päivitysväliksi asetettu %1$s</string>
     <plurals name="source_refresh_interval_hours">
         <item quantity="one">%1$d tunti</item>
@@ -412,6 +421,10 @@
     <string name="settings_http_disclosure">HTTP on sallittu IPTV-yhteensopivuuden vuoksi. HTTP-yhteydessä tunnukset ja lähetys näkyvät lähiverkossa, joten käytä vain luotettua verkkoa tai HTTPS:ää. Sohva Sport käyttää API-Sportsiin aina HTTPS-yhteyttä.</string>
     <string name="about_service_notes_title">Huomautuksia palveluista ja yhteyksistä</string>
     <string name="settings_about_licenses">Tietoja, tietosuoja ja lisenssit</string>
+    <string name="diagnostics_title">Vianmääritys</string>
+    <string name="diagnostics_save">Tallenna vianmääritystiedot</string>
+    <string name="diagnostics_help">Viimeaikaiset tapahtumat ja päivitysten tila tiedostona, ilman osoitteita ja avaimia.</string>
+    <string name="diagnostics_saved">Vianmääritystiedot tallennettu. Jaa tiedosto kehittäjälle pyydettäessä.</string>
     <string name="player_stats_video">Kuva</string>
     <string name="player_stats_video_codec">Videokoodekki</string>
     <string name="player_stats_bitrate">Bittinopeus</string>
@@ -656,6 +669,7 @@
     <string name="remote_action_open_group_browser">Ryhmälista</string>
     <string name="remote_action_programme_info">Ohjelmatiedot</string>
     <string name="remote_action_toggle_stats">Toistotiedot päälle/pois</string>
+    <string name="remote_action_score_ticker">Tulosnauha päälle/pois</string>
     <string name="remote_action_guide_at_channel">Opas tällä kanavalla</string>
     <string name="remote_action_quick_actions">Pikatoiminnot</string>
     <string name="remote_action_play_pause">Toista / tauko</string>

@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sohva TV</string>
+    <string name="reminders_channel_name">Match and programme reminders</string>
+    <string name="reminder_notification_title">%1$s starts now</string>
+    <string name="reminder_notification_watch">Press to watch.</string>
+    <string name="reminder_notification_open_card">Press to open the match card and choose a channel.</string>
+    <string name="reminder_alert_title_soon">%1$s starts in a minute</string>
+    <string name="reminder_alert_title_now">%1$s starts now</string>
+    <string name="reminder_alert_watch">Watch</string>
+    <string name="reminder_alert_open_card">Open the match card</string>
+    <string name="reminder_alert_later">Not now</string>
+    <string name="reminder_overlay_title">Let reminders open Sohva TV</string>
+    <string name="reminder_overlay_body">Inside Sohva TV a reminder always appears when the programme is about to start. Android TV shows no popup for an app that is not on screen, so to have Sohva TV come forward while something else is on, allow it to display over other apps in the TV settings. Without that, the reminder waits in the notification panel of the TV.</string>
+    <string name="reminder_overlay_open">Open TV settings</string>
     <string name="catalogue_demo_refreshed">Demo library restored</string>
     <string name="home_live_tv">Live TV</string>
     <string name="home_live_tv_description">Channels and programme guide</string>

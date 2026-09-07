@@ -46,6 +46,13 @@ class TodayPollingPolicyTest {
     }
 
     @Test
+    fun `the score ticker counts as looking, but never in the background`() {
+        assertTrue(TodayPollingPolicy.shouldPoll(onSportsScreen = false, appInForeground = true, tickerVisible = true))
+        assertFalse(TodayPollingPolicy.shouldPoll(onSportsScreen = false, appInForeground = false, tickerVisible = true))
+        assertFalse(TodayPollingPolicy.shouldPoll(onSportsScreen = false, appInForeground = true))
+    }
+
+    @Test
     fun `coming back to stale scores costs one call`() {
         val interval = 5
         assertTrue(

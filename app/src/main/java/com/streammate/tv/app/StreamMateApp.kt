@@ -1,5 +1,14 @@
 package com.streammate.tv.app
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.streammate.tv.feature.player.scoreTickerEvents
+import com.streammate.tv.matching.ManualMatchDecision
+import com.streammate.tv.matching.ChannelMatchConfidence
+import androidx.core.content.ContextCompat
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import com.streammate.tv.feature.today.TodayPollingPolicy
 import androidx.lifecycle.compose.currentStateAsState
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -165,6 +174,35 @@ fun StreamMateApp(container: StreamMateContainer) {
     fun navigateTo(next: Destination) {
         if (next != destination) backStack = backStack + next
     }
+    // A reminder's notification asks for a channel or a match card. Taken
+    // once the start-up screens are in place, so it lands on top of them.
+    val openRequest by container.openRequests.pending.collectAsStateWithLifecycle()
+    var todayOpenEventId by remember { mutableStateOf<String?>(null) }
+    val reminderIds by container.reminderRepository.observeIds().collectAsStateWithLifecycle(initialValue = emptySet())
+    val ringingReminders by container.reminderAlerts.ringing.collectAsStateWithLifecycle()
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    fun ensureNotificationsAllowed() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    // The first reminder brings up, once, how a reminder can open the app.
+    var reminderOverlayPrompt by remember { mutableStateOf(false) }
+    fun toggleReminder(reminder: com.streammate.tv.core.database.ReminderEntity) {
+        coroutineScope.launch {
+            if (reminder.id in reminderIds) container.reminderRepository.remove(reminder.id)
+            else {
+                ensureNotificationsAllowed()
+                container.reminderRepository.set(reminder)
+                if (!ReminderOverlay.allowed(context) && !container.preferencesRepository.reminderOverlayAsked()) {
+                    container.preferencesRepository.setReminderOverlayAsked()
+                    reminderOverlayPrompt = true
+                }
+            }
+        }
+    }
     fun navigateBack() {
         if (backStack.size > 1) backStack = backStack.dropLast(1)
     }
@@ -315,13 +353,27 @@ fun StreamMateApp(container: StreamMateContainer) {
     // external player, both leave the sports screen as the current destination
     // while the daily API-Sports allowance quietly drains.
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-    LaunchedEffect(destination, lifecycleState, todayViewModel) {
+    // Re-read when the viewer comes back from the TV settings.
+    val reminderOpenAllowed = remember(lifecycleState) { ReminderOverlay.allowed(context) }
+    // The score ticker over the player is the sport screen in miniature: while
+    // it is up, the scores it shows are worth the same polling, never more.
+    var scoreTickerVisible by rememberSaveable { mutableStateOf(false) }
+    val watchingWithTicker = scoreTickerVisible && (destination is Destination.Player || destination is Destination.VodPlayer)
+    LaunchedEffect(destination, lifecycleState, todayViewModel, watchingWithTicker) {
         todayViewModel.setAutoRefreshEnabled(
             TodayPollingPolicy.shouldPoll(
                 onSportsScreen = destination == Destination.Today,
                 appInForeground = lifecycleState.isAtLeast(Lifecycle.State.RESUMED),
+                tickerVisible = watchingWithTicker,
             ),
         )
+    }
+    val tickerEvents = remember(todayUiState.events, watchingWithTicker) {
+        if (watchingWithTicker) scoreTickerEvents(todayUiState.events, System.currentTimeMillis()) else emptyList()
+    }
+    fun toggleScoreTicker() {
+        scoreTickerVisible = !scoreTickerVisible
+        if (scoreTickerVisible && todayUiState.events.isEmpty()) todayViewModel.refresh()
     }
     fun handleBack() {
         if (destination == Destination.Settings) todayViewModel.refresh()
@@ -341,9 +393,51 @@ fun StreamMateApp(container: StreamMateContainer) {
             handleBack()
         }
     }
+    LaunchedEffect(openRequest, startupApplied) {
+        val request = openRequest ?: return@LaunchedEffect
+        if (!startupApplied) return@LaunchedEffect
+        container.openRequests.consume()
+        when (request) {
+            is OpenRequest.Channel -> playChannel(request.channelId, rememberForGuide = false)
+            is OpenRequest.Event -> {
+                todayOpenEventId = request.eventId
+                navigateTo(Destination.Today)
+            }
+        }
+    }
     BackHandler(enabled = backStack.size > 1, onBack = ::handleBack)
     StreamMateTheme {
         val palette = StreamMateThemeTokens.palette
+        if (reminderOverlayPrompt) {
+            ReminderOverlayPromptDialog(
+                onOpenSettings = {
+                    reminderOverlayPrompt = false
+                    ReminderOverlay.openSettings(context)
+                },
+                onDismiss = { reminderOverlayPrompt = false },
+            )
+        }
+        // A reminder that has just fired, over whatever screen is up.
+        ringingReminders.firstOrNull()?.let { reminder ->
+            if (startupApplied) {
+                ReminderAlertDialog(
+                    reminder = reminder,
+                    now = System.currentTimeMillis(),
+                    onWatch = {
+                        container.reminderAlerts.dismiss(reminder.id)
+                        val channelId = reminder.channelId
+                        val eventId = reminder.eventId
+                        if (channelId != null) {
+                            playChannel(channelId, rememberForGuide = false)
+                        } else if (eventId != null) {
+                            todayOpenEventId = eventId
+                            navigateTo(Destination.Today)
+                        }
+                    },
+                    onDismiss = { container.reminderAlerts.dismiss(reminder.id) },
+                )
+            }
+        }
         if (!startupApplied) {
             Box(
                 modifier = Modifier.fillMaxSize().background(palette.backgroundBottom),
@@ -481,6 +575,27 @@ fun StreamMateApp(container: StreamMateContainer) {
                     onPlay = { channelId ->
                         playChannel(channelId, rememberForGuide = false)
                     },
+                    reminderIds = reminderIds,
+                    onToggleReminder = { event ->
+                        // The channel the notification opens: the one stream
+                        // the match is known to be on, if there is one.
+                        val streams = todayUiState.matches[event.id].orEmpty()
+                            .filter { it.confidence == ChannelMatchConfidence.AVAILABLE && it.manualDecision != ManualMatchDecision.REJECTED }
+                        toggleReminder(
+                            com.streammate.tv.core.database.ReminderEntity(
+                                id = com.streammate.tv.core.database.ReminderEntity.eventId(event.id),
+                                kind = com.streammate.tv.core.database.ReminderEntity.KIND_EVENT,
+                                eventId = event.id,
+                                channelId = streams.singleOrNull()?.channelId ?: streams.firstOrNull()?.channelId,
+                                title = "${event.home} – ${event.away}",
+                                subtitle = event.competition,
+                                startEpochMillis = event.startEpochMillis,
+                                createdAtEpochMillis = System.currentTimeMillis(),
+                            ),
+                        )
+                    },
+                    openEventId = todayOpenEventId,
+                    onOpenEventHandled = { todayOpenEventId = null },
                 )
             }
             Destination.Guide -> GuideScreen(
@@ -491,6 +606,21 @@ fun StreamMateApp(container: StreamMateContainer) {
                 startInOptions = guideManagementReturn,
                 initialManagedGroup = guideManagedGroup.takeIf { guideManagementReturn },
                 onManagementReturnHandled = { guideManagementReturn = false },
+                reminderIds = reminderIds,
+                onToggleReminder = { channel, programme ->
+                    toggleReminder(
+                        com.streammate.tv.core.database.ReminderEntity(
+                            id = com.streammate.tv.core.database.ReminderEntity.programmeId(channel.id, programme.id),
+                            kind = com.streammate.tv.core.database.ReminderEntity.KIND_PROGRAMME,
+                            eventId = null,
+                            channelId = channel.id,
+                            title = programme.title,
+                            subtitle = channel.name,
+                            startEpochMillis = programme.startEpochMillis,
+                            createdAtEpochMillis = System.currentTimeMillis(),
+                        ),
+                    )
+                },
                 onBack = ::handleBack,
                 onSettings = { navigateTo(Destination.Settings) },
                 onChannels = { navigateTo(Destination.ChannelEditor) },
@@ -557,6 +687,9 @@ fun StreamMateApp(container: StreamMateContainer) {
                     onOpenInstallPermission = { container.appUpdateChecker.openInstallPermissionSettings() },
                 ),
                 onManageLibrary = { navigateTo(Destination.LibraryManager(LibraryRoom.LIVE)) },
+                onSaveDiagnostics = { uri -> runCatching { container.diagnosticsReport.writeTo(uri) } },
+                reminderOpenAllowed = reminderOpenAllowed,
+                onOpenReminderSettings = { ReminderOverlay.openSettings(context) },
                 onBack = ::handleBack,
             )
             Destination.LegalInformation -> LegalInformationScreen(onBack = ::handleBack)
@@ -621,6 +754,9 @@ fun StreamMateApp(container: StreamMateContainer) {
                 onGoHome = { backStack = listOf(Destination.Home) },
                 onGoGuide = { backStack = listOf(Destination.Home, Destination.Guide) },
                 onGoSport = { backStack = listOf(Destination.Home, Destination.Today) },
+                scoreTickerEvents = tickerEvents,
+                scoreTickerVisible = scoreTickerVisible,
+                onToggleScoreTicker = ::toggleScoreTicker,
                 onOpenExternal = { channelId ->
                     container.externalPlayerLauncher.launch(channelId).fold(
                         onSuccess = { Result.success(Unit) },

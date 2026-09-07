@@ -24,8 +24,8 @@ object TodayPollingPolicy {
      * player - where the screen is still "on" as far as navigation knows but
      * nobody can see it.
      */
-    fun shouldPoll(onSportsScreen: Boolean, appInForeground: Boolean): Boolean =
-        onSportsScreen && appInForeground
+    fun shouldPoll(onSportsScreen: Boolean, appInForeground: Boolean, tickerVisible: Boolean = false): Boolean =
+        (onSportsScreen || tickerVisible) && appInForeground
 
     /**
      * Whether returning to the screen should cost one call straight away.

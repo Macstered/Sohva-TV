@@ -304,6 +304,7 @@ internal fun RemoteAction.localizedLabel(): String = stringResource(
         RemoteAction.OPEN_GROUP_BROWSER -> R.string.remote_action_open_group_browser
         RemoteAction.PROGRAMME_INFO -> R.string.remote_action_programme_info
         RemoteAction.TOGGLE_STATS -> R.string.remote_action_toggle_stats
+        RemoteAction.SCORE_TICKER -> R.string.remote_action_score_ticker
         RemoteAction.GUIDE_AT_CHANNEL -> R.string.remote_action_guide_at_channel
         RemoteAction.QUICK_ACTIONS -> R.string.remote_action_quick_actions
         RemoteAction.PLAY_PAUSE -> R.string.remote_action_play_pause

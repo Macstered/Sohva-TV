@@ -302,6 +302,28 @@ class GuideImportServiceTest {
         assertTrue("cancellation must not be recorded as a refresh failure", store.refreshFailures.isEmpty())
     }
 
+    @Test
+    fun `the after-import hook runs once the playlist is active`() = runBlocking {
+        val store = RecordingGuideStore()
+        var hookRuns = 0
+        var activeWhenHookRan = false
+        val service = GuideImportService(
+            sourceClient = TextGuideSource("#EXTINF:-1 tvg-id=one,One\nhttps://stream.example/one"),
+            m3uParser = M3uParser(),
+            xmlTvParser = XmlTvParser(),
+            store = store,
+            secretCipher = PrefixCipher,
+            clock = { FIXED_NOW_MILLIS },
+            afterImport = {
+                hookRuns += 1
+                activeWhenHookRan = store.activePlaylist != null
+            },
+        )
+        service.refreshPlaylist("source-a", "https://provider.example/list.m3u")
+        assertEquals(1, hookRuns)
+        assertTrue(activeWhenHookRan)
+    }
+
     private fun service(source: GuideSource, store: RecordingGuideStore) = GuideImportService(
         sourceClient = source,
         m3uParser = M3uParser(),

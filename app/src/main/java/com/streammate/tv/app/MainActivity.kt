@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import android.content.Intent
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -27,9 +28,16 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(AppLocale.wrap(newBase))
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        acceptOpenRequest(intent)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val container = (application as StreamMateApplication).container
+        container.openRequests.offer(OpenRequest.fromIntent(intent))
         setContent {
             var showLaunchSplash by rememberSaveable { mutableStateOf(true) }
             LaunchedEffect(Unit) {
@@ -54,6 +62,11 @@ class MainActivity : ComponentActivity() {
 }
 
 private const val LAUNCH_SPLASH_DURATION_MILLIS = 2_000L
+
+/** A reminder tapped while the app is already up arrives here, not in onCreate. */
+private fun MainActivity.acceptOpenRequest(intent: Intent?) {
+    (application as StreamMateApplication).container.openRequests.offer(OpenRequest.fromIntent(intent))
+}
 
 /** [content] laid out at [scale]: the device density times its factor, with the font scale as it is. */
 @Composable

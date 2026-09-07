@@ -1,5 +1,9 @@
 package com.streammate.tv.app
 
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import android.app.Application
 import android.content.Context
 import coil3.ImageLoader
@@ -18,6 +22,11 @@ class StreamMateApplication : Application(), SingletonImageLoader.Factory {
         super.onCreate()
         container = StreamMateContainer(this)
         if (!container.demoMode) installCatalogueMetadataLifecycle()
+        // An update or a force-stop drops the alarm; the stored reminders
+        // put it back on the next start.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { ReminderScheduler.reschedule(this@StreamMateApplication, container.remindersDao, System.currentTimeMillis()) }
+        }
     }
 
     override fun newImageLoader(context: Context): ImageLoader = ImageLoader.Builder(context)

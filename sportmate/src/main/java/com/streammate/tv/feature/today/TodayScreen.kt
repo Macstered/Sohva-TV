@@ -158,9 +158,21 @@ fun TodayScreen(
     onSettings: () -> Unit,
     onPlay: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** Ids, as [com.streammate.tv.core.database.ReminderEntity.eventId] makes them, with a reminder set. */
+    reminderIds: Set<String> = emptySet(),
+    onToggleReminder: (TodayEvent) -> Unit = {},
+    /** A match a notification asked for: its card opens as soon as the event is in the list. */
+    openEventId: String? = null,
+    onOpenEventHandled: () -> Unit = {},
 ) {
     var selectedFilter by rememberSaveable { mutableStateOf(TodayFilter.ALL) }
     var selectedEventId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openEventId, uiState.events) {
+        if (openEventId != null && uiState.events.any { it.id == openEventId }) {
+            selectedEventId = openEventId
+            onOpenEventHandled()
+        }
+    }
     val fallbackFocusRequester = remember { FocusRequester() }
     val eventFocusRequester = remember { FocusRequester() }
     val availableFilters = remember(uiState.followedSports) {
@@ -361,6 +373,12 @@ fun TodayScreen(
                     onPlay = onPlay,
                     onDecision = { channelId, decision ->
                         onMatchDecision(event.id, channelId, decision)
+                    },
+                    reminderSet = "event:${event.id}" in reminderIds,
+                    onToggleReminder = if (event.status == TodayEventStatus.SCHEDULED && event.startEpochMillis > System.currentTimeMillis()) {
+                        { onToggleReminder(event) }
+                    } else {
+                        null
                     },
                 )
             }
@@ -1059,6 +1077,8 @@ private fun MatchHub(
     onRefreshDetails: () -> Unit,
     onPlay: (String) -> Unit,
     onDecision: (String, ManualMatchDecision?) -> Unit,
+    reminderSet: Boolean = false,
+    onToggleReminder: (() -> Unit)? = null,
 ) {
     val palette = StreamMateThemeTokens.palette
     val availableStreamCount = matches.count { it.confidence == ChannelMatchConfidence.AVAILABLE }
@@ -1096,6 +1116,8 @@ private fun MatchHub(
                     availableStreamLabel = availableStreamLabel,
                     focusRequester = fallbackFocusRequester,
                     onDismiss = onDismiss,
+                    reminderSet = reminderSet,
+                    onToggleReminder = onToggleReminder,
                 )
                 Spacer(Modifier.height(16.dp))
                 Row(
@@ -1126,6 +1148,8 @@ private fun MatchHeroHeader(
     availableStreamLabel: String,
     focusRequester: FocusRequester,
     onDismiss: () -> Unit,
+    reminderSet: Boolean = false,
+    onToggleReminder: (() -> Unit)? = null,
 ) {
     val palette = StreamMateThemeTokens.palette
     Row(
@@ -1196,9 +1220,22 @@ private fun MatchHeroHeader(
             HeroTeam(event.away, event.awayLogoUrl)
         }
         Column(
-            modifier = Modifier.width(120.dp),
+            modifier = Modifier.width(150.dp),
             horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            // Only for a match still ahead: a reminder fires a minute before
+            // kick-off and opens the stream, or this card if none is known yet.
+            if (onToggleReminder != null) {
+                TvActionButton(
+                    label = stringResource(if (reminderSet) R.string.match_reminder_set else R.string.match_remind),
+                    icon = TvIcons.Epg,
+                    selected = reminderSet,
+                    onClick = onToggleReminder,
+                    testTag = "match-remind",
+                    compact = true,
+                )
+            }
             TvActionButton(
                 label = stringResource(R.string.action_close),
                 icon = TvIcons.Close,

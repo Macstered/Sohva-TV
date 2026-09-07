@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.repository
 
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.error.localizedTransportFailure
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
@@ -28,6 +29,8 @@ class M3uCatalogueImportService(
     private val secretCipher: SecretCipher,
     private val organization: OrganizationRepository? = null,
     private val clock: () -> Long = System::currentTimeMillis,
+    /** Runs once an import has activated: the database refreshes its planner statistics here. */
+    private val afterImport: suspend () -> Unit = {},
 ) {
     suspend fun refresh(source: IptvSourceConfiguration): CatalogueImportSummary {
         if (source.type != IptvSourceType.M3U) {
@@ -106,12 +109,15 @@ class M3uCatalogueImportService(
                 itemCount = movieCount + seriesCount,
                 now = clock(),
             )
+            DiagnosticsLog.i("catalogue", "${source.id}: $movieCount films, $seriesCount series (m3u)")
+            afterImport()
             CatalogueImportSummary(movieCount, seriesCount)
         } catch (error: Throwable) {
             dao.deleteMovieSnapshot(source.id, snapshotId)
             dao.deleteSeriesSnapshot(source.id, snapshotId)
             val redacted = SecretRedactor.redact(error.message)
             runCatching { dao.markCatalogueRefreshFailed(source.id, clock(), redacted) }
+            DiagnosticsLog.w("catalogue", "${source.id}: failed (m3u)", error)
             throw localizedTransportFailure(error, ::GuideImportException)
         }
     }

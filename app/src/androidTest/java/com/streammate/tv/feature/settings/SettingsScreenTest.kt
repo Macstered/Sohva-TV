@@ -392,6 +392,9 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
         composeRule.onNodeWithTag("settings-section-about").performClick()
+        // Diagnostics sit on the same page, so a tester asked for a file finds it.
+        composeRule.onNodeWithTag("settings-list").performScrollToNode(hasTestTag("settings-diagnostics-save"))
+        composeRule.onNodeWithTag("settings-diagnostics-save").assertIsDisplayed()
         // No performScrollToNode here. The About section is two items tall, so
         // settings-list does not overflow, and a programmatic scroll on a lazy
         // list with nothing to scroll never returns - it spins the main thread

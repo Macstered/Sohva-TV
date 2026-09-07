@@ -32,17 +32,28 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
         EventChannelDecisionEntity::class,
         OrganizationRuleEntity::class,
         OrganizationAliasEntity::class,
+        ReminderEntity::class,
     ],
     views = [OrganizationMembershipView::class, OrganizationEligibleView::class, OrganizationVisibleMovie::class, OrganizationVisibleSeries::class, OrganizationVisibleChannel::class],
-    version = 23,
+    version = 24,
     exportSchema = true,
 )
 abstract class StreamMateDatabase : RoomDatabase() {
+    /**
+     * Gives SQLite's planner statistics to plan with. Room never runs
+     * ANALYZE, so every query on a fresh install was planned blind; the
+     * import services call this once an import has activated.
+     */
+    fun analyze() {
+        openHelper.writableDatabase.execSQL("ANALYZE")
+    }
+
     abstract fun guideDao(): GuideDao
     abstract fun catalogueDao(): CatalogueDao
     abstract fun metadataDao(): MetadataDao
     abstract fun sportsCacheDao(): SportsCacheDao
     abstract fun organizationDao(): OrganizationDao
+    abstract fun remindersDao(): RemindersDao
 
     companion object {
         fun create(context: Context): StreamMateDatabase = Room.databaseBuilder(
@@ -73,8 +84,21 @@ abstract class StreamMateDatabase : RoomDatabase() {
                 MIGRATION_20_21,
                 MIGRATION_21_22,
                 MIGRATION_22_23,
+                MIGRATION_23_24,
             )
             .build()
+
+        /** Reminders: a match or programme the viewer asked to be told about when it starts. */
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `reminders` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, `eventId` TEXT, " +
+                        "`channelId` TEXT, `title` TEXT NOT NULL, `subtitle` TEXT, `startEpochMillis` INTEGER NOT NULL, " +
+                        "`createdAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_reminders_startEpochMillis` ON `reminders` (`startEpochMillis`)")
+            }
+        }
 
         val MIGRATION_22_23 = object : Migration(22, 23) {
             override fun migrate(db: SupportSQLiteDatabase) {
