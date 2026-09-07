@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import okhttp3.Protocol
 import com.streammate.tv.core.database.RemindersDao
 import kotlinx.coroutines.withContext
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
@@ -180,7 +181,14 @@ class StreamMateContainer(context: Context) {
             secretSettingsStore.saveSportsApiSettings(secretSettingsStore.loadSportsApiSettings().copy(apiKey = key))
         }
     }
-    val playbackHttpClient: OkHttpClient = httpClient
+    /**
+     * Streams go over HTTP/1.1 only. Some IPTV servers and the fronts before
+     * them reset HTTP/2 streams part-way, which reaches the screen as an
+     * unspecified read error; the players that work with them speak 1.1.
+     */
+    val playbackHttpClient: OkHttpClient = httpClient.newBuilder()
+        .protocols(listOf(Protocol.HTTP_1_1))
+        .build()
     val sportsRepository: SportsRepository by lazy {
         demoContentProvider?.sportsRepository ?: DirectSportsRepository(
             httpClient = httpClient,

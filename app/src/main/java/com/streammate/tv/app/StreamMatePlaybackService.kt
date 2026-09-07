@@ -1,5 +1,7 @@
 package com.streammate.tv.app
 
+import android.os.Build
+import com.streammate.tv.iptv.playback.PlaybackHttp
 import android.content.Intent
 import android.net.Uri
 import androidx.annotation.OptIn
@@ -97,7 +99,12 @@ class StreamMatePlaybackService : MediaSessionService() {
             ?: throw IOException("Playback source is no longer available")
         return dataSpec
             .withUri(Uri.parse(source.streamUrl))
-            .withAdditionalHeaders(source.headers)
+            .withAdditionalHeaders(PlaybackHttp.withDefaultUserAgent(source.headers, userAgent))
+    }
+
+    private val userAgent: String by lazy {
+        val version = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "?"
+        PlaybackHttp.userAgent(version, Build.VERSION.RELEASE ?: "?")
     }
 
     private fun releaseActiveSource() {

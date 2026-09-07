@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.player
 
+import com.streammate.tv.iptv.playback.PlaybackHttp
 import com.streammate.tv.core.model.TodayEvent
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -832,9 +833,10 @@ private fun ActivePlayer(
     DisposableEffect(controller, channelId) {
         val playerListener = object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
-                playbackError = resources.getString(R.string.player_playback_failed, error.errorCodeName)
+                val detail = PlaybackHttp.failureDetail(error.errorCodeName, error)
+                playbackError = resources.getString(R.string.player_playback_failed, detail)
                 reconnectAttempt += 1
-                DiagnosticsLog.w("player", "$channelId: ${error.errorCodeName}, attempt $reconnectAttempt", error)
+                DiagnosticsLog.w("player", "$channelId: $detail, attempt $reconnectAttempt")
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {

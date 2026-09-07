@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Policy packaged: 3 September 2026, updated 7 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.8.
+Policy packaged: 3 September 2026, updated 7 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.9.
 
 Sohva TV plays media sources configured by the user. It contains no channels
 or media and does not provide an IPTV subscription. There is no
@@ -76,6 +76,13 @@ version, your settings, the names and refresh states of your sources, and the
 app's last few hundred event lines. Addresses, user names, passwords and keys
 are removed before the file is written. The app never sends the file anywhere;
 sharing it is your choice.
+
+## Stream requests
+
+A request for a stream carries the user agent your playlist sets for that
+channel, or, when it sets none, the app's own name and version ("Sohva TV/…").
+Your provider sees that name, as it would see any player's; nothing else about
+you or your device is added to the request.
 
 ## Reminders
 

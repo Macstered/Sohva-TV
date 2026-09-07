@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.8 (9)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.9 (10)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Suggested first session
@@ -12,7 +12,9 @@ Test at your own pace; note failures rather than repeatedly resetting the app.
    for the initial import separately from normal browsing.
 3. **Live TV:** open several channels; use Back, the guide and player controls.
    Try available audio tracks and subtitles. Respect your provider's connection
-   limit when using another player or device at the same time.
+   limit when using another player or device at the same time. If a channel
+   fails, note the whole message on screen: from beta 9 it names the cause,
+   such as "Connection reset" or "Response code: 403", with addresses removed.
 4. **Movies:** browse several provider and genre groups, move quickly through
    the poster wall, open a title, go Back, and check that focus returns sensibly.
    Start playback, stop partway through, then reopen and resume.
@@ -78,7 +80,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.8 (9)
+Version: 0.1.0-beta.9 (10)
 Device model:
 Android / Google TV version:
 Fresh install or update:
