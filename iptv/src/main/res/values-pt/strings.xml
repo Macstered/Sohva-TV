@@ -176,6 +176,7 @@
     <string name="action_save">Salvar</string>
     <string name="channels_show_in_guide">Mostrar no guia</string>
     <string name="channels_hide_from_guide">Ocultar do guia</string>
+    <string name="channels_show_hidden">Mostrar ocultos</string>
     <string name="channels_configure_pin">Configurar o PIN nas Configurações</string>
     <string name="channels_remove_pin_lock">Remover o bloqueio por PIN</string>
     <string name="channels_lock_with_pin">Bloquear com PIN</string>
@@ -319,6 +320,8 @@
     <string name="interface_scale_normal">Normal</string>
     <string name="interface_scale_compact">Compacto</string>
     <string name="interface_scale_small">Pequeno</string>
+    <string name="interface_scale_smaller">Menor</string>
+    <string name="interface_scale_option">%1$s (%2$d %%)</string>
     <string name="interface_language_en">English</string>
     <string name="interface_language_fi">Suomi</string>
     <string name="interface_language_es">Español (borrador)</string>
@@ -425,6 +428,14 @@
     <string name="source_testing_xtream">Testando a conexão Xtream…</string>
     <string name="source_connection_ok">A conexão Xtream funciona%1$s</string>
     <string name="source_server_limit"> · limite do servidor %1$d</string>
+    <string name="source_test_address">Testar endereço</string>
+    <string name="source_testing_m3u">Testando o endereço da playlist…</string>
+    <plurals name="source_test_m3u_ok">
+        <item quantity="one">Playlist M3U encontrada: %1$d item</item>
+        <item quantity="other">Playlist M3U encontrada: %1$d itens</item>
+    </plurals>
+    <string name="source_test_m3u_ok_more">Playlist M3U encontrada: pelo menos %1$d itens</string>
+    <string name="source_test_m3u_empty">O endereço responde, mas a playlist está vazia</string>
     <string name="source_refresh_playlist">Atualizar playlist</string>
     <string name="source_refresh_channels">Atualizar canais</string>
     <string name="source_refreshing_playlist">Atualizando a playlist…</string>

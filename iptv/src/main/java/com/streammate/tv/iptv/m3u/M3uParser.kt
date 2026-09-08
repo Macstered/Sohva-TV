@@ -5,6 +5,9 @@ import java.net.URLDecoder
 import java.security.MessageDigest
 import java.text.Normalizer
 import java.util.Locale
+import com.streammate.tv.core.R as CoreR
+import com.streammate.tv.core.error.LocalizedException
+import com.streammate.tv.core.security.SecretRedactor
 
 enum class M3uContentKind {
     LIVE,
@@ -39,11 +42,17 @@ class M3uParser {
         var metadata: PendingMetadata? = null
         var channelIndex = 0
 
+        var opened = false
         input.bufferedReader(Charsets.UTF_8).useLines { lines ->
             for (rawLine in lines) {
                 val line = rawLine.removePrefix("\uFEFF").trim()
+                if (line.isBlank()) continue
+                if (!opened) {
+                    if (!opensPlaylist(line)) throw M3uFormatException(line)
+                    opened = true
+                }
                 when {
-                    line.isBlank() || line == "#EXTM3U" -> Unit
+                    line == "#EXTM3U" -> Unit
                     line.startsWith("#EXTINF:", ignoreCase = true) -> {
                         metadata = parseMetadata(line)
                     }
@@ -66,6 +75,16 @@ class M3uParser {
             }
         }
     }
+
+    /**
+     * Whether [line], the first with anything on it, can open a playlist: a
+     * directive, or a stream address. A sign-in page, a JSON error and a
+     * sentence from a panel all fail this, and every one of them used to
+     * import as channels.
+     */
+    private fun opensPlaylist(line: String): Boolean =
+        line.startsWith('#') ||
+            (!line.startsWith('<') && !line.startsWith('{') && !line.startsWith('[') && line.contains("://"))
 
     private fun createChannel(
         rawUrl: String,
@@ -249,3 +268,13 @@ object ChannelNameNormalizer {
     private val punctuationPattern = Regex("[^a-z0-9]+")
     private val whitespacePattern = Regex("\\s+")
 }
+
+/**
+ * The document is not an M3U at all. Every line that was not a comment used
+ * to become a channel, so a login page arrived as hundreds of channels named
+ * "Kanava 1, 2, 3" and the refresh reported success for it.
+ */
+class M3uFormatException(firstLine: String) : LocalizedException(
+    CoreR.string.error_playlist_not_m3u,
+    logMessage = "Not an M3U document: it opens with \"${SecretRedactor.redact(firstLine.take(60)).orEmpty()}\"",
+)

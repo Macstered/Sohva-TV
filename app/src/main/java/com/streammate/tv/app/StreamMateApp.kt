@@ -168,6 +168,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
         if (!container.demoMode) container.appUpdateChecker.checkIfDue()
     }
     val appUpdateState by container.appUpdateChecker.state.collectAsStateWithLifecycle()
+    val installedNotes by container.appUpdateChecker.installedNotes.collectAsStateWithLifecycle()
     val phoneSetupState by container.phoneSetupServer.state.collectAsStateWithLifecycle()
     // The phone page lives only while Settings is open.
     LaunchedEffect(destination) {
@@ -689,7 +690,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                     onStart = { container.phoneSetupServer.start() },
                     onStop = { container.phoneSetupServer.stop() },
                 ),
-                appUpdate = appUpdateState.toUiState(container.appUpdateChecker.installedVersionName),
+                appUpdate = appUpdateState.toUiState(container.appUpdateChecker.installedVersionName, installedNotes),
                 appUpdateActions = AppUpdateActions(
                     onCheck = { coroutineScope.launch { container.appUpdateChecker.check() } },
                     onDownload = {
@@ -717,6 +718,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
             is Destination.LibraryManager -> LibraryManagerScreen(
                 repository = container.organizationRepository,
                 guideRepository = container.guideRepository,
+                preferencesRepository = container.preferencesRepository,
                 initialRoom = current.room,
                 initialGroup = current.group,
                 initialSource = current.source,
@@ -872,32 +874,31 @@ private suspend fun runBackupOperation(operation: suspend () -> Unit): Result<Un
     Result.failure(error)
 }
 
-/** The checker's state in the words the settings screen understands. */
-internal fun AppUpdateState.toUiState(installedVersionName: String): AppUpdateUiState = when (this) {
-    AppUpdateState.Idle -> AppUpdateUiState(AppUpdateUiState.Phase.IDLE, installedVersionName)
-    AppUpdateState.Checking -> AppUpdateUiState(AppUpdateUiState.Phase.CHECKING, installedVersionName)
-    AppUpdateState.UpToDate -> AppUpdateUiState(AppUpdateUiState.Phase.UP_TO_DATE, installedVersionName)
-    is AppUpdateState.Available -> AppUpdateUiState(
-        AppUpdateUiState.Phase.AVAILABLE, installedVersionName, update.versionName, update.notes,
+/** The checker's state in the words the settings screen understands; release bodies become plain lines here. */
+internal fun AppUpdateState.toUiState(installedVersionName: String, installedNotes: String? = null): AppUpdateUiState {
+    val base = AppUpdateUiState(installedVersionName = installedVersionName, installedNotes = installedNotes)
+    fun about(update: AvailableUpdate?) = base.copy(
+        versionName = update?.versionName,
+        notes = update?.let { AppUpdates.releaseNotes(it.notes) },
     )
-    is AppUpdateState.Downloading -> AppUpdateUiState(
-        AppUpdateUiState.Phase.DOWNLOADING, installedVersionName, update.versionName, update.notes, percent,
-    )
-    is AppUpdateState.Downloaded -> AppUpdateUiState(
-        AppUpdateUiState.Phase.DOWNLOADED, installedVersionName, update.versionName, update.notes,
-    )
-    is AppUpdateState.NeedsInstallPermission -> AppUpdateUiState(
-        AppUpdateUiState.Phase.NEEDS_PERMISSION, installedVersionName, update.versionName, update.notes,
-    )
-    is AppUpdateState.Failed -> AppUpdateUiState(
-        AppUpdateUiState.Phase.FAILED, installedVersionName, update?.versionName, update?.notes,
-        failure = when (reason) {
-            AppUpdateFailure.NETWORK -> AppUpdateUiState.Failure.NETWORK
-            AppUpdateFailure.NO_CHECKSUMS -> AppUpdateUiState.Failure.NO_CHECKSUMS
-            AppUpdateFailure.CHECKSUM_MISMATCH -> AppUpdateUiState.Failure.CHECKSUM_MISMATCH
-            AppUpdateFailure.INSTALL_BLOCKED -> AppUpdateUiState.Failure.INSTALL_BLOCKED
-        },
-    )
+    return when (this) {
+        AppUpdateState.Idle -> base.copy(phase = AppUpdateUiState.Phase.IDLE)
+        AppUpdateState.Checking -> base.copy(phase = AppUpdateUiState.Phase.CHECKING)
+        AppUpdateState.UpToDate -> base.copy(phase = AppUpdateUiState.Phase.UP_TO_DATE)
+        is AppUpdateState.Available -> about(update).copy(phase = AppUpdateUiState.Phase.AVAILABLE)
+        is AppUpdateState.Downloading -> about(update).copy(phase = AppUpdateUiState.Phase.DOWNLOADING, percent = percent)
+        is AppUpdateState.Downloaded -> about(update).copy(phase = AppUpdateUiState.Phase.DOWNLOADED)
+        is AppUpdateState.NeedsInstallPermission -> about(update).copy(phase = AppUpdateUiState.Phase.NEEDS_PERMISSION)
+        is AppUpdateState.Failed -> about(update).copy(
+            phase = AppUpdateUiState.Phase.FAILED,
+            failure = when (reason) {
+                AppUpdateFailure.NETWORK -> AppUpdateUiState.Failure.NETWORK
+                AppUpdateFailure.NO_CHECKSUMS -> AppUpdateUiState.Failure.NO_CHECKSUMS
+                AppUpdateFailure.CHECKSUM_MISMATCH -> AppUpdateUiState.Failure.CHECKSUM_MISMATCH
+                AppUpdateFailure.INSTALL_BLOCKED -> AppUpdateUiState.Failure.INSTALL_BLOCKED
+            },
+        )
+    }
 }
 
 internal fun PhoneSetupState.toUiState(qrCode: ImageBitmap?): PhoneSetupUiState = when (this) {

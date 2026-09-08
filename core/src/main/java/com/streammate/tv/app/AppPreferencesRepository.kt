@@ -49,6 +49,8 @@ data class AppPreferences(
     val autoPlayNextEpisodeEnabled: Boolean = true,
     /** Home while watching shrinks the picture to a corner over the launcher instead of stopping it. */
     val pictureInPictureEnabled: Boolean = false,
+    /** Whether the channel editor and the library manager list what is hidden; off, they show only what the viewer sees. */
+    val editorsShowHidden: Boolean = true,
     val followedSports: Set<SportType> = SportsFollowDefaults.sports,
     val followedCompetitionKeys: Set<String> = SportsFollowDefaults.competitionKeys,
     val playlistEpgRefreshInterval: PlaylistEpgRefreshInterval = PlaylistEpgRefreshInterval.DEFAULT,
@@ -249,6 +251,7 @@ class AppPreferencesRepository(
             autoFrameRateEnabled = values[AUTO_FRAME_RATE] ?: true,
             autoPlayNextEpisodeEnabled = values[AUTO_PLAY_NEXT_EPISODE] ?: true,
             pictureInPictureEnabled = values[PICTURE_IN_PICTURE] ?: false,
+            editorsShowHidden = values[EDITORS_SHOW_HIDDEN] ?: true,
             followedSports = values[FOLLOWED_SPORTS]
                 ?.mapNotNull { stored -> SportType.entries.firstOrNull { it.name == stored } }
                 ?.toSet()
@@ -505,6 +508,10 @@ class AppPreferencesRepository(
         context.sportMatePreferences.edit { values -> values[PICTURE_IN_PICTURE] = enabled }
     }
 
+    suspend fun setEditorsShowHidden(show: Boolean) {
+        context.sportMatePreferences.edit { values -> values[EDITORS_SHOW_HIDDEN] = show }
+    }
+
     suspend fun setFollowedSport(sport: SportType, followed: Boolean) {
         context.sportMatePreferences.edit { values ->
             val updated = values[FOLLOWED_SPORTS]
@@ -648,6 +655,7 @@ class AppPreferencesRepository(
             values[AUTO_FRAME_RATE] = restored.autoFrameRateEnabled
             values[AUTO_PLAY_NEXT_EPISODE] = restored.autoPlayNextEpisodeEnabled
             values[PICTURE_IN_PICTURE] = restored.pictureInPictureEnabled
+            values[EDITORS_SHOW_HIDDEN] = restored.editorsShowHidden
             values[FOLLOWED_SPORTS] = restored.followedSports.mapTo(mutableSetOf()) { it.name }
             values[FOLLOWED_COMPETITIONS] = restored.followedCompetitionKeys
             values[PLAYLIST_EPG_REFRESH_INTERVAL] = restored.playlistEpgRefreshInterval.name
@@ -698,6 +706,7 @@ class AppPreferencesRepository(
         val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
         val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
+        val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")
         val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")
         val FOLLOWED_COMPETITIONS = stringSetPreferencesKey("followed_competitions")
         val PLAYLIST_EPG_REFRESH_INTERVAL = stringPreferencesKey("playlist_epg_refresh_interval")

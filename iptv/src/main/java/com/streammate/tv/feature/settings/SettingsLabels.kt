@@ -6,6 +6,7 @@ import com.streammate.tv.app.SubtitleTextSize
 import com.streammate.tv.app.PlaybackSeekStep
 import android.app.Activity
 import android.content.Context
+import android.content.res.Resources
 import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -21,6 +22,7 @@ import com.streammate.tv.app.StartupScreen
 import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.model.SportType
+import com.streammate.tv.iptv.repository.PlaylistProbe
 import com.streammate.tv.iptv.repository.SourceRefreshHealth
 import java.util.UUID
 
@@ -62,12 +64,19 @@ internal fun PlaybackReconnectPolicy.localizedHelp(): String = stringResource(
     },
 )
 
+/** Every step with its percentage, so a tester can say which one they are on. */
 @Composable
-internal fun interfaceScaleOptions(): List<Pair<InterfaceScale, String>> = listOf(
-    InterfaceScale.NORMAL to stringResource(R.string.interface_scale_normal),
-    InterfaceScale.COMPACT to stringResource(R.string.interface_scale_compact),
-    InterfaceScale.SMALL to stringResource(R.string.interface_scale_small),
-)
+internal fun interfaceScaleOptions(): List<Pair<InterfaceScale, String>> = InterfaceScale.entries.map { scale ->
+    val name = stringResource(
+        when (scale) {
+            InterfaceScale.NORMAL -> R.string.interface_scale_normal
+            InterfaceScale.COMPACT -> R.string.interface_scale_compact
+            InterfaceScale.SMALL -> R.string.interface_scale_small
+            InterfaceScale.SMALLER -> R.string.interface_scale_smaller
+        },
+    )
+    scale to stringResource(R.string.interface_scale_option, name, scale.percent)
+}
 
 @Composable
 internal fun interfaceLanguageOptions(): List<Pair<String?, String>> = listOf(
@@ -245,4 +254,11 @@ internal fun sourceRowSubtitle(
     val failure = health.firstOrNull { it.sourceId == source.id && it.status == "failed" }
         ?.let { readableImportError(resources, it.lastError) }
     return if (failure.isNullOrBlank()) kind else "$kind · $failure"
+}
+
+/** What the Test address button says about a playlist it managed to read. */
+internal fun playlistProbeSummary(resources: Resources, probe: PlaylistProbe): String = when {
+    probe.entries == 0 -> resources.getString(R.string.source_test_m3u_empty)
+    probe.truncated -> resources.getString(R.string.source_test_m3u_ok_more, probe.entries)
+    else -> resources.getQuantityString(R.plurals.source_test_m3u_ok, probe.entries, probe.entries)
 }

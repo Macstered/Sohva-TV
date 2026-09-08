@@ -14,7 +14,7 @@ import com.streammate.tv.core.model.IptvImportScope
 import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.security.SecretCipher
-import com.streammate.tv.core.security.SecretRedactor
+import com.streammate.tv.core.error.storedFailureMessage
 import com.streammate.tv.iptv.m3u.M3uParser
 import com.streammate.tv.iptv.m3u.M3uContentKind
 import com.streammate.tv.iptv.xmltv.XmlTvParser
@@ -24,6 +24,9 @@ data class ImportSummary(
     val channels: Int = 0,
     val programmes: Int = 0,
 )
+
+/** What a playlist address answered with, up to [GuideImportService.PROBE_LIMIT] entries. */
+data class PlaylistProbe(val entries: Int, val truncated: Boolean)
 
 class GuideImportService(
     private val sourceClient: GuideSource,
@@ -57,6 +60,20 @@ class GuideImportService(
         return refreshPlaylist(sourceId, url) { true }
     }
 
+    /**
+     * What [url] answers with, read without storing anything: the whole job
+     * of the Test address button. Stops after [PROBE_LIMIT] entries, so a
+     * large playlist answers in seconds rather than after the whole download.
+     */
+    suspend fun probePlaylist(url: String): PlaylistProbe = sourceClient.withSource(url) { input ->
+        var entries = 0
+        for (entry in m3uParser.records(input)) {
+            entries += 1
+            if (entries >= PROBE_LIMIT) break
+        }
+        PlaylistProbe(entries = entries, truncated = entries >= PROBE_LIMIT)
+    }
+
     private suspend fun refreshPlaylist(
         sourceId: String,
         url: String,
@@ -66,9 +83,11 @@ class GuideImportService(
         store.markRefreshStarted(sourceId, GuideDao.PLAYLIST_KIND)
         return try {
             var channelCount = 0
+            var parsedEntries = 0
             val channelBatch = mutableListOf<StoredIptvChannel>()
             sourceClient.withSource(url) { input ->
                 for (channel in m3uParser.records(input)) {
+                    parsedEntries += 1
                     if (!includeEntry(channel)) continue
                     channelBatch += StoredIptvChannel(
                         id = channel.id,
@@ -96,6 +115,15 @@ class GuideImportService(
                     channelBatch.clear()
                 }
             }
+            // An empty document must not take the place of the channels already
+            // on screen: a provider that served nothing used to wipe a working
+            // playlist and report success for it, as the guide once did.
+            if (parsedEntries == 0) {
+                throw GuideImportException(
+                    CoreR.string.error_playlist_empty,
+                    logMessage = "The playlist contained no entries",
+                )
+            }
             store.activatePlaylist(sourceId, snapshotId, channelCount)
             DiagnosticsLog.i("playlist", "$sourceId: $channelCount channels")
             afterImport()
@@ -109,7 +137,7 @@ class GuideImportService(
             throw cancellation
         } catch (error: Throwable) {
             store.discardPlaylist(sourceId, snapshotId)
-            val redactedError = SecretRedactor.redact(error.message)
+            val redactedError = error.storedFailureMessage()
             runCatching { store.markRefreshFailed(sourceId, GuideDao.PLAYLIST_KIND, redactedError) }
             DiagnosticsLog.w("playlist", "$sourceId: failed", error)
             throw localizedTransportFailure(error, ::GuideImportException)
@@ -210,7 +238,7 @@ class GuideImportService(
             throw cancellation
         } catch (error: Throwable) {
             store.discardEpg(sourceId, snapshotId)
-            val redactedError = SecretRedactor.redact(error.message)
+            val redactedError = error.storedFailureMessage()
             runCatching { store.markRefreshFailed(sourceId, GuideDao.EPG_KIND, redactedError) }
             DiagnosticsLog.w("epg", "$sourceId: failed", error)
             // A guard failure already carries its own message; only transport
@@ -219,12 +247,14 @@ class GuideImportService(
         }
     }
 
-    private companion object {
-        const val BATCH_SIZE = 250
-        const val PROGRAMME_BATCH_SIZE = 2_000
+    companion object {
+        private const val BATCH_SIZE = 250
+        /** Entries the Test address button reads before it is sure enough. */
+        const val PROBE_LIMIT = 500
+        private const val PROGRAMME_BATCH_SIZE = 2_000
         /** Programmes that ended before this are unreachable: catch-up windows are days, the grid pages back hours. */
-        const val PROGRAMME_HISTORY_MILLIS = 12L * 60 * 60 * 1_000
-        const val PROGRAMME_HORIZON_MILLIS = 8L * 24 * 60 * 60 * 1_000
+        private const val PROGRAMME_HISTORY_MILLIS = 12L * 60 * 60 * 1_000
+        private const val PROGRAMME_HORIZON_MILLIS = 8L * 24 * 60 * 60 * 1_000
     }
 }
 

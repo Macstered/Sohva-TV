@@ -1,6 +1,7 @@
 package com.streammate.tv.core.error
 
 import android.content.Context
+import android.content.res.Resources
 import androidx.annotation.StringRes
 import com.streammate.tv.core.R
 import com.streammate.tv.core.security.SecretRedactor
@@ -27,7 +28,7 @@ open class LocalizedException(
     val messageArguments: List<Any> = emptyList(),
     logMessage: String? = null,
     cause: Throwable? = null,
-) : IOException(logMessage ?: "resource:$messageResource", cause) {
+) : IOException(logMessage ?: StoredFailureMessage.encode(messageResource, messageArguments), cause) {
 
     constructor(
         @StringRes messageResource: Int,
@@ -89,4 +90,65 @@ fun <T : LocalizedException> localizedTransportFailure(
     } else {
         build(R.string.error_transport_failed_detail, listOf(detail), detail, error)
     }
+}
+
+/**
+ * A translatable failure written down without a Context - a refresh state's
+ * last error, a [Throwable.message] in a log - and the way back into words.
+ *
+ * The form is the resource id and the arguments, tab-separated, so the health
+ * rows and the diagnostics file resolve it in whatever language the interface
+ * has by the time someone reads it. Storing the words themselves froze a
+ * failure in one language, and a message with a placeholder kept the
+ * placeholder: "The source responded with HTTP error %1$d".
+ */
+object StoredFailureMessage {
+    private const val PREFIX = "resource:"
+    private const val SEPARATOR = '\t'
+
+    fun encode(@StringRes messageResource: Int, arguments: List<Any>): String = buildString {
+        append(PREFIX).append(messageResource)
+        arguments.forEach { argument ->
+            append(SEPARATOR)
+            append(
+                when (argument) {
+                    is ResourceArgument -> "@${argument.id}"
+                    else -> argument.toString().replace(SEPARATOR, ' ').replace('\n', ' ')
+                },
+            )
+        }
+    }
+
+    /**
+     * [stored] in words for [resources]: a stored failure resolved with its
+     * arguments, any other text as it is, nothing for blank. Resource ids are
+     * renumbered between builds, so an id written by another build must
+     * resolve to nothing rather than to whichever string holds that number
+     * now; requiring an error's entry name is what catches it.
+     */
+    fun resolve(resources: Resources, stored: String?): String? {
+        val text = stored?.trim()?.takeIf(String::isNotBlank) ?: return null
+        if (!text.startsWith(PREFIX)) return text
+        val parts = text.removePrefix(PREFIX).split(SEPARATOR)
+        val id = parts.first().trim().toIntOrNull() ?: return null
+        return runCatching {
+            if (!resources.getResourceEntryName(id).startsWith("error_")) return null
+            val arguments: List<Any> = parts.drop(1).map { part ->
+                when {
+                    part.startsWith("@") -> part.drop(1).toIntOrNull()?.let(resources::getString) ?: part
+                    else -> part.toIntOrNull() ?: part
+                }
+            }
+            resources.getString(id, *arguments.toTypedArray())
+        }.getOrNull()?.takeIf(String::isNotBlank)
+    }
+}
+
+/**
+ * What a refresh state records for [this]: a translatable failure by its
+ * resource and arguments, anything else by its redacted words.
+ */
+fun Throwable.storedFailureMessage(): String? = when (this) {
+    is LocalizedException -> StoredFailureMessage.encode(messageResource, messageArguments)
+    else -> SecretRedactor.redact(message)
 }

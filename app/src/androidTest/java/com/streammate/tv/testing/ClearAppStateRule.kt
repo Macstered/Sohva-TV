@@ -1,5 +1,6 @@
 package com.streammate.tv.testing
 
+import com.streammate.tv.app.InterfaceScale
 import com.streammate.tv.app.Profiles
 import kotlinx.coroutines.flow.first
 import android.content.Context
@@ -46,6 +47,10 @@ class ClearAppStateRule : TestWatcher() {
             // shipped default once it is written, so the test that asserts the
             // default would pass or fail on the order tests happened to run in.
             if (current.pictureInPictureEnabled) preferences.setPictureInPictureEnabled(false)
+            if (!current.editorsShowHidden) preferences.setEditorsShowHidden(true)
+            // A smaller interface left behind would lay every later screen out
+            // differently from the one the tests were written against.
+            if (current.interfaceScale != InterfaceScale.DEFAULT) preferences.setInterfaceScale(InterfaceScale.DEFAULT)
         }
     }
 

@@ -3,7 +3,7 @@
     <string name="error_unknown">Okänt fel</string>
     <string name="error_transport_failed">Begäran kunde inte slutföras</string>
     <string name="error_transport_failed_detail">Begäran kunde inte slutföras: %1$s</string>
-    <string name="error_source_url_invalid">Adressen för %1$s måste vara en giltig HTTP- eller HTTPS-adress</string>
+    <string name="error_source_url_invalid">Adressen för %1$s måste vara en fullständig adress som börjar med http:// eller https://</string>
     <string name="error_source_label">Källa</string>
     <string name="error_label_xtream_server">Xtream-server</string>
     <string name="error_source_url_malformed">Källans adress är ogiltig</string>
@@ -16,6 +16,9 @@
     <string name="error_m3u_url_missing">Adressen till M3U-källan saknas</string>
     <string name="error_epg_empty">Programguiden kom tillbaka tom. Den tidigare guiden behölls.</string>
     <string name="error_epg_unmatched">Programguiden matchar ingen av källans kanaler. Den tidigare guiden behölls.</string>
+    <string name="error_playlist_empty">Spellistan kom tillbaka tom. De tidigare kanalerna behölls.</string>
+    <string name="error_playlist_not_m3u">Adressen svarade inte med en M3U-spellista.</string>
+    <string name="error_catalogue_empty">Spellistan kom tillbaka tom. De tidigare filmerna och serierna behölls.</string>
     <string name="error_xtream_url_missing">Adressen till Xtream-servern saknas</string>
     <string name="error_xtream_url_invalid">Adressen till Xtream-servern är ogiltig</string>
     <string name="error_xtream_username_missing">Xtream-användarnamnet saknas</string>

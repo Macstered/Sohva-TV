@@ -3,7 +3,7 @@
     <string name="error_unknown">Erro desconhecido</string>
     <string name="error_transport_failed">Não foi possível concluir a solicitação</string>
     <string name="error_transport_failed_detail">Não foi possível concluir a solicitação: %1$s</string>
-    <string name="error_source_url_invalid">O endereço de %1$s precisa ser um endereço HTTP ou HTTPS válido</string>
+    <string name="error_source_url_invalid">O endereço de %1$s precisa ser um endereço completo começando com http:// ou https://</string>
     <string name="error_source_label">Fonte</string>
     <string name="error_label_xtream_server">Servidor Xtream</string>
     <string name="error_source_url_malformed">O endereço da fonte é inválido</string>
@@ -16,6 +16,9 @@
     <string name="error_m3u_url_missing">Falta o endereço da fonte M3U</string>
     <string name="error_epg_empty">O guia de programação veio vazio. O guia anterior foi mantido.</string>
     <string name="error_epg_unmatched">O guia de programação não corresponde a nenhum canal desta fonte. O guia anterior foi mantido.</string>
+    <string name="error_playlist_empty">A playlist veio vazia. Os canais anteriores foram mantidos.</string>
+    <string name="error_playlist_not_m3u">O endereço não respondeu com uma playlist M3U.</string>
+    <string name="error_catalogue_empty">A playlist veio vazia. Os filmes e séries anteriores foram mantidos.</string>
     <string name="error_xtream_url_missing">Falta o endereço do servidor Xtream</string>
     <string name="error_xtream_url_invalid">O endereço do servidor Xtream é inválido</string>
     <string name="error_xtream_username_missing">Falta o nome de usuário Xtream</string>

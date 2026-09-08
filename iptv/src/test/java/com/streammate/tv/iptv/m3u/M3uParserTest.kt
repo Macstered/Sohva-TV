@@ -1,9 +1,11 @@
 package com.streammate.tv.iptv.m3u
 
+import com.streammate.tv.core.R as CoreR
 import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -130,6 +132,30 @@ class M3uParserTest {
         ).single()
 
         assertEquals(M3uContentKind.MOVIE, entry.contentKind)
+    }
+
+    @Test
+    fun `a sign-in page is not a playlist`() {
+        val page = "<!DOCTYPE html>\n<html><body><a href=\"http://panel.example/login\">Sign in</a></body></html>\n"
+
+        val error = assertThrows(M3uFormatException::class.java) { parser.parse(page.stream()) }
+
+        assertEquals(CoreR.string.error_playlist_not_m3u, error.messageResource)
+        assertTrue(error.message!!.contains("<!DOCTYPE html>"))
+    }
+
+    @Test
+    fun `a JSON error and a bare sentence are not playlists either`() {
+        assertThrows(M3uFormatException::class.java) { parser.parse("{\"error\":\"Invalid credentials\"}".stream()) }
+        assertThrows(M3uFormatException::class.java) { parser.parse("Invalid username or password\n".stream()) }
+    }
+
+    @Test
+    fun `a header alone, a decorated header behind a BOM, and a bare address all open a playlist`() {
+        assertTrue(parser.parse("#EXTM3U\n".stream()).isEmpty())
+        val decorated = "\uFEFF\n\n#EXTM3U url-tvg=\"http://epg.example/guide.xml\"\n#EXTINF:-1,One\nhttp://stream.example/1\n"
+        assertEquals("One", parser.parse(decorated.stream()).single().name)
+        assertEquals(1, parser.parse("udp://@239.0.0.1:1234\n".stream()).size)
     }
 
     private fun String.stream() = ByteArrayInputStream(toByteArray(Charsets.UTF_8))

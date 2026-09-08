@@ -24,6 +24,7 @@ class DiagnosticsReportTest {
         android = "11 (API 30)",
         locale = "fi-FI",
         deviceTimeZone = "Europe/Helsinki",
+        display = "panel 3840x2160 at 60.0 Hz, reported 1920x1080 px; app 1920x1080 px, 960x540 dp at 320 dpi",
         sqliteVersion = "3.32.2",
         preferences = AppPreferences(),
         sources = listOf(source),
@@ -48,6 +49,18 @@ class DiagnosticsReportTest {
         assertTrue(text, text.contains("Home / epg: failed, items 0, failures in a row 3"))
         assertTrue(text, text.contains("Recent events (1)"))
         assertTrue(text, text.contains("W/epg: m3u-1: failed"))
+    }
+
+    /**
+     * A tester reporting that the interface does not fill the television needs
+     * the panel and the app's own size beside each other: a window smaller
+     * than the panel is overscan compensation, not a layout fault.
+     */
+    @Test
+    fun `the display line carries both the panel and the app's own size`() {
+        val text = renderDiagnostics(info)
+        assertTrue(text, text.contains("Display: panel 3840x2160 at 60.0 Hz"))
+        assertTrue(text, text.contains("app 1920x1080 px, 960x540 dp at 320 dpi"))
     }
 
     @Test

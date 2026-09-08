@@ -13,7 +13,7 @@
     <string name="error_unknown">Unknown error</string>
     <string name="error_transport_failed">Could not complete the request</string>
     <string name="error_transport_failed_detail">Could not complete the request: %1$s</string>
-    <string name="error_source_url_invalid">The %1$s address must be a valid HTTP or HTTPS address</string>
+    <string name="error_source_url_invalid">The %1$s address must be a full address starting with http:// or https://</string>
     <string name="error_source_label">Source</string>
     <string name="error_label_xtream_server">Xtream server</string>
     <string name="error_source_url_malformed">The source address is invalid</string>
@@ -26,6 +26,9 @@
     <string name="error_m3u_url_missing">The M3U source address is missing</string>
     <string name="error_epg_empty">The programme guide came back empty. The previous guide was kept.</string>
     <string name="error_epg_unmatched">The programme guide matches none of this source\'s channels. The previous guide was kept.</string>
+    <string name="error_playlist_empty">The playlist came back empty. The previous channels were kept.</string>
+    <string name="error_playlist_not_m3u">The address did not answer with an M3U playlist.</string>
+    <string name="error_catalogue_empty">The playlist came back empty. The previous movies and series were kept.</string>
     <string name="error_xtream_url_missing">The Xtream server address is missing</string>
     <string name="error_xtream_url_invalid">The Xtream server address is invalid</string>
     <string name="error_xtream_username_missing">The Xtream username is missing</string>

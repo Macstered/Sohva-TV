@@ -18,4 +18,10 @@ class InterfaceScaleTest {
         assertEquals(factors.sortedDescending(), factors)
         assertEquals(factors.distinct().size, factors.size)
     }
+
+    @Test
+    fun `the ladder ends at seventy per cent, a step below small`() {
+        assertEquals(InterfaceScale.SMALLER, InterfaceScale.entries.last())
+        assertEquals(listOf(100, 90, 80, 70), InterfaceScale.entries.map { it.percent })
+    }
 }

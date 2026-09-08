@@ -176,6 +176,7 @@
     <string name="action_save">Speichern</string>
     <string name="channels_show_in_guide">Im Programm zeigen</string>
     <string name="channels_hide_from_guide">Aus dem Programm ausblenden</string>
+    <string name="channels_show_hidden">Ausgeblendete anzeigen</string>
     <string name="channels_configure_pin">PIN in den Einstellungen einrichten</string>
     <string name="channels_remove_pin_lock">PIN-Sperre entfernen</string>
     <string name="channels_lock_with_pin">Mit PIN sperren</string>
@@ -319,6 +320,8 @@
     <string name="interface_scale_normal">Normal</string>
     <string name="interface_scale_compact">Kompakt</string>
     <string name="interface_scale_small">Klein</string>
+    <string name="interface_scale_smaller">Kleiner</string>
+    <string name="interface_scale_option">%1$s (%2$d %%)</string>
     <string name="interface_language_en">English</string>
     <string name="interface_language_fi">Suomi</string>
     <string name="interface_language_es">Español (borrador)</string>
@@ -425,6 +428,14 @@
     <string name="source_testing_xtream">Xtream-Verbindung wird getestet…</string>
     <string name="source_connection_ok">Xtream-Verbindung funktioniert%1$s</string>
     <string name="source_server_limit"> · Serverlimit %1$d</string>
+    <string name="source_test_address">Adresse testen</string>
+    <string name="source_testing_m3u">Playlist-Adresse wird getestet…</string>
+    <plurals name="source_test_m3u_ok">
+        <item quantity="one">M3U-Playlist gefunden: %1$d Eintrag</item>
+        <item quantity="other">M3U-Playlist gefunden: %1$d Einträge</item>
+    </plurals>
+    <string name="source_test_m3u_ok_more">M3U-Playlist gefunden: mindestens %1$d Einträge</string>
+    <string name="source_test_m3u_empty">Die Adresse antwortet, aber die Playlist ist leer</string>
     <string name="source_refresh_playlist">Playlist aktualisieren</string>
     <string name="source_refresh_channels">Sender aktualisieren</string>
     <string name="source_refreshing_playlist">Playlist wird aktualisiert…</string>

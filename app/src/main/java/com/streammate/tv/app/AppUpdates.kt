@@ -101,6 +101,53 @@ object AppUpdates {
             }
             .maxByOrNull { it.versionCode }
 
+    /** The published release of the build that is installed, while the list still carries it. */
+    fun installedRelease(releases: List<AppRelease>, installedVersionCode: Int): AppRelease? =
+        releases.firstOrNull { !it.draft && it.versionCode == installedVersionCode }
+
+    /**
+     * A release body as lines for a television screen: the "Changed since"
+     * section when the body has one, the whole body otherwise. Bullets are
+     * kept, bold marks and links reduced to their words, wrapped lines joined.
+     */
+    fun releaseNotes(body: String): String? {
+        val lines = body.lines()
+        val start = lines.indexOfFirst { CHANGES_HEADING.matches(it.trim()) }
+        val section = if (start < 0) lines else lines.drop(start + 1).let { rest ->
+            val end = rest.indexOfFirst { SECTION_HEADING.matches(it.trim()) }
+            if (end < 0) rest else rest.take(end)
+        }
+        val blocks = mutableListOf<StringBuilder>()
+        var continuing = false
+        section.forEach { raw ->
+            val line = raw.trim()
+            when {
+                line.isEmpty() -> continuing = false
+                line.startsWith("- ") || line.startsWith("* ") -> {
+                    blocks += StringBuilder("• ").append(line.drop(2).trim())
+                    continuing = true
+                }
+                line.startsWith("#") -> {
+                    blocks += StringBuilder(line.trimStart('#').trim())
+                    continuing = false
+                }
+                continuing -> blocks.last().append(' ').append(line)
+                else -> {
+                    blocks += StringBuilder(line)
+                    continuing = true
+                }
+            }
+        }
+        return blocks.joinToString("\n") { plainWords(it.toString()) }.trim().takeIf { it.isNotBlank() }
+    }
+
+    private fun plainWords(text: String): String =
+        LINK.replace(text) { it.groupValues[1] }.replace("**", "").replace("`", "")
+
+    private val CHANGES_HEADING = Regex("""^#{1,3}\s+changed\b.*""", RegexOption.IGNORE_CASE)
+    private val SECTION_HEADING = Regex("""^#{1,2}\s+\S.*""")
+    private val LINK = Regex("""\[([^\]]+)]\([^)]*\)""")
+
     /** The lower-case hex digest `SHA256SUMS.txt` states for [fileName], or null. */
     fun expectedChecksum(checksums: String, fileName: String): String? =
         checksums.lineSequence()

@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.10 (11)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.11 (12)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Suggested first session
@@ -64,6 +64,18 @@ Test at your own pace; note failures rather than repeatedly resetting the app.
 17. **Another language:** switch the interface to Spanish, Portuguese, German
     or Swedish. These are drafts: report wording that reads wrongly and any
     label that overflows its space.
+18. **Test address:** on an M3U source's page, press **Test address** before
+    saving. Report what it says for a working address, for a mistyped one, and
+    for a link your provider has since disabled.
+19. **Hidden channels out of the way:** in Channel management, press **Show
+    hidden** to take hidden channels out of the list, then reorder with the
+    arrows; in the library manager, set the filter to **Enabled** and move a
+    group. Hidden rows should stay out of the way through the move.
+20. **Smaller interface:** **Settings > General > Interface size** now ends at
+    Smaller (70 %). Report whether it reads comfortably from your seat.
+21. **What changed:** after **Check for updates**, About should show what
+    changed in the installed beta, or in the newer one when there is one. It
+    is in English whatever the interface language, heading included.
 
 For library performance, report the sequence of actions, approximate movie /
 series count, whether an import or metadata refresh was running, and whether
@@ -109,7 +121,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.10 (11)
+Version: 0.1.0-beta.11 (12)
 Device model:
 Android / Google TV version:
 Fresh install or update:

@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import com.streammate.tv.core.R as CoreR
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -195,7 +196,10 @@ class GuideImportServiceTest {
         assertEquals("known-good", store.activeEpg)
         assertEquals(listOf("snapshot-1"), store.discardedEpgs)
         assertEquals(listOf("epg"), store.refreshFailures.map { it.second })
-        assertTrue(store.refreshFailures.single().third!!.contains("120 channels"))
+        // The store keeps the failure by its resource, so the health row reads
+        // in the interface's language; the count is for the diagnostics log.
+        assertEquals("resource:${CoreR.string.error_epg_unmatched}", store.refreshFailures.single().third)
+        assertTrue(error.message!!.contains("120 channels"))
     }
 
     @Test
@@ -241,6 +245,78 @@ class GuideImportServiceTest {
             appendLine(" +0000\"><title>Programme $index</title></programme>")
         }
         appendLine("</tv>")
+    }
+
+    @Test
+    fun `keeps the previous playlist when the document is empty`() {
+        val store = RecordingGuideStore(activePlaylist = "known-good")
+
+        val error = assertThrows(GuideImportException::class.java) {
+            runBlocking {
+                service(TextGuideSource("#EXTM3U\n"), store)
+                    .refreshPlaylist("source-a", "https://provider.example/list.m3u")
+            }
+        }
+
+        assertEquals(CoreR.string.error_playlist_empty, error.messageResource)
+        assertEquals("known-good", store.activePlaylist)
+        assertEquals(listOf("snapshot-1"), store.discardedPlaylists)
+        assertEquals("resource:${CoreR.string.error_playlist_empty}", store.refreshFailures.single().third)
+    }
+
+    @Test
+    fun `keeps the previous playlist when the address answers with a web page`() {
+        val store = RecordingGuideStore(activePlaylist = "known-good")
+        val page = "<html><body>Please sign in</body></html>\n"
+
+        val error = assertThrows(GuideImportException::class.java) {
+            runBlocking {
+                service(TextGuideSource(page), store)
+                    .refreshPlaylist("source-a", "https://provider.example/list.m3u")
+            }
+        }
+
+        assertEquals(CoreR.string.error_playlist_not_m3u, error.messageResource)
+        assertEquals("known-good", store.activePlaylist)
+        assertTrue(store.channels.isEmpty())
+        assertEquals(listOf("snapshot-1"), store.discardedPlaylists)
+    }
+
+    @Test
+    fun `an HTTP failure is stored with its code, not with the placeholder`() {
+        val store = RecordingGuideStore(activePlaylist = "known-good")
+        val source = object : GuideSource {
+            override suspend fun <T> withSource(url: String, block: suspend (InputStream) -> T): T =
+                throw com.streammate.tv.core.network.GuideSourceException(CoreR.string.error_source_http, listOf(403))
+        }
+
+        assertThrows(GuideImportException::class.java) {
+            runBlocking { service(source, store).refreshPlaylist("source-a", "https://provider.example/list.m3u") }
+        }
+
+        assertEquals("resource:${CoreR.string.error_source_http}\t403", store.refreshFailures.single().third)
+    }
+
+    @Test
+    fun `a probe counts entries up to its limit without storing anything`() = runBlocking {
+        val store = RecordingGuideStore()
+        val small = "#EXTM3U\n#EXTINF:-1,One\nhttp://stream.example/1\n#EXTINF:-1,Two\nhttp://stream.example/2\n"
+        val large = buildString {
+            appendLine("#EXTM3U")
+            repeat(1_000) { index ->
+                appendLine("#EXTINF:-1,Channel $index")
+                appendLine("http://stream.example/$index")
+            }
+        }
+
+        val smallProbe = service(TextGuideSource(small), store).probePlaylist("https://provider.example/list.m3u")
+        val largeProbe = service(TextGuideSource(large), store).probePlaylist("https://provider.example/list.m3u")
+
+        assertEquals(PlaylistProbe(entries = 2, truncated = false), smallProbe)
+        assertEquals(PlaylistProbe(entries = GuideImportService.PROBE_LIMIT, truncated = true), largeProbe)
+        assertTrue(store.channels.isEmpty())
+        assertNull(store.activePlaylist)
+        assertTrue(store.refreshFailures.isEmpty())
     }
 
     @Test

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.streammate.tv.iptv.R
+import com.streammate.tv.core.error.StoredFailureMessage
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.feature.common.TvActionButton
 import com.streammate.tv.feature.common.TvIcons
@@ -31,7 +32,8 @@ import com.streammate.tv.feature.common.TvIcons
 /**
  * Updates, in About. One line says where things stand, one button does the
  * next thing: check, download, install, or open the permission page Android
- * wants first. The release notes show once a newer beta is known.
+ * wants first. What changed shows for the newer beta once one is known, and
+ * for the installed build otherwise, from its own published release.
  */
 @Composable
 internal fun AppUpdateSection(
@@ -116,12 +118,21 @@ internal fun AppUpdateSection(
                 )
             }
         }
-        state.notes?.takeIf { state.phase != AppUpdateUiState.Phase.UP_TO_DATE }?.let { notes ->
+        val notes = state.notes ?: state.installedNotes
+        val notesVersion = if (state.notes != null) state.versionName.orEmpty() else state.installedVersionName
+        notes?.let {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = notes.take(MAX_UPDATE_NOTES_LENGTH),
+                text = stringResource(R.string.update_notes_for, notesVersion),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                modifier = Modifier.testTag("settings-update-notes-title"),
+            )
+            Text(
+                text = it.take(MAX_UPDATE_NOTES_LENGTH),
                 color = palette.textMuted,
                 fontSize = 12.sp,
+                modifier = Modifier.testTag("settings-update-notes"),
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -133,7 +144,7 @@ internal fun AppUpdateSection(
     }
 }
 
-internal const val MAX_UPDATE_NOTES_LENGTH = 1_200
+internal const val MAX_UPDATE_NOTES_LENGTH = 4_000
 
 /**
  * The QR code and address a phone opens to type a playlist in. Shown under
@@ -190,16 +201,6 @@ internal fun PhoneSetupPanel(state: PhoneSetupUiState) {
     }
 }
 
-/**
- * The import services store a LocalizedException's message, which is
- * "resource:<id>" for a translatable failure. Resolve it back into words for
- * this build; a stale id from an older build resolves to nothing rather than
- * to the wrong sentence.
- */
-internal fun readableImportError(resources: Resources, lastError: String?): String? {
-    val text = lastError?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val resourceId = Regex("""^resource:\s*(\d+)$""").find(text)?.groupValues?.get(1)?.toIntOrNull()
-        ?: return text
-    return runCatching { resources.getString(resourceId) }.getOrNull()
-        ?.takeIf { it.isNotBlank() }
-}
+/** A refresh state's last error in words for this build; see [StoredFailureMessage]. */
+internal fun readableImportError(resources: Resources, lastError: String?): String? =
+    StoredFailureMessage.resolve(resources, lastError)

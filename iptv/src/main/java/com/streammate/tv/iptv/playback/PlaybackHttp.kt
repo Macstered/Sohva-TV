@@ -9,7 +9,7 @@ import com.streammate.tv.core.security.SecretRedactor
  * screen showed a bare error code.
  */
 object PlaybackHttp {
-    /** The user agent sent when the playlist names none: the app, not the HTTP library. */
+    /** The app's own name for a provider: sent to a stream when the playlist names no agent, and to every playlist and guide address. */
     fun userAgent(versionName: String, androidRelease: String): String =
         "Sohva TV/$versionName (Android TV $androidRelease)"
 

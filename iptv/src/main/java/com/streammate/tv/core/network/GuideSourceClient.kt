@@ -20,11 +20,17 @@ interface GuideSource {
 
 class GuideSourceClient(
     private val client: OkHttpClient,
+    /**
+     * How the app introduces itself. It used to send the HTTP library's own
+     * agent, which the panels that drop unknown agents answer with 403, a web
+     * page or nothing - the fault playback had already fixed for streams.
+     */
+    private val userAgent: String,
 ) : GuideSource {
     override suspend fun <T> withSource(url: String, block: suspend (InputStream) -> T): T =
         withContext(Dispatchers.IO) {
             val normalizedUrl = validateSourceUrl(url)
-            val request = Request.Builder().url(normalizedUrl).get().build()
+            val request = Request.Builder().url(normalizedUrl).header("User-Agent", userAgent).get().build()
             val response = try {
                 client.newCall(request).execute()
             } catch (error: IOException) {

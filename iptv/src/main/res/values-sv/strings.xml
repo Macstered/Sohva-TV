@@ -176,6 +176,7 @@
     <string name="action_save">Spara</string>
     <string name="channels_show_in_guide">Visa i guiden</string>
     <string name="channels_hide_from_guide">Dölj i guiden</string>
+    <string name="channels_show_hidden">Visa dolda</string>
     <string name="channels_configure_pin">Ställ in PIN-kod i Inställningar</string>
     <string name="channels_remove_pin_lock">Ta bort PIN-låset</string>
     <string name="channels_lock_with_pin">Lås med PIN-kod</string>
@@ -319,6 +320,8 @@
     <string name="interface_scale_normal">Normal</string>
     <string name="interface_scale_compact">Kompakt</string>
     <string name="interface_scale_small">Liten</string>
+    <string name="interface_scale_smaller">Mindre</string>
+    <string name="interface_scale_option">%1$s (%2$d %%)</string>
     <string name="interface_language_en">English</string>
     <string name="interface_language_fi">Suomi</string>
     <string name="interface_language_es">Español (borrador)</string>
@@ -425,6 +428,14 @@
     <string name="source_testing_xtream">Testar Xtream-anslutningen…</string>
     <string name="source_connection_ok">Xtream-anslutningen fungerar%1$s</string>
     <string name="source_server_limit"> · servergräns %1$d</string>
+    <string name="source_test_address">Testa adressen</string>
+    <string name="source_testing_m3u">Testar spellistans adress…</string>
+    <plurals name="source_test_m3u_ok">
+        <item quantity="one">M3U-spellista hittad: %1$d objekt</item>
+        <item quantity="other">M3U-spellista hittad: %1$d objekt</item>
+    </plurals>
+    <string name="source_test_m3u_ok_more">M3U-spellista hittad: minst %1$d objekt</string>
+    <string name="source_test_m3u_empty">Adressen svarar, men spellistan är tom</string>
     <string name="source_refresh_playlist">Uppdatera spellistan</string>
     <string name="source_refresh_channels">Uppdatera kanaler</string>
     <string name="source_refreshing_playlist">Uppdaterar spellistan…</string>

@@ -3,7 +3,7 @@
     <string name="error_unknown">Unbekannter Fehler</string>
     <string name="error_transport_failed">Die Anfrage konnte nicht abgeschlossen werden</string>
     <string name="error_transport_failed_detail">Die Anfrage konnte nicht abgeschlossen werden: %1$s</string>
-    <string name="error_source_url_invalid">Die Adresse für %1$s muss eine gültige HTTP- oder HTTPS-Adresse sein</string>
+    <string name="error_source_url_invalid">Die Adresse für %1$s muss eine vollständige Adresse sein, die mit http:// oder https:// beginnt</string>
     <string name="error_source_label">Quelle</string>
     <string name="error_label_xtream_server">Xtream-Server</string>
     <string name="error_source_url_malformed">Die Adresse der Quelle ist ungültig</string>
@@ -16,6 +16,9 @@
     <string name="error_m3u_url_missing">Die Adresse der M3U-Quelle fehlt</string>
     <string name="error_epg_empty">Der Programmführer kam leer zurück. Der bisherige Programmführer wurde behalten.</string>
     <string name="error_epg_unmatched">Der Programmführer passt zu keinem Sender dieser Quelle. Der bisherige Programmführer wurde behalten.</string>
+    <string name="error_playlist_empty">Die Playlist kam leer zurück. Die bisherigen Sender wurden behalten.</string>
+    <string name="error_playlist_not_m3u">Die Adresse hat nicht mit einer M3U-Playlist geantwortet.</string>
+    <string name="error_catalogue_empty">Die Playlist kam leer zurück. Die bisherigen Filme und Serien wurden behalten.</string>
     <string name="error_xtream_url_missing">Die Adresse des Xtream-Servers fehlt</string>
     <string name="error_xtream_url_invalid">Die Adresse des Xtream-Servers ist ungültig</string>
     <string name="error_xtream_username_missing">Der Xtream-Benutzername fehlt</string>

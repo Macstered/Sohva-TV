@@ -112,4 +112,37 @@ class LibraryManagerFocusTest {
             compose.onRoot().captureToImage().asAndroidBitmap().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, output)
         }
     }
+
+    @Test fun movingPastAHiddenGroupLandsAfterTheNextOneOnScreen() {
+        var written = emptyList<com.streammate.tv.core.database.OrganizationChange>()
+        val hiddenB = OrganizationRule(OrganizationKey(LibraryRoom.LIVE, groupKey = "name:b"), enabled = false)
+        compose.setContent { StreamMateTheme {
+            LibraryManagerContent(
+                LibraryRoom.LIVE,
+                ManagedLibrary(
+                    listOf(
+                        OrganizationItem("a1", "source", "A1", "A", providerOrder = 1),
+                        OrganizationItem("b1", "source", "B1", "B", providerOrder = 2),
+                        OrganizationItem("c1", "source", "C1", "C", providerOrder = 3),
+                    ),
+                    mapOf("source" to "Provider"),
+                    OrganizationReadState(LibraryOrganization(listOf(hiddenB))),
+                ),
+                "A", onRoom = {}, onChange = { written = it }, onBack = {},
+                showHidden = false,
+            )
+        } }
+        val moveLabel = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.manager_move)
+        // Only what is shown is listed, and the move keeps it that way.
+        compose.onNodeWithTag("manager-group-name:b").assertDoesNotExist()
+        compose.onNodeWithTag("manager-group-name:a").assertIsFocused().performKeyInput { pressKey(Key.DirectionCenter) }
+        compose.onNodeWithText(moveLabel).performClick()
+        compose.onNodeWithTag("manager-group-name:b").assertDoesNotExist()
+        compose.onNodeWithTag("manager-group-name:a").assertIsFocused().performKeyInput { pressKey(Key.DirectionDown); pressKey(Key.DirectionCenter) }
+        compose.waitForIdle()
+        fun position(group: String) = written.first { it.key.groupKey == group }.position!!
+        // One press took A past the hidden B and past C, the next group on screen.
+        assertTrue(position("name:a") > position("name:c"))
+        assertTrue(position("name:c") > position("name:b"))
+    }
 }

@@ -1,6 +1,6 @@
 # Install and set up Sohva TV
 
-For **0.1.0-beta.10**, Android build **11**.
+For **0.1.0-beta.11**, Android build **12**.
 
 ## Before you start
 
@@ -18,7 +18,7 @@ For **0.1.0-beta.10**, Android build **11**.
 
 ## Install using your TV
 
-1. Download `sohva-tv-0.1.0-beta.10.apk` from the developer's supplied package
+1. Download `sohva-tv-0.1.0-beta.11.apk` from the developer's supplied package
    or the approved release page. Do not use an APK from an unknown mirror.
 2. Transfer that file to the TV using a USB drive or your existing trusted
    file-transfer method, then open it with a file manager on the TV.
@@ -30,7 +30,7 @@ For **0.1.0-beta.10**, Android build **11**.
 5. Open **Sohva TV** from the TV's app list. You may turn off the file manager's
    install permission afterwards.
 6. Check **Settings > About > About, privacy and licences**. The version must
-   be **0.1.0-beta.10**.
+   be **0.1.0-beta.11**.
 
 If your TV does not offer APK installation, record the TV model, Android
 version and exact message and contact the developer. Device installation
@@ -70,7 +70,7 @@ authorize debugging on your device. In PowerShell, from the APK's directory:
 
 ```powershell
 adb devices -l
-adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.1.0-beta.10.apk
+adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.1.0-beta.11.apk
 ```
 
 Replace `YOUR_DEVICE_SERIAL` with the exact serial shown by ADB. Always select
@@ -80,7 +80,7 @@ options. Disable debugging again when finished if you no longer need it.
 To check file integrity before installation:
 
 ```powershell
-Get-FileHash .\sohva-tv-0.1.0-beta.10.apk -Algorithm SHA256
+Get-FileHash .\sohva-tv-0.1.0-beta.11.apk -Algorithm SHA256
 ```
 
 Compare with the APK entry in `SHA256SUMS.txt` from the same trusted package.
@@ -103,8 +103,9 @@ Open **Settings > Playlists**.
   TV itself and works only while it is on screen.
 
 Choose **Content to import**: Live TV, VOD only, or TV and VOD. Leave the source
-enabled, then choose **Save securely**. For Xtream, **Test connection** checks
-your details before import.
+enabled, then choose **Save securely**. **Test address** (M3U) reads the start
+of the playlist and says how many entries it found, or what went wrong; **Test
+connection** (Xtream) checks your details. Both work before import.
 
 A newly saved source starts syncing at once: channels, then the guide, then
 movies and series. The guide screen shows each source's progress until the
@@ -151,8 +152,8 @@ share keys or repeatedly refresh to try to bypass a provider quota.
 
 Under **Settings > General**, use **Interface language** to choose English if
 necessary; the app restarts to apply the change. **Interface size** on the
-same page draws everything a step smaller, Compact or Small, which suits a
-projector or a very large screen. **Time zone** is what the programme guide,
+same page draws everything a step smaller: Compact, Small, or Smaller at
+seventy per cent, which suits a projector or a very large screen. **Time zone** is what the programme guide,
 catch-up and Sohva Sport show times in: the TV's own unless you pick one from
 the full list. The startup screen and the refresh interval are there too.
 

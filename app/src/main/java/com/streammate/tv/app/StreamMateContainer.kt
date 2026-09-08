@@ -7,6 +7,8 @@ import com.streammate.tv.core.database.RemindersDao
 import kotlinx.coroutines.withContext
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import android.content.Context
+import android.os.Build
+import com.streammate.tv.iptv.playback.PlaybackHttp
 import com.streammate.tv.core.database.StreamMateDatabase
 import com.streammate.tv.core.network.GuideSourceClient
 import com.streammate.tv.core.security.AesGcmSecretCipher
@@ -80,7 +82,14 @@ class StreamMateContainer(context: Context) {
         .build()
 
     private val guideStore = RoomGuideStore(database.guideDao())
-    private val guideSourceClient = GuideSourceClient(httpClient)
+    /** How the app introduces itself to a provider: the same name for a playlist, a guide and a stream. */
+    private val userAgent: String = PlaybackHttp.userAgent(
+        versionName = runCatching {
+            applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0).versionName
+        }.getOrNull() ?: "?",
+        androidRelease = Build.VERSION.RELEASE ?: "?",
+    )
+    private val guideSourceClient = GuideSourceClient(httpClient, userAgent)
     private val m3uParser = M3uParser()
     private val xtreamClient = XtreamClient(httpClient)
     private val connectionLimiter = SourceConnectionLimiter()

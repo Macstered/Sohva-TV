@@ -14,7 +14,7 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.network.GuideSource
 import com.streammate.tv.core.security.SecretCipher
-import com.streammate.tv.core.security.SecretRedactor
+import com.streammate.tv.core.error.storedFailureMessage
 import com.streammate.tv.iptv.m3u.ChannelNameNormalizer
 import com.streammate.tv.iptv.m3u.M3uContentKind
 import com.streammate.tv.iptv.m3u.M3uParser
@@ -47,8 +47,10 @@ class M3uCatalogueImportService(
             val movies = mutableListOf<VodMovieEntity>()
             var movieCount = 0
             val series = linkedMapOf<String, SeriesAccumulator>()
+            var parsedEntries = 0
             sourceClient.withSource(url) { input ->
                 for (entry in parser.records(input)) {
+                    parsedEntries += 1
                     if (source.importScope == IptvImportScope.BOTH && entry.contentKind == M3uContentKind.LIVE) {
                         continue
                     }
@@ -94,6 +96,15 @@ class M3uCatalogueImportService(
                     }
                 }
             }
+            // An empty document must not replace the films and series already
+            // on the wall; a live-only playlist under a VOD scope is a different
+            // case, and still ends as an honest zero.
+            if (parsedEntries == 0) {
+                throw GuideImportException(
+                    CoreR.string.error_catalogue_empty,
+                    logMessage = "The playlist contained no entries",
+                )
+            }
             if (movies.isNotEmpty()) dao.upsertMovies(movies)
             for (batch in series.values.map(SeriesAccumulator::entity).chunked(BATCH_SIZE)) {
                 dao.upsertSeries(batch)
@@ -115,7 +126,7 @@ class M3uCatalogueImportService(
         } catch (error: Throwable) {
             dao.deleteMovieSnapshot(source.id, snapshotId)
             dao.deleteSeriesSnapshot(source.id, snapshotId)
-            val redacted = SecretRedactor.redact(error.message)
+            val redacted = error.storedFailureMessage()
             runCatching { dao.markCatalogueRefreshFailed(source.id, clock(), redacted) }
             DiagnosticsLog.w("catalogue", "${source.id}: failed (m3u)", error)
             throw localizedTransportFailure(error, ::GuideImportException)

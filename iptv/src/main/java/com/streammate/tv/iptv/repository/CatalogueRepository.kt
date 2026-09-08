@@ -28,7 +28,7 @@ import com.streammate.tv.core.model.CatalogueCustomGroup
 import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.security.SecretCipher
-import com.streammate.tv.core.security.SecretRedactor
+import com.streammate.tv.core.error.storedFailureMessage
 import com.streammate.tv.iptv.m3u.ChannelNameNormalizer
 import com.streammate.tv.iptv.metadata.MetadataMatcher
 import com.streammate.tv.iptv.metadata.CatalogueMetadataCandidate
@@ -1010,7 +1010,7 @@ class XtreamCatalogueImportService(
         } catch (error: Throwable) {
             dao.deleteMovieSnapshot(source.id, snapshotId)
             dao.deleteSeriesSnapshot(source.id, snapshotId)
-            val redacted = SecretRedactor.redact(error.message)
+            val redacted = error.storedFailureMessage()
             runCatching { dao.markCatalogueRefreshFailed(source.id, clock(), redacted) }
             DiagnosticsLog.w("catalogue", "${source.id}: failed (xtream)", error)
             throw localizedTransportFailure(error, ::GuideImportException)

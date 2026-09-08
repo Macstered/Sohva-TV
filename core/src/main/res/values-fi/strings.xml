@@ -11,7 +11,7 @@
     <string name="error_unknown">Tuntematon virhe</string>
     <string name="error_transport_failed">Pyyntöä ei voitu suorittaa</string>
     <string name="error_transport_failed_detail">Pyyntöä ei voitu suorittaa: %1$s</string>
-    <string name="error_source_url_invalid">%1$s-osoitteen täytyy olla kelvollinen HTTP- tai HTTPS-osoite</string>
+    <string name="error_source_url_invalid">%1$s-osoitteen täytyy olla kokonainen osoite, joka alkaa http:// tai https://</string>
     <string name="error_source_label">Lähde</string>
     <string name="error_label_xtream_server">Xtream-palvelin</string>
     <string name="error_source_url_malformed">Lähteen osoite on virheellinen</string>
@@ -24,6 +24,9 @@
     <string name="error_m3u_url_missing">M3U-lähteen osoite puuttuu</string>
     <string name="error_epg_empty">Ohjelmaopas tuli tyhjänä. Aiempi opas säilytettiin.</string>
     <string name="error_epg_unmatched">Ohjelmaopas ei vastaa yhtäkään tämän lähteen kanavaa. Aiempi opas säilytettiin.</string>
+    <string name="error_playlist_empty">Soittolista tuli tyhjänä. Aiemmat kanavat säilytettiin.</string>
+    <string name="error_playlist_not_m3u">Osoite ei vastannut M3U-soittolistalla.</string>
+    <string name="error_catalogue_empty">Soittolista tuli tyhjänä. Aiemmat elokuvat ja sarjat säilytettiin.</string>
     <string name="error_xtream_url_missing">Xtream-palvelimen osoite puuttuu</string>
     <string name="error_xtream_url_invalid">Xtream-palvelimen osoite on virheellinen</string>
     <string name="error_xtream_username_missing">Xtream-käyttäjänimi puuttuu</string>

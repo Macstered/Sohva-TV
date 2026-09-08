@@ -176,6 +176,7 @@
     <string name="action_save">Save</string>
     <string name="channels_show_in_guide">Show in guide</string>
     <string name="channels_hide_from_guide">Hide from guide</string>
+    <string name="channels_show_hidden">Show hidden</string>
     <string name="channels_configure_pin">Configure PIN in Settings</string>
     <string name="channels_remove_pin_lock">Remove PIN lock</string>
     <string name="channels_lock_with_pin">Lock with PIN</string>
@@ -319,6 +320,8 @@
     <string name="interface_scale_normal">Normal</string>
     <string name="interface_scale_compact">Compact</string>
     <string name="interface_scale_small">Small</string>
+    <string name="interface_scale_smaller">Smaller</string>
+    <string name="interface_scale_option">%1$s (%2$d %%)</string>
     <!-- Each language is named in its own language, so it stays findable when
          the interface is currently in one the reader does not speak. -->
     <string name="interface_language_en">English</string>
@@ -427,6 +430,14 @@
     <string name="source_testing_xtream">Testing Xtream connection…</string>
     <string name="source_connection_ok">Xtream connection works%1$s</string>
     <string name="source_server_limit"> · server limit %1$d</string>
+    <string name="source_test_address">Test address</string>
+    <string name="source_testing_m3u">Testing the playlist address…</string>
+    <plurals name="source_test_m3u_ok">
+        <item quantity="one">M3U playlist found: %1$d entry</item>
+        <item quantity="other">M3U playlist found: %1$d entries</item>
+    </plurals>
+    <string name="source_test_m3u_ok_more">M3U playlist found: at least %1$d entries</string>
+    <string name="source_test_m3u_empty">The address answers, but the playlist is empty</string>
     <string name="source_refresh_playlist">Refresh playlist</string>
     <string name="source_refresh_channels">Refresh channels</string>
     <string name="source_refreshing_playlist">Refreshing playlist…</string>
@@ -760,6 +771,8 @@
     <string name="update_install">Install</string>
     <string name="update_open_permission">Allow installs</string>
     <string name="update_help">Downloads are verified against the published checksum; playlists and settings are kept.</string>
+    <!-- Not translated: the notes under it come from the published release, which is only ever English. -->
+    <string name="update_notes_for" translatable="false">What\'s new in %1$s</string>
     <string name="phone_setup_start">Set up from a phone</string>
     <string name="phone_setup_stop">Close the phone page</string>
     <string name="phone_setup_title">Set up from a phone</string>

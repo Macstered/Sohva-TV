@@ -4,10 +4,12 @@ import android.content.res.Configuration
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.streammate.tv.core.R
+import com.streammate.tv.core.network.GuideSourceException
 import java.io.IOException
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,5 +81,28 @@ class LocalizedExceptionTest {
         )
 
         assertEquals("connection refused", failure.message)
+    }
+
+    @Test
+    fun aStoredFailureComesBackInWordsWithItsArguments() {
+        val http = GuideSourceException(R.string.error_source_http, listOf(403)).storedFailureMessage()
+        val labelled = LocalizedException(
+            R.string.error_source_url_invalid,
+            listOf(ResourceArgument(R.string.error_source_label)),
+        ).storedFailureMessage()
+
+        assertEquals("The source responded with HTTP error 403", StoredFailureMessage.resolve(contextIn("en").resources, http))
+        assertTrue(StoredFailureMessage.resolve(contextIn("fi").resources, http)!!.contains("403"))
+        assertTrue(StoredFailureMessage.resolve(contextIn("fi").resources, labelled)!!.startsWith("Lähde-osoitteen"))
+        assertEquals("Connection reset", StoredFailureMessage.resolve(context.resources, "Connection reset"))
+        assertNull(StoredFailureMessage.resolve(context.resources, "  "))
+    }
+
+    @Test
+    fun aStoredIdThatIsNotAnErrorResolvesToNothingRatherThanToTheWrongSentence() {
+        // Resource ids are renumbered between builds; a refresh state written by
+        // another beta must not put "Sohva TV" on the health row as a failure.
+        assertNull(StoredFailureMessage.resolve(context.resources, "resource:${R.string.brand_sohva_tv}"))
+        assertNull(StoredFailureMessage.resolve(context.resources, "resource:1"))
     }
 }

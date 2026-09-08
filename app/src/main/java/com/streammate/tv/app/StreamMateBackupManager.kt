@@ -249,6 +249,7 @@ class StreamMateBackupManager(
         put("playbackReconnectPolicy", playbackReconnectPolicy.name)
         put("autoPlayNextEpisodeEnabled", autoPlayNextEpisodeEnabled)
         put("pictureInPictureEnabled", pictureInPictureEnabled)
+        put("editorsShowHidden", editorsShowHidden)
         put("preferredCatalogueCopy", preferredCatalogueCopy.name)
         put("hiddenLiveCategories", hiddenLiveCategories.toJsonArray())
         put("hiddenMovieCategories", hiddenMovieCategories.toJsonArray())
@@ -361,6 +362,7 @@ class StreamMateBackupManager(
             ?: PlaybackReconnectPolicy.STANDARD,
         autoPlayNextEpisodeEnabled = optionalBoolean("autoPlayNextEpisodeEnabled") ?: true,
         pictureInPictureEnabled = optionalBoolean("pictureInPictureEnabled") ?: false,
+        editorsShowHidden = optionalBoolean("editorsShowHidden") ?: true,
         preferredCatalogueCopy = optionalString("preferredCatalogueCopy")
             ?.let { stored ->
                 CataloguePreferredCopy.entries.firstOrNull { it.name == stored }

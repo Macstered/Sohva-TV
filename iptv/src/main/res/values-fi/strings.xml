@@ -176,6 +176,7 @@
     <string name="action_save">Tallenna</string>
     <string name="channels_show_in_guide">Näytä oppaassa</string>
     <string name="channels_hide_from_guide">Piilota oppaasta</string>
+    <string name="channels_show_hidden">Näytä piilotetut</string>
     <string name="channels_configure_pin">Määritä PIN asetuksissa</string>
     <string name="channels_remove_pin_lock">Poista PIN-lukitus</string>
     <string name="channels_lock_with_pin">Lukitse PIN-koodilla</string>
@@ -319,6 +320,8 @@
     <string name="interface_scale_normal">Normaali</string>
     <string name="interface_scale_compact">Tiivis</string>
     <string name="interface_scale_small">Pieni</string>
+    <string name="interface_scale_smaller">Pienempi</string>
+    <string name="interface_scale_option">%1$s (%2$d %%)</string>
     <!-- Each language is named in its own language, so it stays findable when
          the interface is currently in one the reader does not speak. -->
     <string name="interface_language_en">English</string>
@@ -427,6 +430,14 @@
     <string name="source_testing_xtream">Testataan Xtream-yhteyttä…</string>
     <string name="source_connection_ok">Xtream-yhteys toimii%1$s</string>
     <string name="source_server_limit"> · palvelinraja %1$d</string>
+    <string name="source_test_address">Testaa osoite</string>
+    <string name="source_testing_m3u">Testataan soittolistan osoitetta…</string>
+    <plurals name="source_test_m3u_ok">
+        <item quantity="one">M3U-soittolista löytyi: %1$d kohde</item>
+        <item quantity="other">M3U-soittolista löytyi: %1$d kohdetta</item>
+    </plurals>
+    <string name="source_test_m3u_ok_more">M3U-soittolista löytyi: vähintään %1$d kohdetta</string>
+    <string name="source_test_m3u_empty">Osoite vastaa, mutta soittolista on tyhjä</string>
     <string name="source_refresh_playlist">Päivitä soittolista</string>
     <string name="source_refresh_channels">Päivitä kanavat</string>
     <string name="source_refreshing_playlist">Päivitetään soittolistaa…</string>

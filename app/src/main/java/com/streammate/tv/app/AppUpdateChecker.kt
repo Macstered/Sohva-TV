@@ -57,6 +57,15 @@ class AppUpdateChecker(
     val installedVersionName: String =
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
 
+    private val mutableInstalledNotes =
+        MutableStateFlow(preferences.getString(KEY_INSTALLED_NOTES_PREFIX + installedVersionCode, null))
+
+    /**
+     * What changed in the build that is installed, from its own published
+     * release; kept once seen, so About can say so without a network.
+     */
+    val installedNotes: StateFlow<String?> = mutableInstalledNotes
+
     /** A daily look, from app start; the settings row can always ask again. */
     suspend fun checkIfDue() {
         val last = preferences.getLong(KEY_LAST_CHECK, 0L)
@@ -70,13 +79,19 @@ class AppUpdateChecker(
         mutableState.value = AppUpdateState.Checking
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                val body = fetchText(AppUpdates.RELEASES_URL)
-                AppUpdates.selectUpdate(AppUpdates.parseReleases(body), installedVersionCode)
+                val releases = AppUpdates.parseReleases(fetchText(AppUpdates.RELEASES_URL))
+                val installed = AppUpdates.installedRelease(releases, installedVersionCode)
+                    ?.let { AppUpdates.releaseNotes(it.body) }
+                AppUpdates.selectUpdate(releases, installedVersionCode) to installed
             }
         }
         preferences.edit().putLong(KEY_LAST_CHECK, clock()).apply()
         mutableState.value = result.fold(
-            onSuccess = { update ->
+            onSuccess = { (update, installed) ->
+                if (installed != null) {
+                    preferences.edit().putString(KEY_INSTALLED_NOTES_PREFIX + installedVersionCode, installed).apply()
+                    mutableInstalledNotes.value = installed
+                }
                 DiagnosticsLog.i("update", update?.let { "available: ${it.versionName}" } ?: "up to date")
                 update?.let(AppUpdateState::Available) ?: AppUpdateState.UpToDate
             },
@@ -190,6 +205,7 @@ class AppUpdateChecker(
 
     private companion object {
         const val KEY_LAST_CHECK = "last_check_epoch_millis"
+        const val KEY_INSTALLED_NOTES_PREFIX = "installed_notes_"
         const val CHECK_INTERVAL_MILLIS = 24L * 60 * 60 * 1_000
         const val HEX = "0123456789abcdef"
     }

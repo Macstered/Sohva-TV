@@ -14,8 +14,10 @@ import com.streammate.tv.iptv.repository.RoomGuideStore
 import com.streammate.tv.iptv.xmltv.XmlTvParser
 import java.io.ByteArrayInputStream
 import java.io.InputStream
-import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -107,8 +109,16 @@ class GuideImportBenchmarkTest {
         }
     }
 
+    /**
+     * The listing is anchored to now, not to a date written into the source.
+     * The importer keeps twelve hours of history and eight days ahead, so a
+     * fixed date turns the whole feed into programmes it is right to discard,
+     * and the test then fails for having imported nothing. This one began on
+     * 1 September 2026 and started failing on the 8th, twelve hours after its
+     * last programme ended.
+     */
     private fun syntheticFeed(channels: Int, perChannel: Int): String = buildString {
-        val start = LocalDateTime.of(2026, 9, 1, 0, 0)
+        val start = ZonedDateTime.now(FEED_ZONE).minusHours(2).truncatedTo(ChronoUnit.HOURS)
         val format = DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
         appendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?><tv>")
         repeat(channels) { channel ->
@@ -131,6 +141,7 @@ class GuideImportBenchmarkTest {
     }
 
     private companion object {
+        val FEED_ZONE: ZoneOffset = ZoneOffset.ofHours(3)
         const val TAG = "GuideImportBench"
         const val DB_NAME = "guide-import-bench.db"
         const val SOURCE_ID = "bench-source"

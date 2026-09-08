@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import com.streammate.tv.app.AppPreferencesRepository
+import com.streammate.tv.app.AppPreferences
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -60,6 +62,7 @@ private const val LOCATION_SAVE_DELAY_MILLIS = 1_000L
 fun LibraryManagerScreen(
     repository: OrganizationRepository,
     guideRepository: GuideRepository,
+    preferencesRepository: AppPreferencesRepository,
     initialRoom: LibraryRoom,
     initialGroup: String? = null,
     initialSource: String? = null,
@@ -75,12 +78,16 @@ fun LibraryManagerScreen(
         value = Triple(room, saved.first, saved.second)
     }
     val start = location?.takeIf { it.first == room } ?: return
+    val appPreferences by preferencesRepository.preferences.collectAsStateWithLifecycle(initialValue = AppPreferences())
+    val scope = rememberCoroutineScope()
     LibraryManagerContent(
         room, library, start.second, start.third,
         onRoom = { room = it }, onChange = repository::change,
         onAdvanced = onAdvanced, onBack = onBack,
         onLocation = { group, source -> repository.saveManagerLocation(room, group, source) },
         onRetry = { reload++ },
+        showHidden = appPreferences.editorsShowHidden,
+        onShowHiddenChange = { show -> scope.launch { preferencesRepository.setEditorsShowHidden(show) } },
     )
 }
 
@@ -96,6 +103,9 @@ fun LibraryManagerContent(
     onBack: () -> Unit,
     onLocation: suspend (String?, String?) -> Unit = { _, _ -> },
     onRetry: () -> Unit = {},
+    /** Whether the rails open on everything or only on what is shown; the channel editor keeps the same choice. */
+    showHidden: Boolean = true,
+    onShowHiddenChange: (Boolean) -> Unit = {},
 ) {
     val palette = StreamMateThemeTokens.palette
     val scope = rememberCoroutineScope()
@@ -105,7 +115,7 @@ fun LibraryManagerContent(
     var focusedItemId by remember(room) { mutableStateOf<String?>(null) }
     var pane by remember(room) { mutableStateOf(ManagerPane.GROUPS) }
     var search by remember(room) { mutableStateOf("") }
-    var filter by remember(room) { mutableStateOf(ManagerFilter.ALL) }
+    var filter by remember(room, showHidden) { mutableStateOf(if (showHidden) ManagerFilter.ALL else ManagerFilter.ENABLED) }
     var selectionMode by remember(room) { mutableStateOf(false) }
     var selection by remember(room) { mutableStateOf(emptySet<String>()) }
     var menu by remember(room) { mutableStateOf<ManagerMenu?>(null) }
@@ -190,8 +200,9 @@ fun LibraryManagerContent(
 
     fun leaveMenu() { menu = null; restorePaneFocus() }
     fun beginMove(destination: Int? = null) {
+        // The filter stays: a viewer who asked to see only what is shown is
+        // reordering that, and the hidden rows are what they wanted out of it.
         search = ""
-        filter = ManagerFilter.ALL
         selectionMode = false
         selection = emptySet()
         val ids = if (pane == ManagerPane.GROUPS) groups.map { it.key } else orderedItems.map { it.identity }
@@ -287,8 +298,12 @@ fun LibraryManagerContent(
             when (event.key) {
                 Key.Back -> { move = null; consumeBackUp = true; restorePaneFocus(); true }
                 Key.DirectionUp, Key.DirectionDown -> {
-                    val index = pending.ids.indexOf(pending.id)
-                    move = pending.copy(ids = movedOrganizationIds(pending.ids, pending.id, index + if (event.key == Key.DirectionUp) -1 else 1))
+                    // Past the neighbour on screen, not past one the filter hides:
+                    // one press used to swap with a hidden group and show nothing.
+                    val shown = if (pending.pane == ManagerPane.GROUPS) visibleGroups.map { it.key } else visibleItems.map { it.identity }
+                    val neighbour = shown.getOrNull(shown.indexOf(pending.id) + if (event.key == Key.DirectionUp) -1 else 1)
+                    val destination = neighbour?.let { pending.ids.indexOf(it) } ?: -1
+                    if (destination >= 0) move = pending.copy(ids = movedOrganizationIds(pending.ids, pending.id, destination))
                     true
                 }
                 Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
@@ -314,7 +329,16 @@ fun LibraryManagerContent(
                     selection = emptySet(); initializedFocus = false
                 }, testTag = "manager-source")
                 TvActionButton(stringResource(when (filter) { ManagerFilter.ALL -> R.string.manager_all; ManagerFilter.ENABLED -> R.string.manager_enabled; ManagerFilter.DISABLED -> R.string.manager_disabled }), compact = true,
-                    onClick = { filter = ManagerFilter.entries[(filter.ordinal + 1) % ManagerFilter.entries.size] }, testTag = "manager-filter")
+                    onClick = {
+                        filter = ManagerFilter.entries[(filter.ordinal + 1) % ManagerFilter.entries.size]
+                        // Everything or only what is shown is a standing choice;
+                        // only what is hidden is a passing look and is not kept.
+                        when (filter) {
+                            ManagerFilter.ALL -> onShowHiddenChange(true)
+                            ManagerFilter.ENABLED -> onShowHiddenChange(false)
+                            ManagerFilter.DISABLED -> Unit
+                        }
+                    }, testTag = "manager-filter")
             }
             Spacer(Modifier.height(6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -112,7 +112,8 @@ fun ChannelEditorScreen(
     val sourceChannels = channels.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
     val groups = sourceChannels.mapNotNull(EditableChannel::displayGroupTitle).distinct()
     val filteredChannels = sourceChannels.filter { channel ->
-        (selectedGroup == null || channel.displayGroupTitle == selectedGroup) &&
+        (appPreferences.editorsShowHidden || !channel.hidden) &&
+            (selectedGroup == null || channel.displayGroupTitle == selectedGroup) &&
             (searchQuery.isBlank() ||
                 channel.displayName.contains(searchQuery, ignoreCase = true) ||
                 channel.displayGroupTitle.orEmpty().contains(searchQuery, ignoreCase = true))
@@ -199,6 +200,18 @@ fun ChannelEditorScreen(
                         }
                     },
                     testTag = "channel-editor-sort",
+                )
+                // Reordering a list is easier without the channels that are not
+                // in it; the choice is kept, and the library manager shares it.
+                TvActionButton(
+                    label = stringResource(R.string.channels_show_hidden),
+                    selected = appPreferences.editorsShowHidden,
+                    onClick = {
+                        coroutineScope.launch {
+                            preferencesRepository.setEditorsShowHidden(!appPreferences.editorsShowHidden)
+                        }
+                    },
+                    testTag = "channel-editor-show-hidden",
                 )
                 TvUrlField(
                     value = searchQuery,
@@ -297,10 +310,16 @@ fun ChannelEditorScreen(
                             status = if (locked) lockedMessage else unlockedMessage
                         }
                     },
+                    canReorder = sortMode == ChannelEditorSort.PLAYLIST,
                     onMove = { channel, delta ->
+                        // Step past the neighbour on screen, not past one a filter
+                        // hides: the arrow used to swap a channel with a hidden one
+                        // and show no change at all.
+                        val shown = filteredChannels.indexOfFirst { it.id == channel.id }
+                        val neighbour = filteredChannels.getOrNull(shown + delta)
                         val index = channels.indexOfFirst { it.id == channel.id }
-                        val destination = (index + delta).coerceIn(channels.indices)
-                        if (index >= 0 && destination != index) {
+                        val destination = neighbour?.let { next -> channels.indexOfFirst { it.id == next.id } } ?: -1
+                        if (shown >= 0 && index >= 0 && destination >= 0 && destination != index) {
                             val reordered = channels.toMutableList().apply {
                                 add(destination, removeAt(index))
                             }
@@ -442,6 +461,8 @@ private fun ChannelEditor(
     onSave: (EditableChannel, String?, String?, String?) -> Unit,
     onToggleHidden: (EditableChannel) -> Unit,
     onToggleLocked: (EditableChannel, Boolean) -> Unit,
+    /** Arrows mean nothing while the list is sorted by name. */
+    canReorder: Boolean,
     onMove: (EditableChannel, Int) -> Unit,
     onReset: (EditableChannel) -> Unit,
     onToggleListMembership: (EditableChannel, CustomChannelList, Boolean) -> Unit,
@@ -597,8 +618,8 @@ private fun ChannelEditor(
                 enabled = parentalPinConfigured,
                 testTag = "channel-editor-locked",
             )
-            TvActionButton(label = "↑", onClick = { onMove(channel, -1) }, testTag = "channel-editor-up")
-            TvActionButton(label = "↓", onClick = { onMove(channel, 1) }, testTag = "channel-editor-down")
+            TvActionButton(label = "↑", onClick = { onMove(channel, -1) }, enabled = canReorder, testTag = "channel-editor-up")
+            TvActionButton(label = "↓", onClick = { onMove(channel, 1) }, enabled = canReorder, testTag = "channel-editor-down")
             TvActionButton(
                 label = stringResource(R.string.action_reset),
                 onClick = { onReset(channel) },

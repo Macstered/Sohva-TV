@@ -83,4 +83,38 @@ class AppUpdatesTest {
         assertNull(AppUpdates.expectedChecksum(sums, "README.md"))
         assertNull(AppUpdates.expectedChecksum(sums, "missing.apk"))
     }
+
+    @Test
+    fun `the installed build's own release is found, drafts excluded`() {
+        val parsed = AppUpdates.parseReleases(releases)
+
+        assertEquals("v0.1.0-beta.2", AppUpdates.installedRelease(parsed, 3)?.tagName)
+        assertNull(AppUpdates.installedRelease(parsed, 4))
+        assertNull(AppUpdates.installedRelease(parsed, 99))
+    }
+
+    @Test
+    fun `release notes are the changed section as plain lines`() {
+        val body = "# Sohva TV 0.1.0-beta.10\n\nAndroid build **11**. Early release.\n\n## Download\n\n- `sohva-tv.apk`: the app.\n\n" +
+            "## Changed since beta 9\n\nThe largest beta since the settings rebuild: more than one viewer in a\nhousehold.\n\n" +
+            "- **Profiles.** Favourites now belong to a viewer.\n  The first viewer keeps everything.\n" +
+            "- **Watched.** A tick marks a watched film; see [the checklist](https://example.invalid/TESTING.md).\n\n" +
+            "**This beta changes the database.** Existing positions stay.\n\n## Instructions\n\n[Install](https://example.invalid/INSTALL.md)\n"
+
+        val notes = AppUpdates.releaseNotes(body)
+
+        assertEquals(
+            "The largest beta since the settings rebuild: more than one viewer in a household.\n" +
+                "• Profiles. Favourites now belong to a viewer. The first viewer keeps everything.\n" +
+                "• Watched. A tick marks a watched film; see the checklist.\n" +
+                "This beta changes the database. Existing positions stay.",
+            notes,
+        )
+    }
+
+    @Test
+    fun `a body without a changed section is shown whole, and an empty one not at all`() {
+        assertEquals("Sohva TV 0.1.0-beta.1\nAndroid build 2.", AppUpdates.releaseNotes("# Sohva TV 0.1.0-beta.1\n\nAndroid build **2**."))
+        assertNull(AppUpdates.releaseNotes("  \n\n"))
+    }
 }

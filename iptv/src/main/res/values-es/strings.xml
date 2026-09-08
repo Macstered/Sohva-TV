@@ -176,6 +176,7 @@
     <string name="action_save">Guardar</string>
     <string name="channels_show_in_guide">Mostrar en la guía</string>
     <string name="channels_hide_from_guide">Ocultar de la guía</string>
+    <string name="channels_show_hidden">Mostrar ocultos</string>
     <string name="channels_configure_pin">Configurar el PIN en Ajustes</string>
     <string name="channels_remove_pin_lock">Quitar el bloqueo con PIN</string>
     <string name="channels_lock_with_pin">Bloquear con PIN</string>
@@ -319,6 +320,8 @@
     <string name="interface_scale_normal">Normal</string>
     <string name="interface_scale_compact">Compacto</string>
     <string name="interface_scale_small">Pequeño</string>
+    <string name="interface_scale_smaller">Más pequeño</string>
+    <string name="interface_scale_option">%1$s (%2$d %%)</string>
     <string name="interface_language_en">English</string>
     <string name="interface_language_fi">Suomi</string>
     <string name="interface_language_es">Español (borrador)</string>
@@ -425,6 +428,14 @@
     <string name="source_testing_xtream">Probando la conexión Xtream…</string>
     <string name="source_connection_ok">La conexión Xtream funciona%1$s</string>
     <string name="source_server_limit"> · límite del servidor %1$d</string>
+    <string name="source_test_address">Probar dirección</string>
+    <string name="source_testing_m3u">Probando la dirección de la lista…</string>
+    <plurals name="source_test_m3u_ok">
+        <item quantity="one">Lista M3U encontrada: %1$d elemento</item>
+        <item quantity="other">Lista M3U encontrada: %1$d elementos</item>
+    </plurals>
+    <string name="source_test_m3u_ok_more">Lista M3U encontrada: al menos %1$d elementos</string>
+    <string name="source_test_m3u_empty">La dirección responde, pero la lista está vacía</string>
     <string name="source_refresh_playlist">Actualizar lista de reproducción</string>
     <string name="source_refresh_channels">Actualizar canales</string>
     <string name="source_refreshing_playlist">Actualizando la lista de reproducción…</string>

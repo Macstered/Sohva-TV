@@ -9,7 +9,7 @@ import com.streammate.tv.core.database.GuideDao
 import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.security.SecretCipher
-import com.streammate.tv.core.security.SecretRedactor
+import com.streammate.tv.core.error.storedFailureMessage
 import com.streammate.tv.iptv.m3u.ChannelNameNormalizer
 import com.streammate.tv.iptv.xtream.XtreamSource
 
@@ -63,7 +63,7 @@ class XtreamImportService(
             ImportSummary(channels = channels.size)
         } catch (error: Throwable) {
             store.discardPlaylist(source.id, snapshotId)
-            val redactedError = SecretRedactor.redact(error.message)
+            val redactedError = error.storedFailureMessage()
             runCatching {
                 store.markRefreshFailed(source.id, GuideDao.PLAYLIST_KIND, redactedError)
             }

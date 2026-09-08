@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
@@ -34,7 +35,11 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.streammate.tv.app.AppLocale
+import com.streammate.tv.app.InterfaceScale
 import com.streammate.tv.app.MainActivity
+import java.util.concurrent.TimeUnit
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -73,6 +78,42 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-test-xtream"))
         composeRule.onNodeWithTag("settings-test-xtream").assertIsDisplayed()
+    }
+
+    @Test
+    fun testingAnM3uAddressReadsThePlaylistAndIntroducesTheApp() {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setBody("#EXTM3U\n#EXTINF:-1,One\nhttp://stream.example/1\n#EXTINF:-1,Two\nhttp://stream.example/2\n"),
+            )
+            server.start()
+
+            composeRule.onNodeWithTag("home-live").performClick()
+            composeRule.onNodeWithTag("guide-empty-settings").performClick()
+            composeRule.onNodeWithTag("source-add-m3u").performClick()
+            composeRule.onNodeWithTag("settings-m3u")
+                .performClick()
+                .performTextInput(server.url("/list.m3u").toString())
+            composeRule.onNodeWithTag("settings-list")
+                .performScrollToNode(hasTestTag("settings-source-name"))
+            composeRule.onNodeWithTag("settings-source-name")
+                .performClick()
+                .performTextInput("Probe")
+            composeRule.onNodeWithTag("settings-list")
+                .performScrollToNode(hasTestTag("settings-test-m3u"))
+            composeRule.onNodeWithTag("settings-test-m3u").performClick()
+
+            composeRule.awaitUntil(timeoutMillis = 15_000) {
+                runCatching {
+                    composeRule.onNodeWithTag("settings-status").assertTextContains("2 entries", substring = true)
+                    true
+                }.getOrDefault(false)
+            }
+            // The whole point of the header: a panel that drops the HTTP library's
+            // own agent must see the app's name instead.
+            val request = requireNotNull(server.takeRequest(5, TimeUnit.SECONDS))
+            assertTrue(request.getHeader("User-Agent").orEmpty().startsWith("Sohva TV/"))
+        }
     }
 
     @Test
@@ -375,6 +416,25 @@ class SettingsScreenTest {
 
         composeRule.onNodeWithTag("settings-section-about").performClick()
         composeRule.onNodeWithTag("settings-update-check").assertIsFocused()
+    }
+
+    @Test
+    fun theInterfaceCanBeDrawnAStepSmallerThanSmall() {
+        val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        composeRule.onNodeWithTag("home-live").performClick()
+        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.onNodeWithTag("settings-section-general").performClick()
+        composeRule.onNodeWithTag("settings-list")
+            .performScrollToNode(hasTestTag("settings-interface-scale"))
+        composeRule.onNodeWithTag("settings-interface-scale").performClick()
+        composeRule.onNodeWithTag("settings-interface-scale-smaller").assertIsDisplayed().performClick()
+        try {
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { prefs.preferences.first().interfaceScale == InterfaceScale.SMALLER }
+            }
+        } finally {
+            runBlocking { prefs.setInterfaceScale(InterfaceScale.DEFAULT) }
+        }
     }
 
     @Test

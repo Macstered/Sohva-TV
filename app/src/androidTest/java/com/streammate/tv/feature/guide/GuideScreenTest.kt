@@ -637,6 +637,38 @@ class GuideScreenTest {
             runBlocking { database.guideDao().channelPreference("test:one")?.hidden == true }
         }
     }
+
+    @Test
+    fun channelManagementCanKeepHiddenChannelsOutOfTheList() {
+        val preferences = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        composeRule.setContent {
+            StreamMateTheme {
+                ChannelEditorScreen(
+                    guideRepository = GuideRepository(database.guideDao()),
+                    preferencesRepository = preferences,
+                    onBack = {},
+                )
+            }
+        }
+        try {
+            composeRule.awaitFocused("channel-editor-item-test:one")
+            composeRule.onNodeWithTag("channel-editor-hidden").performScrollTo().performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { database.guideDao().channelPreference("test:one")?.hidden == true }
+            }
+            composeRule.onNodeWithTag("channel-editor-show-hidden").performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("channel-editor-item-test:one").fetchSemanticsNodes().isEmpty()
+            }
+            composeRule.onNodeWithTag("channel-editor-item-test:two").assertIsDisplayed()
+            composeRule.onNodeWithTag("channel-editor-show-hidden").performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("channel-editor-item-test:one").fetchSemanticsNodes().isNotEmpty()
+            }
+        } finally {
+            runBlocking { preferences.setEditorsShowHidden(true) }
+        }
+    }
 }
 
 private object TestSecretCipher : SecretCipher {

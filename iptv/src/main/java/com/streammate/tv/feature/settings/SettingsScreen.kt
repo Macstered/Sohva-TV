@@ -2012,6 +2012,36 @@ fun SettingsScreen(
                         },
                         testTag = "settings-save",
                     )
+                    if (sourceType == IptvSourceType.M3U) {
+                        // Xtream has had a connection test since the first beta. An M3U
+                        // address had none, so "not loading" was all a tester could say.
+                        TvActionButton(
+                            label = stringResource(R.string.source_test_address),
+                            icon = TvIcons.Check,
+                            enabled = !busy,
+                            onClick = {
+                                validatedSource().fold(
+                                    onSuccess = { source ->
+                                        scope.launch {
+                                            busy = true
+                                            status = resources.getString(R.string.source_testing_m3u)
+                                            status = runCatching {
+                                                playlistProbeSummary(
+                                                    resources,
+                                                    guideImportService.probePlaylist(source.m3uUrl.orEmpty()),
+                                                )
+                                            }.getOrElse { it.userMessage(context) }
+                                            busy = false
+                                        }
+                                    },
+                                    onFailure = {
+                                        status = it.userMessage(context)
+                                    },
+                                )
+                            },
+                            testTag = "settings-test-m3u",
+                        )
+                    }
                     if (sourceType == IptvSourceType.XTREAM) {
                         TvActionButton(
                             label = stringResource(R.string.source_test_connection),

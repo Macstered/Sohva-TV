@@ -6,6 +6,8 @@ data class AppUpdateUiState(
     val installedVersionName: String = "",
     val versionName: String? = null,
     val notes: String? = null,
+    /** What changed in the build that is installed, from its own release. */
+    val installedNotes: String? = null,
     val percent: Int? = null,
     val failure: Failure? = null,
 ) {

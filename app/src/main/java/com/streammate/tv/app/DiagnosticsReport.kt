@@ -1,13 +1,17 @@
 package com.streammate.tv.app
 
 import android.content.Context
+import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Build
+import android.util.DisplayMetrics
+import android.view.Display
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.security.SecretRedactor
 import com.streammate.tv.core.security.SecretSettingsStore
 import com.streammate.tv.iptv.repository.SourceRefreshHealth
+import com.streammate.tv.core.error.StoredFailureMessage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -30,6 +34,8 @@ data class DiagnosticsInfo(
     val android: String,
     val locale: String,
     val deviceTimeZone: String,
+    /** What the television is showing and what the app is laid out against. */
+    val display: String,
     val sqliteVersion: String,
     val preferences: AppPreferences,
     val sources: List<IptvSourceConfiguration>,
@@ -50,6 +56,7 @@ fun renderDiagnostics(info: DiagnosticsInfo): String {
         appendLine("Device: ${info.device}")
         appendLine("Android: ${info.android}")
         appendLine("Locale: ${info.locale}; TV time zone: ${info.deviceTimeZone}")
+        appendLine("Display: ${info.display}")
         appendLine("SQLite: ${info.sqliteVersion}")
         appendLine()
         appendLine("Settings")
@@ -104,10 +111,15 @@ class DiagnosticsReport(
             android = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
             locale = Locale.getDefault().toLanguageTag(),
             deviceTimeZone = TimeZone.getDefault().id,
+            display = displaySummary(context),
             sqliteVersion = runCatching(sqliteVersion).getOrDefault("?"),
             preferences = preferencesRepository.preferences.first(),
             sources = secretSettingsStore.loadSources(),
-            health = guideRepository.observeSourceRefreshHealth().first(),
+            // A failure is stored by its resource and arguments; the file should
+            // carry the words, in the language the television is set to.
+            health = guideRepository.observeSourceRefreshHealth().first().map { state ->
+                state.copy(lastError = StoredFailureMessage.resolve(context.resources, state.lastError) ?: state.lastError)
+            },
             log = DiagnosticsLog.snapshot(),
         )
     }
@@ -121,4 +133,35 @@ class DiagnosticsReport(
         }
         DiagnosticsLog.i("diagnostics", "saved ${text.lines().size} lines")
     }
+}
+
+
+/**
+ * The screen, for the reports that say the interface does not fill the
+ * television while playback does.
+ *
+ * Three sizes, because two of them differ perfectly normally: a Shield drives
+ * a 3840x2160 panel while reporting 1920x1080 to everything running on it, so
+ * the panel's mode disagreeing with the reported size means nothing on its
+ * own. The one that tells is the app's own window against the reported size.
+ * Smaller means something outside the app has inset it, which is where
+ * overscan compensation shows up - and video on its own plane can escape the
+ * same scaling, which is why playback can still fill the screen.
+ */
+internal fun displaySummary(context: Context): String {
+    val metrics = context.resources.displayMetrics
+    val configuration = context.resources.configuration
+    val app = "app ${metrics.widthPixels}x${metrics.heightPixels} px, " +
+        "${configuration.screenWidthDp}x${configuration.screenHeightDp} dp at ${metrics.densityDpi} dpi"
+    val panel = runCatching {
+        val display = context.getSystemService(DisplayManager::class.java)
+            ?.getDisplay(Display.DEFAULT_DISPLAY)
+            ?: return@runCatching null
+        val mode = display.mode ?: return@runCatching null
+        val real = DisplayMetrics().also { @Suppress("DEPRECATION") display.getRealMetrics(it) }
+        val hertz = String.format(Locale.ROOT, "%.1f", mode.refreshRate)
+        "panel ${mode.physicalWidth}x${mode.physicalHeight} at $hertz Hz, " +
+            "reported ${real.widthPixels}x${real.heightPixels} px"
+    }.getOrNull()
+    return if (panel == null) app else "$panel; $app"
 }

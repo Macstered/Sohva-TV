@@ -11,7 +11,10 @@ import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.network.GuideSource
 import com.streammate.tv.core.security.SecretCipher
 import com.streammate.tv.iptv.m3u.M3uParser
+import com.streammate.tv.core.R as CoreR
 import com.streammate.tv.iptv.repository.CatalogueRepository
+import com.streammate.tv.iptv.repository.GuideImportException
+import com.streammate.tv.iptv.repository.GuideRepository
 import com.streammate.tv.iptv.repository.M3uCatalogueImportService
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -19,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -80,6 +84,37 @@ class M3uCatalogueImportServiceTest {
         assertEquals("Example Show", series.name)
         assertEquals(listOf("Pilot", "Second"), episodes.map { it.name })
         assertTrue(requireNotNull(repository.playable(movie.contentKey)).encryptedStreamUrl.startsWith("encrypted:"))
+    }
+
+    @Test
+    fun anEmptyPlaylistKeepsThePreviousCatalogueAndSaysSo() = runBlocking {
+        val source = IptvSourceConfiguration(
+            id = "m3u-vod",
+            name = "M3U VOD",
+            type = IptvSourceType.M3U,
+            importScope = IptvImportScope.VOD,
+            m3uUrl = "http://provider.example/get.m3u",
+        )
+        fun service(playlist: String) = M3uCatalogueImportService(
+            sourceClient = TextSource(playlist),
+            parser = M3uParser(),
+            dao = database.catalogueDao(),
+            secretCipher = PrefixCipher,
+            clock = { 2_000L },
+        )
+        service("#EXTM3U\n#EXTINF:-1 group-title=\"Movies\",Example Movie (2024)\nhttp://provider.example/movie/1.mkv\n").refresh(source)
+
+        val error = assertThrows(GuideImportException::class.java) {
+            runBlocking { service("#EXTM3U\n").refresh(source) }
+        }
+
+        assertEquals(CoreR.string.error_catalogue_empty, error.messageResource)
+        val repository = CatalogueRepository(database.catalogueDao())
+        assertEquals("Example Movie (2024)", repository.observeMovies().first().single().name)
+        val health = GuideRepository(database.guideDao()).observeSourceRefreshHealth().first()
+            .single { it.sourceId == "m3u-vod" && it.kind == "catalogue" }
+        assertEquals("failed", health.status)
+        assertEquals("resource:${CoreR.string.error_catalogue_empty}", health.lastError)
     }
 }
 
