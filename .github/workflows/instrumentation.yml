@@ -20,17 +20,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
+    # Action versions as in build.yml; android-emulator-runner@v2 is current and
+    # was not named by the Node.js 20 deprecation.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Enable KVM
         run: |
@@ -59,7 +61,7 @@ jobs:
 
       - name: Upload instrumentation reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: instrumentation-reports
           if-no-files-found: ignore
