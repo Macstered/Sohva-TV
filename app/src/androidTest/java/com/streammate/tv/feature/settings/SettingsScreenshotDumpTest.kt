@@ -16,6 +16,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.streammate.tv.app.MainActivity
 import com.streammate.tv.testing.ClearAppStateRule
 import com.streammate.tv.testing.awaitUntil
+import com.streammate.tv.testing.openSettingsFromTheEmptyGuide
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -63,8 +64,7 @@ class SettingsScreenshotDumpTest {
             val bitmap = composeRule.onRoot().captureToImage().asAndroidBitmap()
             File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 90, it) }
         }
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         shot("01-sources")
         composeRule.onNodeWithTag("source-add-m3u").performClick()
         shot("02-sources-add-m3u")

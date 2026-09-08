@@ -94,10 +94,10 @@ class MainActivity : ComponentActivity() {
             }
             // The whole app is laid out at the chosen interface size: one
             // density for every screen, so layouts and text shrink together.
-            val interfaceScale by container.preferencesRepository.preferences
-                .map { it.interfaceScale }
-                .distinctUntilChanged()
-                .collectAsStateWithLifecycle(initialValue = InterfaceScale.DEFAULT)
+            val interfaceScaleFlow = remember(container) {
+                container.preferencesRepository.preferences.map { it.interfaceScale }.distinctUntilChanged()
+            }
+            val interfaceScale by interfaceScaleFlow.collectAsStateWithLifecycle(initialValue = InterfaceScale.DEFAULT)
             InterfaceScaled(interfaceScale) {
                 if (showLaunchSplash) {
                     StreamMateTheme { StreamMateLaunchScreen() }

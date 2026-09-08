@@ -308,7 +308,7 @@ class PhoneSetupServer(
             </form>
         """.trimIndent()
         return """
-            <!doctype html><html lang="${context.resources.configuration.locales[0].language}"><head>
+            <!doctype html><html lang="${context.resources.configuration.primaryLocale().language}"><head>
             <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
             <title>${s(IptvR.string.phone_setup_page_title)}</title>
             <style>

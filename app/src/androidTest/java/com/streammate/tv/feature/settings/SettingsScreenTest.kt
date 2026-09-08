@@ -11,6 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.streammate.tv.testing.ClearAppStateRule
 import org.junit.rules.RuleChain
 import com.streammate.tv.testing.awaitUntil
+import com.streammate.tv.testing.openSettingsFromTheEmptyGuide
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertCountEquals
@@ -64,8 +65,7 @@ class SettingsScreenTest {
 
     @Test
     fun addXtreamSourceShowsMaskedCredentialEditor() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("source-add-xtream").performClick()
 
         // The address and the credentials sit directly under the source's own
@@ -88,8 +88,7 @@ class SettingsScreenTest {
             )
             server.start()
 
-            composeRule.onNodeWithTag("home-live").performClick()
-            composeRule.onNodeWithTag("guide-empty-settings").performClick()
+            composeRule.openSettingsFromTheEmptyGuide()
             composeRule.onNodeWithTag("source-add-m3u").performClick()
             composeRule.onNodeWithTag("settings-m3u")
                 .performClick()
@@ -118,8 +117,7 @@ class SettingsScreenTest {
 
     @Test
     fun vodOnlyM3uSourceShowsCatalogueImportWithoutLiveOrEpgControls() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         // A source is a page now: the form opens from the Add button.
         composeRule.onNodeWithTag("source-add-m3u").performClick()
         composeRule.onNodeWithTag("settings-list")
@@ -137,8 +135,7 @@ class SettingsScreenTest {
 
     @Test
     fun epgCorrectionUsesThirtyMinuteStepsForLiveSources() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         // A source is a page now: the form opens from the Add button.
         composeRule.onNodeWithTag("source-add-m3u").performClick()
         composeRule.onNodeWithTag("settings-list")
@@ -154,8 +151,7 @@ class SettingsScreenTest {
 
     @Test
     fun settingsFieldsRequireSelectBeforeEditing() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         // A source is a page now: the form opens from the Add button.
         composeRule.onNodeWithTag("source-add-m3u").performClick()
 
@@ -167,8 +163,7 @@ class SettingsScreenTest {
 
     @Test
     fun completingCredentialEditKeepsFocusInTheEditedField() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("source-add-xtream").performClick()
 
         composeRule.onNodeWithTag("settings-xtream-username")
@@ -181,8 +176,7 @@ class SettingsScreenTest {
 
     @Test
     fun settingsUsesVerticalSectionRailAndCompactHeader() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
 
         composeRule.onAllNodesWithText("Sohva TV").assertCountEquals(0)
         composeRule.onNodeWithTag("settings-back").assertIsDisplayed()
@@ -201,8 +195,7 @@ class SettingsScreenTest {
 
     @Test
     fun playlistRefreshIntervalOpensDropdownAndPersistsSelection() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-general").performClick()
 
         composeRule.onNodeWithTag("settings-list")
@@ -242,8 +235,7 @@ class SettingsScreenTest {
      */
     @Test
     fun preferredCopyPersistsSelectionAndCanBeCleared() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-metadata").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-preferred-copy"))
@@ -271,8 +263,7 @@ class SettingsScreenTest {
 
     @Test
     fun skipStepIsChosenFromAPickerAndRestored() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-seek-step").performClick()
         composeRule.onNodeWithTag("settings-seek-step-ten_seconds").assertIsSelected()
@@ -298,8 +289,7 @@ class SettingsScreenTest {
 
     @Test
     fun subtitleSizeIsChosenFromAPickerAndRestored() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-subtitle-size").performScrollTo().performClick()
         composeRule.onNodeWithTag("settings-subtitle-size-follow_tv").assertIsSelected()
@@ -324,8 +314,7 @@ class SettingsScreenTest {
 
     @Test
     fun playbackBufferProfilePersistsSelectionAndCanRestoreDefault() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-buffer").performClick()
         composeRule.onNodeWithTag("settings-buffer-default").assertIsSelected()
@@ -357,8 +346,7 @@ class SettingsScreenTest {
 
     @Test
     fun playbackReconnectPolicyPersistsSelectionAndCanRestoreStandard() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-reconnect").performClick()
         composeRule.onNodeWithTag("settings-reconnect-standard").assertIsSelected()
@@ -390,8 +378,7 @@ class SettingsScreenTest {
 
     @Test
     fun selectingSettingsSectionMovesFocusIntoItsFirstUsefulControl() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
 
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-buffer").assertIsFocused()
@@ -421,8 +408,7 @@ class SettingsScreenTest {
     @Test
     fun theInterfaceCanBeDrawnAStepSmallerThanSmall() {
         val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-general").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-interface-scale"))
@@ -445,8 +431,7 @@ class SettingsScreenTest {
             prefs.setActiveProfile(Profiles.DEFAULT_ID)
         }
         clearProfiles()
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-general").performClick()
         composeRule.onNodeWithTag("settings-profile-active").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag("settings-profile-name").performScrollTo().performClick()
@@ -489,8 +474,7 @@ class SettingsScreenTest {
 
     @Test
     fun interfaceLanguageCanBeChosenFromGeneralSettings() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-general").performClick()
 
         composeRule.onNodeWithTag("settings-interface-language").performClick()
@@ -509,8 +493,7 @@ class SettingsScreenTest {
      */
     @Test
     fun keepingWatchingInACornerIsOffUntilAskedFor() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-picture-in-picture"))
@@ -528,8 +511,7 @@ class SettingsScreenTest {
 
     @Test
     fun matchingTheDisplayToThePictureCanBeTurnedOff() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-playback").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-auto-frame-rate"))
@@ -555,8 +537,7 @@ class SettingsScreenTest {
 
     @Test
     fun theImageCacheCeilingCanBeChosenAndTheCacheCleared() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-metadata").performClick()
         composeRule.onNodeWithTag("settings-list")
             .performScrollToNode(hasTestTag("settings-artwork-cache-clear"))
@@ -584,8 +565,7 @@ class SettingsScreenTest {
 
     @Test
     fun aboutAndLicencesIsReachableFromSettings() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-about").performClick()
         // Diagnostics sit on the same page, so a tester asked for a file finds it.
         composeRule.onNodeWithTag("settings-list").performScrollToNode(hasTestTag("settings-diagnostics-save"))

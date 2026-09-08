@@ -1,6 +1,7 @@
 package com.streammate.tv.feature.settings
 
 import com.streammate.tv.app.Profiles
+import com.streammate.tv.app.primaryLocale
 import com.streammate.tv.app.SubtitleBackground
 import com.streammate.tv.app.SubtitleTextColor
 import com.streammate.tv.app.SubtitleTextSize
@@ -332,7 +333,7 @@ fun SettingsScreen(
         }
     }
 
-    val metadataDisplayLocale = LocalResources.current.configuration.locales[0]
+    val metadataDisplayLocale = LocalResources.current.configuration.primaryLocale()
     val metadataLanguageOptions = remember(metadataDisplayLocale) {
         MetadataLanguages.TAGS.map { tag ->
             val name = java.util.Locale.forLanguageTag(tag).getDisplayName(metadataDisplayLocale)
@@ -1648,7 +1649,10 @@ fun SettingsScreen(
                             focusRequester = if (index == 0) {
                                 sectionFocusRequesters.getValue(SettingsSection.SOURCES)
                             } else {
-                                sourceRowFocus.getOrPut(source.id) { FocusRequester() }
+                                // The map keeps one requester per source across
+                                // recompositions; remember makes that explicit to
+                                // the compiler and to lint.
+                                remember(source.id) { sourceRowFocus.getOrPut(source.id) { FocusRequester() } }
                             },
                             divider = index > 0,
                             testTag = "source-${source.id}",

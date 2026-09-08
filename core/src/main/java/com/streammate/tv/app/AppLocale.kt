@@ -97,3 +97,11 @@ object AppLocale {
     private const val PREFERENCES_NAME = "streammate_locale"
     private const val KEY_LANGUAGE_TAG = "language_tag"
 }
+
+/**
+ * The first locale of a [Configuration] on every API level the app runs on.
+ * `Configuration.getLocales()` arrived in API 24; the app still runs on 23,
+ * where the single `locale` field is all there is.
+ */
+fun Configuration.primaryLocale(): Locale =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) locales[0] else @Suppress("DEPRECATION") locale

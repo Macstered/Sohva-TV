@@ -1,6 +1,8 @@
 package com.streammate.tv.feature.player
 
 import android.content.Context
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import android.view.accessibility.CaptioningManager
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
@@ -51,6 +53,7 @@ fun subtitleLook(appearance: SubtitleAppearance, tv: SubtitleLook): SubtitleLook
 }
 
 /** Puts [appearance] on the player's subtitle view. Bitmap subtitles keep their own colours. */
+@OptIn(UnstableApi::class)
 fun applySubtitleAppearance(playerView: PlayerView, appearance: SubtitleAppearance) {
     val view = playerView.subtitleView ?: return
     val factor = appearance.size.factor
@@ -71,6 +74,7 @@ fun applySubtitleAppearance(playerView: PlayerView, appearance: SubtitleAppearan
     }
 }
 
+@OptIn(UnstableApi::class)
 private fun tvSubtitleLook(context: Context): SubtitleLook {
     val manager = context.getSystemService(CaptioningManager::class.java)
     val style = if (manager != null && manager.isEnabled) {

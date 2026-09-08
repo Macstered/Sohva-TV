@@ -3,11 +3,14 @@ package com.streammate.tv.testing
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 
 /**
  * Polls until [condition] holds, treating a thrown condition as "not yet".
@@ -74,6 +77,30 @@ private fun ComposeTestRule.describeFocus(): String {
     } else {
         "Focus is on ${focused.joinToString()}."
     }
+}
+
+/**
+ * Waits for the guide's empty state, the screen most tests start from.
+ *
+ * Home opens the guide, which draws its loading placeholder until the
+ * library has answered and only then the empty state with its Settings
+ * button. Pressing that button straight after the Home click raced that
+ * answer: on the public workflow's emulator, two cores and a software GPU,
+ * one nightly run found the button in the semantics tree but not yet in the
+ * merged tree the finder reads, while the same navigation held in twenty
+ * sibling tests of the same run. Waiting for the button costs nothing where
+ * the answer is quick and ends the race where it is not.
+ */
+fun ComposeTestRule.awaitTheEmptyGuide(timeoutMillis: Long = DEFAULT_AWAIT_TIMEOUT_MILLIS) {
+    awaitUntil(timeoutMillis) { onAllNodesWithTag("guide-empty-settings").fetchSemanticsNodes().isNotEmpty() }
+    onNodeWithTag("guide-empty-settings").assertIsDisplayed()
+}
+
+/** Home, the empty guide, then its Settings button: how the settings tests reach their screen. */
+fun ComposeTestRule.openSettingsFromTheEmptyGuide() {
+    onNodeWithTag("home-live").performClick()
+    awaitTheEmptyGuide()
+    onNodeWithTag("guide-empty-settings").performClick()
 }
 
 const val DEFAULT_AWAIT_TIMEOUT_MILLIS = 15_000L

@@ -17,6 +17,7 @@ import androidx.compose.ui.test.pressKey
 import com.streammate.tv.app.MainActivity
 import com.streammate.tv.testing.ClearAppStateRule
 import com.streammate.tv.testing.awaitUntil
+import com.streammate.tv.testing.awaitTheEmptyGuide
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -92,6 +93,7 @@ class HomeScreenTest {
     @Test
     fun emptyGuideSettingsReceivesInitialFocus() {
         composeRule.onNodeWithTag("home-live").performClick()
+        composeRule.awaitTheEmptyGuide()
 
         composeRule.onNodeWithTag("guide-empty-settings")
             .assertIsDisplayed()

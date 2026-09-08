@@ -3,6 +3,8 @@ package com.streammate.tv.feature.today
 import com.streammate.tv.testing.ClearAppStateRule
 import org.junit.rules.RuleChain
 import com.streammate.tv.testing.awaitUntil
+import com.streammate.tv.testing.awaitTheEmptyGuide
+import com.streammate.tv.testing.openSettingsFromTheEmptyGuide
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
@@ -90,13 +92,12 @@ class TodayScreenTest {
      */
     @Test
     fun backReturnsFromSettingsToThePreviousGuideScreen() {
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").assertIsDisplayed().performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-back").assertIsDisplayed()
 
         composeRule.activity.onBackPressedDispatcher.onBackPressed()
 
-        composeRule.onNodeWithTag("guide-empty-settings").assertIsDisplayed()
+        composeRule.awaitTheEmptyGuide()
     }
 
     private fun openSportMate() {

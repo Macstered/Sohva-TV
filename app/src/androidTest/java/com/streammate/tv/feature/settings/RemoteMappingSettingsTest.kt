@@ -13,6 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.streammate.tv.testing.ClearAppStateRule
 import com.streammate.tv.app.MainActivity
 import com.streammate.tv.testing.awaitUntil
+import com.streammate.tv.testing.openSettingsFromTheEmptyGuide
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -34,8 +35,7 @@ class RemoteMappingSettingsTest {
                 composeRule.onAllNodesWithTag("home-live").fetchSemanticsNodes().isNotEmpty()
             }.getOrDefault(false)
         }
-        composeRule.onNodeWithTag("home-live").performClick()
-        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.openSettingsFromTheEmptyGuide()
         composeRule.onNodeWithTag("settings-section-remote").performClick()
     }
 

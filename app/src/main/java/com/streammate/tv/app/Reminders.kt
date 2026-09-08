@@ -1,6 +1,9 @@
 package com.streammate.tv.app
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.core.content.ContextCompat
 import android.provider.Settings
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -201,6 +204,14 @@ object ReminderNotifications {
             .setAutoCancel(true)
             .setContentIntent(ReminderScheduler.launchIntent(context, request))
             .build()
+        // Android 13 made posting a notification a runtime permission; the app
+        // asks for it when a reminder is first set, and a viewer may have said no.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            DiagnosticsLog.w("reminders", "notification permission not granted; ${reminder.id} not shown")
+            return
+        }
         runCatching { manager.notify(reminder.id.hashCode(), notification) }
             .onFailure { DiagnosticsLog.w("reminders", "notify failed", it) }
     }
