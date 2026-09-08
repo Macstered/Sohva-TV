@@ -35,7 +35,7 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
         ReminderEntity::class,
     ],
     views = [OrganizationMembershipView::class, OrganizationEligibleView::class, OrganizationVisibleMovie::class, OrganizationVisibleSeries::class, OrganizationVisibleChannel::class],
-    version = 24,
+    version = 25,
     exportSchema = true,
 )
 abstract class StreamMateDatabase : RoomDatabase() {
@@ -85,8 +85,33 @@ abstract class StreamMateDatabase : RoomDatabase() {
                 MIGRATION_21_22,
                 MIGRATION_22_23,
                 MIGRATION_23_24,
+                MIGRATION_24_25,
             )
             .build()
+
+        /** Profiles: a watched position belongs to a viewer, so the table is keyed by profile as well. */
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `playback_progress_new` (`contentKey` TEXT NOT NULL, `sourceId` TEXT NOT NULL, " +
+                        "`contentType` TEXT NOT NULL, `itemId` TEXT NOT NULL, `positionMillis` INTEGER NOT NULL, " +
+                        "`durationMillis` INTEGER NOT NULL, `completed` INTEGER NOT NULL, `lastWatchedEpochMillis` INTEGER NOT NULL, " +
+                        "`workKey` TEXT, `profileId` TEXT NOT NULL DEFAULT 'default', PRIMARY KEY(`contentKey`, `profileId`))",
+                )
+                db.execSQL(
+                    "INSERT INTO `playback_progress_new` (`contentKey`, `sourceId`, `contentType`, `itemId`, `positionMillis`, " +
+                        "`durationMillis`, `completed`, `lastWatchedEpochMillis`, `workKey`) " +
+                        "SELECT `contentKey`, `sourceId`, `contentType`, `itemId`, `positionMillis`, `durationMillis`, `completed`, " +
+                        "`lastWatchedEpochMillis`, `workKey` FROM `playback_progress`",
+                )
+                db.execSQL("DROP TABLE `playback_progress`")
+                db.execSQL("ALTER TABLE `playback_progress_new` RENAME TO `playback_progress`")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_progress_sourceId` ON `playback_progress` (`sourceId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_progress_contentType` ON `playback_progress` (`contentType`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_progress_lastWatchedEpochMillis` ON `playback_progress` (`lastWatchedEpochMillis`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_progress_workKey` ON `playback_progress` (`workKey`)")
+            }
+        }
 
         /** Reminders: a match or programme the viewer asked to be told about when it starts. */
         val MIGRATION_23_24 = object : Migration(23, 24) {

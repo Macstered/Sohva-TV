@@ -28,7 +28,13 @@ import java.util.Locale
 object AppLocale {
 
     /** Languages the interface is actually translated into. */
-    val SUPPORTED_TAGS: List<String> = listOf("en", "fi")
+    val SUPPORTED_TAGS: List<String> = listOf("en", "fi", "es", "pt", "de", "sv")
+
+    /**
+     * Languages whose translation was drafted from the English and has not yet
+     * been through a native reviewer; the picker says so beside the name.
+     */
+    val DRAFT_TAGS: Set<String> = setOf("es", "pt", "de", "sv")
 
     /**
      * The chosen language tag, or `null` to follow the system.

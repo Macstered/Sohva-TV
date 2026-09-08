@@ -33,7 +33,7 @@ const val MOVIE_HISTORY_CARDS_SQL = """
             AND movie.movieId = progress.itemId
     LEFT JOIN catalogue_metadata_overrides metadata
         ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-    WHERE progress.contentType = 'movie'
+    WHERE progress.contentType = 'movie' AND progress.profileId = :profileId
     ORDER BY progress.lastWatchedEpochMillis DESC
 """
 
@@ -52,7 +52,7 @@ const val SERIES_HISTORY_CARDS_SQL = """
         FROM playback_progress progress
         CROSS JOIN vod_episodes episode INDEXED BY index_vod_episodes_sourceId_episodeId
             ON episode.sourceId = progress.sourceId AND episode.episodeId = progress.itemId
-        WHERE progress.contentType = 'episode'
+        WHERE progress.contentType = 'episode' AND progress.profileId = :profileId
         GROUP BY episode.sourceId, episode.seriesId
     ) watched
     CROSS JOIN iptv_source_state source
@@ -97,6 +97,7 @@ const val CONTINUE_WATCHING_SQL = """
             ON movie.sourceId = progress.sourceId AND movie.snapshotId = state.activeSnapshotId
                 AND movie.movieId = progress.itemId
         WHERE progress.contentType = 'movie' AND progress.completed = 0 AND progress.positionMillis > 0
+            AND progress.profileId = :profileId
         UNION ALL
         SELECT progress.contentKey AS contentKey, progress.contentType AS contentType,
             episode.name AS title, NULL AS year, item.posterUrl AS posterUrl,
@@ -116,6 +117,7 @@ const val CONTINUE_WATCHING_SQL = """
             ON item.sourceId = episode.sourceId AND item.snapshotId = state.activeSnapshotId
                 AND item.seriesId = episode.seriesId
         WHERE progress.contentType = 'episode' AND progress.completed = 0 AND progress.positionMillis > 0
+            AND progress.profileId = :profileId
     )
     GROUP BY COALESCE(workKey, contentKey)
     ORDER BY lastWatchedEpochMillis DESC

@@ -278,7 +278,7 @@ data class VodEpisodeEntity(
 
 @Entity(
     tableName = "playback_progress",
-    primaryKeys = ["contentKey"],
+    primaryKeys = ["contentKey", "profileId"],
     indices = [
         Index(value = ["sourceId"]),
         Index(value = ["contentType"]),
@@ -305,6 +305,8 @@ data class PlaybackProgressEntity(
      * matching those across playlists is a harder problem left for later.
      */
     val workKey: String? = null,
+    /** Whose position this is; the first viewer's rows carry "default". */
+    @ColumnInfo(defaultValue = "default") val profileId: String = "default",
 )
 
 @Entity(

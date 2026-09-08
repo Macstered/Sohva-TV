@@ -27,10 +27,14 @@ internal fun playerStatsValues(
     stats: PlaybackStats,
     bufferLabel: String,
     droppedLabel: String,
+    subtitleLabel: String = "",
 ): List<PlayerStatValue> = buildList {
     stats.resolutionValue()?.let { add(PlayerStatValue(null, it)) }
     stats.codecValue()?.let { add(PlayerStatValue(null, it)) }
     stats.bitrateValue()?.let { add(PlayerStatValue(null, it)) }
+    stats.subtitleFormat
+        ?.takeIf { it.isNotBlank() && subtitleLabel.isNotEmpty() }
+        ?.let { add(PlayerStatValue(subtitleLabel, it)) }
     add(PlayerStatValue(bufferLabel, stats.bufferValue()))
     stats.droppedFrames
         ?.takeIf { it >= 0 }

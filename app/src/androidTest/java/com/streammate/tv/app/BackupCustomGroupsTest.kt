@@ -1,5 +1,7 @@
 package com.streammate.tv.app
 
+import com.streammate.tv.app.Profile
+import com.streammate.tv.app.Profiles
 import android.net.Uri
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -89,6 +91,33 @@ class BackupCustomGroupsTest {
         val restored = dao.snapshot()
         assertTrue(restored.rules.containsAll(snapshot.rules))
         assertEquals(snapshot.aliases, restored.aliases)
+    }
+
+    @Test
+    fun everyProfileAndWhatItKeepsSurvivesABackup() = runBlocking {
+        val kids = requireNotNull(preferences.addProfile("Kids", 2))
+        preferences.setActiveProfile(kids.id)
+        preferences.setFavouriteChannel("cartoons", true)
+        preferences.setActiveProfile(Profiles.DEFAULT_ID)
+        preferences.setFavouriteChannel("news", true)
+        try {
+            manager.write(Uri.fromFile(file), PASSPHRASE)
+
+            preferences.removeProfile(kids.id)
+            preferences.setFavouriteChannel("news", false)
+            assertEquals(emptyList<Profile>(), preferences.preferences.first().profiles)
+
+            manager.restore(Uri.fromFile(file), PASSPHRASE)
+
+            val restored = preferences.preferences.first()
+            assertEquals(listOf(kids), restored.profiles)
+            assertEquals(Profiles.DEFAULT_ID, restored.activeProfileId)
+            assertEquals(setOf("news"), restored.favouriteChannelIds)
+            assertEquals(setOf("cartoons"), preferences.profileData(kids.id).favouriteChannelIds)
+        } finally {
+            preferences.removeProfile(kids.id)
+            preferences.setFavouriteChannel("news", false)
+        }
     }
 
     @Test

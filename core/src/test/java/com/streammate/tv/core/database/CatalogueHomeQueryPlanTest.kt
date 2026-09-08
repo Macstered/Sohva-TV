@@ -78,9 +78,12 @@ class CatalogueHomeQueryPlanTest {
         }
     }
 
+    /** The one bound parameter: the planner is asked about the first viewer. */
+    private fun bound(sql: String): String = sql.replace(":profileId", "'default'")
+
     private fun assertKeyedLookups(sql: String) {
         val plan = connection.createStatement().use { statement ->
-            statement.executeQuery("EXPLAIN QUERY PLAN $sql").use { rows ->
+            statement.executeQuery("EXPLAIN QUERY PLAN ${bound(sql)}").use { rows ->
                 generateSequence { if (rows.next()) rows.getString("detail") else null }.toList()
             }
         }
@@ -103,7 +106,7 @@ class CatalogueHomeQueryPlanTest {
     }
 
     private fun rowCount(sql: String): Int = connection.createStatement().use { statement ->
-        statement.executeQuery(sql).use { rows -> generateSequence { rows.next().takeIf { it } }.count() }
+        statement.executeQuery(bound(sql)).use { rows -> generateSequence { rows.next().takeIf { it } }.count() }
     }
 
     private fun seedLibrary() {

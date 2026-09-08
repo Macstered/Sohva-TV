@@ -107,6 +107,15 @@ fun SeriesDetailsScreen(
     val context = LocalContext.current
     val seasons = remember(episodes) { episodes.map(VodEpisode::seasonNumber).distinct().sorted() }
     val visibleEpisodes = remember(episodes, season) { episodes.filter { it.seasonNumber == season } }
+    // A season carries the tick only when every episode in it is watched, so
+    // the pill says "finished", not "started".
+    val watchedSeasons = remember(episodes, progress) {
+        episodes.groupBy(VodEpisode::seasonNumber)
+            .filterValues { list ->
+                list.isNotEmpty() && list.all { progress[it.contentKey]?.completed == true }
+            }
+            .keys
+    }
     val seasonFocusRequesters = remember(seasons) { seasons.associateWith { FocusRequester() } }
     val firstEpisodeFocusRequesters = remember(seasons) { seasons.associateWith { FocusRequester() } }
     val activeSeasonFocus = seasonFocusRequesters[season]
@@ -349,6 +358,21 @@ fun SeriesDetailsScreen(
                                 testTag = "series-details-restart",
                             )
                         }
+                        val watched = selectedProgress?.completed == true
+                        CatalogueDetailAction(
+                            label = stringResource(if (watched) R.string.details_mark_unwatched else R.string.details_mark_watched),
+                            icon = TvIcons.Check,
+                            onClick = { scope.launch { repository.markWatched(episode.contentKey, !watched) } },
+                            testTag = "series-details-mark-watched",
+                        )
+                    }
+                    if (visibleEpisodes.isNotEmpty()) {
+                        CatalogueDetailAction(
+                            label = stringResource(R.string.series_mark_season_watched),
+                            icon = TvIcons.Check,
+                            onClick = { scope.launch { repository.markSeasonWatched(series.sourceId, series.seriesId, season) } },
+                            testTag = "series-mark-season-watched",
+                        )
                     }
                     CatalogueDetailAction(
                         label = stringResource(R.string.series_refresh_episodes),
@@ -399,6 +423,7 @@ fun SeriesDetailsScreen(
                         items(seasons, key = { it }) { option ->
                             TvActionButton(
                                 label = stringResource(R.string.series_season, option),
+                                icon = if (option in watchedSeasons) TvIcons.Check else null,
                                 onClick = {
                                     initialWatchFocusPending = false
                                     season = option
@@ -450,6 +475,7 @@ fun SeriesDetailsScreen(
                                     ?: backdropUrl
                                     ?: posterUrl,
                                 watchedFraction = progress[episode.contentKey]?.fraction,
+                                watched = progress[episode.contentKey]?.completed == true,
                                 selected = isSelected,
                                 onFocus = { selected = episode },
                                 onPlay = {
@@ -503,6 +529,7 @@ private fun EpisodeCard(
     episode: VodEpisode,
     thumbnailUrl: String?,
     watchedFraction: Float?,
+    watched: Boolean,
     selected: Boolean,
     onFocus: () -> Unit,
     onPlay: () -> Unit,
@@ -589,6 +616,11 @@ private fun EpisodeCard(
                         .fillMaxWidth(fraction)
                         .height(3.dp)
                         .background(palette.focus),
+                )
+            }
+            if (watched) {
+                CatalogueWatchedBadge(
+                    modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
                 )
             }
         }

@@ -102,6 +102,10 @@
     <string name="about_open_api_sports_terms">API-Sports-ehdot</string>
     <string name="about_open_apache_license">Apache 2.0</string>
     <string name="home_continue_watching">Jatka katsomista</string>
+    <string name="home_resume_continue">Jatka</string>
+    <string name="home_resume_start_over">Aloita alusta</string>
+    <string name="home_resume_mark_watched">Merkitse katsotuksi</string>
+    <string name="home_resume_remove">Poista Jatka katsomista -riviltä</string>
     <string name="home_recent_channels">Viimeksi katsotut kanavat</string>
     <string name="home_navigation">Navigointi</string>
     <string name="home_nav_home">Etusivu</string>
@@ -124,4 +128,5 @@
         <item quantity="one">%1$d ottelu</item>
         <item quantity="other">%1$d ottelua</item>
     </plurals>
+    <string name="picture_in_picture_close">Sulje</string>
 </resources>

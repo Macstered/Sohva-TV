@@ -1,8 +1,12 @@
 package com.streammate.tv.app
 
+import android.content.BroadcastReceiver
+import android.content.res.Configuration
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.Context
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +25,50 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 
 class MainActivity : ComponentActivity() {
+
+    /** Shared with the app composition: whether a stream may go to the corner, and whether it is there. */
+    val pictureInPicture = PictureInPictureState()
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        pictureInPicture.enter(this)
+    }
+
+    /** Listens for the close button on the corner only while the corner is up. */
+    private var closeReceiver: BroadcastReceiver? = null
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pictureInPicture.active = isInPictureInPictureMode
+        if (isInPictureInPictureMode) registerCloseReceiver() else unregisterCloseReceiver()
+    }
+
+    override fun onDestroy() {
+        unregisterCloseReceiver()
+        super.onDestroy()
+    }
+
+    private fun registerCloseReceiver() {
+        if (closeReceiver != null) return
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == ACTION_PICTURE_IN_PICTURE_CLOSE) finish()
+            }
+        }
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            IntentFilter(ACTION_PICTURE_IN_PICTURE_CLOSE),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        closeReceiver = receiver
+    }
+
+    private fun unregisterCloseReceiver() {
+        val receiver = closeReceiver ?: return
+        closeReceiver = null
+        runCatching { unregisterReceiver(receiver) }
+    }
 
     // Below API 33 nothing else applies the chosen interface language, and it
     // has to be in place before any resource is resolved.
@@ -54,7 +102,7 @@ class MainActivity : ComponentActivity() {
                 if (showLaunchSplash) {
                     StreamMateTheme { StreamMateLaunchScreen() }
                 } else {
-                    StreamMateApp(container)
+                    StreamMateApp(container, pictureInPicture)
                 }
             }
         }

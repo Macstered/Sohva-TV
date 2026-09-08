@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import androidx.datastore.preferences.core.Preferences
 import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -31,6 +32,12 @@ data class AppPreferences(
     val startupScreen: StartupScreen = StartupScreen.HOME,
     val lockedChannelIds: Set<String> = emptySet(),
     val parentalPinConfigured: Boolean = false,
+    /** The household's profiles beyond the implicit first one; see [Profiles]. */
+    val profiles: List<Profile> = emptyList(),
+    /** Whose favourites, recents, positions and locks the fields above are. */
+    val activeProfileId: String = Profiles.DEFAULT_ID,
+    /** Whether the app asks who is watching at start once there is more than one profile. */
+    val askProfileAtStart: Boolean = true,
     val remoteChannelKeyMode: RemoteChannelKeyMode = RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
     /** What each remote button does while watching; see [RemoteMappings]. */
     val remoteMappings: RemoteMappings = RemoteMappings.DEFAULTS,
@@ -40,10 +47,16 @@ data class AppPreferences(
     val interfaceScale: InterfaceScale = InterfaceScale.DEFAULT,
     val autoFrameRateEnabled: Boolean = true,
     val autoPlayNextEpisodeEnabled: Boolean = true,
+    /** Home while watching shrinks the picture to a corner over the launcher instead of stopping it. */
+    val pictureInPictureEnabled: Boolean = false,
     val followedSports: Set<SportType> = SportsFollowDefaults.sports,
     val followedCompetitionKeys: Set<String> = SportsFollowDefaults.competitionKeys,
     val playlistEpgRefreshInterval: PlaylistEpgRefreshInterval = PlaylistEpgRefreshInterval.DEFAULT,
     val playbackBufferProfile: PlaybackBufferProfile = PlaybackBufferProfile.DEFAULT,
+    val playbackSeekStep: PlaybackSeekStep = PlaybackSeekStep.DEFAULT,
+    val subtitleTextSize: SubtitleTextSize = SubtitleTextSize.DEFAULT,
+    val subtitleTextColor: SubtitleTextColor = SubtitleTextColor.DEFAULT,
+    val subtitleBackground: SubtitleBackground = SubtitleBackground.DEFAULT,
     val playbackReconnectPolicy: PlaybackReconnectPolicy = PlaybackReconnectPolicy.STANDARD,
     val hiddenLiveCategories: Set<String> = emptySet(),
     val hiddenMovieCategories: Set<String> = emptySet(),
@@ -115,6 +128,64 @@ enum class PlaybackBufferProfile {
     }
 }
 
+/** How far one press of Left or Right, or a mapped skip button, moves playback. */
+enum class PlaybackSeekStep(val millis: Long) {
+    TEN_SECONDS(10_000L),
+    THIRTY_SECONDS(30_000L),
+    ONE_MINUTE(60_000L),
+    TWO_MINUTES(120_000L),
+    ;
+
+    companion object {
+        val DEFAULT = TEN_SECONDS
+        fun fromStoredValue(value: String?): PlaybackSeekStep = entries.firstOrNull { it.name == value } ?: DEFAULT
+    }
+}
+
+/**
+ * How subtitles look. Each choice has "follow the TV" as its default, which
+ * keeps the TV's own accessibility caption settings where the TV has them;
+ * a TV without that screen is why these exist.
+ */
+enum class SubtitleTextSize(val factor: Float?) {
+    FOLLOW_TV(null),
+    SMALL(0.8f),
+    NORMAL(1f),
+    LARGE(1.3f),
+    VERY_LARGE(1.6f),
+    ;
+
+    companion object {
+        val DEFAULT = FOLLOW_TV
+        fun fromStoredValue(value: String?): SubtitleTextSize = entries.firstOrNull { it.name == value } ?: DEFAULT
+    }
+}
+
+enum class SubtitleTextColor(val argb: Int?) {
+    FOLLOW_TV(null),
+    WHITE(0xFFFFFFFF.toInt()),
+    YELLOW(0xFFFFE14D.toInt()),
+    ;
+
+    companion object {
+        val DEFAULT = FOLLOW_TV
+        fun fromStoredValue(value: String?): SubtitleTextColor = entries.firstOrNull { it.name == value } ?: DEFAULT
+    }
+}
+
+enum class SubtitleBackground {
+    FOLLOW_TV,
+    NONE,
+    SHADOW,
+    BOX,
+    ;
+
+    companion object {
+        val DEFAULT = FOLLOW_TV
+        fun fromStoredValue(value: String?): SubtitleBackground = entries.firstOrNull { it.name == value } ?: DEFAULT
+    }
+}
+
 enum class PlaybackReconnectPolicy {
     STANDARD,
     PERSISTENT,
@@ -141,24 +212,28 @@ class AppPreferencesRepository(
     private val context: Context,
 ) {
     val preferences: Flow<AppPreferences> = context.sportMatePreferences.data.map { values ->
+        val profileId = values.activeProfileId()
         AppPreferences(
             // Nothing chosen means the TV's own zone. This used to fall back to
             // Helsinki, and a tester six hours away read every programme wrong.
             timeZoneId = values[TIME_ZONE] ?: deviceTimeZoneId(),
             timeZoneFollowsDevice = values[TIME_ZONE] == null,
-            favouriteEventIds = values[FAVOURITE_EVENT_IDS]?.toSet().orEmpty(),
-            favouriteChannelIds = values[FAVOURITE_CHANNEL_IDS]?.toSet().orEmpty(),
-            recentChannelIds = values[RECENT_CHANNEL_IDS]
+            favouriteEventIds = values[favouriteEventIdsKey(profileId)]?.toSet().orEmpty(),
+            favouriteChannelIds = values[favouriteChannelIdsKey(profileId)]?.toSet().orEmpty(),
+            recentChannelIds = values[recentChannelIdsKey(profileId)]
                 ?.split(RECENT_SEPARATOR)
                 ?.filter(String::isNotBlank)
                 .orEmpty(),
-            lastChannelId = values[LAST_CHANNEL_ID],
+            lastChannelId = values[lastChannelIdKey(profileId)],
             lastGuideSourceId = values[LAST_GUIDE_SOURCE_ID],
             startupScreen = values[STARTUP_SCREEN]
                 ?.let { stored -> StartupScreen.entries.firstOrNull { it.name == stored } }
                 ?: StartupScreen.HOME,
-            lockedChannelIds = values[LOCKED_CHANNEL_IDS]?.toSet().orEmpty(),
+            lockedChannelIds = values[lockedChannelIdsKey(profileId)]?.toSet().orEmpty(),
             parentalPinConfigured = values[PARENTAL_PIN_CONFIGURED] ?: false,
+            profiles = Profiles.decode(values[PROFILES]),
+            activeProfileId = profileId,
+            askProfileAtStart = values[ASK_PROFILE_AT_START] ?: true,
             remoteChannelKeyMode = values[REMOTE_CHANNEL_KEY_MODE]
                 ?.let { stored -> RemoteChannelKeyMode.entries.firstOrNull { it.name == stored } }
                 ?: RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
@@ -173,6 +248,7 @@ class AppPreferencesRepository(
             interfaceScale = InterfaceScale.fromStored(values[INTERFACE_SCALE]),
             autoFrameRateEnabled = values[AUTO_FRAME_RATE] ?: true,
             autoPlayNextEpisodeEnabled = values[AUTO_PLAY_NEXT_EPISODE] ?: true,
+            pictureInPictureEnabled = values[PICTURE_IN_PICTURE] ?: false,
             followedSports = values[FOLLOWED_SPORTS]
                 ?.mapNotNull { stored -> SportType.entries.firstOrNull { it.name == stored } }
                 ?.toSet()
@@ -183,6 +259,10 @@ class AppPreferencesRepository(
                 values[PLAYLIST_EPG_REFRESH_INTERVAL],
             ),
             playbackBufferProfile = PlaybackBufferProfile.fromStoredValue(values[PLAYBACK_BUFFER_PROFILE]),
+            playbackSeekStep = PlaybackSeekStep.fromStoredValue(values[PLAYBACK_SEEK_STEP]),
+            subtitleTextSize = SubtitleTextSize.fromStoredValue(values[SUBTITLE_TEXT_SIZE]),
+            subtitleTextColor = SubtitleTextColor.fromStoredValue(values[SUBTITLE_TEXT_COLOR]),
+            subtitleBackground = SubtitleBackground.fromStoredValue(values[SUBTITLE_BACKGROUND]),
             preferredCatalogueCopy = CataloguePreferredCopy.fromStoredValue(values[PREFERRED_CATALOGUE_COPY]),
             playbackReconnectPolicy = PlaybackReconnectPolicy.fromStoredValue(
                 values[PLAYBACK_RECONNECT_POLICY],
@@ -209,30 +289,113 @@ class AppPreferencesRepository(
 
     suspend fun setFavourite(eventId: String, favourite: Boolean) {
         context.sportMatePreferences.edit { values ->
-            val updated = values[FAVOURITE_EVENT_IDS]?.toMutableSet() ?: mutableSetOf()
+            val key = favouriteEventIdsKey(values.activeProfileId())
+            val updated = values[key]?.toMutableSet() ?: mutableSetOf()
             if (favourite) updated.add(eventId) else updated.remove(eventId)
-            values[FAVOURITE_EVENT_IDS] = updated
+            values[key] = updated
         }
     }
 
     suspend fun setFavouriteChannel(channelId: String, favourite: Boolean) {
         context.sportMatePreferences.edit { values ->
-            val updated = values[FAVOURITE_CHANNEL_IDS]?.toMutableSet() ?: mutableSetOf()
+            val key = favouriteChannelIdsKey(values.activeProfileId())
+            val updated = values[key]?.toMutableSet() ?: mutableSetOf()
             if (favourite) updated.add(channelId) else updated.remove(channelId)
-            values[FAVOURITE_CHANNEL_IDS] = updated
+            values[key] = updated
         }
     }
 
     suspend fun recordRecentChannel(channelId: String) {
         context.sportMatePreferences.edit { values ->
-            val recent = values[RECENT_CHANNEL_IDS]
+            val profileId = values.activeProfileId()
+            val recentKey = recentChannelIdsKey(profileId)
+            val recent = values[recentKey]
                 ?.split(RECENT_SEPARATOR)
                 ?.filter(String::isNotBlank)
                 .orEmpty()
-            values[RECENT_CHANNEL_IDS] = (listOf(channelId) + recent.filterNot(channelId::equals))
+            values[recentKey] = (listOf(channelId) + recent.filterNot(channelId::equals))
                 .take(MAX_RECENT_CHANNELS)
                 .joinToString(RECENT_SEPARATOR)
-            values[LAST_CHANNEL_ID] = channelId
+            values[lastChannelIdKey(profileId)] = channelId
+        }
+    }
+
+    // ---- profiles ----
+
+    suspend fun setActiveProfile(profileId: String) {
+        context.sportMatePreferences.edit { values ->
+            if (profileId == Profiles.DEFAULT_ID) values.remove(ACTIVE_PROFILE_ID) else values[ACTIVE_PROFILE_ID] = profileId
+        }
+    }
+
+    /** A new viewer, empty-handed; null when the household is full. */
+    suspend fun addProfile(name: String, colorIndex: Int): Profile? {
+        var added: Profile? = null
+        context.sportMatePreferences.edit { values ->
+            val current = Profiles.decode(values[PROFILES])
+            if (current.count { it.id != Profiles.DEFAULT_ID } + 1 >= Profiles.MAX_PROFILES) return@edit
+            val profile = Profile(Profiles.newId(), name.trim().take(Profiles.MAX_NAME_LENGTH), colorIndex.coerceIn(0, Profiles.COLOR_COUNT - 1))
+            values[PROFILES] = Profiles.encode(current + profile)
+            added = profile
+        }
+        return added
+    }
+
+    suspend fun renameProfile(profileId: String, name: String, colorIndex: Int? = null) {
+        context.sportMatePreferences.edit { values ->
+            val current = Profiles.decode(values[PROFILES])
+            val trimmed = name.trim().take(Profiles.MAX_NAME_LENGTH)
+            val updated = if (current.any { it.id == profileId }) {
+                current.map { if (it.id == profileId) it.copy(name = trimmed, colorIndex = colorIndex ?: it.colorIndex) else it }
+            } else if (profileId == Profiles.DEFAULT_ID) {
+                current + Profile(Profiles.DEFAULT_ID, trimmed, colorIndex ?: 0)
+            } else {
+                current
+            }
+            values[PROFILES] = Profiles.encode(updated)
+        }
+    }
+
+    /** Removes a profile and everything it kept; the default profile stays. */
+    suspend fun removeProfile(profileId: String) {
+        if (profileId == Profiles.DEFAULT_ID) return
+        context.sportMatePreferences.edit { values ->
+            values[PROFILES] = Profiles.encode(Profiles.decode(values[PROFILES]).filterNot { it.id == profileId })
+            values.remove(favouriteEventIdsKey(profileId))
+            values.remove(favouriteChannelIdsKey(profileId))
+            values.remove(recentChannelIdsKey(profileId))
+            values.remove(lastChannelIdKey(profileId))
+            values.remove(lockedChannelIdsKey(profileId))
+            if (values[ACTIVE_PROFILE_ID] == profileId) values.remove(ACTIVE_PROFILE_ID)
+        }
+    }
+
+    suspend fun setAskProfileAtStart(ask: Boolean) {
+        context.sportMatePreferences.edit { values -> values[ASK_PROFILE_AT_START] = ask }
+    }
+
+    /** What [profileId] keeps, for a backup. */
+    suspend fun profileData(profileId: String): ProfileData {
+        val values = context.sportMatePreferences.data.first()
+        return ProfileData(
+            favouriteEventIds = values[favouriteEventIdsKey(profileId)]?.toSet().orEmpty(),
+            favouriteChannelIds = values[favouriteChannelIdsKey(profileId)]?.toSet().orEmpty(),
+            recentChannelIds = values[recentChannelIdsKey(profileId)]?.split(RECENT_SEPARATOR)?.filter(String::isNotBlank).orEmpty(),
+            lastChannelId = values[lastChannelIdKey(profileId)],
+            lockedChannelIds = values[lockedChannelIdsKey(profileId)]?.toSet().orEmpty(),
+        )
+    }
+
+    /** Puts back what each profile kept, after [restore] has laid down everything else. */
+    suspend fun restoreProfileData(data: Map<String, ProfileData>, parentalPinConfigured: Boolean) {
+        context.sportMatePreferences.edit { values ->
+            data.forEach { (profileId, kept) ->
+                values[favouriteEventIdsKey(profileId)] = kept.favouriteEventIds
+                values[favouriteChannelIdsKey(profileId)] = kept.favouriteChannelIds
+                values[recentChannelIdsKey(profileId)] = kept.recentChannelIds.take(MAX_RECENT_CHANNELS).joinToString(RECENT_SEPARATOR)
+                kept.lastChannelId?.let { values[lastChannelIdKey(profileId)] = it }
+                if (parentalPinConfigured) values[lockedChannelIdsKey(profileId)] = kept.lockedChannelIds
+            }
         }
     }
 
@@ -283,16 +446,21 @@ class AppPreferencesRepository(
 
     suspend fun setChannelLocked(channelId: String, locked: Boolean) {
         context.sportMatePreferences.edit { values ->
-            val updated = values[LOCKED_CHANNEL_IDS]?.toMutableSet() ?: mutableSetOf()
+            val key = lockedChannelIdsKey(values.activeProfileId())
+            val updated = values[key]?.toMutableSet() ?: mutableSetOf()
             if (locked) updated.add(channelId) else updated.remove(channelId)
-            values[LOCKED_CHANNEL_IDS] = updated
+            values[key] = updated
         }
     }
 
     suspend fun setParentalPinConfigured(configured: Boolean) {
         context.sportMatePreferences.edit { values ->
             values[PARENTAL_PIN_CONFIGURED] = configured
-            if (!configured) values.remove(LOCKED_CHANNEL_IDS)
+            // The PIN is the household's; without it no profile keeps a locked set.
+            if (!configured) {
+                (Profiles.decode(values[PROFILES]).map { it.id } + Profiles.DEFAULT_ID).distinct()
+                    .forEach { values.remove(lockedChannelIdsKey(it)) }
+            }
         }
     }
 
@@ -333,6 +501,10 @@ class AppPreferencesRepository(
         context.sportMatePreferences.edit { values -> values[AUTO_PLAY_NEXT_EPISODE] = enabled }
     }
 
+    suspend fun setPictureInPictureEnabled(enabled: Boolean) {
+        context.sportMatePreferences.edit { values -> values[PICTURE_IN_PICTURE] = enabled }
+    }
+
     suspend fun setFollowedSport(sport: SportType, followed: Boolean) {
         context.sportMatePreferences.edit { values ->
             val updated = values[FOLLOWED_SPORTS]
@@ -370,6 +542,24 @@ class AppPreferencesRepository(
         context.sportMatePreferences.edit { values ->
             values[PLAYBACK_BUFFER_PROFILE] = profile.name
         }
+    }
+
+    suspend fun setPlaybackSeekStep(step: PlaybackSeekStep) {
+        context.sportMatePreferences.edit { values ->
+            values[PLAYBACK_SEEK_STEP] = step.name
+        }
+    }
+
+    suspend fun setSubtitleTextSize(size: SubtitleTextSize) {
+        context.sportMatePreferences.edit { values -> values[SUBTITLE_TEXT_SIZE] = size.name }
+    }
+
+    suspend fun setSubtitleTextColor(color: SubtitleTextColor) {
+        context.sportMatePreferences.edit { values -> values[SUBTITLE_TEXT_COLOR] = color.name }
+    }
+
+    suspend fun setSubtitleBackground(background: SubtitleBackground) {
+        context.sportMatePreferences.edit { values -> values[SUBTITLE_BACKGROUND] = background.name }
     }
 
     suspend fun setPlaybackReconnectPolicy(policy: PlaybackReconnectPolicy) {
@@ -437,13 +627,17 @@ class AppPreferencesRepository(
     suspend fun restore(restored: AppPreferences) {
         context.sportMatePreferences.edit { values ->
             values.clear()
+            val profileId = restored.activeProfileId
+            values[PROFILES] = Profiles.encode(restored.profiles)
+            if (profileId == Profiles.DEFAULT_ID) values.remove(ACTIVE_PROFILE_ID) else values[ACTIVE_PROFILE_ID] = profileId
+            values[ASK_PROFILE_AT_START] = restored.askProfileAtStart
             if (restored.timeZoneFollowsDevice) values.remove(TIME_ZONE) else values[TIME_ZONE] = restored.timeZoneId
-            values[FAVOURITE_EVENT_IDS] = restored.favouriteEventIds
-            values[FAVOURITE_CHANNEL_IDS] = restored.favouriteChannelIds
-            values[RECENT_CHANNEL_IDS] = restored.recentChannelIds
+            values[favouriteEventIdsKey(profileId)] = restored.favouriteEventIds
+            values[favouriteChannelIdsKey(profileId)] = restored.favouriteChannelIds
+            values[recentChannelIdsKey(profileId)] = restored.recentChannelIds
                 .take(MAX_RECENT_CHANNELS)
                 .joinToString(RECENT_SEPARATOR)
-            restored.lastChannelId?.let { values[LAST_CHANNEL_ID] = it }
+            restored.lastChannelId?.let { values[lastChannelIdKey(profileId)] = it }
             restored.lastGuideSourceId?.let { values[LAST_GUIDE_SOURCE_ID] = it }
             values[STARTUP_SCREEN] = restored.startupScreen.name
             values[PARENTAL_PIN_CONFIGURED] = restored.parentalPinConfigured
@@ -453,10 +647,15 @@ class AppPreferencesRepository(
             values[INTERFACE_SCALE] = restored.interfaceScale.name
             values[AUTO_FRAME_RATE] = restored.autoFrameRateEnabled
             values[AUTO_PLAY_NEXT_EPISODE] = restored.autoPlayNextEpisodeEnabled
+            values[PICTURE_IN_PICTURE] = restored.pictureInPictureEnabled
             values[FOLLOWED_SPORTS] = restored.followedSports.mapTo(mutableSetOf()) { it.name }
             values[FOLLOWED_COMPETITIONS] = restored.followedCompetitionKeys
             values[PLAYLIST_EPG_REFRESH_INTERVAL] = restored.playlistEpgRefreshInterval.name
             values[PLAYBACK_BUFFER_PROFILE] = restored.playbackBufferProfile.name
+            values[PLAYBACK_SEEK_STEP] = restored.playbackSeekStep.name
+            values[SUBTITLE_TEXT_SIZE] = restored.subtitleTextSize.name
+            values[SUBTITLE_TEXT_COLOR] = restored.subtitleTextColor.name
+            values[SUBTITLE_BACKGROUND] = restored.subtitleBackground.name
             values[PREFERRED_CATALOGUE_COPY] = restored.preferredCatalogueCopy.name
             values[PLAYBACK_RECONNECT_POLICY] = restored.playbackReconnectPolicy.name
             values[HIDDEN_LIVE_CATEGORIES] = restored.hiddenLiveCategories
@@ -470,20 +669,25 @@ class AppPreferencesRepository(
             restored.preferredSubtitleLanguage?.let { values[PREFERRED_SUBTITLE_LANGUAGE] = it }
             restored.secondarySubtitleLanguage?.let { values[SECONDARY_SUBTITLE_LANGUAGE] = it }
             if (restored.parentalPinConfigured) {
-                values[LOCKED_CHANNEL_IDS] = restored.lockedChannelIds
+                values[lockedChannelIdsKey(restored.activeProfileId)] = restored.lockedChannelIds
             }
         }
     }
 
+    private fun Preferences.activeProfileId(): String = this[ACTIVE_PROFILE_ID] ?: Profiles.DEFAULT_ID
+    private fun favouriteEventIdsKey(profileId: String) = stringSetPreferencesKey(Profiles.keyName("favourite_event_ids", profileId))
+    private fun favouriteChannelIdsKey(profileId: String) = stringSetPreferencesKey(Profiles.keyName("favourite_channel_ids", profileId))
+    private fun recentChannelIdsKey(profileId: String) = stringPreferencesKey(Profiles.keyName("recent_channel_ids", profileId))
+    private fun lastChannelIdKey(profileId: String) = stringPreferencesKey(Profiles.keyName("last_channel_id", profileId))
+    private fun lockedChannelIdsKey(profileId: String) = stringSetPreferencesKey(Profiles.keyName("locked_channel_ids", profileId))
+
     private companion object {
         val TIME_ZONE = stringPreferencesKey("time_zone")
-        val FAVOURITE_EVENT_IDS = stringSetPreferencesKey("favourite_event_ids")
-        val FAVOURITE_CHANNEL_IDS = stringSetPreferencesKey("favourite_channel_ids")
-        val RECENT_CHANNEL_IDS = stringPreferencesKey("recent_channel_ids")
-        val LAST_CHANNEL_ID = stringPreferencesKey("last_channel_id")
+        val PROFILES = stringPreferencesKey("profiles")
+        val ACTIVE_PROFILE_ID = stringPreferencesKey("active_profile_id")
+        val ASK_PROFILE_AT_START = booleanPreferencesKey("ask_profile_at_start")
         val LAST_GUIDE_SOURCE_ID = stringPreferencesKey("last_guide_source_id")
         val STARTUP_SCREEN = stringPreferencesKey("startup_screen")
-        val LOCKED_CHANNEL_IDS = stringSetPreferencesKey("locked_channel_ids")
         val PARENTAL_PIN_CONFIGURED = booleanPreferencesKey(
             "parental_pin_configured",
         )
@@ -493,10 +697,15 @@ class AppPreferencesRepository(
         val INTERFACE_SCALE = stringPreferencesKey("interface_scale")
         val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
+        val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
         val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")
         val FOLLOWED_COMPETITIONS = stringSetPreferencesKey("followed_competitions")
         val PLAYLIST_EPG_REFRESH_INTERVAL = stringPreferencesKey("playlist_epg_refresh_interval")
         val PLAYBACK_BUFFER_PROFILE = stringPreferencesKey("playback_buffer_profile")
+        val PLAYBACK_SEEK_STEP = stringPreferencesKey("playback_seek_step")
+        val SUBTITLE_TEXT_SIZE = stringPreferencesKey("subtitle_text_size")
+        val SUBTITLE_TEXT_COLOR = stringPreferencesKey("subtitle_text_color")
+        val SUBTITLE_BACKGROUND = stringPreferencesKey("subtitle_background")
         val PLAYBACK_RECONNECT_POLICY = stringPreferencesKey("playback_reconnect_policy")
         val HIDDEN_LIVE_CATEGORIES = stringSetPreferencesKey("hidden_live_categories")
         val HIDDEN_MOVIE_CATEGORIES = stringSetPreferencesKey("hidden_movie_categories")

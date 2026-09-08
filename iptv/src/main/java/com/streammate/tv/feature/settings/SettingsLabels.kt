@@ -1,5 +1,9 @@
 package com.streammate.tv.feature.settings
 
+import com.streammate.tv.app.SubtitleBackground
+import com.streammate.tv.app.SubtitleTextColor
+import com.streammate.tv.app.SubtitleTextSize
+import com.streammate.tv.app.PlaybackSeekStep
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -29,6 +33,12 @@ internal sealed class SettingsPickerTarget(val key: String) {
     object Startup : SettingsPickerTarget("startup")
     object RefreshInterval : SettingsPickerTarget("refresh-interval")
     object Buffer : SettingsPickerTarget("buffer")
+    object SeekStep : SettingsPickerTarget("seek-step")
+    object SubtitleSize : SettingsPickerTarget("subtitle-size")
+    object SubtitleColor : SettingsPickerTarget("subtitle-color")
+    object SubtitleBackgroundChoice : SettingsPickerTarget("subtitle-background")
+    object ProfileChoice : SettingsPickerTarget("profile")
+    object ProfileRemove : SettingsPickerTarget("profile-remove")
     object Reconnect : SettingsPickerTarget("reconnect")
     data class Language(val slot: PreferredLanguageSlot) : SettingsPickerTarget("language-" + slot.name.lowercase())
     object MetadataLanguage : SettingsPickerTarget("metadata-language")
@@ -64,6 +74,10 @@ internal fun interfaceLanguageOptions(): List<Pair<String?, String>> = listOf(
     null to stringResource(R.string.interface_language_system),
     "en" to stringResource(R.string.interface_language_en),
     "fi" to stringResource(R.string.interface_language_fi),
+    "es" to stringResource(R.string.interface_language_es),
+    "pt" to stringResource(R.string.interface_language_pt),
+    "de" to stringResource(R.string.interface_language_de),
+    "sv" to stringResource(R.string.interface_language_sv),
 )
 
 internal tailrec fun Context.findActivity(): Activity? = when (this) {
@@ -134,6 +148,38 @@ internal fun PlaybackBufferProfile.localizedLabel(): String = when (this) {
     PlaybackBufferProfile.DEFAULT -> stringResource(R.string.playback_buffer_default)
     PlaybackBufferProfile.LOW_LATENCY -> stringResource(R.string.playback_buffer_low_latency)
     PlaybackBufferProfile.STABILITY -> stringResource(R.string.playback_buffer_stability)
+}
+
+@Composable
+internal fun PlaybackSeekStep.localizedLabel(): String = when (this) {
+    PlaybackSeekStep.TEN_SECONDS -> stringResource(R.string.playback_seek_step_10s)
+    PlaybackSeekStep.THIRTY_SECONDS -> stringResource(R.string.playback_seek_step_30s)
+    PlaybackSeekStep.ONE_MINUTE -> stringResource(R.string.playback_seek_step_1m)
+    PlaybackSeekStep.TWO_MINUTES -> stringResource(R.string.playback_seek_step_2m)
+}
+
+@Composable
+internal fun SubtitleTextSize.localizedLabel(): String = when (this) {
+    SubtitleTextSize.FOLLOW_TV -> stringResource(R.string.subtitle_follow_tv)
+    SubtitleTextSize.SMALL -> stringResource(R.string.subtitle_size_small)
+    SubtitleTextSize.NORMAL -> stringResource(R.string.subtitle_size_normal)
+    SubtitleTextSize.LARGE -> stringResource(R.string.subtitle_size_large)
+    SubtitleTextSize.VERY_LARGE -> stringResource(R.string.subtitle_size_very_large)
+}
+
+@Composable
+internal fun SubtitleTextColor.localizedLabel(): String = when (this) {
+    SubtitleTextColor.FOLLOW_TV -> stringResource(R.string.subtitle_follow_tv)
+    SubtitleTextColor.WHITE -> stringResource(R.string.subtitle_color_white)
+    SubtitleTextColor.YELLOW -> stringResource(R.string.subtitle_color_yellow)
+}
+
+@Composable
+internal fun SubtitleBackground.localizedLabel(): String = when (this) {
+    SubtitleBackground.FOLLOW_TV -> stringResource(R.string.subtitle_follow_tv)
+    SubtitleBackground.NONE -> stringResource(R.string.subtitle_background_none)
+    SubtitleBackground.SHADOW -> stringResource(R.string.subtitle_background_shadow)
+    SubtitleBackground.BOX -> stringResource(R.string.subtitle_background_box)
 }
 
 @Composable

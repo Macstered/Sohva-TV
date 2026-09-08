@@ -137,6 +137,18 @@ fun HomeScreen(
             .take(HOME_ROW_LIMIT)
     }
     val resumeItems = remember(continueWatching) { continueWatching.take(HOME_ROW_LIMIT) }
+    // The Continue watching card whose actions are open, if any.
+    var resumeActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
+    resumeActions?.let { item ->
+        HomeResumeActionsDialog(
+            item = item,
+            onResume = { resumeActions = null; onPlayVod(item.contentKey, item.progress.resumePositionMillis) },
+            onStartOver = { resumeActions = null; onPlayVod(item.contentKey, 0L) },
+            onMarkWatched = { resumeActions = null; scope.launch { catalogueRepository.markWatched(item.contentKey, true) } },
+            onRemove = { resumeActions = null; scope.launch { catalogueRepository.forgetProgress(item.contentKey) } },
+            onDismiss = { resumeActions = null },
+        )
+    }
     val todaysSport = remember(sportsEvents) { sportsEvents.take(HOME_ROW_LIMIT) }
 
     // The clock and the live progress bars are the only things here that have
@@ -246,6 +258,7 @@ fun HomeScreen(
                                     onClick = {
                                         onPlayVod(item.contentKey, item.progress.resumePositionMillis)
                                     },
+                                    onLongClick = { resumeActions = item },
                                 )
                             }
                         }
@@ -1027,11 +1040,12 @@ private fun HomeChannelCard(channel: GuideChannel, now: Long, onClick: () -> Uni
  * of it sit underneath rather than inside a second box drawn over the picture.
  */
 @Composable
-private fun HomeResumeCard(item: ContinueWatchingItem, onClick: () -> Unit) {
+private fun HomeResumeCard(item: ContinueWatchingItem, onClick: () -> Unit, onLongClick: () -> Unit) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     TvSurface(
         onClick = onClick,
+        onLongClick = onLongClick,
         modifier = Modifier.width(HOME_CARD_WIDTH),
         shape = StreamMateThemeTokens.shapes.medium,
         resting = Color.Transparent,

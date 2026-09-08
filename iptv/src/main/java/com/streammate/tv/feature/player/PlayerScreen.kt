@@ -1,5 +1,7 @@
 package com.streammate.tv.feature.player
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
 import com.streammate.tv.iptv.playback.PlaybackHttp
 import com.streammate.tv.core.model.TodayEvent
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
@@ -31,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -186,6 +189,11 @@ fun PlayerScreen(
     scoreTickerEvents: List<TodayEvent>? = null,
     scoreTickerVisible: Boolean = false,
     onToggleScoreTicker: (() -> Unit)? = null,
+    /** One press of Left or Right, or a mapped skip button; held, it climbs from here. */
+    seekStepMillis: Long = SEEK_LADDER_MILLIS.first(),
+    subtitleAppearance: SubtitleAppearance = SubtitleAppearance.TV,
+    /** In the corner over the launcher: the picture alone, no chrome. */
+    pictureInPicture: Boolean = false,
 ) {
     val context = LocalContext.current
     val serviceDisconnectedMessage = stringResource(R.string.player_service_disconnected)
@@ -317,46 +325,52 @@ fun PlayerScreen(
     when (val currentState = state) {
         PlayerLoadState.Loading -> PlayerMessage(connectingMessage, onBack)
         is PlayerLoadState.Error -> PlayerMessage(currentState.message, onBack)
-        is PlayerLoadState.Ready -> ActivePlayer(
-            controller = currentState.controller,
-            channelId = channelId,
-            catchupStartEpochMillis = catchupStartEpochMillis,
-            catchupStopEpochMillis = catchupStopEpochMillis,
-            vodContentKey = vodContentKey,
-            resumePositionMillis = resumePositionMillis,
-            showTransportControls = showTransportControls,
-            channels = channels,
-            currentBrowserGroup = placement?.groupTitle,
-            browserGroups = browserGroups.map { it.first },
-            browserGroupCounts = browserGroups.toMap(),
-            observeGroupChannels = observeGroupChannels,
-            guideChannel = guideTimeline.firstOrNull { it.id == channelId },
-            nowEpochMillis = now,
-            timeZoneId = timeZoneId,
-            metadataRepository = metadataRepository,
-            remoteMappings = remoteMappings,
-            playbackReconnectPolicy = playbackReconnectPolicy,
-            preferredAudioLanguage = preferredAudioLanguage,
-            secondaryAudioLanguage = secondaryAudioLanguage,
-            preferredSubtitleLanguage = preferredSubtitleLanguage,
-            secondarySubtitleLanguage = secondarySubtitleLanguage,
-            onChannelChange = onChannelChange,
-            onPreviousChannel = previousChannelId?.let { id -> { onChannelChange(id) } },
-            onNextChannel = nextChannelId?.let { id -> { onChannelChange(id) } },
-            onSwitchToPreviousChannel = onSwitchToPreviousChannel,
-            onOpenGuideAtChannel = onOpenGuideAtChannel,
-            onGoHome = onGoHome,
-            onGoGuide = onGoGuide,
-            onGoSport = onGoSport,
-            scoreTickerEvents = scoreTickerEvents,
-            scoreTickerVisible = scoreTickerVisible,
-            onToggleScoreTicker = onToggleScoreTicker,
-            onOpenExternal = onOpenExternal.takeUnless { showTransportControls },
-            onBack = onBack,
-            onPlaybackEnded = onPlaybackEnded,
-            autoFrameRateEnabled = autoFrameRateEnabled,
-            previewArtworkUrl = previewArtworkUrl,
-        )
+        is PlayerLoadState.Ready -> CompositionLocalProvider(
+            LocalPlayerSeekStep provides seekStepMillis,
+        ) {
+            ActivePlayer(
+                controller = currentState.controller,
+                channelId = channelId,
+                catchupStartEpochMillis = catchupStartEpochMillis,
+                catchupStopEpochMillis = catchupStopEpochMillis,
+                vodContentKey = vodContentKey,
+                resumePositionMillis = resumePositionMillis,
+                showTransportControls = showTransportControls,
+                channels = channels,
+                currentBrowserGroup = placement?.groupTitle,
+                browserGroups = browserGroups.map { it.first },
+                browserGroupCounts = browserGroups.toMap(),
+                observeGroupChannels = observeGroupChannels,
+                guideChannel = guideTimeline.firstOrNull { it.id == channelId },
+                nowEpochMillis = now,
+                timeZoneId = timeZoneId,
+                metadataRepository = metadataRepository,
+                remoteMappings = remoteMappings,
+                playbackReconnectPolicy = playbackReconnectPolicy,
+                preferredAudioLanguage = preferredAudioLanguage,
+                secondaryAudioLanguage = secondaryAudioLanguage,
+                preferredSubtitleLanguage = preferredSubtitleLanguage,
+                secondarySubtitleLanguage = secondarySubtitleLanguage,
+                onChannelChange = onChannelChange,
+                onPreviousChannel = previousChannelId?.let { id -> { onChannelChange(id) } },
+                onNextChannel = nextChannelId?.let { id -> { onChannelChange(id) } },
+                onSwitchToPreviousChannel = onSwitchToPreviousChannel,
+                onOpenGuideAtChannel = onOpenGuideAtChannel,
+                onGoHome = onGoHome,
+                onGoGuide = onGoGuide,
+                onGoSport = onGoSport,
+                scoreTickerEvents = scoreTickerEvents,
+                scoreTickerVisible = scoreTickerVisible,
+                onToggleScoreTicker = onToggleScoreTicker,
+                subtitleAppearance = subtitleAppearance,
+                pictureInPicture = pictureInPicture,
+                onOpenExternal = onOpenExternal.takeUnless { showTransportControls },
+                onBack = onBack,
+                onPlaybackEnded = onPlaybackEnded,
+                autoFrameRateEnabled = autoFrameRateEnabled,
+                previewArtworkUrl = previewArtworkUrl,
+            )
+        }
     }
 }
 
@@ -411,9 +425,11 @@ private fun ActivePlayer(
     onGoHome: (() -> Unit)?,
     onGoGuide: (() -> Unit)?,
     onGoSport: (() -> Unit)?,
-    scoreTickerEvents: List<TodayEvent>? = null,
-    scoreTickerVisible: Boolean = false,
-    onToggleScoreTicker: (() -> Unit)? = null,
+    scoreTickerEvents: List<TodayEvent>?,
+    scoreTickerVisible: Boolean,
+    onToggleScoreTicker: (() -> Unit)?,
+    subtitleAppearance: SubtitleAppearance,
+    pictureInPicture: Boolean,
 ) {
     KeepScreenOnEffect()
     val context = LocalContext.current
@@ -495,6 +511,23 @@ private fun ActivePlayer(
     var liveInfoFocusVersion by remember(channelId) { mutableIntStateOf(0) }
     var trackPickerType by remember(channelId) { mutableStateOf<TrackPickerType?>(null) }
     var quickActionsVisible by remember(channelId) { mutableStateOf(false) }
+    // Skipping: the stepper climbs while the button is held, and the last
+    // skip's size shows for a moment so the viewer sees what a press does.
+    val seekStepper = remember(channelId) { SeekStepper() }
+    var seekFeedbackMillis by remember(channelId) { mutableStateOf<Long?>(null) }
+    var seekFeedbackVersion by remember(channelId) { mutableIntStateOf(0) }
+    LaunchedEffect(seekFeedbackVersion) {
+        if (seekFeedbackMillis == null) return@LaunchedEffect
+        delay(SEEK_FEEDBACK_MILLIS)
+        seekFeedbackMillis = null
+    }
+    val seekStepMillis = LocalPlayerSeekStep.current
+    fun skip(direction: Int) {
+        val step = seekStepper.step(seekStepMillis, direction, System.currentTimeMillis())
+        controller.seekBy(direction * step)
+        seekFeedbackMillis = direction * step
+        seekFeedbackVersion += 1
+    }
     var preferredAudioApplied by remember(channelId, preferredAudioLanguage, secondaryAudioLanguage) {
         mutableStateOf(false)
     }
@@ -628,8 +661,8 @@ private fun ActivePlayer(
             RemoteAction.GUIDE_AT_CHANNEL -> return run(onOpenGuideAtChannel)
             RemoteAction.QUICK_ACTIONS -> quickActionsVisible = true
             RemoteAction.PLAY_PAUSE -> if (controller.isPlaying) controller.pause() else controller.play()
-            RemoteAction.SEEK_BACK -> controller.seekBy(-SEEK_INCREMENT_MILLIS)
-            RemoteAction.SEEK_FORWARD -> controller.seekBy(SEEK_INCREMENT_MILLIS)
+            RemoteAction.SEEK_BACK -> skip(-1)
+            RemoteAction.SEEK_FORWARD -> skip(1)
             RemoteAction.RESTART -> controller.seekTo(0L)
             RemoteAction.AUDIO_PICKER -> trackPickerType = TrackPickerType.AUDIO
             RemoteAction.NEXT_AUDIO_TRACK -> {
@@ -961,6 +994,7 @@ private fun ActivePlayer(
                     isFocusable = true
                     isFocusableInTouchMode = true
                     playerView = this
+                    applySubtitleAppearance(this, subtitleAppearance)
                     post { requestFocus() }
                 }
             },
@@ -970,6 +1004,7 @@ private fun ActivePlayer(
                 playerView.resizeMode = resizeMode
                 playerView.useController = false
                 playerView.hideController()
+                applySubtitleAppearance(playerView, subtitleAppearance)
                 playerView.setOnKeyListener { _, keyCode, event ->
                     val keyAction = when (event.action) {
                         KeyEvent.ACTION_DOWN -> RemoteKeyAction.DOWN
@@ -1067,6 +1102,8 @@ private fun ActivePlayer(
                 }
             },
         )
+        // In the corner nothing but the picture fits; the chrome comes back with the full screen.
+        if (pictureInPicture) return@Box
         if (previewArtworkUrl != null) {
             AsyncImage(
                 model = previewArtworkUrl,
@@ -1158,7 +1195,7 @@ private fun ActivePlayer(
                     chromeVersion += 1
                 },
                 onRewind = {
-                    controller.seekBy(-SEEK_INCREMENT_MILLIS)
+                    skip(-1)
                     chromeVersion += 1
                 },
                 onPlayPause = {
@@ -1166,7 +1203,7 @@ private fun ActivePlayer(
                     chromeVersion += 1
                 },
                 onForward = {
-                    controller.seekBy(SEEK_INCREMENT_MILLIS)
+                    skip(1)
                     chromeVersion += 1
                 },
                 onControlsFocusChanged = { transportControlsFocused = it },
@@ -1198,6 +1235,21 @@ private fun ActivePlayer(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(start = 40.dp, top = 24.dp),
+            )
+        }
+        seekFeedbackMillis?.let { skipped ->
+            Text(
+                text = seekStepLabel(skipped),
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 120.dp)
+                    .clip(StreamMateThemeTokens.shapes.medium)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 18.dp, vertical = 8.dp)
+                    .testTag("player-seek-feedback"),
             )
         }
         // Followed matches while watching something else. Below the clock
@@ -1489,7 +1541,8 @@ fun PlayerChromeOverlay(
 
 private const val EXTERNAL_PLAYER_RELEASE_DELAY_MILLIS = 150L
 private const val PLAYBACK_POSITION_REFRESH_MILLIS = 500L
-private const val SEEK_INCREMENT_MILLIS = 10_000L
+/** How long the size of a skip stays on screen. */
+private const val SEEK_FEEDBACK_MILLIS = 900L
 private const val MINUTE_MILLIS = 60_000L
 private const val PLAYER_EPG_NOW_BUCKET_MILLIS = 5L * 60_000L
 private const val PLAYER_EPG_WINDOW_BUCKET_MILLIS = 30L * 60_000L

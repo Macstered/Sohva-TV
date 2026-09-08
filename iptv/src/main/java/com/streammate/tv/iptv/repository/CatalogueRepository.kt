@@ -1,5 +1,10 @@
 package com.streammate.tv.iptv.repository
 
+import com.streammate.tv.app.Profiles
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.error.localizedTransportFailure
@@ -223,6 +228,8 @@ class CatalogueRepository(
     private val dao: CatalogueDao,
     private val clock: () -> Long = System::currentTimeMillis,
     val organization: OrganizationRepository? = null,
+    /** Whose positions to read and write; every progress flow follows a change of viewer. */
+    private val activeProfile: Flow<String> = flowOf(Profiles.DEFAULT_ID),
 ) {
     constructor(dao: CatalogueDao, clock: () -> Long) : this(dao, clock, null)
     private val similarMoviesCache = object : LinkedHashMap<SimilarMovieCacheKey, CachedSimilarMovies>(
@@ -284,7 +291,7 @@ class CatalogueRepository(
             .flowOn(Dispatchers.Default)
     }
 
-    fun observeMovieHistoryCards(): Flow<List<VodMovieCard>> = dao.observeMovieHistoryCards()
+    fun observeMovieHistoryCards(): Flow<List<VodMovieCard>> = perProfile { dao.observeMovieHistoryCards(it) }
         .map { movies -> movies.map { it.toCard() } }
         .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.MOVIES, VodMovieCard::organizationItem, chronological = true) ?: it }
         .distinctUntilChanged()
@@ -372,7 +379,7 @@ class CatalogueRepository(
             .flowOn(Dispatchers.Default)
     }
 
-    fun observeSeriesHistoryCards(): Flow<List<VodSeriesCard>> = dao.observeSeriesHistoryCards()
+    fun observeSeriesHistoryCards(): Flow<List<VodSeriesCard>> = perProfile { dao.observeSeriesHistoryCards(it) }
         .map { series -> series.map { it.toCard() } }
         .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.SERIES, VodSeriesCard::organizationItem, chronological = true) ?: it }
         .distinctUntilChanged()
@@ -446,17 +453,17 @@ class CatalogueRepository(
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
 
-    fun observeProgress(): Flow<Map<String, WatchingProgress>> = dao.observeProgress()
+    fun observeProgress(): Flow<Map<String, WatchingProgress>> = perProfile { dao.observeProgress(it) }
         .map { progress -> progress.associate { it.contentKey to it.toDomain() } }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
 
-    fun observeMovieProgress(): Flow<Map<String, WatchingProgress>> = dao.observeMovieProgress()
+    fun observeMovieProgress(): Flow<Map<String, WatchingProgress>> = perProfile { dao.observeMovieProgress(it) }
         .map { progress -> progress.associate { it.contentKey to it.toDomain() } }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
 
-    fun observeContinueWatching(): Flow<List<ContinueWatchingItem>> = dao.observeContinueWatching().map { rows ->
+    fun observeContinueWatching(): Flow<List<ContinueWatchingItem>> = perProfile { dao.observeContinueWatching(it) }.map { rows ->
         rows.map { row ->
             ContinueWatchingItem(
                 contentKey = row.contentKey,
@@ -597,8 +604,9 @@ class CatalogueRepository(
      * has no row of its own and still resumes.
      */
     suspend fun progress(contentKey: String): WatchingProgress? {
-        val own = dao.progress(contentKey)
-        val shared = workKeyFor(contentKey)?.let { dao.progressForWork(it) }
+        val profileId = profileId()
+        val own = dao.progress(contentKey, profileId)
+        val shared = workKeyFor(contentKey)?.let { dao.progressForWork(it, profileId) }
         return listOfNotNull(own, shared)
             .maxByOrNull { it.lastWatchedEpochMillis }
             ?.toDomain()
@@ -709,9 +717,7 @@ class CatalogueRepository(
         val parts = parseContentKey(contentKey) ?: return
         if (positionMillis < MIN_PROGRESS_MILLIS || durationMillis <= 0) return
         val boundedPosition = positionMillis.coerceAtMost(durationMillis)
-        val remaining = durationMillis - boundedPosition
-        val completed = boundedPosition >= (durationMillis * COMPLETION_FRACTION).toLong() ||
-            (durationMillis >= LONG_FORM_CONTENT_MILLIS && remaining <= COMPLETION_REMAINING_MILLIS)
+        val completed = WatchedRule.isWatched(boundedPosition, durationMillis)
         dao.upsertProgress(
             PlaybackProgressEntity(
                 contentKey = contentKey,
@@ -723,9 +729,58 @@ class CatalogueRepository(
                 completed = completed,
                 lastWatchedEpochMillis = clock(),
                 workKey = workKeyFor(contentKey),
+                profileId = profileId(),
             ),
         )
     }
+
+    /**
+     * By hand: watched sets the title complete at whatever duration is known
+     * (none, when it was never played), unwatched forgets it entirely so it
+     * reads as never seen. Both leave Continue watching.
+     */
+    suspend fun markWatched(contentKey: String, watched: Boolean) {
+        val parts = parseContentKey(contentKey) ?: return
+        val profileId = profileId()
+        if (!watched) {
+            dao.deleteProgress(contentKey, profileId)
+            return
+        }
+        val duration = dao.progress(contentKey, profileId)?.durationMillis?.takeIf { it > 0 } ?: 0L
+        dao.upsertProgress(
+            PlaybackProgressEntity(
+                contentKey = contentKey,
+                sourceId = parts.sourceId,
+                contentType = parts.type.wireValue,
+                itemId = parts.itemId,
+                positionMillis = duration,
+                durationMillis = duration,
+                completed = true,
+                lastWatchedEpochMillis = clock(),
+                workKey = workKeyFor(contentKey),
+                profileId = profileId,
+            ),
+        )
+    }
+
+    /** Every episode of one season, watched. */
+    suspend fun markSeasonWatched(sourceId: String, seriesId: String, seasonNumber: Int) {
+        dao.observeEpisodes(sourceId, seriesId).first()
+            .filter { it.seasonNumber == seasonNumber }
+            .forEach { markWatched(contentKey(VodContentType.EPISODE, sourceId, it.episodeId), true) }
+    }
+
+    /** Out of Continue watching without calling it watched: the position is forgotten. */
+    suspend fun forgetProgress(contentKey: String) = dao.deleteProgress(contentKey, profileId())
+
+    /** Everything a departing profile watched. */
+    suspend fun forgetProfile(profileId: String) = dao.deleteProgressForProfile(profileId)
+
+    private suspend fun profileId(): String = activeProfile.first()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun <T> perProfile(read: (String) -> Flow<T>): Flow<T> =
+        activeProfile.distinctUntilChanged().flatMapLatest(read)
 
     private fun VodMovieEntity.toDomain() = VodMovie(
         organizationGroupKey = organizationGroupKey,

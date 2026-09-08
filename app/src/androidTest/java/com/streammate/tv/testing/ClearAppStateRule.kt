@@ -1,5 +1,7 @@
 package com.streammate.tv.testing
 
+import com.streammate.tv.app.Profiles
+import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
 import com.streammate.tv.app.StreamMateApplication
@@ -27,12 +29,24 @@ class ClearAppStateRule : TestWatcher() {
 
     override fun starting(description: Description) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        listOf(SECURE_SOURCES_PREFERENCES, ARTWORK_CACHE_PREFERENCES).forEach { name ->
+        listOf(SECURE_SOURCES_PREFERENCES, ARTWORK_CACHE_PREFERENCES, LOCALE_PREFERENCES).forEach { name ->
             context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
         }
 
         val application = context.applicationContext as StreamMateApplication
-        runBlocking { application.container.guideRepository.clear() }
+        runBlocking {
+            application.container.guideRepository.clear()
+            // A household of one again: a leftover second profile would put
+            // the who-is-watching screen in front of every test that follows.
+            val preferences = application.container.preferencesRepository
+            val current = preferences.preferences.first()
+            current.profiles.forEach { preferences.removeProfile(it.id) }
+            if (current.activeProfileId != Profiles.DEFAULT_ID) preferences.setActiveProfile(Profiles.DEFAULT_ID)
+            // A switch a previous test left on is indistinguishable from the
+            // shipped default once it is written, so the test that asserts the
+            // default would pass or fail on the order tests happened to run in.
+            if (current.pictureInPictureEnabled) preferences.setPictureInPictureEnabled(false)
+        }
     }
 
     private companion object {
@@ -41,5 +55,9 @@ class ClearAppStateRule : TestWatcher() {
         // Settings that have to be readable before the app is up live outside
         // DataStore, so they outlive a test the same way sources did.
         const val ARTWORK_CACHE_PREFERENCES = "streammate_artwork_cache"
+
+        // The interface language, which a screenshot review can leave set;
+        // every test here reads its labels in English.
+        const val LOCALE_PREFERENCES = "streammate_locale"
     }
 }

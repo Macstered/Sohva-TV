@@ -1,7 +1,11 @@
 package com.streammate.tv.feature.settings
 
+import com.streammate.tv.app.AppLocale
+import org.junit.runners.model.Statement
+import org.junit.rules.TestRule
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -25,8 +29,28 @@ import java.io.File
 class SettingsScreenshotDumpTest {
     private val composeRule = createAndroidComposeRule<MainActivity>()
 
+    /**
+     * `-e language de` dumps the screens in that language: the app's own
+     * locale setting is written before the activity starts and cleared after,
+     * so a review pass covers every translation without touching the device.
+     */
+    private val language = TestRule { base, _ ->
+        object : Statement() {
+            override fun evaluate() {
+                val tag = InstrumentationRegistry.getArguments().getString("language")
+                val context = InstrumentationRegistry.getInstrumentation().targetContext
+                if (tag != null) AppLocale.apply(context, tag)
+                try {
+                    base.evaluate()
+                } finally {
+                    if (tag != null) AppLocale.apply(context, null)
+                }
+            }
+        }
+    }
+
     @get:Rule
-    val rules: RuleChain = RuleChain.outerRule(ClearAppStateRule()).around(composeRule)
+    val rules: RuleChain = RuleChain.outerRule(ClearAppStateRule()).around(language).around(composeRule)
 
     @Test
     fun dumpEverySection() {
@@ -44,9 +68,16 @@ class SettingsScreenshotDumpTest {
         shot("01-sources")
         composeRule.onNodeWithTag("source-add-m3u").performClick()
         shot("02-sources-add-m3u")
+        // Where a section runs past the screen, a second shot after scrolling to its last group.
+        val lowerGroups = mapOf("general" to "settings-profile-active", "playback" to "settings-subtitle-size")
         listOf("general", "playback", "remote", "metadata", "sport", "parental", "backup", "about").forEachIndexed { index, section ->
             composeRule.onNodeWithTag("settings-section-$section").performClick()
-            shot("${(index + 3).toString().padStart(2, '0')}-$section")
+            val number = (index + 3).toString().padStart(2, '0')
+            shot("$number-$section")
+            lowerGroups[section]?.let { tag ->
+                runCatching { composeRule.onNodeWithTag(tag).performScrollTo() }
+                shot("$number-$section-lower")
+            }
         }
     }
 }

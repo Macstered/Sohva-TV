@@ -21,6 +21,36 @@ class StreamMateDatabaseMigrationTest {
     )
 
     @Test
+    fun migratesTwentyFourToTwentyFive() {
+        helper.createDatabase(TEST_DATABASE_FROM_TWENTY_FOUR, 24).apply {
+            execSQL(
+                "INSERT INTO playback_progress (contentKey, sourceId, contentType, itemId, positionMillis, durationMillis, " +
+                    "completed, lastWatchedEpochMillis, workKey) VALUES ('vod:movie:s:1', 's', 'movie', '1', 300000, 1000000, 0, 5, 'work:x')",
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DATABASE_FROM_TWENTY_FOUR, 25, true, StreamMateDatabase.MIGRATION_24_25)
+        db.query("SELECT contentKey, profileId, positionMillis, workKey FROM playback_progress").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("vod:movie:s:1", cursor.getString(0))
+            assertEquals("default", cursor.getString(1))
+            assertEquals(300000L, cursor.getLong(2))
+            assertEquals("work:x", cursor.getString(3))
+            assertEquals(1, cursor.count)
+        }
+        // A second viewer's position for the same title sits beside the first one's.
+        db.execSQL(
+            "INSERT INTO playback_progress (contentKey, sourceId, contentType, itemId, positionMillis, durationMillis, " +
+                "completed, lastWatchedEpochMillis, workKey, profileId) VALUES ('vod:movie:s:1', 's', 'movie', '1', 10, 1000000, 0, 6, NULL, 'p2')",
+        )
+        db.query("SELECT COUNT(*) FROM playback_progress").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(2, cursor.getInt(0))
+        }
+        db.close()
+    }
+
+    @Test
     fun migrationFromTwentyThreeAddsRemindersAndKeepsChannels() {
         helper.createDatabase(TEST_DATABASE_FROM_TWENTY_THREE, 23).apply {
             execSQL(
@@ -860,6 +890,7 @@ class StreamMateDatabaseMigrationTest {
         const val TEST_DATABASE_FROM_FOURTEEN = "migration-test-from-fourteen"
         const val TEST_DATABASE_FROM_ONE = "migration-test-from-one"
         const val TEST_DATABASE_FROM_TWENTY_THREE = "migration-from-23"
+        const val TEST_DATABASE_FROM_TWENTY_FOUR = "migration-test-from-24"
         const val TEST_DATABASE_FROM_TWO = "migration-test-from-two"
         const val TEST_DATABASE_FROM_THREE = "migration-test-from-three"
         const val TEST_DATABASE_FROM_FOUR = "migration-test-from-four"

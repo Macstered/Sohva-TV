@@ -1,5 +1,9 @@
 package com.streammate.tv.feature.settings
 
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import com.streammate.tv.app.Profiles
+import com.streammate.tv.app.AppPreferencesRepository
 import org.junit.Assert.assertEquals
 import com.streammate.tv.app.ArtworkCacheSettings
 import com.streammate.tv.app.ArtworkCacheLimit
@@ -7,9 +11,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.streammate.tv.testing.ClearAppStateRule
 import org.junit.rules.RuleChain
 import com.streammate.tv.testing.awaitUntil
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assert
@@ -222,6 +229,59 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun skipStepIsChosenFromAPickerAndRestored() {
+        composeRule.onNodeWithTag("home-live").performClick()
+        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.onNodeWithTag("settings-section-playback").performClick()
+        composeRule.onNodeWithTag("settings-seek-step").performClick()
+        composeRule.onNodeWithTag("settings-seek-step-ten_seconds").assertIsSelected()
+        composeRule.onNodeWithTag("settings-seek-step-one_minute").performClick()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("settings-seek-step").performClick()
+                composeRule.onNodeWithTag("settings-seek-step-one_minute").assertIsSelected()
+                true
+            }.getOrDefault(false)
+        }
+        // Back to the default, so the preference does not leak into the next test.
+        composeRule.onNodeWithTag("settings-seek-step-ten_seconds").performClick()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("settings-seek-step").performClick()
+                composeRule.onNodeWithTag("settings-seek-step-ten_seconds").assertIsSelected()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("settings-seek-step-ten_seconds").performClick()
+    }
+
+    @Test
+    fun subtitleSizeIsChosenFromAPickerAndRestored() {
+        composeRule.onNodeWithTag("home-live").performClick()
+        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.onNodeWithTag("settings-section-playback").performClick()
+        composeRule.onNodeWithTag("settings-subtitle-size").performScrollTo().performClick()
+        composeRule.onNodeWithTag("settings-subtitle-size-follow_tv").assertIsSelected()
+        composeRule.onNodeWithTag("settings-subtitle-size-large").performClick()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("settings-subtitle-size").performScrollTo().performClick()
+                composeRule.onNodeWithTag("settings-subtitle-size-large").assertIsSelected()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("settings-subtitle-size-follow_tv").performClick()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag("settings-subtitle-size").performScrollTo().performClick()
+                composeRule.onNodeWithTag("settings-subtitle-size-follow_tv").assertIsSelected()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("settings-subtitle-size-follow_tv").performClick()
+    }
+
+    @Test
     fun playbackBufferProfilePersistsSelectionAndCanRestoreDefault() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
@@ -318,6 +378,56 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun aProfileIsAddedSwitchedToAndRemoved() {
+        val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        fun clearProfiles() = runBlocking {
+            prefs.preferences.first().profiles.forEach { prefs.removeProfile(it.id) }
+            prefs.setActiveProfile(Profiles.DEFAULT_ID)
+        }
+        clearProfiles()
+        composeRule.onNodeWithTag("home-live").performClick()
+        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.onNodeWithTag("settings-section-general").performClick()
+        composeRule.onNodeWithTag("settings-profile-active").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("settings-profile-name").performScrollTo().performClick()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runCatching { composeRule.onNodeWithTag("settings-profile-name").assert(hasSetTextAction()); true }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("settings-profile-name").performTextInput("Kids")
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runCatching { composeRule.onNodeWithTag("settings-profile-add").performScrollTo().performClick(); true }.getOrDefault(false)
+        }
+        try {
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { prefs.preferences.first().profiles.any { it.name == "Kids" } }
+            }
+            val kids = runBlocking { prefs.preferences.first().profiles.single { it.name == "Kids" } }
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("settings-profile-ask").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag("settings-profile-active").performScrollTo().performClick()
+            composeRule.onNodeWithTag("settings-profile-default").assertIsSelected()
+            composeRule.onNodeWithTag("settings-profile-${kids.id}").performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { prefs.preferences.first().activeProfileId == kids.id }
+            }
+            composeRule.onNodeWithTag("settings-profile-active").performScrollTo().performClick()
+            composeRule.onNodeWithTag("settings-profile-${kids.id}").assertIsSelected()
+            composeRule.onNodeWithTag("settings-profile-default").performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { prefs.preferences.first().activeProfileId == Profiles.DEFAULT_ID }
+            }
+            composeRule.onNodeWithTag("settings-profile-remove").performScrollTo().performClick()
+            composeRule.onNodeWithTag("settings-profile-remove-${kids.id}").performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { prefs.preferences.first().profiles.isEmpty() }
+            }
+        } finally {
+            clearProfiles()
+        }
+    }
+
+    @Test
     fun interfaceLanguageCanBeChosenFromGeneralSettings() {
         composeRule.onNodeWithTag("home-live").performClick()
         composeRule.onNodeWithTag("guide-empty-settings").performClick()
@@ -328,6 +438,31 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-interface-language-system").assertIsDisplayed()
         AppLocale.SUPPORTED_TAGS.forEach { tag ->
             composeRule.onNodeWithTag("settings-interface-language-$tag").assertIsDisplayed()
+        }
+    }
+
+    /**
+     * The corner is off until asked for. A TV launcher need not offer any way
+     * to dismiss a picture-in-picture window - Projectivy on the Shield does
+     * not - so a viewer who never asked for it would be handed a playing
+     * window with no obvious way out, still holding a provider connection.
+     */
+    @Test
+    fun keepingWatchingInACornerIsOffUntilAskedFor() {
+        composeRule.onNodeWithTag("home-live").performClick()
+        composeRule.onNodeWithTag("guide-empty-settings").performClick()
+        composeRule.onNodeWithTag("settings-section-playback").performClick()
+        composeRule.onNodeWithTag("settings-list")
+            .performScrollToNode(hasTestTag("settings-picture-in-picture"))
+        composeRule.onNodeWithTag("settings-picture-in-picture").assertIsNotSelected()
+        composeRule.onNodeWithTag("settings-picture-in-picture").performClick()
+        composeRule.awaitUntil {
+            composeRule.onAllNodes(hasTestTag("settings-picture-in-picture") and isSelected()).fetchSemanticsNodes().isNotEmpty()
+        }
+        // Back off: the preference outlives this test on the same device.
+        composeRule.onNodeWithTag("settings-picture-in-picture").performClick()
+        composeRule.awaitUntil {
+            composeRule.onAllNodes(hasTestTag("settings-picture-in-picture") and isNotSelected()).fetchSemanticsNodes().isNotEmpty()
         }
     }
 

@@ -177,7 +177,7 @@ abstract class CatalogueDao {
     abstract fun observeMovieCards(): Flow<List<VodMovieCardRow>>
 
     @Query(MOVIE_HISTORY_CARDS_SQL)
-    abstract fun observeMovieHistoryCards(): Flow<List<VodMovieCardRow>>
+    abstract fun observeMovieHistoryCards(profileId: String): Flow<List<VodMovieCardRow>>
 
     @Query(
         """
@@ -527,7 +527,7 @@ abstract class CatalogueDao {
     abstract fun observeSeriesCards(): Flow<List<VodSeriesCardRow>>
 
     @Query(SERIES_HISTORY_CARDS_SQL)
-    abstract fun observeSeriesHistoryCards(): Flow<List<VodSeriesCardRow>>
+    abstract fun observeSeriesHistoryCards(profileId: String): Flow<List<VodSeriesCardRow>>
 
     @Query(
         """
@@ -1060,20 +1060,28 @@ abstract class CatalogueDao {
     )
     abstract suspend fun searchEpisodes(query: String, limit: Int): List<VodEpisodeSearchRow>
 
-    @Query("SELECT * FROM playback_progress ORDER BY lastWatchedEpochMillis DESC")
-    abstract fun observeProgress(): Flow<List<PlaybackProgressEntity>>
+    @Query("SELECT * FROM playback_progress WHERE profileId = :profileId ORDER BY lastWatchedEpochMillis DESC")
+    abstract fun observeProgress(profileId: String): Flow<List<PlaybackProgressEntity>>
 
     @Query(
-        "SELECT * FROM playback_progress WHERE contentType = 'movie' " +
+        "SELECT * FROM playback_progress WHERE contentType = 'movie' AND profileId = :profileId " +
             "ORDER BY lastWatchedEpochMillis DESC",
     )
-    abstract fun observeMovieProgress(): Flow<List<PlaybackProgressEntity>>
+    abstract fun observeMovieProgress(profileId: String): Flow<List<PlaybackProgressEntity>>
 
     @Query(CONTINUE_WATCHING_SQL)
-    abstract fun observeContinueWatching(): Flow<List<ContinueWatchingRow>>
+    abstract fun observeContinueWatching(profileId: String): Flow<List<ContinueWatchingRow>>
 
-    @Query("SELECT * FROM playback_progress WHERE contentKey = :contentKey LIMIT 1")
-    abstract suspend fun progress(contentKey: String): PlaybackProgressEntity?
+    @Query("SELECT * FROM playback_progress WHERE contentKey = :contentKey AND profileId = :profileId LIMIT 1")
+    abstract suspend fun progress(contentKey: String, profileId: String): PlaybackProgressEntity?
+
+    /** Forgets a title's position and watched state, so it reads as never seen. */
+    @Query("DELETE FROM playback_progress WHERE contentKey = :contentKey AND profileId = :profileId")
+    abstract suspend fun deleteProgress(contentKey: String, profileId: String)
+
+    /** Everything one viewer ever watched, when their profile goes. */
+    @Query("DELETE FROM playback_progress WHERE profileId = :profileId")
+    abstract suspend fun deleteProgressForProfile(profileId: String)
 
     /**
      * The furthest-on position anyone has reached in this film, whichever copy
@@ -1082,11 +1090,11 @@ abstract class CatalogueDao {
      */
     @Query(
         """
-        SELECT * FROM playback_progress WHERE workKey = :workKey
+        SELECT * FROM playback_progress WHERE workKey = :workKey AND profileId = :profileId
         ORDER BY lastWatchedEpochMillis DESC LIMIT 1
         """,
     )
-    abstract suspend fun progressForWork(workKey: String): PlaybackProgressEntity?
+    abstract suspend fun progressForWork(workKey: String, profileId: String): PlaybackProgressEntity?
 
     /** The record a title turned out to be, where a match has been made. */
     @Query("SELECT externalId FROM catalogue_metadata_overrides WHERE contentKey = :contentKey LIMIT 1")

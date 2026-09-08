@@ -60,6 +60,12 @@ internal data class PlaybackStats(
      * putting on the screen.
      */
     val droppedFrames: Int? = null,
+    /**
+     * The MIME type of the subtitle track playing, whole rather than shortened:
+     * `text/vtt` can be styled and `application/pgs` cannot, and the half that
+     * says which is the half before the slash.
+     */
+    val subtitleFormat: String? = null,
 )
 
 internal fun Player.collectPlaybackStats(): PlaybackStats {
@@ -75,6 +81,7 @@ internal fun Player.collectPlaybackStats(): PlaybackStats {
         audioChannels = audio?.channelCount ?: Format.NO_VALUE,
         audioSampleRate = audio?.sampleRate ?: Format.NO_VALUE,
         bufferedAheadMillis = (bufferedPosition - currentPosition).coerceAtLeast(0L),
+        subtitleFormat = currentTracks.selectedFormat(C.TRACK_TYPE_TEXT)?.sampleMimeType,
     )
 }
 
@@ -163,6 +170,7 @@ internal fun PlayerStatsOverlay(
     val typography = StreamMateThemeTokens.typography
     val values = playerStatsValues(
         stats = stats,
+        subtitleLabel = stringResource(R.string.player_stats_subtitles),
         bufferLabel = stringResource(R.string.player_stats_buffer),
         droppedLabel = stringResource(R.string.player_stats_dropped),
     )

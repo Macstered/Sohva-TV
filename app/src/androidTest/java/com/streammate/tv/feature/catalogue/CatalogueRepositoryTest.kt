@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.catalogue
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -140,6 +141,76 @@ class CatalogueRepositoryTest {
             listOf("7"),
             repository.observeSeriesHistoryCards().first().map { it.seriesId },
         )
+    }
+
+    @Test
+    fun markingWatchedByHandAndBackAgain() = runBlocking {
+        val repository = CatalogueRepository(database.catalogueDao()) { ++now }
+        repository.updateProgress("vod:movie:source:42", 300_000, 1_000_000)
+        assertEquals(1, repository.observeContinueWatching().first().size)
+
+        repository.markWatched("vod:movie:source:42", true)
+        val marked = requireNotNull(repository.progress("vod:movie:source:42"))
+        assertTrue(marked.completed)
+        assertEquals(1_000_000L, marked.positionMillis)
+        assertTrue(repository.observeContinueWatching().first().isEmpty())
+
+        repository.markWatched("vod:movie:source:42", false)
+        assertNull(repository.progress("vod:movie:source:42"))
+
+        // Never played: watched all the same, with no duration to speak of.
+        repository.markWatched("vod:episode:source:70", true)
+        assertTrue(requireNotNull(repository.progress("vod:episode:source:70")).completed)
+        assertTrue(repository.observeContinueWatching().first().isEmpty())
+    }
+
+    @Test
+    fun eachProfileKeepsItsOwnPositions() = runBlocking {
+        val profile = MutableStateFlow("default")
+        val repository = CatalogueRepository(database.catalogueDao(), { ++now }, activeProfile = profile)
+        repository.updateProgress("vod:movie:source:42", 300_000, 1_000_000)
+        assertEquals(1, repository.observeContinueWatching().first().size)
+
+        profile.value = "kids"
+        assertTrue(repository.observeContinueWatching().first().isEmpty())
+        assertNull(repository.progress("vod:movie:source:42"))
+        repository.updateProgress("vod:movie:source:42", 900_000, 1_000_000)
+        assertTrue(requireNotNull(repository.progress("vod:movie:source:42")).completed)
+
+        profile.value = "default"
+        assertEquals(300_000L, requireNotNull(repository.progress("vod:movie:source:42")).positionMillis)
+        assertEquals(1, repository.observeContinueWatching().first().size)
+
+        repository.forgetProfile("kids")
+        profile.value = "kids"
+        assertNull(repository.progress("vod:movie:source:42"))
+    }
+
+    @Test
+    fun forgettingAPositionLeavesContinueWatching() = runBlocking {
+        val repository = CatalogueRepository(database.catalogueDao()) { ++now }
+        repository.updateProgress("vod:movie:source:42", 300_000, 1_000_000)
+        repository.forgetProgress("vod:movie:source:42")
+        assertNull(repository.progress("vod:movie:source:42"))
+        assertTrue(repository.observeContinueWatching().first().isEmpty())
+    }
+
+    @Test
+    fun aSeasonIsMarkedWatchedEpisodeByEpisode() = runBlocking {
+        database.catalogueDao().replaceSeriesEpisodes(
+            "source",
+            "7",
+            listOf(
+                episode("70", season = 1, number = 1),
+                episode("71", season = 1, number = 2),
+                episode("80", season = 2, number = 1),
+            ),
+        )
+        val repository = CatalogueRepository(database.catalogueDao()) { ++now }
+        repository.markSeasonWatched("source", "7", 1)
+        assertTrue(requireNotNull(repository.progress("vod:episode:source:70")).completed)
+        assertTrue(requireNotNull(repository.progress("vod:episode:source:71")).completed)
+        assertNull(repository.progress("vod:episode:source:80"))
     }
 
     @Test

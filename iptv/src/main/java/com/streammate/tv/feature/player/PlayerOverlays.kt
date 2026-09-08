@@ -1008,7 +1008,7 @@ fun BottomTransportControls(
                     modifier = Modifier.padding(end = 18.dp),
                 )
                 TvActionButton(
-                    label = stringResource(R.string.player_rewind),
+                    label = stringResource(R.string.player_rewind, seekAmountLabel(LocalPlayerSeekStep.current)),
                     icon = TvIcons.Rewind,
                     onClick = onRewind,
                     compact = true,
@@ -1023,7 +1023,7 @@ fun BottomTransportControls(
                     testTag = "player-play-pause",
                 )
                 TvActionButton(
-                    label = stringResource(R.string.player_forward),
+                    label = stringResource(R.string.player_forward, seekAmountLabel(LocalPlayerSeekStep.current)),
                     icon = TvIcons.Forward,
                     onClick = onForward,
                     compact = true,

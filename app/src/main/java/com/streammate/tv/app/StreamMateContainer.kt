@@ -1,5 +1,7 @@
 package com.streammate.tv.app
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import okhttp3.Protocol
 import com.streammate.tv.core.database.RemindersDao
 import kotlinx.coroutines.withContext
@@ -85,7 +87,11 @@ class StreamMateContainer(context: Context) {
     val organizationRepository = OrganizationRepository(database.organizationDao(), preferencesRepository)
     private val organizationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val guideRepository = GuideRepository(database.guideDao(), organization = organizationRepository)
-    val catalogueRepository = CatalogueRepository(database.catalogueDao(), organization = organizationRepository)
+    val catalogueRepository = CatalogueRepository(
+        database.catalogueDao(),
+        organization = organizationRepository,
+        activeProfile = preferencesRepository.preferences.map { it.activeProfileId }.distinctUntilChanged(),
+    )
     init {
         // Complete the small, idempotent legacy preference import before any screen reads it.
         runBlocking(Dispatchers.IO) { organizationRepository.migrateLegacy(preferencesRepository.preferences.first()) }

@@ -52,10 +52,13 @@ class StreamMateBackupManager(
     suspend fun write(uri: Uri, passphrase: String): BackupRestoreResult = withContext(Dispatchers.IO) {
         val sources = secretSettingsStore.loadSources()
         val preferences = preferencesRepository.preferences.first()
+        val profileData = (listOf(Profiles.DEFAULT_ID) + preferences.profiles.map { it.id }).distinct()
+            .associateWith { preferencesRepository.profileData(it) }
         val customization = guideRepository.channelCustomizationSnapshot()
         val plainText = encodePayload(
             sources = IptvSourceConfigurationCodec.encode(sources),
             preferences = preferences,
+            profileData = profileData,
             parentalPin = secretSettingsStore.parentalPinForEncryptedBackup(),
             customization = customization,
         ).toByteArray(Charsets.UTF_8)
@@ -92,6 +95,7 @@ class StreamMateBackupManager(
                 lockedChannelIds = if (decoded.parentalPin == null) emptySet() else decoded.preferences.lockedChannelIds,
             ),
         )
+        preferencesRepository.restoreProfileData(decoded.profileData, parentalPinConfigured = decoded.parentalPin != null)
         if (decoded.parentalPin == null && secretSettingsStore.hasParentalPin()) {
             secretSettingsStore.clearParentalPin()
         }
@@ -124,12 +128,24 @@ class StreamMateBackupManager(
         preferences: AppPreferences,
         parentalPin: String?,
         customization: ChannelCustomizationSnapshot,
+        profileData: Map<String, ProfileData> = emptyMap(),
     ): String = buildJsonObject {
         put("formatVersion", FORMAT_VERSION)
         put("exportedAtEpochMillis", System.currentTimeMillis())
         put("sources", sources)
         put("parentalPin", parentalPin?.let(::JsonPrimitive) ?: JsonNull)
         put("preferences", preferences.toJson())
+        put("profileData", buildJsonObject {
+            profileData.forEach { (profileId, kept) ->
+                put(profileId, buildJsonObject {
+                    put("favouriteEventIds", kept.favouriteEventIds.toJsonArray())
+                    put("favouriteChannelIds", kept.favouriteChannelIds.toJsonArray())
+                    put("recentChannelIds", kept.recentChannelIds.toJsonArray())
+                    put("lastChannelId", kept.lastChannelId?.let(::JsonPrimitive) ?: JsonNull)
+                    put("lockedChannelIds", kept.lockedChannelIds.toJsonArray())
+                })
+            }
+        })
         put("channelPreferences", JsonArray(customization.preferences.map { it.toJson() }))
         put("channelLists", JsonArray(customization.lists.map { it.toJson() }))
         put("channelListMembers", JsonArray(customization.members.map { it.toJson() }))
@@ -160,6 +176,17 @@ class StreamMateBackupManager(
             preferences = root.requiredObject("preferences").toPreferences(),
             parentalPin = parentalPin,
             customization = customization,
+            profileData = root["profileData"]?.jsonObject?.mapValues { (_, value) ->
+                val kept = value.jsonObject
+                fun strings(key: String): List<String> = kept[key]?.jsonArray?.map { it.jsonPrimitive.content }.orEmpty()
+                ProfileData(
+                    favouriteEventIds = strings("favouriteEventIds").toSet(),
+                    favouriteChannelIds = strings("favouriteChannelIds").toSet(),
+                    recentChannelIds = strings("recentChannelIds").take(20),
+                    lastChannelId = kept["lastChannelId"]?.jsonPrimitive?.contentOrNull,
+                    lockedChannelIds = strings("lockedChannelIds").toSet(),
+                )
+            }.orEmpty(),
         )
     }
 
@@ -198,6 +225,11 @@ class StreamMateBackupManager(
         put("favouriteEventIds", favouriteEventIds.toJsonArray())
         put("favouriteChannelIds", favouriteChannelIds.toJsonArray())
         put("recentChannelIds", recentChannelIds.toJsonArray())
+        put("profiles", JsonArray(profiles.map { profile ->
+            buildJsonObject { put("id", profile.id); put("name", profile.name); put("color", profile.colorIndex) }
+        }))
+        put("activeProfileId", activeProfileId)
+        put("askProfileAtStart", askProfileAtStart)
         put("lastChannelId", lastChannelId?.let(::JsonPrimitive) ?: JsonNull)
         put("lastGuideSourceId", lastGuideSourceId?.let(::JsonPrimitive) ?: JsonNull)
         put("startupScreen", startupScreen.name)
@@ -210,8 +242,13 @@ class StreamMateBackupManager(
         put("followedCompetitionKeys", followedCompetitionKeys.toJsonArray())
         put("playlistEpgRefreshInterval", playlistEpgRefreshInterval.name)
         put("playbackBufferProfile", playbackBufferProfile.name)
+        put("playbackSeekStep", playbackSeekStep.name)
+        put("subtitleTextSize", subtitleTextSize.name)
+        put("subtitleTextColor", subtitleTextColor.name)
+        put("subtitleBackground", subtitleBackground.name)
         put("playbackReconnectPolicy", playbackReconnectPolicy.name)
         put("autoPlayNextEpisodeEnabled", autoPlayNextEpisodeEnabled)
+        put("pictureInPictureEnabled", pictureInPictureEnabled)
         put("preferredCatalogueCopy", preferredCatalogueCopy.name)
         put("hiddenLiveCategories", hiddenLiveCategories.toJsonArray())
         put("hiddenMovieCategories", hiddenMovieCategories.toJsonArray())
@@ -248,6 +285,17 @@ class StreamMateBackupManager(
         favouriteEventIds = requiredStringSet("favouriteEventIds"),
         favouriteChannelIds = requiredStringSet("favouriteChannelIds"),
         recentChannelIds = requiredStringList("recentChannelIds").take(20),
+        // Absent from backups written before profiles existed: one viewer, unnamed.
+        profiles = this["profiles"]?.jsonArray?.map { element ->
+            val item = element.jsonObject
+            Profile(
+                id = item.requiredString("id").also { require(it.length <= 64) },
+                name = item.requiredString("name").take(Profiles.MAX_NAME_LENGTH),
+                colorIndex = (item["color"]?.jsonPrimitive?.int ?: 0).coerceIn(0, Profiles.COLOR_COUNT - 1),
+            )
+        }?.distinctBy { it.id }?.take(Profiles.MAX_PROFILES).orEmpty(),
+        activeProfileId = optionalString("activeProfileId")?.also { require(it.length <= 64) } ?: Profiles.DEFAULT_ID,
+        askProfileAtStart = optionalBoolean("askProfileAtStart") ?: true,
         lastChannelId = this["lastChannelId"]?.jsonPrimitive?.contentOrNull,
         lastGuideSourceId = optionalString("lastGuideSourceId")?.also { require(it.length <= 128) },
         startupScreen = requiredString("startupScreen").let { stored ->
@@ -290,6 +338,21 @@ class StreamMateBackupManager(
                     ?: throw IllegalArgumentException("Invalid playback buffer profile")
             }
             ?: PlaybackBufferProfile.DEFAULT,
+        playbackSeekStep = optionalString("playbackSeekStep")
+            ?.let { stored ->
+                PlaybackSeekStep.entries.firstOrNull { it.name == stored }
+                    ?: throw IllegalArgumentException("Invalid playback seek step")
+            }
+            ?: PlaybackSeekStep.DEFAULT,
+        subtitleTextSize = optionalString("subtitleTextSize")
+            ?.let { stored -> SubtitleTextSize.entries.firstOrNull { it.name == stored } ?: throw IllegalArgumentException("Invalid subtitle size") }
+            ?: SubtitleTextSize.DEFAULT,
+        subtitleTextColor = optionalString("subtitleTextColor")
+            ?.let { stored -> SubtitleTextColor.entries.firstOrNull { it.name == stored } ?: throw IllegalArgumentException("Invalid subtitle colour") }
+            ?: SubtitleTextColor.DEFAULT,
+        subtitleBackground = optionalString("subtitleBackground")
+            ?.let { stored -> SubtitleBackground.entries.firstOrNull { it.name == stored } ?: throw IllegalArgumentException("Invalid subtitle background") }
+            ?: SubtitleBackground.DEFAULT,
         playbackReconnectPolicy = optionalString("playbackReconnectPolicy")
             ?.let { stored ->
                 PlaybackReconnectPolicy.entries.firstOrNull { it.name == stored }
@@ -297,6 +360,7 @@ class StreamMateBackupManager(
             }
             ?: PlaybackReconnectPolicy.STANDARD,
         autoPlayNextEpisodeEnabled = optionalBoolean("autoPlayNextEpisodeEnabled") ?: true,
+        pictureInPictureEnabled = optionalBoolean("pictureInPictureEnabled") ?: false,
         preferredCatalogueCopy = optionalString("preferredCatalogueCopy")
             ?.let { stored ->
                 CataloguePreferredCopy.entries.firstOrNull { it.name == stored }
@@ -461,6 +525,7 @@ class StreamMateBackupManager(
         val preferences: AppPreferences,
         val parentalPin: String?,
         val customization: ChannelCustomizationSnapshot,
+        val profileData: Map<String, ProfileData> = emptyMap(),
     )
 
     private companion object {

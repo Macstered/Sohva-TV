@@ -47,7 +47,7 @@ class AppLocaleTest {
     fun ignoresALanguageTheInterfaceIsNotTranslatedInto() {
         // Storing an unsupported tag would leave the app resolving to the
         // default set while claiming to be in another language.
-        AppLocale.apply(context, "de")
+        AppLocale.apply(context, "ja")
 
         assertNull(AppLocale.stored(context))
     }

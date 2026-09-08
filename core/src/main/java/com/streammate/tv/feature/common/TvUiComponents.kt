@@ -686,10 +686,13 @@ fun TvSurface(
     testTag: String? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     contentAlignment: Alignment = Alignment.CenterStart,
+    /** OK held: fires once on the first key repeat, and the release that follows is swallowed. */
+    onLongClick: (() -> Unit)? = null,
     content: @Composable (colors: TvSurfaceColors) -> Unit,
 ) {
     val palette = StreamMateThemeTokens.palette
     var focused by remember { mutableStateOf(false) }
+    var selectHeld by remember { mutableStateOf(false) }
     // A ringed surface keeps its resting fill and content under focus: the
     // ring is the signal, and flipping the fill as well would hide the
     // artwork it frames and leave dark ink on a dark ground.
@@ -705,6 +708,34 @@ fun TvSurface(
             .then(tagModifier)
             .onFocusChanged { focused = it.isFocused }
             .semantics(mergeDescendants = true) { this.selected = selected }
+            .then(
+                if (onLongClick == null) {
+                    Modifier
+                } else {
+                    Modifier.onPreviewKeyEvent { event ->
+                        val isSelect = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
+                        if (!isSelect) return@onPreviewKeyEvent false
+                        when (event.type) {
+                            KeyEventType.KeyDown -> if (event.nativeKeyEvent.repeatCount >= 1) {
+                                if (!selectHeld) {
+                                    selectHeld = true
+                                    onLongClick()
+                                }
+                                true
+                            } else {
+                                false
+                            }
+                            KeyEventType.KeyUp -> if (selectHeld) {
+                                selectHeld = false
+                                true
+                            } else {
+                                false
+                            }
+                            else -> false
+                        }
+                    }
+                }
+            )
             // No press or focus wash: this design says "focused" with the
             // fill flip and the lift. The default indication would also draw
             // at the unlifted bounds, since it sits outside the layer.

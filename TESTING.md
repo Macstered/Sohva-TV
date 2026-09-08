@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.9 (10)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.10 (11)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Suggested first session
@@ -44,6 +44,27 @@ Test at your own pace; note failures rather than repeatedly resetting the app.
     leave the app in the background for ten minutes after the first import and
     then reopen it; note whether it came back where you left it or restarted.
 
+13. **Profiles:** in **Settings > General > Profiles**, add a second viewer,
+    restart the app and choose it at the who-is-watching screen. Check that
+    the first viewer's favourites, recent channels and resume points are
+    untouched, and that the new one starts empty. Remove the second viewer
+    afterwards if you would rather not be asked at every start.
+14. **Watched state:** finish a film or episode and check that it is marked
+    watched; try **Mark as watched** and **Mark season as watched** by hand,
+    and hold **OK** on a Continue watching card. Note anywhere a tick is
+    missing or wrong.
+15. **Skip step and subtitles:** set a skip step in **Settings > Playback**,
+    then hold an arrow during a film and watch the jump grow. Change subtitle
+    size and colour; if nothing changes, open **Playback info** and report the
+    subtitle format it names.
+16. **Keep watching in a corner:** switch it on in **Settings > Playback**,
+    press Home during playback, and report whether your television's home
+    screen lets you reach or close the corner. Opening Sohva TV again returns
+    it to full screen.
+17. **Another language:** switch the interface to Spanish, Portuguese, German
+    or Swedish. These are drafts: report wording that reads wrongly and any
+    label that overflows its space.
+
 For library performance, report the sequence of actions, approximate movie /
 series count, whether an import or metadata refresh was running, and whether
 the repeated "library not downloaded" message appeared. Do not send the
@@ -58,6 +79,14 @@ different issues.
   provider speed. Artwork coverage, episode details, catch-up and stream formats
   vary by source.
 - A movie is assigned to its main genre rather than every reported genre.
+- Spanish, Portuguese, German and Swedish are drafted from the English and
+  not yet read by a native speaker; some labels overflow the space they sit in.
+- A tick marks a watched film, episode and completed season, but there is no
+  tick yet on a series poster in the library.
+- A television home screen need not offer any way to reach or close the corner
+  view; open Sohva TV again for full screen, then press Back to stop it.
+- Live TV subtitles burned into the picture by the provider, and image
+  subtitle tracks in a film, cannot be resized or recoloured.
 - No recording, downloads, local timeshift or multiview. Catch-up needs provider
   support; it is not local recording.
 - Newer betas are fetched from **Settings > About > Check for updates**; there
@@ -80,7 +109,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.9 (10)
+Version: 0.1.0-beta.10 (11)
 Device model:
 Android / Google TV version:
 Fresh install or update:

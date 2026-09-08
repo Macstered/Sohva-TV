@@ -68,6 +68,7 @@ fun MovieDetailsScreen(
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     val progress by repository.observeProgress().collectAsStateWithLifecycle(initialValue = emptyMap())
+    val scope = rememberCoroutineScope()
     // Asked for by film rather than read out of the map by copy. The wall shows
     // one card for a film carried by two playlists, and this page is reached
     // through whichever copy stands for it - so the copy in hand may have no
@@ -263,6 +264,16 @@ fun MovieDetailsScreen(
                             testTag = "movie-details-restart",
                         )
                     }
+                    // Watched or not, said by the viewer: the automatic rule
+                    // cannot know about a film abandoned twenty minutes in
+                    // for good, or one seen elsewhere.
+                    val watched = watchingProgress?.completed == true
+                    CatalogueDetailAction(
+                        label = stringResource(if (watched) R.string.details_mark_unwatched else R.string.details_mark_watched),
+                        icon = TvIcons.Check,
+                        onClick = { scope.launch { repository.markWatched(movie.contentKey, !watched) } },
+                        testTag = "movie-details-mark-watched",
+                    )
                     metadata?.let { enriched ->
                         CatalogueDetailAction(
                             label = stringResource(R.string.metadata_source, enriched.attributionName),

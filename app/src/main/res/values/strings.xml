@@ -102,6 +102,10 @@
     <string name="about_open_api_sports_terms">API-Sports terms</string>
     <string name="about_open_apache_license">Apache 2.0</string>
     <string name="home_continue_watching">Continue watching</string>
+    <string name="home_resume_continue">Resume</string>
+    <string name="home_resume_start_over">Start from beginning</string>
+    <string name="home_resume_mark_watched">Mark as watched</string>
+    <string name="home_resume_remove">Remove from Continue watching</string>
     <string name="home_recent_channels">Recently watched channels</string>
     <string name="home_navigation">Navigation</string>
     <string name="home_nav_home">Home</string>
@@ -124,4 +128,5 @@
         <item quantity="one">%1$d match</item>
         <item quantity="other">%1$d matches</item>
     </plurals>
+    <string name="picture_in_picture_close">Close</string>
 </resources>

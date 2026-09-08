@@ -43,6 +43,8 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
+            android:supportsPictureInPicture="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             tools:ignore="DiscouragedApi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

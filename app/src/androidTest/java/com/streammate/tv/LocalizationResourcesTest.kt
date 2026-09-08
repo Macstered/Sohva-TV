@@ -57,7 +57,7 @@ class LocalizationResourcesTest {
      */
     @Test
     fun anUntranslatedLocaleFallsBackToEnglish() {
-        listOf("sv", "da", "de", "ja").forEach { language ->
+        listOf("da", "ja", "pl", "ar").forEach { language ->
             assertEquals(language, "Search", localized(language, R.string.search_title))
             assertEquals(language, "TV guide", localized(language, IptvR.string.guide_title))
             assertEquals(

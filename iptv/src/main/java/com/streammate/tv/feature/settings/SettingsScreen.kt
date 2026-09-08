@@ -1,5 +1,10 @@
 package com.streammate.tv.feature.settings
 
+import com.streammate.tv.app.Profiles
+import com.streammate.tv.app.SubtitleBackground
+import com.streammate.tv.app.SubtitleTextColor
+import com.streammate.tv.app.SubtitleTextSize
+import com.streammate.tv.app.PlaybackSeekStep
 import android.content.res.Resources
 import com.streammate.tv.app.MetadataLanguages
 import androidx.compose.ui.focus.onFocusChanged
@@ -156,6 +161,9 @@ private fun SettingsColumn(
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+/** Where the string files live; a native reader can correct a phrase there. */
+private const val TRANSLATIONS_URL = "https://github.com/Macstered/Sohva-TV"
+
 @Composable
 fun SettingsScreen(
     secretSettingsStore: SecretSettingsStore,
@@ -186,6 +194,8 @@ fun SettingsScreen(
     /** Whether a due reminder may bring the app forward over another app; null where that is not offered. */
     reminderOpenAllowed: Boolean? = null,
     onOpenReminderSettings: () -> Unit = {},
+    /** After a profile is removed: whatever else it owned, such as watched positions, goes too. */
+    onProfileRemoved: suspend (String) -> Unit = {},
 ) {
     val resources = LocalResources.current
     val context = LocalContext.current
@@ -332,6 +342,8 @@ fun SettingsScreen(
     }
     val languageOptions = preferredLanguageOptions()
     val interfaceLanguageChoices = interfaceLanguageOptions()
+    val profileDefaultName = stringResource(R.string.profile_default_name)
+    var newProfileName by remember { mutableStateOf("") }
     val interfaceScaleChoices = interfaceScaleOptions()
     fun closePicker(target: SettingsPickerTarget) {
         openPicker = null
@@ -402,6 +414,66 @@ fun SettingsScreen(
                 },
                 selected = appPreferences.playbackBufferProfile,
                 onSelect = { profile -> closePicker(target); scope.launch { preferencesRepository.setPlaybackBufferProfile(profile) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.SeekStep -> SettingsPickerDialog(
+                title = stringResource(R.string.playback_seek_step_title),
+                options = PlaybackSeekStep.entries.map { step ->
+                    SettingsPickerOption(step, step.localizedLabel(), testTag = "settings-seek-step-${step.name.lowercase()}")
+                },
+                selected = appPreferences.playbackSeekStep,
+                onSelect = { step -> closePicker(target); scope.launch { preferencesRepository.setPlaybackSeekStep(step) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.SubtitleSize -> SettingsPickerDialog(
+                title = stringResource(R.string.subtitle_size_title),
+                options = SubtitleTextSize.entries.map { size ->
+                    SettingsPickerOption(size, size.localizedLabel(), testTag = "settings-subtitle-size-${size.name.lowercase()}")
+                },
+                selected = appPreferences.subtitleTextSize,
+                onSelect = { size -> closePicker(target); scope.launch { preferencesRepository.setSubtitleTextSize(size) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.SubtitleColor -> SettingsPickerDialog(
+                title = stringResource(R.string.subtitle_color_title),
+                options = SubtitleTextColor.entries.map { color ->
+                    SettingsPickerOption(color, color.localizedLabel(), testTag = "settings-subtitle-color-${color.name.lowercase()}")
+                },
+                selected = appPreferences.subtitleTextColor,
+                onSelect = { color -> closePicker(target); scope.launch { preferencesRepository.setSubtitleTextColor(color) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.SubtitleBackgroundChoice -> SettingsPickerDialog(
+                title = stringResource(R.string.subtitle_background_title),
+                options = SubtitleBackground.entries.map { background ->
+                    SettingsPickerOption(background, background.localizedLabel(), testTag = "settings-subtitle-background-${background.name.lowercase()}")
+                },
+                selected = appPreferences.subtitleBackground,
+                onSelect = { background -> closePicker(target); scope.launch { preferencesRepository.setSubtitleBackground(background) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.ProfileChoice -> SettingsPickerDialog(
+                title = stringResource(R.string.profile_active_title),
+                options = Profiles.withDefault(appPreferences.profiles, profileDefaultName).map { profile ->
+                    SettingsPickerOption(profile.id, profile.name.ifBlank { profileDefaultName }, testTag = "settings-profile-${profile.id}")
+                },
+                selected = appPreferences.activeProfileId,
+                onSelect = { id -> closePicker(target); scope.launch { preferencesRepository.setActiveProfile(id) } },
+                onDismiss = { closePicker(target) },
+            )
+            SettingsPickerTarget.ProfileRemove -> SettingsPickerDialog(
+                title = stringResource(R.string.profile_remove),
+                options = appPreferences.profiles.filter { it.id != Profiles.DEFAULT_ID }.map { profile ->
+                    SettingsPickerOption(profile.id, profile.name, testTag = "settings-profile-remove-${profile.id}")
+                },
+                selected = "",
+                onSelect = { id ->
+                    closePicker(target)
+                    scope.launch {
+                        preferencesRepository.removeProfile(id)
+                        onProfileRemoved(id)
+                    }
+                },
                 onDismiss = { closePicker(target) },
             )
             SettingsPickerTarget.Reconnect -> SettingsPickerDialog(
@@ -778,6 +850,72 @@ fun SettingsScreen(
                             scope.launch { rowFocus("time-zone").requestFocusWhenAttached() }
                         },
                     )
+                }
+            }
+            // Who is watching. The first viewer exists whether named or not;
+            // adding a second one turns on the question at start.
+            item {
+                val profileCount = Profiles.withDefault(appPreferences.profiles, profileDefaultName).size
+                SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.profiles_title))
+                    SettingsValueRow(
+                        title = stringResource(R.string.profile_active_title),
+                        subtitle = stringResource(R.string.profile_active_help),
+                        value = Profiles.displayName(appPreferences.profiles, appPreferences.activeProfileId, profileDefaultName),
+                        icon = TvIcons.Star,
+                        onClick = { openPicker = SettingsPickerTarget.ProfileChoice },
+                        focusRequester = rowFocus(SettingsPickerTarget.ProfileChoice.key),
+                        divider = false,
+                        testTag = "settings-profile-active",
+                    )
+                    if (profileCount > 1) {
+                        SettingsSwitchRow(
+                            title = stringResource(R.string.profile_ask_at_start),
+                            subtitle = stringResource(R.string.profile_ask_at_start_help),
+                            checked = appPreferences.askProfileAtStart,
+                            onCheckedChange = { ask -> scope.launch { preferencesRepository.setAskProfileAtStart(ask) } },
+                            testTag = "settings-profile-ask",
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = SETTINGS_ROW_PADDING, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TvUrlField(
+                            value = newProfileName,
+                            onValueChange = { newProfileName = it.take(Profiles.MAX_NAME_LENGTH) },
+                            label = stringResource(R.string.profile_name_hint),
+                            keyboardType = KeyboardType.Text,
+                            editOnClickOnly = true,
+                            compact = true,
+                            modifier = Modifier.weight(1f),
+                            testTag = "settings-profile-name",
+                        )
+                        TvActionButton(
+                            label = stringResource(R.string.profile_add),
+                            icon = TvIcons.Check,
+                            compact = true,
+                            enabled = newProfileName.isNotBlank() && profileCount < Profiles.MAX_PROFILES,
+                            onClick = {
+                                val name = newProfileName
+                                newProfileName = ""
+                                scope.launch { preferencesRepository.addProfile(name, colorIndex = profileCount % Profiles.COLOR_COUNT) }
+                            },
+                            testTag = "settings-profile-add",
+                        )
+                    }
+                    if (profileCount > 1) {
+                        SettingsValueRow(
+                            title = stringResource(R.string.profile_remove),
+                            subtitle = stringResource(R.string.profile_remove_help),
+                            value = "",
+                            icon = TvIcons.Delete,
+                            onClick = { openPicker = SettingsPickerTarget.ProfileRemove },
+                            focusRequester = rowFocus(SettingsPickerTarget.ProfileRemove.key),
+                            testTag = "settings-profile-remove",
+                        )
+                    }
                 }
             }
             }
@@ -1232,6 +1370,15 @@ fun SettingsScreen(
                         focusRequester = rowFocus(SettingsPickerTarget.Reconnect.key),
                         testTag = "settings-reconnect",
                     )
+                    SettingsValueRow(
+                        title = stringResource(R.string.playback_seek_step_title),
+                        subtitle = stringResource(R.string.playback_seek_step_help),
+                        value = appPreferences.playbackSeekStep.localizedLabel(),
+                        icon = TvIcons.Replay,
+                        onClick = { openPicker = SettingsPickerTarget.SeekStep },
+                        focusRequester = rowFocus(SettingsPickerTarget.SeekStep.key),
+                        testTag = "settings-seek-step",
+                    )
                     SettingsSwitchRow(
                         title = stringResource(R.string.auto_frame_rate_title),
                         subtitle = stringResource(R.string.auto_frame_rate_help),
@@ -1247,6 +1394,44 @@ fun SettingsScreen(
                         onCheckedChange = { on -> scope.launch { preferencesRepository.setAutoPlayNextEpisodeEnabled(on) } },
                         icon = TvIcons.Forward,
                         testTag = "settings-auto-next-episode",
+                    )
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.picture_in_picture_title),
+                        subtitle = stringResource(R.string.picture_in_picture_help),
+                        checked = appPreferences.pictureInPictureEnabled,
+                        onCheckedChange = { on -> scope.launch { preferencesRepository.setPictureInPictureEnabled(on) } },
+                        icon = TvIcons.Aspect,
+                        testTag = "settings-picture-in-picture",
+                    )
+                }
+            }
+            item {
+                SettingsGroup {
+                    SettingsValueRow(
+                        title = stringResource(R.string.subtitle_size_title),
+                        subtitle = stringResource(R.string.subtitle_style_help),
+                        value = appPreferences.subtitleTextSize.localizedLabel(),
+                        icon = TvIcons.Subtitles,
+                        onClick = { openPicker = SettingsPickerTarget.SubtitleSize },
+                        focusRequester = rowFocus(SettingsPickerTarget.SubtitleSize.key),
+                        divider = false,
+                        testTag = "settings-subtitle-size",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.subtitle_color_title),
+                        value = appPreferences.subtitleTextColor.localizedLabel(),
+                        icon = TvIcons.Subtitles,
+                        onClick = { openPicker = SettingsPickerTarget.SubtitleColor },
+                        focusRequester = rowFocus(SettingsPickerTarget.SubtitleColor.key),
+                        testTag = "settings-subtitle-color",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.subtitle_background_title),
+                        value = appPreferences.subtitleBackground.localizedLabel(),
+                        icon = TvIcons.Subtitles,
+                        onClick = { openPicker = SettingsPickerTarget.SubtitleBackgroundChoice },
+                        focusRequester = rowFocus(SettingsPickerTarget.SubtitleBackgroundChoice.key),
+                        testTag = "settings-subtitle-background",
                     )
                 }
             }
@@ -2063,6 +2248,20 @@ fun SettingsScreen(
                         icon = TvIcons.Info,
                         onClick = onLegalInformation,
                         testTag = "settings-about-licenses",
+                    )
+                }
+            }
+            item {
+                SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.translate_title))
+                    SettingsValueRow(
+                        title = stringResource(R.string.translate_help_title),
+                        subtitle = stringResource(R.string.translate_help),
+                        value = "",
+                        icon = TvIcons.Info,
+                        onClick = { runCatching { uriHandler.openUri(TRANSLATIONS_URL) } },
+                        divider = false,
+                        testTag = "settings-translate-help",
                     )
                 }
             }

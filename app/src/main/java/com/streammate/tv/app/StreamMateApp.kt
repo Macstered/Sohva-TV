@@ -1,5 +1,6 @@
 package com.streammate.tv.app
 
+import com.streammate.tv.feature.player.SubtitleAppearance
 import androidx.compose.runtime.saveable.rememberSaveable
 import com.streammate.tv.feature.player.scoreTickerEvents
 import com.streammate.tv.matching.ManualMatchDecision
@@ -88,13 +89,15 @@ internal fun shouldReturnPlaybackToGuide(
 ): Boolean = launchedForGuide && catchupStartEpochMillis == null && catchupStopEpochMillis == null
 
 @Composable
-fun StreamMateApp(container: StreamMateContainer) {
+fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPictureState = PictureInPictureState()) {
     var backStack by remember { mutableStateOf(listOf<Destination>(Destination.Home)) }
     // Screens leave the composition while the player is up. The sport screen
     // keeps the match card it had open in saveable state, so it needs a holder
     // to come back to the same card rather than the day's list.
     val saveableStateHolder = rememberSaveableStateHolder()
     var startupApplied by remember { mutableStateOf(false) }
+    // Answered once per process: a household with several profiles is asked who is watching.
+    var profileChosen by rememberSaveable { mutableStateOf(false) }
     var guideManagementReturn by remember { mutableStateOf(false) }
     var guideManagedGroup by remember { mutableStateOf<String?>(null) }
     var guideFocusChannelId by remember { mutableStateOf<String?>(null) }
@@ -114,6 +117,11 @@ fun StreamMateApp(container: StreamMateContainer) {
     val appPreferences by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
         initialValue = AppPreferences(),
     )
+    // Home may shrink the picture to a corner only while a stream is on screen and the viewer allows it.
+    LaunchedEffect(destination, appPreferences.pictureInPictureEnabled) {
+        pictureInPicture.allowed = appPreferences.pictureInPictureEnabled &&
+            (destination is Destination.Player || destination is Destination.VodPlayer)
+    }
     LaunchedEffect(container) {
         val preferences = container.preferencesRepository.preferences.first()
         val parentalPinConfigured = container.secretSettingsStore.hasParentalPin()
@@ -121,6 +129,9 @@ fun StreamMateApp(container: StreamMateContainer) {
             container.preferencesRepository.setParentalPinConfigured(parentalPinConfigured)
         }
         val lockedChannelIds = if (parentalPinConfigured) preferences.lockedChannelIds else emptySet()
+        // Asked at start only: a profile added later, in Settings, must not
+        // pull the picker over whatever screen is up.
+        if (!(preferences.profiles.isNotEmpty() && preferences.askProfileAtStart)) profileChosen = true
         backStack = when (preferences.startupScreen) {
             StartupScreen.HOME -> listOf(Destination.Home)
             StartupScreen.GUIDE -> listOf(Destination.Home, Destination.Guide)
@@ -445,6 +456,15 @@ fun StreamMateApp(container: StreamMateContainer) {
             ) {
                 Text(text = stringResource(R.string.app_name))
             }
+        } else if (!profileChosen) {
+            ProfilePickerScreen(
+                profiles = appPreferences.profiles,
+                activeProfileId = appPreferences.activeProfileId,
+                onChoose = { profile ->
+                    profileChosen = true
+                    coroutineScope.launch { container.preferencesRepository.setActiveProfile(profile.id) }
+                },
+            )
         } else when (val current = destination) {
             Destination.Home -> HomeScreen(
                 guideRepository = container.guideRepository,
@@ -690,6 +710,7 @@ fun StreamMateApp(container: StreamMateContainer) {
                 onSaveDiagnostics = { uri -> runCatching { container.diagnosticsReport.writeTo(uri) } },
                 reminderOpenAllowed = reminderOpenAllowed,
                 onOpenReminderSettings = { ReminderOverlay.openSettings(context) },
+                onProfileRemoved = { id -> container.catalogueRepository.forgetProfile(id) },
                 onBack = ::handleBack,
             )
             Destination.LegalInformation -> LegalInformationScreen(onBack = ::handleBack)
@@ -733,6 +754,7 @@ fun StreamMateApp(container: StreamMateContainer) {
                 onBack = ::handleBack,
             )
             is Destination.Player -> PlayerScreen(
+                pictureInPicture = pictureInPicture.active,
                 channelId = current.channelId,
                 catchupStartEpochMillis = current.catchupStartEpochMillis,
                 catchupStopEpochMillis = current.catchupStopEpochMillis,
@@ -755,6 +777,12 @@ fun StreamMateApp(container: StreamMateContainer) {
                 onGoGuide = { backStack = listOf(Destination.Home, Destination.Guide) },
                 onGoSport = { backStack = listOf(Destination.Home, Destination.Today) },
                 scoreTickerEvents = tickerEvents,
+                seekStepMillis = appPreferences.playbackSeekStep.millis,
+                subtitleAppearance = SubtitleAppearance(
+                    appPreferences.subtitleTextSize,
+                    appPreferences.subtitleTextColor,
+                    appPreferences.subtitleBackground,
+                ),
                 scoreTickerVisible = scoreTickerVisible,
                 onToggleScoreTicker = ::toggleScoreTicker,
                 onOpenExternal = { channelId ->
@@ -767,6 +795,7 @@ fun StreamMateApp(container: StreamMateContainer) {
                 previewArtworkUrl = container.demoPlaybackArtworkUrl,
             )
             is Destination.VodPlayer -> PlayerScreen(
+                pictureInPicture = pictureInPicture.active,
                 channelId = current.contentKey,
                 vodContentKey = current.contentKey,
                 resumePositionMillis = current.resumePositionMillis,
@@ -784,6 +813,12 @@ fun StreamMateApp(container: StreamMateContainer) {
                 secondaryAudioLanguage = appPreferences.secondaryAudioLanguage,
                 preferredSubtitleLanguage = appPreferences.preferredSubtitleLanguage,
                 secondarySubtitleLanguage = appPreferences.secondarySubtitleLanguage,
+                seekStepMillis = appPreferences.playbackSeekStep.millis,
+                subtitleAppearance = SubtitleAppearance(
+                    appPreferences.subtitleTextSize,
+                    appPreferences.subtitleTextColor,
+                    appPreferences.subtitleBackground,
+                ),
                 onChannelChange = {},
                 onOpenExternal = {
                     Result.failure(

@@ -77,6 +77,8 @@ import com.streammate.tv.feature.common.TvUrlField
 import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.iptv.R
 import com.streammate.tv.iptv.repository.CatalogueRepository
+import com.streammate.tv.feature.catalogue.CatalogueWatchedBadge
+import kotlinx.coroutines.flow.map
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 
@@ -127,6 +129,13 @@ fun CatalogueBrowserV2(
         onDispose { activeSession.snapshot = store.state.value }
     }
     val state by store.state.collectAsStateWithLifecycle()
+    // Only the finished ones, and only for the viewer watching now. The set is
+    // as small as the viewing history, never the size of the catalogue.
+    val watchedContentKeys by remember(repository) {
+        repository.observeProgress().map { progress ->
+            progress.filterValues { it.completed }.keys
+        }
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
     val organizationState by remember(repository) { repository.organization?.state ?: kotlinx.coroutines.flow.flowOf(com.streammate.tv.iptv.repository.OrganizationReadState()) }.collectAsStateWithLifecycle(initialValue = com.streammate.tv.iptv.repository.OrganizationReadState())
     val room = if (mode == CatalogueMode.MOVIES) com.streammate.tv.core.model.LibraryRoom.MOVIES else com.streammate.tv.core.model.LibraryRoom.SERIES
     val historyEnabled = organizationState.organization.shortcutEnabled(room, com.streammate.tv.core.model.ORGANIZATION_HISTORY)
@@ -155,6 +164,7 @@ fun CatalogueBrowserV2(
         hiddenPlaylistGroups = hiddenPlaylistGroups,
         onRefresh = onRefresh,
         onSetPlaylistGroupHidden = onSetPlaylistGroupHidden,
+        watchedContentKeys = watchedContentKeys,
         modifier = modifier,
         session = activeSession,
     )
@@ -187,6 +197,7 @@ fun CatalogueBrowserV2Screen(
     onRefresh: suspend () -> Result<String> = { Result.success("") },
     onSetPlaylistGroupHidden: suspend (String, Boolean) -> Unit = { _, _ -> },
     onManageGroups: ((String?) -> Unit)? = null,
+    watchedContentKeys: Set<String> = emptySet(),
     modifier: Modifier = Modifier,
     session: CatalogueBrowserSession? = null,
 ) {
@@ -577,6 +588,7 @@ fun CatalogueBrowserV2Screen(
                                 CatalogueBrowserV2Card(
                                     entry = entry,
                                     enabled = wallInteractive,
+                                    watched = entry.contentKey in watchedContentKeys,
                                     focusRequester = restoredWallFocusRequester.takeIf {
                                         pendingWallFocusKey == entry.contentKey
                                     },
@@ -726,6 +738,7 @@ private fun CatalogueBrowserV2OptionsSheet(
 private fun CatalogueBrowserV2Card(
     entry: CatalogueBrowseEntry,
     enabled: Boolean,
+    watched: Boolean = false,
     focusRequester: FocusRequester?,
     onFocused: () -> Unit,
     onClick: () -> Unit,
@@ -775,6 +788,11 @@ private fun CatalogueBrowserV2Card(
                 modifier = Modifier.fillMaxSize(),
                 onError = onPosterError,
             )
+            if (watched) {
+                CatalogueWatchedBadge(
+                    modifier = Modifier.align(Alignment.TopStart).padding(6.dp),
+                )
+            }
             if (entry.copyCount > 1 || qualityTags.isNotEmpty()) {
                 Row(
                     modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
