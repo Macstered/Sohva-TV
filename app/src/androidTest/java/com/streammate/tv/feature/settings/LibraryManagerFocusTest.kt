@@ -54,6 +54,9 @@ class LibraryManagerFocusTest {
         compose.setContent { StreamMateTheme {
             LibraryManagerContent(LibraryRoom.LIVE, ManagedLibrary(listOf(OrganizationItem("a", "source", "A", "Sports"))), "Sports", onRoom = {}, onChange = {}, onBack = { exits++ })
         } }
+        // A key press needs the row to hold focus already; on the public CI
+        // emulator the initial focus request can land after this line runs.
+        compose.waitUntil(3_000) { runCatching { compose.onNodeWithTag("manager-group-name:sports").assertIsFocused() }.isSuccess }
         compose.onNodeWithTag("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionCenter) }
         compose.onAllNodes(isDialog()).assertCountEquals(1)
         compose.onNode(isDialog()).performKeyInput { pressKey(Key.Back) }
