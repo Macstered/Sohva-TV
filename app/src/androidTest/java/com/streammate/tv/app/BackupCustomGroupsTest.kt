@@ -76,6 +76,44 @@ class BackupCustomGroupsTest {
     }
 
     @Test
+    fun aChannelsOwnLogoAndNumberComeBackFromTheBackup() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val secrets = SecretSettingsStore(context, TestCipher)
+        val source = com.streammate.tv.core.model.IptvSourceConfiguration(
+            id = "backup-logo-source",
+            name = "Backup source",
+            type = com.streammate.tv.core.model.IptvSourceType.M3U,
+            m3uUrl = "http://provider.example/list.m3u",
+        )
+        secrets.upsertSource(source)
+        val logos = ChannelLogoStore(context)
+        val url = logos.save("backup-logo-source:one", TINY_PNG)
+        database.guideDao().upsertChannelPreference(
+            com.streammate.tv.core.database.ChannelPreferenceEntity(
+                "backup-logo-source:one", "backup-logo-source", null, null, false, null, null, 1,
+                customLogoUrl = url, channelNumber = 12,
+            ),
+        )
+        try {
+            manager.write(Uri.fromFile(file), PASSPHRASE)
+            // The logo lives only on this TV, so a restore has to rebuild the file itself.
+            database.guideDao().deleteChannelPreference("backup-logo-source:one")
+            logos.delete(url)
+            assertFalse(File(java.net.URI(url)).exists())
+
+            manager.restore(Uri.fromFile(file), PASSPHRASE)
+
+            val restored = database.guideDao().channelPreference("backup-logo-source:one")!!
+            assertEquals(12, restored.channelNumber)
+            assertTrue(logos.isLocal(restored.customLogoUrl))
+            assertTrue(File(java.net.URI(restored.customLogoUrl!!)).isFile)
+            logos.delete(restored.customLogoUrl)
+        } finally {
+            secrets.deleteSource(source.id)
+        }
+    }
+
+    @Test
     fun organizationRulesAndFilmAliasesSurviveEncryptedBackup() = runBlocking {
         val dao = database.organizationDao()
         dao.registerFilmAliases(listOf(listOf("vod:movie:source:1", "work:film")))
@@ -98,6 +136,7 @@ class BackupCustomGroupsTest {
         val kids = requireNotNull(preferences.addProfile("Kids", 2))
         preferences.setActiveProfile(kids.id)
         preferences.setFavouriteChannel("cartoons", true)
+        preferences.setAllowedGroups(kids.id, com.streammate.tv.core.model.LibraryRoom.LIVE, setOf("name:cartoons"))
         preferences.setActiveProfile(Profiles.DEFAULT_ID)
         preferences.setFavouriteChannel("news", true)
         try {
@@ -114,6 +153,7 @@ class BackupCustomGroupsTest {
             assertEquals(Profiles.DEFAULT_ID, restored.activeProfileId)
             assertEquals(setOf("news"), restored.favouriteChannelIds)
             assertEquals(setOf("cartoons"), preferences.profileData(kids.id).favouriteChannelIds)
+            assertEquals(setOf("name:cartoons"), preferences.profileData(kids.id).restriction.live)
         } finally {
             preferences.removeProfile(kids.id)
             preferences.setFavouriteChannel("news", false)
@@ -187,3 +227,8 @@ class BackupCustomGroupsTest {
         )
     }
 }
+
+/** A one-pixel transparent PNG, enough for the logo store to accept and rewrite. */
+private val TINY_PNG: ByteArray = kotlin.io.encoding.Base64.decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+)

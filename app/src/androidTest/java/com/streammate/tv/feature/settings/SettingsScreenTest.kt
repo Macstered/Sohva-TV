@@ -406,6 +406,23 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun channelNumbersCanBeTurnedOffInGeneralSettings() {
+        val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        composeRule.openSettingsFromTheEmptyGuide()
+        composeRule.onNodeWithTag("settings-section-general").performClick()
+        composeRule.onNodeWithTag("settings-list")
+            .performScrollToNode(hasTestTag("settings-channel-numbers"))
+        composeRule.onNodeWithTag("settings-channel-numbers").assertIsSelected().performClick()
+        try {
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { !prefs.preferences.first().showChannelNumbers }
+            }
+        } finally {
+            runBlocking { prefs.setShowChannelNumbers(true) }
+        }
+    }
+
+    @Test
     fun theInterfaceCanBeDrawnAStepSmallerThanSmall() {
         val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         composeRule.openSettingsFromTheEmptyGuide()
@@ -420,6 +437,34 @@ class SettingsScreenTest {
             }
         } finally {
             runBlocking { prefs.setInterfaceScale(InterfaceScale.DEFAULT) }
+        }
+    }
+
+    @Test
+    fun aProfileCanBeLimitedToChosenGroups() {
+        val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val kids = runBlocking { requireNotNull(prefs.addProfile("Kids", 2)) }
+        try {
+            composeRule.openSettingsFromTheEmptyGuide()
+            composeRule.onNodeWithTag("settings-section-general").performClick()
+            composeRule.onNodeWithTag("settings-profile-content").performScrollTo().performClick()
+            composeRule.onNodeWithTag("settings-profile-content-${kids.id}").performClick()
+            composeRule.onNodeWithTag("settings-profile-groups-live").performScrollTo().performClick()
+            // An empty app has no groups to offer, so the picker says so and offers Done.
+            composeRule.onNodeWithTag("settings-multi-picker").assertIsDisplayed()
+            composeRule.onNodeWithTag("settings-multi-picker-done").performClick()
+
+            // A chosen group lands in the preferences; the row counts it and the PIN note appears.
+            runBlocking { prefs.setAllowedGroups(kids.id, com.streammate.tv.core.model.LibraryRoom.LIVE, setOf("name:kids")) }
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("settings-profile-content-pin").fetchSemanticsNodes().isNotEmpty()
+            }
+            org.junit.Assert.assertEquals(
+                setOf("name:kids"),
+                runBlocking { prefs.preferences.first().profileRestrictions.getValue(kids.id).live },
+            )
+        } finally {
+            runBlocking { prefs.removeProfile(kids.id) }
         }
     }
 

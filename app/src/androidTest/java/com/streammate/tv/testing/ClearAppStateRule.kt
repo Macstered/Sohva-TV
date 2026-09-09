@@ -2,6 +2,7 @@ package com.streammate.tv.testing
 
 import com.streammate.tv.app.InterfaceScale
 import com.streammate.tv.app.Profiles
+import com.streammate.tv.core.model.LibraryRoom
 import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
@@ -43,11 +44,16 @@ class ClearAppStateRule : TestWatcher() {
             val current = preferences.preferences.first()
             current.profiles.forEach { preferences.removeProfile(it.id) }
             if (current.activeProfileId != Profiles.DEFAULT_ID) preferences.setActiveProfile(Profiles.DEFAULT_ID)
+            // A restriction left on the default profile would empty every later guide.
+            current.profileRestrictions.keys.forEach { id ->
+                LibraryRoom.entries.forEach { room -> preferences.setAllowedGroups(id, room, emptySet()) }
+            }
             // A switch a previous test left on is indistinguishable from the
             // shipped default once it is written, so the test that asserts the
             // default would pass or fail on the order tests happened to run in.
             if (current.pictureInPictureEnabled) preferences.setPictureInPictureEnabled(false)
             if (!current.editorsShowHidden) preferences.setEditorsShowHidden(true)
+            if (!current.showChannelNumbers) preferences.setShowChannelNumbers(true)
             // A smaller interface left behind would lay every later screen out
             // differently from the one the tests were written against.
             if (current.interfaceScale != InterfaceScale.DEFAULT) preferences.setInterfaceScale(InterfaceScale.DEFAULT)

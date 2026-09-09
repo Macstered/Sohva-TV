@@ -41,6 +41,7 @@
     <string name="series_seasons">Seasons</string>
     <string name="series_episodes">Episodes</string>
     <string name="series_cast">Cast</string>
+    <string name="series_cast_line">Cast: %1$s</string>
     <plurals name="series_season_count">
         <item quantity="one">%1$d season</item>
         <item quantity="other">%1$d seasons</item>
@@ -130,6 +131,8 @@
     <string name="pin_prompt">Enter the PIN to continue</string>
     <string name="pin_not_configured">Configure a PIN in Settings first</string>
     <string name="pin_locked_channel">Locked channel</string>
+    <string name="pin_profile_gate">Switching profile</string>
+    <string name="pin_settings_gate">Settings are locked for this profile</string>
     <string name="pin_code">PIN code</string>
     <string name="pin_checking">Checking…</string>
     <string name="pin_unlock">Unlock</string>
@@ -177,6 +180,12 @@
     <string name="channels_show_in_guide">Show in guide</string>
     <string name="channels_hide_from_guide">Hide from guide</string>
     <string name="channels_show_hidden">Show hidden</string>
+    <string name="channels_logo_url">Logo address (blank = playlist\'s)</string>
+    <string name="channels_number">Channel number (blank = playlist\'s)</string>
+    <string name="channels_playlist_number">Playlist number: %1$d</string>
+    <string name="channels_playlist_number_none">The playlist gives no number</string>
+    <string name="channels_logo_from_phone">Logo from phone</string>
+    <string name="channels_logo_received">Logo received from the phone</string>
     <string name="channels_configure_pin">Configure PIN in Settings</string>
     <string name="channels_remove_pin_lock">Remove PIN lock</string>
     <string name="channels_lock_with_pin">Lock with PIN</string>
@@ -322,6 +331,8 @@
     <string name="interface_scale_small">Small</string>
     <string name="interface_scale_smaller">Smaller</string>
     <string name="interface_scale_option">%1$s (%2$d %%)</string>
+    <string name="channel_numbers_title">Channel numbers</string>
+    <string name="channel_numbers_help">Shows each channel\'s number in the guide: the playlist\'s own, or one set in Channel management. Off, the guide shows names only.</string>
     <!-- Each language is named in its own language, so it stays findable when
          the interface is currently in one the reader does not speak. -->
     <string name="interface_language_en">English</string>
@@ -330,6 +341,7 @@
     <string name="interface_language_pt">Português (rascunho)</string>
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
+    <string name="interface_language_it">Italiano (bozza)</string>
     <string name="artwork_cache_title">Image cache</string>
     <string name="artwork_cache_help">Room for posters, logos and backdrops; a new limit applies at the next start.</string>
     <string name="artwork_cache_limit">%1$d MB</string>
@@ -410,6 +422,22 @@
     <string name="profile_name_hint">Name of the new profile</string>
     <string name="profile_remove">Remove a profile</string>
     <string name="profile_remove_help">Takes their favourites, recents, positions and locks with it.</string>
+    <string name="profile_content_title">What this profile may see</string>
+    <string name="profile_content_help">Limit a profile to chosen groups of channels, films and series. Everything else stays out of its guide, libraries and search.</string>
+    <string name="profile_content_live">Live TV groups</string>
+    <string name="profile_content_movies">Film groups</string>
+    <string name="profile_content_series">Series groups</string>
+    <string name="profile_content_all">Everything</string>
+    <plurals name="profile_content_count">
+        <item quantity="one">%1$d group</item>
+        <item quantity="other">%1$d groups</item>
+    </plurals>
+    <string name="profile_content_picker_title">Groups for %1$s</string>
+    <string name="profile_content_ungrouped">Ungrouped</string>
+    <string name="profile_content_none_yet">No groups yet. Add a source and let it sync first.</string>
+    <string name="profile_content_pin_ready">Switching to an unrestricted profile, and opening Settings from a restricted one, ask for the parental PIN.</string>
+    <string name="profile_content_pin_missing">Set a parental PIN so a restricted profile cannot switch away or change this.</string>
+    <string name="profile_content_blocked">This profile cannot watch that channel</string>
     <string name="profile_picker_title">Who is watching?</string>
     <string name="source_refresh_schedule_saved">Refresh interval set to %1$s</string>
     <plurals name="source_refresh_interval_hours">
@@ -475,7 +503,7 @@
     <string name="diagnostics_saved">Diagnostics saved. Share the file with the developer if asked.</string>
     <string name="translate_title">Translations</string>
     <string name="translate_help_title">Help translate Sohva TV</string>
-    <string name="translate_help">Spanish, Portuguese, German and Swedish are drafts. Corrections are welcome in the public repository.</string>
+    <string name="translate_help">Spanish, Portuguese, German, Swedish and Italian are drafts. Corrections are welcome in the public repository.</string>
     <string name="player_stats_video">Video</string>
     <string name="player_stats_video_codec">Video codec</string>
     <string name="player_stats_bitrate">Bitrate</string>
@@ -494,6 +522,8 @@
     <string name="guide_hint_options">Options</string>
     <string name="guide_watched_percent">%1$d %% watched</string>
     <string name="guide_channel_number">Channel %1$d</string>
+    <string name="dial_channel">Channel %1$s</string>
+    <string name="dial_channel_none">No channel %1$d</string>
     <string name="guide_close_options">Close</string>
     <string name="catalogue_sort_alphabetical">A–Z</string>
     <string name="catalogue_sort_newest">Newest</string>
@@ -804,5 +834,11 @@
     <string name="phone_setup_page_forbidden">This page needs the code from the TV screen. Scan it again.</string>
     <string name="phone_setup_page_bad_request">That request could not be read.</string>
     <string name="phone_setup_page_privacy">Nothing you type leaves your home network. The page closes with the TV\'s settings.</string>
+    <string name="phone_setup_page_logo_title">Logo for %1$s</string>
+    <string name="phone_setup_page_logo_help">Choose a picture on this phone. It is shrunk here, sent to the TV and kept there as the channel\'s logo.</string>
+    <string name="phone_setup_page_logo_choose">Choose a picture</string>
+    <string name="phone_setup_page_logo_sending">Sending to the TV…</string>
+    <string name="phone_setup_page_logo_saved">Logo saved on the TV for %1$s. You can close this page.</string>
+    <string name="phone_setup_page_logo_invalid">That file is not a picture this phone can read.</string>
     <string name="guide_loading">Reading the guide…</string>
 </resources>

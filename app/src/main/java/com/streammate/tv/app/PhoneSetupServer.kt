@@ -18,16 +18,29 @@ import java.net.URLDecoder
 import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.io.encoding.Base64
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 
-/** What a phone posted: a source to save, or keys on their own. */
+/** What a phone posted: a source to save, keys on their own, or a logo for one channel. */
 data class PhoneSetupSubmission(
     val source: IptvSourceConfiguration?,
     val tmdbToken: String?,
     val apiSportsKey: String?,
+    val logo: PhoneLogoSubmission? = null,
 )
+
+/** A picture the phone shrank and sent for [channelId]; the TV bounds and stores it. */
+class PhoneLogoSubmission(val channelId: String, val image: ByteArray) {
+    override fun toString(): String = "PhoneLogoSubmission(channelId=$channelId, ${image.size} bytes)"
+}
+
+/** What the page is for: typing sources in, or sending one channel's logo. */
+sealed interface PhoneSetupMode {
+    data object Sources : PhoneSetupMode
+    data class Logo(val channelId: String, val channelName: String) : PhoneSetupMode
+}
 
 /**
  * The request line, headers and body of one HTTP request, parsed just far
@@ -44,9 +57,13 @@ data class PhoneSetupRequest(
 
 object PhoneSetupProtocol {
     const val MAX_BODY_BYTES = 16 * 1024
+    /** A shrunk picture as a data URL, percent-encoded by the browser: far larger than any form. */
+    const val MAX_LOGO_BODY_BYTES = 1_500_000
+    /** The decoded picture itself; the TV bounds its pixels after this. */
+    const val MAX_IMAGE_BYTES = 1_000_000
     private const val MAX_HEADER_LINES = 64
 
-    fun parseRequest(input: InputStream): PhoneSetupRequest? {
+    fun parseRequest(input: InputStream, maxBodyBytes: Int = MAX_BODY_BYTES): PhoneSetupRequest? {
         val reader = BufferedReader(InputStreamReader(input, Charsets.ISO_8859_1))
         val requestLine = reader.readLine()?.takeIf { it.isNotBlank() } ?: return null
         val parts = requestLine.split(' ')
@@ -66,7 +83,7 @@ object PhoneSetupProtocol {
             if (name.isNotEmpty()) headers[name] = value
         }
         val length = headers["content-length"]?.toIntOrNull() ?: 0
-        if (length > MAX_BODY_BYTES) return null
+        if (length > maxBodyBytes) return null
         val body = if (length > 0) {
             val buffer = CharArray(length)
             var read = 0
@@ -95,13 +112,25 @@ object PhoneSetupProtocol {
     private fun decode(value: String): String =
         runCatching { URLDecoder.decode(value, "UTF-8") }.getOrDefault(value)
 
-    /** Turns a posted form into a source, with the same rules the settings screen applies. */
-    fun submissionFrom(form: Map<String, String>): Result<PhoneSetupSubmission> = runCatching {
+    /** Turns a posted form into a source, with the same rules the settings screen applies, or into a logo in [mode]. */
+    fun submissionFrom(form: Map<String, String>, mode: PhoneSetupMode = PhoneSetupMode.Sources): Result<PhoneSetupSubmission> = runCatching {
         val tmdbToken = form["tmdb_token"]?.trim()?.takeIf { it.isNotEmpty() }
         val apiSportsKey = form["api_sports_key"]?.trim()?.takeIf { it.isNotEmpty() }
         val type = when (form["type"]?.lowercase()) {
             "xtream" -> IptvSourceType.XTREAM
             "m3u" -> IptvSourceType.M3U
+            "logo" -> {
+                // A logo is accepted only for the channel the page was opened for.
+                val logoMode = mode as? PhoneSetupMode.Logo ?: throw IllegalArgumentException("logo")
+                require(form["channel"] == logoMode.channelId) { "channel" }
+                val image = decodeImage(form["image"].orEmpty())
+                return@runCatching PhoneSetupSubmission(
+                    source = null,
+                    tmdbToken = null,
+                    apiSportsKey = null,
+                    logo = PhoneLogoSubmission(logoMode.channelId, image),
+                )
+            }
             "keys" -> {
                 require(tmdbToken != null || apiSportsKey != null) { "keys" }
                 return@runCatching PhoneSetupSubmission(source = null, tmdbToken = tmdbToken, apiSportsKey = apiSportsKey)
@@ -138,6 +167,32 @@ object PhoneSetupProtocol {
         PhoneSetupSubmission(source = source, tmdbToken = tmdbToken, apiSportsKey = apiSportsKey)
     }
 
+    /** The picture a phone posted, as a data URL or bare base64: a PNG, JPEG, GIF or WebP of a sane size. */
+    fun decodeImage(value: String): ByteArray {
+        val trimmed = value.trim()
+        val payload = if (trimmed.startsWith("data:")) {
+            val header = trimmed.substringBefore(',', "")
+            require(header.startsWith("data:image/") && header.endsWith(";base64")) { "image" }
+            trimmed.substringAfter(',')
+        } else {
+            trimmed
+        }
+        val bytes = runCatching { Base64.decode(payload) }.getOrElse { throw IllegalArgumentException("image") }
+        require(bytes.size in 1..MAX_IMAGE_BYTES) { "image" }
+        require(isImage(bytes)) { "image" }
+        return bytes
+    }
+
+    private fun isImage(bytes: ByteArray): Boolean {
+        fun at(index: Int) = bytes.getOrNull(index)?.toInt()?.and(0xff)
+        val png = at(0) == 0x89 && at(1) == 0x50 && at(2) == 0x4E && at(3) == 0x47
+        val jpeg = at(0) == 0xFF && at(1) == 0xD8 && at(2) == 0xFF
+        val gif = at(0) == 0x47 && at(1) == 0x49 && at(2) == 0x46 && at(3) == 0x38
+        val webp = at(0) == 0x52 && at(1) == 0x49 && at(2) == 0x46 && at(3) == 0x46 &&
+            at(8) == 0x57 && at(9) == 0x45 && at(10) == 0x42 && at(11) == 0x50
+        return png || jpeg || gif || webp
+    }
+
     fun newToken(random: SecureRandom = SecureRandom()): String =
         (1..8).map { ALPHABET[random.nextInt(ALPHABET.length)] }.joinToString("")
 
@@ -147,7 +202,12 @@ object PhoneSetupProtocol {
 sealed interface PhoneSetupState {
     data object Stopped : PhoneSetupState
     data object NoNetwork : PhoneSetupState
-    data class Running(val url: String, val receivedCount: Int, val lastSourceName: String?) : PhoneSetupState
+    data class Running(
+        val url: String,
+        val receivedCount: Int,
+        val lastSourceName: String?,
+        val mode: PhoneSetupMode = PhoneSetupMode.Sources,
+    ) : PhoneSetupState
 }
 
 /**
@@ -168,11 +228,17 @@ class PhoneSetupServer(
 
     private var socket: ServerSocket? = null
     private var token: String = ""
+    private var mode: PhoneSetupMode = PhoneSetupMode.Sources
     private val running = AtomicBoolean(false)
 
+    /** Serves the page for [mode]; a page already open for something else is closed first. */
     @Synchronized
-    fun start() {
-        if (running.get()) return
+    fun start(mode: PhoneSetupMode = PhoneSetupMode.Sources) {
+        if (running.get()) {
+            if (this.mode == mode) return
+            stop()
+        }
+        this.mode = mode
         val address = lanAddress()
         if (address == null) {
             mutableState.value = PhoneSetupState.NoNetwork
@@ -186,6 +252,7 @@ class PhoneSetupServer(
             url = "http://${address.hostAddress}:${server.localPort}/?t=$token",
             receivedCount = 0,
             lastSourceName = null,
+            mode = mode,
         )
         Thread({ serve(server) }, "sohva-phone-setup").apply { isDaemon = true }.start()
     }
@@ -216,7 +283,9 @@ class PhoneSetupServer(
 
     private fun handle(client: Socket) {
         client.soTimeout = CLIENT_TIMEOUT_MILLIS
-        val request = runCatching { PhoneSetupProtocol.parseRequest(client.getInputStream()) }.getOrNull()
+        val current = mode
+        val maxBody = if (current is PhoneSetupMode.Logo) PhoneSetupProtocol.MAX_LOGO_BODY_BYTES else PhoneSetupProtocol.MAX_BODY_BYTES
+        val request = runCatching { PhoneSetupProtocol.parseRequest(client.getInputStream(), maxBody) }.getOrNull()
         val response = when {
             request == null -> html(400, page(context.getString(IptvR.string.phone_setup_page_bad_request), form = false))
             request.query["t"] != token && PhoneSetupProtocol.parseForm(request.body)["t"] != token ->
@@ -234,7 +303,8 @@ class PhoneSetupServer(
     }
 
     private fun submit(request: PhoneSetupRequest): ByteArray {
-        val submission = PhoneSetupProtocol.submissionFrom(PhoneSetupProtocol.parseForm(request.body))
+        val current = mode
+        val submission = PhoneSetupProtocol.submissionFrom(PhoneSetupProtocol.parseForm(request.body), current)
         return submission.fold(
             onSuccess = { received ->
                 runCatching { runBlocking { onSubmission(received) } }.fold(
@@ -246,8 +316,14 @@ class PhoneSetupServer(
                                 lastSourceName = received.source?.name ?: current.lastSourceName,
                             )
                         }
-                        val saved = received.source?.let { context.getString(IptvR.string.phone_setup_page_saved, it.name) }
-                            ?: context.getString(IptvR.string.phone_setup_page_keys_saved)
+                        val saved = when {
+                            received.logo != null -> context.getString(
+                                IptvR.string.phone_setup_page_logo_saved,
+                                (current as? PhoneSetupMode.Logo)?.channelName.orEmpty(),
+                            )
+                            received.source != null -> context.getString(IptvR.string.phone_setup_page_saved, received.source.name)
+                            else -> context.getString(IptvR.string.phone_setup_page_keys_saved)
+                        }
                         html(200, page(saved, form = true))
                     },
                     onFailure = { html(500, page(context.getString(IptvR.string.phone_setup_page_failed), form = true)) },
@@ -277,7 +353,11 @@ class PhoneSetupServer(
     private fun page(message: String?, form: Boolean): String {
         fun s(id: Int) = context.getString(id).escape()
         val notice = message?.let { "<p class=\"notice\">${it.escape()}</p>" }.orEmpty()
-        val forms = if (!form) "" else """
+        val current = mode
+        val forms = when {
+            !form -> ""
+            current is PhoneSetupMode.Logo -> logoForm(current)
+            else -> """
             <form method="post" action="/submit">
               <input type="hidden" name="t" value="${token.escape()}">
               <input type="hidden" name="type" value="xtream">
@@ -307,6 +387,7 @@ class PhoneSetupServer(
               <button type="submit">${s(IptvR.string.phone_setup_page_send)}</button>
             </form>
         """.trimIndent()
+        }
         return """
             <!doctype html><html lang="${context.resources.configuration.primaryLocale().language}"><head>
             <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -321,13 +402,66 @@ class PhoneSetupServer(
               .notice{background:#26304a;color:#fff;padding:12px;border-radius:10px}
             </style></head><body>
             <h1>${s(IptvR.string.phone_setup_page_title)}</h1>
-            <p>${s(IptvR.string.phone_setup_page_intro)}</p>
+            <p>${s(if (current is PhoneSetupMode.Logo) IptvR.string.phone_setup_page_logo_help else IptvR.string.phone_setup_page_intro)}</p>
             $notice
             $forms
             <p>${s(IptvR.string.phone_setup_page_privacy)}</p>
             </body></html>
         """.trimIndent()
     }
+
+    /**
+     * The logo page: one file input. The phone shrinks the picture on a canvas
+     * before sending it, so a photo travels as a few hundred kilobytes of PNG
+     * rather than as itself, and posts it as the same kind of form as a source.
+     */
+    private fun logoForm(logo: PhoneSetupMode.Logo): String {
+        fun s(id: Int) = context.getString(id).escape()
+        fun js(id: Int) = context.getString(id).jsString()
+        return """
+            <form method="post" action="/submit" id="logoform">
+              <input type="hidden" name="t" value="${token.escape()}">
+              <input type="hidden" name="type" value="logo">
+              <input type="hidden" name="channel" value="${logo.channelId.escape()}">
+              <input type="hidden" name="image" id="image">
+              <h2>${context.getString(IptvR.string.phone_setup_page_logo_title, logo.channelName).escape()}</h2>
+              <label>${s(IptvR.string.phone_setup_page_logo_choose)}<input type="file" id="file" accept="image/*"></label>
+              <p class="notice" id="status" hidden></p>
+            </form>
+            <script>
+            (function () {
+              var input = document.getElementById('file');
+              var status = document.getElementById('status');
+              input.addEventListener('change', function () {
+                var file = input.files[0];
+                if (!file) { return; }
+                var img = new Image();
+                img.onload = function () {
+                  var limit = 512;
+                  var scale = Math.min(1, limit / Math.max(img.width, img.height));
+                  var canvas = document.createElement('canvas');
+                  canvas.width = Math.max(1, Math.round(img.width * scale));
+                  canvas.height = Math.max(1, Math.round(img.height * scale));
+                  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                  document.getElementById('image').value = canvas.toDataURL('image/png');
+                  status.textContent = '${js(IptvR.string.phone_setup_page_logo_sending)}';
+                  status.hidden = false;
+                  document.getElementById('logoform').submit();
+                };
+                img.onerror = function () {
+                  status.textContent = '${js(IptvR.string.phone_setup_page_logo_invalid)}';
+                  status.hidden = false;
+                };
+                img.src = URL.createObjectURL(file);
+              });
+            })();
+            </script>
+        """.trimIndent()
+    }
+
+    /** Text inside a single-quoted JavaScript string literal. */
+    private fun String.jsString(): String =
+        replace("\\", "\\\\").replace("'", "\\'").replace("<", "\\x3c").replace("\n", " ")
 
     private fun String.escape(): String = buildString(length) {
         for (char in this@escape) {

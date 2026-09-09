@@ -2,8 +2,11 @@ package com.streammate.tv.iptv.repository
 
 import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.app.AppPreferences
+import com.streammate.tv.app.activeRestriction
+import com.streammate.tv.app.ProfileRestriction
 import com.streammate.tv.core.database.OrganizationChange
 import com.streammate.tv.core.database.OrganizationDao
+import com.streammate.tv.core.database.OrganizationGroupRow
 import com.streammate.tv.core.database.OrganizationSnapshot
 import com.streammate.tv.core.database.toEntity
 import com.streammate.tv.core.model.*
@@ -52,6 +55,27 @@ class OrganizationRepository(
     val state: Flow<OrganizationReadState> = dao.observeRules().map { rules ->
         OrganizationReadState(LibraryOrganization(rules.map { it.toRule() }))
     }.flowOn(Dispatchers.Default)
+
+    /**
+     * What the active profile may see: everything, until a profile has been
+     * restricted in Settings. Applied on top of the rules by [organize],
+     * [orderedCategories] and [allCategoryGroups], so a profile only ever sees
+     * less than the device does.
+     */
+    val restriction: Flow<ProfileRestriction> =
+        preferences?.preferences?.map { it.activeRestriction }?.distinctUntilChanged() ?: flowOf(ProfileRestriction.NONE)
+
+    suspend fun currentRestriction(): ProfileRestriction = restriction.first()
+
+    /** [flow] without the rows the active profile may not see; the device's own rules are not consulted here. */
+    fun <T> restrict(flow: Flow<List<T>>, room: LibraryRoom, groupKey: (T) -> String): Flow<List<T>> =
+        combine(flow, restriction) { rows, current ->
+            if (!current.restricted) rows else rows.filter { current.allows(room, groupKey(it)) }
+        }
+
+    /** The groups a room's items belong to, one row per source and key: what a profile can be limited to. */
+    fun groupChoices(room: LibraryRoom): Flow<List<OrganizationGroupRow>> =
+        dao.observeGroups().map { rows -> rows.filter { it.room == room.name } }.flowOn(Dispatchers.Default)
 
     /**
      * The rows paired with their organisation items, carrying the film
@@ -183,22 +207,30 @@ class OrganizationRepository(
     fun <T> organize(
         flow: Flow<List<T>>, room: LibraryRoom, item: (T) -> OrganizationItem,
         viewKey: String? = null, chronological: Boolean = false,
-    ): Flow<List<T>> = combine(identified(flow, room, item), state) { pairs, current ->
+    ): Flow<List<T>> = combine(identified(flow, room, item), state, restriction) { pairs, current, allowed ->
         val byId = pairs.associate { it.second.id to it.first }
         current.organization.orderedItems(room, pairs.map { it.second }, viewKey, chronological = chronological)
+            .filter { allowed.allows(room, it.groupKey) }
             .mapNotNull { byId[it.id] }
     }.flowOn(Dispatchers.Default)
 
     suspend fun change(changes: List<OrganizationChange>) = dao.change(changes)
 
-    fun allCategoryGroups(room: LibraryRoom): Flow<List<CatalogueCategory>> = dao.observeGroups().map { rows ->
-        rows.filter { it.room == room.name && !it.name.isNullOrBlank() }.distinctBy { it.nameKey }
-            .map { CatalogueCategory(it.name!!, 0) }
-    }.flowOn(Dispatchers.Default)
+    fun allCategoryGroups(room: LibraryRoom): Flow<List<CatalogueCategory>> =
+        combine(dao.observeGroups(), restriction) { rows, allowed ->
+            rows.filter { it.room == room.name && !it.name.isNullOrBlank() && allowed.allows(room, it.groupKey) }
+                .distinctBy { it.nameKey }
+                .map { CatalogueCategory(it.name!!, 0) }
+        }.flowOn(Dispatchers.Default)
 
     fun orderedCategories(flow: Flow<List<CatalogueCategory>>, room: LibraryRoom): Flow<List<CatalogueCategory>> =
-        combine(flow, state, dao.observeGroups()) { categories, current, backing ->
+        combine(flow, state, dao.observeGroups(), restriction) { all, current, backing, allowed ->
             val names = backing.filter { it.room == room.name }.groupBy { it.nameKey }
+            // A restricted profile's rail carries only the categories whose
+            // groups it may see, under any of the sources that hold them.
+            val categories = all.filter { category ->
+                !allowed.restricted || names[organizationGroupKey(category.name)].orEmpty().any { allowed.allows(room, it.groupKey) }
+            }
             val ordered = current.organization.orderedGroups(room, categories.map { category ->
                 category.name to names[organizationGroupKey(category.name)].orEmpty().map {
                     OrganizationItem("", it.sourceId, category.name, category.name, it.groupKey)

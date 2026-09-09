@@ -51,6 +51,8 @@ data class XtreamLiveChannel(
     val serverTimeZoneId: String? = null,
     val playlistOrder: Int = Int.MAX_VALUE,
     val categoryId: String? = null,
+    /** The panel's own channel number, its "num". */
+    val channelNumber: Int? = null,
 ) {
     override fun toString(): String =
         "XtreamLiveChannel(id=$id, name=$name, categoryName=$categoryName, streamUrl=<redacted>)"
@@ -397,6 +399,7 @@ class XtreamClient(
             },
             serverTimeZoneId = serverTimeZoneId,
             playlistOrder = stream["num"].asInt() ?: Int.MAX_VALUE,
+            channelNumber = stream["num"].asInt()?.takeIf { it > 0 },
         )
     }
 

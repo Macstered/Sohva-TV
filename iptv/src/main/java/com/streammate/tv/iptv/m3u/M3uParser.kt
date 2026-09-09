@@ -30,6 +30,8 @@ class ParsedIptvChannel(
     val catchupDays: Int?,
     val playlistOrder: Int,
     val contentKind: M3uContentKind,
+    /** tvg-chno or channel-number, when the playlist gives a whole number. */
+    val channelNumber: Int? = null,
 ) {
     override fun toString(): String =
         "ParsedIptvChannel(id=$id, name=$name, streamUrl=<redacted>)"
@@ -125,6 +127,10 @@ class M3uParser {
             catchupDays = catchupDays,
             playlistOrder = channelIndex - 1,
             contentKind = detectContentKind(metadata, groupTitle, streamUrl),
+            channelNumber = (metadata?.attributes?.get("tvg-chno") ?: metadata?.attributes?.get("channel-number"))
+                ?.trim()
+                ?.toIntOrNull()
+                ?.takeIf { it > 0 },
         )
     }
 

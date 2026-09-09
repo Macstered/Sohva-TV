@@ -1,6 +1,8 @@
 package com.streammate.tv.iptv.repository
 
 import com.streammate.tv.app.Profiles
+import com.streammate.tv.app.ProfileRestriction
+import com.streammate.tv.core.model.LibraryRoom
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -673,7 +675,10 @@ class CatalogueRepository(
         val normalized = query.trim().take(MAX_SEARCH_QUERY_LENGTH)
         if (normalized.length < MIN_SEARCH_QUERY_LENGTH) return emptyList()
         val limit = limitPerType.coerceIn(1, MAX_SEARCH_RESULTS_PER_TYPE)
-        val movies = dao.searchMovies(normalized, limit).map { movie ->
+        val restriction = organization?.currentRestriction() ?: ProfileRestriction.NONE
+        val movies = dao.searchMovies(normalized, limit).filter { movie ->
+            restriction.allows(LibraryRoom.MOVIES, movie.organizationGroupKey)
+        }.map { movie ->
             val domain = movie.toDomain()
             CatalogueSearchResult(
                 type = CatalogueSearchType.MOVIE,
@@ -686,7 +691,9 @@ class CatalogueRepository(
                 movie = domain,
             )
         }
-        val series = dao.searchSeries(normalized, limit).map { item ->
+        val series = dao.searchSeries(normalized, limit).filter { item ->
+            restriction.allows(LibraryRoom.SERIES, item.organizationGroupKey)
+        }.map { item ->
             val domain = item.toDomain()
             CatalogueSearchResult(
                 type = CatalogueSearchType.SERIES,

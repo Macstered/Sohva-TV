@@ -21,6 +21,31 @@ class StreamMateDatabaseMigrationTest {
     )
 
     @Test
+    fun migratesTwentyFiveToTwentySix() {
+        helper.createDatabase(TEST_DATABASE_FROM_TWENTY_FIVE, 25).apply {
+            execSQL(
+                "INSERT INTO channel_preferences (channelId, sourceId, customName, customGroupTitle, hidden, sortOrder, " +
+                    "manualXmltvChannelId, updatedAtEpochMillis, customOrganizationGroupKey) VALUES ('s:one', 's', 'One', NULL, 0, NULL, NULL, 1, NULL)",
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DATABASE_FROM_TWENTY_FIVE, 26, true, StreamMateDatabase.MIGRATION_25_26)
+        // The viewer's existing preference survives with the new columns empty.
+        db.query("SELECT customName, customLogoUrl, channelNumber FROM channel_preferences").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("One", cursor.getString(0))
+            assertTrue(cursor.isNull(1))
+            assertTrue(cursor.isNull(2))
+        }
+        db.execSQL("UPDATE channel_preferences SET customLogoUrl = 'file:///logo.png', channelNumber = 12 WHERE channelId = 's:one'")
+        db.query("SELECT channelNumber FROM channel_preferences").use { cursor ->
+            cursor.moveToFirst()
+            assertEquals(12, cursor.getInt(0))
+        }
+        db.close()
+    }
+
+    @Test
     fun migratesTwentyFourToTwentyFive() {
         helper.createDatabase(TEST_DATABASE_FROM_TWENTY_FOUR, 24).apply {
             execSQL(
@@ -891,6 +916,7 @@ class StreamMateDatabaseMigrationTest {
         const val TEST_DATABASE_FROM_ONE = "migration-test-from-one"
         const val TEST_DATABASE_FROM_TWENTY_THREE = "migration-from-23"
         const val TEST_DATABASE_FROM_TWENTY_FOUR = "migration-test-from-24"
+        const val TEST_DATABASE_FROM_TWENTY_FIVE = "migration-test-from-25"
         const val TEST_DATABASE_FROM_TWO = "migration-test-from-two"
         const val TEST_DATABASE_FROM_THREE = "migration-test-from-three"
         const val TEST_DATABASE_FROM_FOUR = "migration-test-from-four"

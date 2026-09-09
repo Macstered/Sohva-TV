@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.11 (12)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.12 (13)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Suggested first session
@@ -61,9 +61,9 @@ Test at your own pace; note failures rather than repeatedly resetting the app.
     press Home during playback, and report whether your television's home
     screen lets you reach or close the corner. Opening Sohva TV again returns
     it to full screen.
-17. **Another language:** switch the interface to Spanish, Portuguese, German
-    or Swedish. These are drafts: report wording that reads wrongly and any
-    label that overflows its space.
+17. **Another language:** switch the interface to Spanish, Portuguese, German,
+    Swedish or Italian. These are drafts: report wording that reads wrongly
+    and any label that overflows its space.
 18. **Test address:** on an M3U source's page, press **Test address** before
     saving. Report what it says for a working address, for a mistyped one, and
     for a link your provider has since disabled.
@@ -76,6 +76,35 @@ Test at your own pace; note failures rather than repeatedly resetting the app.
 21. **What changed:** after **Check for updates**, About should show what
     changed in the installed beta, or in the newer one when there is one. It
     is in English whatever the interface language, heading included.
+22. **A channel's own logo and number:** in Channel management, give a channel
+    a logo address or press **Logo from phone**, scan the code and choose a
+    picture on the phone; give it a channel number and save. The guide and the
+    player should show your logo, and the guide your number.
+23. **Channel numbers off:** **Settings > General > Channel numbers** hides
+    numbers in the guide; report whether the channel column reads better
+    without them on your screen.
+24. **Dial a channel:** in the guide, or while watching live TV, type a
+    channel's number on the remote. Two seconds after the last digit the guide
+    should land on that channel, or the picture switch to it; a number no
+    channel has should say so and change nothing.
+25. **What a profile may see:** with two or more profiles, open **Settings >
+    General > Profiles**, choose a profile under **What this profile may see**
+    and limit its live TV, film or series groups. That profile's guide,
+    libraries and search should show only those groups. Set a parental PIN as
+    well: switching to another profile, and opening Settings from the limited
+    profile, should then ask for it. With two profiles the home page's left
+    menu gains **Who is watching**, for changing profile without Settings.
+26. **Phone QR codes:** the source page's QR code and Channel management's
+    **Logo from phone** code now open in a box of their own. Report a code
+    that is cut off or that moves when you press down on the D-pad.
+27. **Opening a series:** the first open of a series fetches its episodes and
+    should say **Loading episodes…** in the top corner until they appear. The
+    cast is now one line of names under the synopsis, so the seasons and the
+    episodes should sit on screen from the start.
+28. **Group names in the libraries:** the group column of the film and series
+    libraries is wider and a long name may take two lines. Report a group
+    whose name still cannot be read, and whether the poster wall beside it
+    still looks right on your screen.
 
 For library performance, report the sequence of actions, approximate movie /
 series count, whether an import or metadata refresh was running, and whether
@@ -91,8 +120,9 @@ different issues.
   provider speed. Artwork coverage, episode details, catch-up and stream formats
   vary by source.
 - A movie is assigned to its main genre rather than every reported genre.
-- Spanish, Portuguese, German and Swedish are drafted from the English and
-  not yet read by a native speaker; some labels overflow the space they sit in.
+- Spanish, Portuguese, German, Swedish and Italian are drafted from the
+  English and not yet read by a native speaker; some labels overflow the
+  space they sit in.
 - A tick marks a watched film, episode and completed season, but there is no
   tick yet on a series poster in the library.
 - A television home screen need not offer any way to reach or close the corner
@@ -109,6 +139,11 @@ different issues.
   allow it to **display over other apps** when the first reminder asks
   (Settings > General shows the state). Without that, the reminder waits in the
   TV's notification panel.
+- Menus inside a frame while the video fills the whole screen means the
+  device's own display settings have shrunk the interface, not the app: look
+  under Device Preferences > Display & Sound, or Display, for Screen position,
+  Adjust screen size, Display area or Overscan, and set it to full. The picture
+  is not affected because such devices scale the interface alone.
 - Shield and Android TV emulator testing does not establish compatibility with
   every TV, remote, accessibility service or codec.
 
@@ -121,7 +156,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.11 (12)
+Version: 0.1.0-beta.12 (13)
 Device model:
 Android / Google TV version:
 Fresh install or update:

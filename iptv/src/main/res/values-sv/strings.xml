@@ -41,6 +41,7 @@
     <string name="series_seasons">Säsonger</string>
     <string name="series_episodes">Avsnitt</string>
     <string name="series_cast">Medverkande</string>
+    <string name="series_cast_line">Medverkande: %1$s</string>
     <plurals name="series_season_count">
         <item quantity="one">%1$d säsong</item>
         <item quantity="other">%1$d säsonger</item>
@@ -130,6 +131,8 @@
     <string name="pin_prompt">Ange PIN-koden för att fortsätta</string>
     <string name="pin_not_configured">Ställ först in en PIN-kod i Inställningar</string>
     <string name="pin_locked_channel">Låst kanal</string>
+    <string name="pin_profile_gate">Profilbyte</string>
+    <string name="pin_settings_gate">Inställningarna är låsta för den här profilen</string>
     <string name="pin_code">PIN-kod</string>
     <string name="pin_checking">Kontrollerar…</string>
     <string name="pin_unlock">Lås upp</string>
@@ -177,6 +180,12 @@
     <string name="channels_show_in_guide">Visa i guiden</string>
     <string name="channels_hide_from_guide">Dölj i guiden</string>
     <string name="channels_show_hidden">Visa dolda</string>
+    <string name="channels_logo_url">Logotypadress (tom = spellistans)</string>
+    <string name="channels_number">Kanalnummer (tom = spellistans)</string>
+    <string name="channels_playlist_number">Nummer i spellistan: %1$d</string>
+    <string name="channels_playlist_number_none">Spellistan anger inget nummer</string>
+    <string name="channels_logo_from_phone">Logotyp från telefonen</string>
+    <string name="channels_logo_received">Logotyp mottagen från telefonen</string>
     <string name="channels_configure_pin">Ställ in PIN-kod i Inställningar</string>
     <string name="channels_remove_pin_lock">Ta bort PIN-låset</string>
     <string name="channels_lock_with_pin">Lås med PIN-kod</string>
@@ -322,12 +331,15 @@
     <string name="interface_scale_small">Liten</string>
     <string name="interface_scale_smaller">Mindre</string>
     <string name="interface_scale_option">%1$s (%2$d %%)</string>
+    <string name="channel_numbers_title">Kanalnummer</string>
+    <string name="channel_numbers_help">Visar varje kanals nummer i guiden: spellistans eget eller det som satts i kanalhanteringen. Av visar guiden bara namn.</string>
     <string name="interface_language_en">English</string>
     <string name="interface_language_fi">Suomi</string>
     <string name="interface_language_es">Español (borrador)</string>
     <string name="interface_language_pt">Português (rascunho)</string>
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
+    <string name="interface_language_it">Italiano (bozza)</string>
     <string name="artwork_cache_title">Bildcache</string>
     <string name="artwork_cache_help">Plats för affischer, logotyper och bakgrunder; en ny gräns gäller från nästa start.</string>
     <string name="artwork_cache_limit">%1$d MB</string>
@@ -408,6 +420,22 @@
     <string name="profile_name_hint">Den nya profilens namn</string>
     <string name="profile_remove">Ta bort en profil</string>
     <string name="profile_remove_help">Tar med sig favoriter, senaste, positioner och lås.</string>
+    <string name="profile_content_title">Vad den här profilen får se</string>
+    <string name="profile_content_help">Begränsa en profil till valda grupper av kanaler, filmer och serier. Allt annat hålls utanför dess guide, bibliotek och sökning.</string>
+    <string name="profile_content_live">Grupper för live-TV</string>
+    <string name="profile_content_movies">Filmgrupper</string>
+    <string name="profile_content_series">Seriegrupper</string>
+    <string name="profile_content_all">Allt</string>
+    <plurals name="profile_content_count">
+        <item quantity="one">%1$d grupp</item>
+        <item quantity="other">%1$d grupper</item>
+    </plurals>
+    <string name="profile_content_picker_title">Grupper för %1$s</string>
+    <string name="profile_content_ungrouped">Utan grupp</string>
+    <string name="profile_content_none_yet">Inga grupper ännu. Lägg till en källa och låt den synkronisera först.</string>
+    <string name="profile_content_pin_ready">Att byta till en obegränsad profil och att öppna Inställningar från en begränsad profil kräver föräldra-PIN-koden.</string>
+    <string name="profile_content_pin_missing">Ställ in en föräldra-PIN-kod så att en begränsad profil inte kan byta profil eller ändra detta.</string>
+    <string name="profile_content_blocked">Den här profilen kan inte titta på den kanalen</string>
     <string name="profile_picker_title">Vem tittar?</string>
     <string name="source_refresh_schedule_saved">Uppdateringsintervallet satt till %1$s</string>
     <plurals name="source_refresh_interval_hours">
@@ -473,7 +501,7 @@
     <string name="diagnostics_saved">Diagnostiken sparad. Dela filen med utvecklaren om du blir ombedd.</string>
     <string name="translate_title">Översättningar</string>
     <string name="translate_help_title">Hjälp till att översätta Sohva TV</string>
-    <string name="translate_help">Spanska, portugisiska, tyska och svenska är utkast. Rättelser är välkomna i det offentliga kodförrådet.</string>
+    <string name="translate_help">Spanska, portugisiska, tyska, svenska och italienska är utkast. Rättelser är välkomna i det offentliga kodförrådet.</string>
     <string name="player_stats_video">Video</string>
     <string name="player_stats_video_codec">Videokodek</string>
     <string name="player_stats_bitrate">Bithastighet</string>
@@ -492,6 +520,8 @@
     <string name="guide_hint_options">Alternativ</string>
     <string name="guide_watched_percent">%1$d %% sett</string>
     <string name="guide_channel_number">Kanal %1$d</string>
+    <string name="dial_channel">Kanal %1$s</string>
+    <string name="dial_channel_none">Ingen kanal %1$d</string>
     <string name="guide_close_options">Stäng</string>
     <string name="catalogue_sort_alphabetical">A–Ö</string>
     <string name="catalogue_sort_newest">Nyaste</string>
@@ -792,5 +822,11 @@
     <string name="phone_setup_page_forbidden">Den här sidan behöver koden från TV-skärmen. Skanna den igen.</string>
     <string name="phone_setup_page_bad_request">Den begäran kunde inte läsas.</string>
     <string name="phone_setup_page_privacy">Inget du skriver lämnar ditt hemnätverk. Sidan stängs tillsammans med TV:ns inställningar.</string>
+    <string name="phone_setup_page_logo_title">Logotyp för %1$s</string>
+    <string name="phone_setup_page_logo_help">Välj en bild på den här telefonen. Den förminskas här, skickas till TV:n och sparas där som kanalens logotyp.</string>
+    <string name="phone_setup_page_logo_choose">Välj en bild</string>
+    <string name="phone_setup_page_logo_sending">Skickar till TV:n…</string>
+    <string name="phone_setup_page_logo_saved">Logotypen för %1$s är sparad på TV:n. Du kan stänga den här sidan.</string>
+    <string name="phone_setup_page_logo_invalid">Den filen är ingen bild som den här telefonen kan läsa.</string>
     <string name="guide_loading">Läser in guiden…</string>
 </resources>

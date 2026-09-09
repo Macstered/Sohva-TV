@@ -41,6 +41,7 @@
     <string name="series_seasons">Staffeln</string>
     <string name="series_episodes">Episoden</string>
     <string name="series_cast">Besetzung</string>
+    <string name="series_cast_line">Besetzung: %1$s</string>
     <plurals name="series_season_count">
         <item quantity="one">%1$d Staffel</item>
         <item quantity="other">%1$d Staffeln</item>
@@ -130,6 +131,8 @@
     <string name="pin_prompt">Gib die PIN ein, um fortzufahren</string>
     <string name="pin_not_configured">Richte zuerst in den Einstellungen eine PIN ein</string>
     <string name="pin_locked_channel">Gesperrter Sender</string>
+    <string name="pin_profile_gate">Profilwechsel</string>
+    <string name="pin_settings_gate">Die Einstellungen sind für dieses Profil gesperrt</string>
     <string name="pin_code">PIN-Code</string>
     <string name="pin_checking">Wird geprüft…</string>
     <string name="pin_unlock">Entsperren</string>
@@ -177,6 +180,12 @@
     <string name="channels_show_in_guide">Im Programm zeigen</string>
     <string name="channels_hide_from_guide">Aus dem Programm ausblenden</string>
     <string name="channels_show_hidden">Ausgeblendete anzeigen</string>
+    <string name="channels_logo_url">Logo-Adresse (leer = aus der Playlist)</string>
+    <string name="channels_number">Sendernummer (leer = aus der Playlist)</string>
+    <string name="channels_playlist_number">Nummer in der Playlist: %1$d</string>
+    <string name="channels_playlist_number_none">Die Playlist nennt keine Nummer</string>
+    <string name="channels_logo_from_phone">Logo vom Handy</string>
+    <string name="channels_logo_received">Logo vom Handy erhalten</string>
     <string name="channels_configure_pin">PIN in den Einstellungen einrichten</string>
     <string name="channels_remove_pin_lock">PIN-Sperre entfernen</string>
     <string name="channels_lock_with_pin">Mit PIN sperren</string>
@@ -322,12 +331,15 @@
     <string name="interface_scale_small">Klein</string>
     <string name="interface_scale_smaller">Kleiner</string>
     <string name="interface_scale_option">%1$s (%2$d %%)</string>
+    <string name="channel_numbers_title">Sendernummern</string>
+    <string name="channel_numbers_help">Zeigt die Nummer jedes Senders im Programmführer: die aus der Playlist oder die in der Senderverwaltung gesetzte. Aus zeigt der Programmführer nur Namen.</string>
     <string name="interface_language_en">English</string>
     <string name="interface_language_fi">Suomi</string>
     <string name="interface_language_es">Español (borrador)</string>
     <string name="interface_language_pt">Português (rascunho)</string>
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
+    <string name="interface_language_it">Italiano (bozza)</string>
     <string name="artwork_cache_title">Bild-Cache</string>
     <string name="artwork_cache_help">Platz für Poster, Logos und Hintergründe; ein neues Limit gilt ab dem nächsten Start.</string>
     <string name="artwork_cache_limit">%1$d MB</string>
@@ -408,6 +420,22 @@
     <string name="profile_name_hint">Name des neuen Profils</string>
     <string name="profile_remove">Profil entfernen</string>
     <string name="profile_remove_help">Nimmt Favoriten, zuletzt Gesehenes, Positionen und Sperren mit.</string>
+    <string name="profile_content_title">Was dieses Profil sehen darf</string>
+    <string name="profile_content_help">Beschränkt ein Profil auf ausgewählte Gruppen von Sendern, Filmen und Serien. Alles andere bleibt aus seinem Programm, seinen Bibliotheken und seiner Suche heraus.</string>
+    <string name="profile_content_live">Live-TV-Gruppen</string>
+    <string name="profile_content_movies">Filmgruppen</string>
+    <string name="profile_content_series">Seriengruppen</string>
+    <string name="profile_content_all">Alles</string>
+    <plurals name="profile_content_count">
+        <item quantity="one">%1$d Gruppe</item>
+        <item quantity="other">%1$d Gruppen</item>
+    </plurals>
+    <string name="profile_content_picker_title">Gruppen für %1$s</string>
+    <string name="profile_content_ungrouped">Ohne Gruppe</string>
+    <string name="profile_content_none_yet">Noch keine Gruppen. Füge zuerst eine Quelle hinzu und lass sie synchronisieren.</string>
+    <string name="profile_content_pin_ready">Der Wechsel zu einem unbeschränkten Profil und das Öffnen der Einstellungen aus einem beschränkten Profil fragen nach der Kindersicherungs-PIN.</string>
+    <string name="profile_content_pin_missing">Richte eine Kindersicherungs-PIN ein, damit ein beschränktes Profil weder das Profil wechseln noch dies ändern kann.</string>
+    <string name="profile_content_blocked">Dieses Profil darf diesen Sender nicht sehen</string>
     <string name="profile_picker_title">Wer schaut?</string>
     <string name="source_refresh_schedule_saved">Aktualisierungsintervall auf %1$s gesetzt</string>
     <plurals name="source_refresh_interval_hours">
@@ -473,7 +501,7 @@
     <string name="diagnostics_saved">Diagnose gespeichert. Teile die Datei mit dem Entwickler, wenn er danach fragt.</string>
     <string name="translate_title">Übersetzungen</string>
     <string name="translate_help_title">Hilf mit, Sohva TV zu übersetzen</string>
-    <string name="translate_help">Spanisch, Portugiesisch, Deutsch und Schwedisch sind Entwürfe. Korrekturen sind im öffentlichen Repository willkommen.</string>
+    <string name="translate_help">Spanisch, Portugiesisch, Deutsch, Schwedisch und Italienisch sind Entwürfe. Korrekturen sind im öffentlichen Repository willkommen.</string>
     <string name="player_stats_video">Video</string>
     <string name="player_stats_video_codec">Videocodec</string>
     <string name="player_stats_bitrate">Bitrate</string>
@@ -492,6 +520,8 @@
     <string name="guide_hint_options">Optionen</string>
     <string name="guide_watched_percent">%1$d %% gesehen</string>
     <string name="guide_channel_number">Sender %1$d</string>
+    <string name="dial_channel">Sender %1$s</string>
+    <string name="dial_channel_none">Kein Sender %1$d</string>
     <string name="guide_close_options">Schließen</string>
     <string name="catalogue_sort_alphabetical">A–Z</string>
     <string name="catalogue_sort_newest">Neueste</string>
@@ -792,5 +822,11 @@
     <string name="phone_setup_page_forbidden">Diese Seite braucht den Code vom Fernsehbildschirm. Scanne ihn erneut.</string>
     <string name="phone_setup_page_bad_request">Diese Anfrage konnte nicht gelesen werden.</string>
     <string name="phone_setup_page_privacy">Nichts, was du eingibst, verlässt dein Heimnetzwerk. Die Seite schließt sich mit den Einstellungen des Fernsehers.</string>
+    <string name="phone_setup_page_logo_title">Logo für %1$s</string>
+    <string name="phone_setup_page_logo_help">Wähle ein Bild auf diesem Handy. Es wird hier verkleinert, an den Fernseher gesendet und dort als Senderlogo behalten.</string>
+    <string name="phone_setup_page_logo_choose">Bild wählen</string>
+    <string name="phone_setup_page_logo_sending">Wird an den Fernseher gesendet…</string>
+    <string name="phone_setup_page_logo_saved">Logo für %1$s auf dem Fernseher gespeichert. Diese Seite kann geschlossen werden.</string>
+    <string name="phone_setup_page_logo_invalid">Diese Datei ist kein Bild, das dieses Handy lesen kann.</string>
     <string name="guide_loading">Programm wird gelesen…</string>
 </resources>

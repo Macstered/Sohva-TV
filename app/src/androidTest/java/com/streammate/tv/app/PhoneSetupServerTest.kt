@@ -68,4 +68,42 @@ class PhoneSetupServerTest {
         }
         assertEquals(1, received.size)
     }
+
+    @Test
+    fun aLogoSentFromThePhoneReachesTheAppForItsChannel() = runBlocking {
+        server.start(PhoneSetupMode.Logo("source:one", "Yle TV1"))
+        val running = server.state.value as? PhoneSetupState.Running
+            ?: return@runBlocking // No LAN address on this device: nothing to test against.
+        val base = running.url.substringBefore("/?")
+        val token = running.url.substringAfter("t=")
+
+        client.newCall(Request.Builder().url(running.url).get().build()).execute().use { response ->
+            assertEquals(200, response.code)
+            val page = response.body.string()
+            assertTrue(page.contains("type=\"file\""))
+            assertTrue(page.contains("name=\"channel\" value=\"source:one\""))
+            assertTrue(page.contains("Yle TV1"))
+        }
+
+        val form = FormBody.Builder()
+            .add("t", token)
+            .add("type", "logo")
+            .add("channel", "source:one")
+            .add("image", "data:image/png;base64,$TINY_PNG_BASE64")
+            .build()
+        client.newCall(Request.Builder().url("$base/submit").post(form).build()).execute().use { response ->
+            assertEquals(200, response.code)
+        }
+
+        val logo = received.single().logo!!
+        assertEquals("source:one", logo.channelId)
+        assertEquals(0x89, logo.image[0].toInt() and 0xff)
+        assertEquals(1, (server.state.value as PhoneSetupState.Running).receivedCount)
+    }
+
+    private companion object {
+        /** A one-pixel transparent PNG. */
+        const val TINY_PNG_BASE64 =
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    }
 }

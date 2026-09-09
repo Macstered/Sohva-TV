@@ -194,6 +194,51 @@ class MultiSourceGuideDatabaseTest {
     }
 
     @Test
+    fun aViewersLogoAndNumberOverrideThePlaylistsInEveryGuideQuery() = runBlocking {
+        val dao = database.guideDao()
+        dao.upsertSourceState(source("source-a", "Primary", priority = 10))
+        dao.upsertChannels(
+            listOf(
+                channel("source-a", "playlist", "source-a:one", "One").copy(logoUrl = "http://logo.example/one.png", channelNumber = 7),
+                channel("source-a", "playlist", "source-a:two", "Two"),
+            ),
+        )
+        dao.activatePlaylistSnapshot("source-a", "playlist", 2, 1)
+
+        val playlistOnly = dao.observeGuide(1).first()
+        assertEquals(listOf("http://logo.example/one.png", null), playlistOnly.map { it.logoUrl })
+        assertEquals(listOf(7, null), playlistOnly.map { it.channelNumber })
+
+        dao.upsertChannelPreference(
+            ChannelPreferenceEntity(
+                channelId = "source-a:one",
+                sourceId = "source-a",
+                customName = null,
+                customGroupTitle = null,
+                hidden = false,
+                sortOrder = null,
+                manualXmltvChannelId = null,
+                updatedAtEpochMillis = 2,
+                customLogoUrl = "file:///data/logos/one.png",
+                channelNumber = 12,
+            ),
+        )
+
+        val guide = dao.observeGuide(1).first().first { it.channelId == "source-a:one" }
+        assertEquals("file:///data/logos/one.png", guide.logoUrl)
+        assertEquals(12, guide.channelNumber)
+        val timeline = dao.observeGuideTimeline(1, 2).first().first { it.channelId == "source-a:one" }
+        assertEquals("file:///data/logos/one.png", timeline.logoUrl)
+        assertEquals(12, timeline.channelNumber)
+        val editable = dao.observeEditableChannels().first().first { it.channelId == "source-a:one" }
+        assertEquals("http://logo.example/one.png", editable.logoUrl)
+        assertEquals("file:///data/logos/one.png", editable.customLogoUrl)
+        assertEquals(7, editable.providerChannelNumber)
+        assertEquals(12, editable.channelNumber)
+        assertEquals("source-a", dao.channelSourceId("source-a:two"))
+    }
+
+    @Test
     fun channelCustomizationCanBeReplacedFromValidatedBackup() = runBlocking {
         val dao = database.guideDao()
         dao.upsertChannelPreference(

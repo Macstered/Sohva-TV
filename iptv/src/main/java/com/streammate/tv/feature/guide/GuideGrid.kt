@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -75,6 +76,8 @@ import kotlin.math.max
 @Composable
 internal fun GuideGrid(
     channels: List<GuideTimelineChannel>,
+    /** Whether the channel column carries a number: the channel's own, or its place in the list. */
+    showNumbers: Boolean = true,
     windowStart: Long,
     windowEnd: Long,
     now: Long,
@@ -131,7 +134,7 @@ internal fun GuideGrid(
             ) {
                 itemsIndexed(channels, key = { _, channel -> channel.id }) { index, channel ->
                     GuideChannelRow(
-                        number = index + 1,
+                        number = if (showNumbers) channel.channelNumber ?: (index + 1) else null,
                         channel = channel,
                         windowStart = windowStart,
                         windowEnd = windowEnd,
@@ -241,7 +244,7 @@ private fun GuideTimelineHeader(
 
 @Composable
 private fun GuideChannelRow(
-    number: Int,
+    number: Int?,
     channel: GuideTimelineChannel,
     windowStart: Long,
     windowEnd: Long,
@@ -350,10 +353,10 @@ private fun GuideChannelRow(
     }
 }
 
-/** Number, logo, name and what the provider says the feed is. */
+/** Number when wanted, logo, name and what the provider says the feed is. */
 @Composable
 private fun GuideChannelCell(
-    number: Int,
+    number: Int?,
     channel: GuideTimelineChannel,
     selected: Boolean,
     onFocus: () -> Unit,
@@ -396,16 +399,18 @@ private fun GuideChannelCell(
             .padding(start = 4.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = number.toString(),
-            modifier = Modifier.width(20.dp),
-            color = colors.secondaryContent,
-            fontSize = typography.caption.fontSize,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-        )
-        Spacer(Modifier.width(6.dp))
+        if (number != null) {
+            Text(
+                text = number.toString(),
+                modifier = Modifier.widthIn(min = 20.dp),
+                color = colors.secondaryContent,
+                fontSize = typography.caption.fontSize,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+            )
+            Spacer(Modifier.width(6.dp))
+        }
         ChannelLogo(channel.logoUrl, channel.name, CHANNEL_LOGO_SIZE, focused = focused)
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {

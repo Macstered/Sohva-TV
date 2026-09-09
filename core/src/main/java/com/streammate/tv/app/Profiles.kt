@@ -1,5 +1,7 @@
 package com.streammate.tv.app
 
+import com.streammate.tv.core.model.LibraryRoom
+
 /** One viewer of this TV: their favourites, recents, watched positions and locked channels are theirs alone. */
 data class Profile(
     val id: String,
@@ -58,7 +60,56 @@ object Profiles {
     fun displayName(profiles: List<Profile>, profileId: String, defaultName: String): String =
         profiles.firstOrNull { it.id == profileId }?.name?.takeIf { it.isNotBlank() }
             ?: if (profileId == DEFAULT_ID) defaultName else profileId
+
+    /**
+     * Whether choosing [profileId] asks for the parental PIN. As soon as the
+     * household has a restricted profile and a PIN, every unrestricted
+     * profile sits behind the PIN; otherwise a child would leave the
+     * restricted profile with one press and the restriction would be
+     * decoration. A restricted profile is always free to enter.
+     */
+    fun entryNeedsPin(profileId: String, restrictions: Map<String, ProfileRestriction>, pinConfigured: Boolean): Boolean =
+        pinConfigured && restrictions.values.any { it.restricted } && restrictions[profileId]?.restricted != true
 }
+
+/**
+ * What a profile is allowed to see, per room, as organisation group keys; an
+ * empty set means everything the device shows. A restriction only narrows
+ * the device's own rules, never widens them.
+ */
+data class ProfileRestriction(
+    val live: Set<String> = emptySet(),
+    val movies: Set<String> = emptySet(),
+    val series: Set<String> = emptySet(),
+) {
+    val restricted: Boolean get() = live.isNotEmpty() || movies.isNotEmpty() || series.isNotEmpty()
+
+    fun allowed(room: LibraryRoom): Set<String> = when (room) {
+        LibraryRoom.LIVE -> live
+        LibraryRoom.MOVIES -> movies
+        LibraryRoom.SERIES -> series
+    }
+
+    /** Whether a group with [groupKey] may be shown in [room]. */
+    fun allows(room: LibraryRoom, groupKey: String): Boolean {
+        val keys = allowed(room)
+        return keys.isEmpty() || groupKey in keys
+    }
+
+    fun with(room: LibraryRoom, keys: Set<String>): ProfileRestriction = when (room) {
+        LibraryRoom.LIVE -> copy(live = keys)
+        LibraryRoom.MOVIES -> copy(movies = keys)
+        LibraryRoom.SERIES -> copy(series = keys)
+    }
+
+    companion object {
+        val NONE = ProfileRestriction()
+    }
+}
+
+/** What the active profile may see; everything, for a profile nobody restricted. */
+val AppPreferences.activeRestriction: ProfileRestriction
+    get() = profileRestrictions[activeProfileId] ?: ProfileRestriction.NONE
 
 /** What a profile keeps for itself, as one bundle for backups and removal. */
 data class ProfileData(
@@ -67,4 +118,5 @@ data class ProfileData(
     val recentChannelIds: List<String> = emptyList(),
     val lastChannelId: String? = null,
     val lockedChannelIds: Set<String> = emptySet(),
+    val restriction: ProfileRestriction = ProfileRestriction.NONE,
 )

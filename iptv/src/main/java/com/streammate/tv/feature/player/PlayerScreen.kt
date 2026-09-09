@@ -72,6 +72,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import com.streammate.tv.iptv.R
+import kotlinx.coroutines.flow.first
+import com.streammate.tv.feature.common.ChannelDialOverlay
+import com.streammate.tv.feature.common.ChannelDial
 import com.streammate.tv.app.StreamMateBackground
 import com.streammate.tv.app.RemoteAction
 import com.streammate.tv.app.RemoteButton
@@ -194,6 +197,8 @@ fun PlayerScreen(
     subtitleAppearance: SubtitleAppearance = SubtitleAppearance.TV,
     /** In the corner over the launcher: the picture alone, no chrome. */
     pictureInPicture: Boolean = false,
+    /** Whether the channel list names each channel's number, as the guide does. */
+    showChannelNumbers: Boolean = true,
 ) {
     val context = LocalContext.current
     val serviceDisconnectedMessage = stringResource(R.string.player_service_disconnected)
@@ -327,6 +332,13 @@ fun PlayerScreen(
         is PlayerLoadState.Error -> PlayerMessage(currentState.message, onBack)
         is PlayerLoadState.Ready -> CompositionLocalProvider(
             LocalPlayerSeekStep provides seekStepMillis,
+            LocalPlayerDialing provides remember(guideRepository, showChannelNumbers) {
+                PlayerDialing(showNumbers = showChannelNumbers) { number, nowEpochMillis ->
+                    // The whole guide in its own order, as the guide's All view shows it.
+                    val all = guideRepository.observeGuide(nowEpochMillis).first()
+                    ChannelDial.indexFor(all.map(GuideChannel::channelNumber), number)?.let { all[it].id }
+                }
+            },
         ) {
             ActivePlayer(
                 controller = currentState.controller,
@@ -622,6 +634,28 @@ private fun ActivePlayer(
     // The resolver turns raw downs and ups into presses and holds; the
     // dispatcher below turns an action into what this screen can do.
     val remoteKeys = remember(channelId) { RemoteKeyGestureResolver() }
+    // Digits on the remote dial a channel by the number the guide shows.
+    val dialing = LocalPlayerDialing.current
+    var dialBuffer by remember(channelId) { mutableStateOf("") }
+    var dialMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(dialBuffer) {
+        if (dialBuffer.isEmpty()) return@LaunchedEffect
+        delay(ChannelDial.TIMEOUT_MILLIS)
+        val number = dialBuffer.toIntOrNull()
+        // Look the number up before the buffer clears: clearing it restarts
+        // this effect, and a lookup still suspended then would be cancelled
+        // with the channel never changed.
+        val target = number?.let { dialing.lookup(it, nowEpochMillis) }
+        dialBuffer = ""
+        if (number == null) return@LaunchedEffect
+        if (target != null) onChannelChange(target) else dialMessage = resources.getString(R.string.dial_channel_none, number)
+    }
+    LaunchedEffect(dialMessage) {
+        if (dialMessage != null) {
+            delay(ChannelDial.MESSAGE_MILLIS)
+            dialMessage = null
+        }
+    }
     // A press is decided on release, but the down that started it has already
     // revealed the chrome. Whether the info box was open is judged as it was
     // when the key went down, or every press would find a box to step into.
@@ -710,6 +744,14 @@ private fun ActivePlayer(
     }
 
     fun handleCleanScreenKey(keyCode: Int, action: RemoteKeyAction, repeatCount: Int): Boolean {
+        ChannelDial.digitOf(keyCode)?.let { digit ->
+            // Digits dial a live channel; on a film or an episode they are nothing.
+            if (!liveScreen) return false
+            if (action == RemoteKeyAction.DOWN && repeatCount == 0) {
+                dialBuffer = (dialBuffer + digit).take(ChannelDial.MAX_DIGITS)
+            }
+            return true
+        }
         val button = RemoteButton.fromKeyCode(keyCode)
         if (button == null) {
             // Not in the grid: reveals the chrome on the way down, as before,
@@ -1135,6 +1177,11 @@ private fun ActivePlayer(
                 fontWeight = FontWeight.Bold,
             )
         }
+        ChannelDialOverlay(
+            buffer = dialBuffer,
+            message = dialMessage,
+            modifier = Modifier.align(Alignment.TopStart).padding(start = 40.dp, top = 24.dp),
+        )
         LiveProgrammeInfoOverlay(
             channel = guideChannel,
             streamName = channelName,
@@ -1263,6 +1310,7 @@ private fun ActivePlayer(
             )
         }
         ChannelBrowserOverlay(
+            showNumbers = dialing.showNumbers,
             channels = browserChannels,
             listState = browserListState,
             selectedIndex = browserSelectionIndex,

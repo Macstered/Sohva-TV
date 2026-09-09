@@ -4,6 +4,7 @@ import android.content.res.Resources
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.streammate.tv.iptv.R
+import com.streammate.tv.feature.common.requestFocusWhenAttached
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.width
 import com.streammate.tv.core.error.StoredFailureMessage
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.feature.common.TvActionButton
@@ -147,59 +155,83 @@ internal fun AppUpdateSection(
 internal const val MAX_UPDATE_NOTES_LENGTH = 4_000
 
 /**
- * The QR code and address a phone opens to type a playlist in. Shown under
- * the source list while the page is being served; the status line above the
- * list says when something arrives.
+ * The QR code and address a phone opens, as a dialog over the screen that
+ * asked for it. It used to sit inline in a scrolling column, where a 180 dp
+ * square in a narrow pane was clipped at the bottom, or at the top once
+ * focus had scrolled past it. A dialog is measured on its own and is never
+ * clipped. Closing it, with the button or Back, closes the page on the TV.
  */
 @Composable
-internal fun PhoneSetupPanel(state: PhoneSetupUiState) {
+internal fun PhoneSetupDialog(
+    state: PhoneSetupUiState,
+    title: String,
+    onClose: () -> Unit,
+    /** What arrived while the dialog was open, when there is something to say. */
+    received: String? = null,
+) {
     val palette = StreamMateThemeTokens.palette
-    SettingsGroup {
-        SettingsGroupHeading(stringResource(R.string.phone_setup_title))
-        if (state.noNetwork) {
-            Text(
-                text = stringResource(R.string.phone_setup_no_network),
-                color = palette.danger,
-                modifier = Modifier.testTag("phone-setup-no-network"),
-            )
-            return@SettingsGroup
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    val closeFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { closeFocus.requestFocusWhenAttached() }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            modifier = Modifier
+                .width(PHONE_DIALOG_WIDTH)
+                .background(palette.panel, StreamMateThemeTokens.shapes.medium)
+                .border(1.dp, palette.outline, StreamMateThemeTokens.shapes.medium)
+                .padding(20.dp)
+                .testTag("phone-setup-dialog"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            state.qrCode?.let { code ->
-                Image(
-                    bitmap = code,
-                    contentDescription = stringResource(R.string.phone_setup_qr_description),
-                    modifier = Modifier
-                        .size(180.dp)
-                        .background(androidx.compose.ui.graphics.Color.White)
-                        .padding(8.dp)
-                        .testTag("phone-setup-qr"),
+            Text(text = title, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            if (state.noNetwork) {
+                Text(
+                    text = stringResource(R.string.phone_setup_no_network),
+                    color = palette.danger,
+                    modifier = Modifier.testTag("phone-setup-no-network"),
                 )
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    state.qrCode?.let { code ->
+                        Image(
+                            bitmap = code,
+                            contentDescription = stringResource(R.string.phone_setup_qr_description),
+                            modifier = Modifier
+                                .size(PHONE_QR_SIZE)
+                                .background(Color.White)
+                                .padding(8.dp)
+                                .testTag("phone-setup-qr"),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text = stringResource(R.string.phone_setup_help), color = palette.textMuted, fontSize = 13.sp)
+                        Text(
+                            text = state.url.orEmpty(),
+                            color = palette.textPrimary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.testTag("phone-setup-url"),
+                        )
+                        received?.let {
+                            Text(text = it, color = palette.focus, fontSize = 13.sp, modifier = Modifier.testTag("phone-setup-received"))
+                        }
+                        Text(text = stringResource(R.string.phone_setup_privacy), color = palette.textMuted, fontSize = 12.sp)
+                    }
+                }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(R.string.phone_setup_help),
-                    color = palette.textMuted,
-                    fontSize = 13.sp,
-                )
-                Text(
-                    text = state.url.orEmpty(),
-                    color = palette.textPrimary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.testTag("phone-setup-url"),
-                )
-                Text(
-                    text = stringResource(R.string.phone_setup_privacy),
-                    color = palette.textMuted,
-                    fontSize = 12.sp,
-                )
-            }
+            TvActionButton(
+                label = stringResource(R.string.phone_setup_stop),
+                onClick = onClose,
+                focusRequester = closeFocus,
+                testTag = "phone-setup-close",
+            )
         }
     }
 }
+
+private val PHONE_DIALOG_WIDTH = 720.dp
+private val PHONE_QR_SIZE = 280.dp
 
 /** A refresh state's last error in words for this build; see [StoredFailureMessage]. */
 internal fun readableImportError(resources: Resources, lastError: String?): String? =

@@ -138,7 +138,8 @@ abstract class GuideDao {
             c.channelId AS channelId,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS name,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
+            COALESCE(preference.channelNumber, c.channelNumber) AS channelNumber,
             c.playlistOrder AS playlistOrder,
             preference.sortOrder AS legacyPosition,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -184,7 +185,8 @@ abstract class GuideDao {
             c.channelId AS channelId,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS name,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
+            COALESCE(preference.channelNumber, c.channelNumber) AS channelNumber,
             c.playlistOrder AS playlistOrder,
             preference.sortOrder AS legacyPosition,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -235,7 +237,8 @@ abstract class GuideDao {
             c.channelId AS channelId,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS name,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
+            COALESCE(preference.channelNumber, c.channelNumber) AS channelNumber,
             c.playlistOrder AS playlistOrder,
             preference.sortOrder AS legacyPosition,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -282,7 +285,8 @@ abstract class GuideDao {
             c.channelId AS channelId,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
+            COALESCE(preference.channelNumber, c.channelNumber) AS channelNumber,
             c.playlistOrder AS playlistOrder,
             preference.sortOrder AS legacyPosition,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -347,7 +351,8 @@ abstract class GuideDao {
             c.channelId AS channelId,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
+            COALESCE(preference.channelNumber, c.channelNumber) AS channelNumber,
             c.playlistOrder AS playlistOrder,
             preference.sortOrder AS legacyPosition,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -407,7 +412,8 @@ abstract class GuideDao {
             c.channelId AS channelId,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle) AS groupTitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
+            COALESCE(preference.channelNumber, c.channelNumber) AS channelNumber,
             c.playlistOrder AS playlistOrder,
             preference.sortOrder AS legacyPosition,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -488,9 +494,10 @@ abstract class GuideDao {
     @Query(
         """
         SELECT 'channel' AS resultType, c.sourceId AS sourceId, c.channelId AS channelId,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
             COALESCE(NULLIF(preference.customName, ''), c.name) AS title,
             COALESCE(NULLIF(preference.customGroupTitle, ''), c.groupTitle, source_state.name) AS subtitle,
-            c.logoUrl AS logoUrl, NULL AS startEpochMillis, NULL AS stopEpochMillis
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl, NULL AS startEpochMillis, NULL AS stopEpochMillis
         FROM organization_visible_channels c
         INNER JOIN iptv_source_state source_state
             ON source_state.sourceId = c.sourceId AND source_state.enabled = 1
@@ -502,8 +509,9 @@ abstract class GuideDao {
             AND COALESCE(NULLIF(preference.customName, ''), c.name) LIKE '%' || :query || '%' COLLATE NOCASE
         UNION ALL
         SELECT 'programme' AS resultType, c.sourceId AS sourceId, c.channelId AS channelId,
+            CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
             p.title AS title, COALESCE(NULLIF(preference.customName, ''), c.name) AS subtitle,
-            c.logoUrl AS logoUrl,
+            COALESCE(NULLIF(preference.customLogoUrl, ''), c.logoUrl) AS logoUrl,
             (p.startEpochMillis + source_state.epgOffsetMinutes * 60000) AS startEpochMillis,
             (p.stopEpochMillis + source_state.epgOffsetMinutes * 60000) AS stopEpochMillis
         FROM tv_programmes p
@@ -650,6 +658,9 @@ abstract class GuideDao {
             c.name AS originalName,
             c.groupTitle AS originalGroupTitle,
             c.logoUrl AS logoUrl,
+            preference.customLogoUrl AS customLogoUrl,
+            c.channelNumber AS providerChannelNumber,
+            preference.channelNumber AS channelNumber,
             c.tvgId AS tvgId,
             c.playlistOrder AS playlistOrder,
             CASE WHEN NULLIF(preference.customGroupTitle, '') IS NOT NULL THEN preference.customOrganizationGroupKey ELSE c.organizationGroupKey END AS organizationGroupKey,
@@ -695,6 +706,10 @@ abstract class GuideDao {
 
     @Query("SELECT * FROM channel_preferences ORDER BY sourceId, channelId")
     abstract suspend fun channelPreferences(): List<ChannelPreferenceEntity>
+
+    /** Which source a channel belongs to, for a preference written before the viewer ever opened it. */
+    @Query("SELECT sourceId FROM iptv_channels WHERE channelId = :channelId LIMIT 1")
+    abstract suspend fun channelSourceId(channelId: String): String?
 
     @Query("DELETE FROM channel_preferences WHERE channelId = :channelId")
     abstract suspend fun deleteChannelPreference(channelId: String)

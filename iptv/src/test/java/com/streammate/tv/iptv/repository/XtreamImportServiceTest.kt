@@ -34,6 +34,7 @@ class XtreamImportServiceTest {
                         logoUrl = "https://images.example/arena.png",
                         streamUrl = "http://provider.example/live/viewer/password/42.ts",
                         playlistOrder = 12,
+                        channelNumber = 12,
                     ),
                 ),
             ),
@@ -48,6 +49,7 @@ class XtreamImportServiceTest {
         assertEquals("arena hd", store.channels.single().normalizedName)
         assertEquals("Sports", store.channels.single().groupTitle)
         assertEquals(12, store.channels.single().playlistOrder)
+        assertEquals(12, store.channels.single().channelNumber)
         assertTrue(store.channels.single().encryptedStreamUrl.startsWith("encrypted:"))
     }
 

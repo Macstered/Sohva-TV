@@ -1,6 +1,10 @@
 package com.streammate.tv.feature.settings
 
 import com.streammate.tv.app.Profiles
+import kotlinx.coroutines.flow.flowOf
+import com.streammate.tv.iptv.repository.GuideRailGroup
+import com.streammate.tv.core.model.LibraryRoom
+import com.streammate.tv.app.ProfileRestriction
 import com.streammate.tv.app.primaryLocale
 import com.streammate.tv.app.SubtitleBackground
 import com.streammate.tv.app.SubtitleTextColor
@@ -197,6 +201,8 @@ fun SettingsScreen(
     onOpenReminderSettings: () -> Unit = {},
     /** After a profile is removed: whatever else it owned, such as watched positions, goes too. */
     onProfileRemoved: suspend (String) -> Unit = {},
+    /** Switches the active profile, past the parental PIN where a restriction asks for it; null switches directly. */
+    onSwitchProfile: ((String) -> Unit)? = null,
 ) {
     val resources = LocalResources.current
     val context = LocalContext.current
@@ -344,6 +350,13 @@ fun SettingsScreen(
     val languageOptions = preferredLanguageOptions()
     val interfaceLanguageChoices = interfaceLanguageOptions()
     val profileDefaultName = stringResource(R.string.profile_default_name)
+    // The profile whose content is being limited: the active one until another is chosen.
+    var contentProfileChoice by remember { mutableStateOf<String?>(null) }
+    val contentProfileId = contentProfileChoice
+        ?.takeIf { id -> id == Profiles.DEFAULT_ID || appPreferences.profiles.any { it.id == id } }
+        ?: appPreferences.activeProfileId
+    val contentProfileName = Profiles.displayName(appPreferences.profiles, contentProfileId, profileDefaultName)
+    val contentRestriction = appPreferences.profileRestrictions[contentProfileId] ?: ProfileRestriction.NONE
     var newProfileName by remember { mutableStateOf("") }
     val interfaceScaleChoices = interfaceScaleOptions()
     fun closePicker(target: SettingsPickerTarget) {
@@ -459,7 +472,10 @@ fun SettingsScreen(
                     SettingsPickerOption(profile.id, profile.name.ifBlank { profileDefaultName }, testTag = "settings-profile-${profile.id}")
                 },
                 selected = appPreferences.activeProfileId,
-                onSelect = { id -> closePicker(target); scope.launch { preferencesRepository.setActiveProfile(id) } },
+                onSelect = { id ->
+                    closePicker(target)
+                    if (onSwitchProfile != null) onSwitchProfile(id) else scope.launch { preferencesRepository.setActiveProfile(id) }
+                },
                 onDismiss = { closePicker(target) },
             )
             SettingsPickerTarget.ProfileRemove -> SettingsPickerDialog(
@@ -477,6 +493,59 @@ fun SettingsScreen(
                 },
                 onDismiss = { closePicker(target) },
             )
+            SettingsPickerTarget.ProfileContent -> SettingsPickerDialog(
+                title = stringResource(R.string.profile_content_title),
+                options = Profiles.withDefault(appPreferences.profiles, profileDefaultName).map { profile ->
+                    SettingsPickerOption(profile.id, profile.name.ifBlank { profileDefaultName }, testTag = "settings-profile-content-${profile.id}")
+                },
+                selected = contentProfileId,
+                onSelect = { id -> closePicker(target); contentProfileChoice = id },
+                onDismiss = { closePicker(target) },
+            )
+            is SettingsPickerTarget.ProfileGroups -> {
+                val room = target.room
+                val ungrouped = stringResource(R.string.profile_content_ungrouped)
+                val organizationRepository = guideRepository.organization
+                val liveGroups by remember(room) {
+                    if (room == LibraryRoom.LIVE) guideRepository.observeRail() else flowOf(emptyList())
+                }.collectAsStateWithLifecycle(initialValue = emptyList())
+                val libraryGroups by remember(room, organizationRepository) {
+                    if (room != LibraryRoom.LIVE && organizationRepository != null) organizationRepository.groupChoices(room) else flowOf(emptyList())
+                }.collectAsStateWithLifecycle(initialValue = emptyList())
+                val sourceNames = sources.associate { it.id to it.name }
+                // One row per group key: the same group under two sources is one choice, named for both.
+                val options = if (room == LibraryRoom.LIVE) {
+                    liveGroups.groupBy(GuideRailGroup::organizationGroupKey).map { (key, rows) ->
+                        SettingsPickerOption(
+                            key,
+                            rows.first().groupTitle ?: ungrouped,
+                            rows.map { it.sourceName }.distinct().joinToString(),
+                            "settings-profile-group-$key",
+                        )
+                    }
+                } else {
+                    libraryGroups.groupBy { it.groupKey }.map { (key, rows) ->
+                        SettingsPickerOption(
+                            key,
+                            rows.firstNotNullOfOrNull { it.name?.takeIf(String::isNotBlank) } ?: ungrouped,
+                            rows.mapNotNull { sourceNames[it.sourceId] }.distinct().joinToString(),
+                            "settings-profile-group-$key",
+                        )
+                    }
+                }
+                val allowed = contentRestriction.allowed(room)
+                SettingsMultiPickerDialog(
+                    title = stringResource(R.string.profile_content_picker_title, contentProfileName),
+                    options = options,
+                    selected = allowed,
+                    onToggle = { key ->
+                        val next = if (key in allowed) allowed - key else allowed + key
+                        scope.launch { preferencesRepository.setAllowedGroups(contentProfileId, room, next) }
+                    },
+                    onDismiss = { closePicker(target) },
+                    emptyText = stringResource(R.string.profile_content_none_yet),
+                )
+            }
             SettingsPickerTarget.Reconnect -> SettingsPickerDialog(
                 title = stringResource(R.string.playback_reconnect_title),
                 options = PlaybackReconnectPolicy.entries.map { policy ->
@@ -790,6 +859,14 @@ fun SettingsScreen(
                         focusRequester = rowFocus(SettingsPickerTarget.InterfaceScale.key),
                         testTag = "settings-interface-scale",
                     )
+                    SettingsSwitchRow(
+                        title = stringResource(R.string.channel_numbers_title),
+                        subtitle = stringResource(R.string.channel_numbers_help),
+                        checked = appPreferences.showChannelNumbers,
+                        onCheckedChange = { on -> scope.launch { preferencesRepository.setShowChannelNumbers(on) } },
+                        icon = TvIcons.Channels,
+                        testTag = "settings-channel-numbers",
+                    )
                     SettingsValueRow(
                         title = stringResource(R.string.sports_timezone_title),
                         subtitle = stringResource(R.string.sports_timezone_help),
@@ -877,6 +954,49 @@ fun SettingsScreen(
                             onCheckedChange = { ask -> scope.launch { preferencesRepository.setAskProfileAtStart(ask) } },
                             testTag = "settings-profile-ask",
                         )
+                    }
+                    if (profileCount > 1) {
+                        // What a profile may see: the groups chosen here are
+                        // all its guide, libraries and search show.
+                        SettingsValueRow(
+                            title = stringResource(R.string.profile_content_title),
+                            subtitle = stringResource(R.string.profile_content_help),
+                            value = contentProfileName,
+                            icon = TvIcons.Lock,
+                            onClick = { openPicker = SettingsPickerTarget.ProfileContent },
+                            focusRequester = rowFocus(SettingsPickerTarget.ProfileContent.key),
+                            testTag = "settings-profile-content",
+                        )
+                        LibraryRoom.entries.forEach { room ->
+                            val target = SettingsPickerTarget.ProfileGroups(room)
+                            val allowed = contentRestriction.allowed(room)
+                            SettingsValueRow(
+                                title = stringResource(
+                                    when (room) {
+                                        LibraryRoom.LIVE -> R.string.profile_content_live
+                                        LibraryRoom.MOVIES -> R.string.profile_content_movies
+                                        LibraryRoom.SERIES -> R.string.profile_content_series
+                                    },
+                                ),
+                                value = if (allowed.isEmpty()) stringResource(R.string.profile_content_all)
+                                else pluralStringResource(R.plurals.profile_content_count, allowed.size, allowed.size),
+                                onClick = { openPicker = target },
+                                focusRequester = rowFocus(target.key),
+                                testTag = "settings-profile-groups-${room.name.lowercase()}",
+                            )
+                        }
+                        if (appPreferences.profileRestrictions.isNotEmpty()) {
+                            Text(
+                                text = stringResource(
+                                    if (appPreferences.parentalPinConfigured) R.string.profile_content_pin_ready else R.string.profile_content_pin_missing,
+                                ),
+                                color = if (appPreferences.parentalPinConfigured) palette.textMuted else palette.danger,
+                                fontSize = 13.sp,
+                                modifier = Modifier
+                                    .padding(horizontal = SETTINGS_ROW_PADDING, vertical = 6.dp)
+                                    .testTag("settings-profile-content-pin"),
+                            )
+                        }
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = SETTINGS_ROW_PADDING, vertical = 10.dp),
@@ -1700,9 +1820,12 @@ fun SettingsScreen(
                 }
             }
             if (phoneSetup.running || phoneSetup.noNetwork) {
-            item {
-                PhoneSetupPanel(state = phoneSetup)
-            }
+                PhoneSetupDialog(
+                    state = phoneSetup,
+                    title = stringResource(R.string.phone_setup_title),
+                    onClose = phoneSetupActions.onStop,
+                    received = phoneSetup.lastSourceName?.let { stringResource(R.string.phone_setup_received, it) },
+                )
             }
             }
             if (sourcePageOpen) {

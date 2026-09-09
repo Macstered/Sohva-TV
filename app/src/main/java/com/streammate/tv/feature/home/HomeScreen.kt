@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import com.streammate.tv.iptv.R as IptvR
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -103,6 +104,8 @@ fun HomeScreen(
     onSeries: () -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
+    /** Opens the who-is-watching page; null while the household has one profile. */
+    onProfiles: (() -> Unit)? = null,
     onPlayChannel: (String) -> Unit,
     onPlayVod: (String, Long) -> Unit,
 ) {
@@ -292,6 +295,7 @@ fun HomeScreen(
                 onSeries = onSeries,
                 onSearch = onSearch,
                 onSettings = onSettings,
+                onProfiles = onProfiles,
                 modifier = Modifier.zIndex(1f),
             )
         }
@@ -778,6 +782,7 @@ private fun HomeRail(
     onSeries: () -> Unit,
     onSearch: () -> Unit,
     onSettings: () -> Unit,
+    onProfiles: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val palette = StreamMateThemeTokens.palette
@@ -789,12 +794,14 @@ private fun HomeRail(
     )
     val scrim by animateFloatAsState(if (expanded) 0.97f else 0.70f, label = "rail scrim")
     val navigation = stringResource(R.string.home_navigation)
-    val destinations = listOf(
+    val destinations = listOfNotNull(
         HomeDestination("live", R.string.home_live_tv, TvIcons.Guide, onLiveTv),
         HomeDestination("sportmate", R.string.home_sportmate, TvIcons.Target, onSportMate),
         HomeDestination("movies", R.string.home_movies, TvIcons.Play, onMovies),
         HomeDestination("series", R.string.home_series, TvIcons.Epg, onSeries),
         HomeDestination("search", R.string.home_search, TvIcons.Search, onSearch),
+        // Who is watching sits beside Settings once there is a choice to make.
+        onProfiles?.let { HomeDestination("profiles", IptvR.string.profile_active_title, TvIcons.Star, it) },
         HomeDestination("settings", R.string.home_settings, TvIcons.Settings, onSettings),
     )
     Column(

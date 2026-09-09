@@ -1,6 +1,7 @@
 package com.streammate.tv.app
 
 import androidx.datastore.preferences.core.Preferences
+import com.streammate.tv.core.model.LibraryRoom
 import kotlinx.coroutines.flow.first
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -38,6 +39,8 @@ data class AppPreferences(
     val activeProfileId: String = Profiles.DEFAULT_ID,
     /** Whether the app asks who is watching at start once there is more than one profile. */
     val askProfileAtStart: Boolean = true,
+    /** What each profile may see, by profile id; only restricted profiles appear. See [ProfileRestriction]. */
+    val profileRestrictions: Map<String, ProfileRestriction> = emptyMap(),
     val remoteChannelKeyMode: RemoteChannelKeyMode = RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
     /** What each remote button does while watching; see [RemoteMappings]. */
     val remoteMappings: RemoteMappings = RemoteMappings.DEFAULTS,
@@ -51,6 +54,8 @@ data class AppPreferences(
     val pictureInPictureEnabled: Boolean = false,
     /** Whether the channel editor and the library manager list what is hidden; off, they show only what the viewer sees. */
     val editorsShowHidden: Boolean = true,
+    /** Whether the guide shows channel numbers: the playlist's own, or the viewer's from Channel management. */
+    val showChannelNumbers: Boolean = true,
     val followedSports: Set<SportType> = SportsFollowDefaults.sports,
     val followedCompetitionKeys: Set<String> = SportsFollowDefaults.competitionKeys,
     val playlistEpgRefreshInterval: PlaylistEpgRefreshInterval = PlaylistEpgRefreshInterval.DEFAULT,
@@ -236,6 +241,7 @@ class AppPreferencesRepository(
             profiles = Profiles.decode(values[PROFILES]),
             activeProfileId = profileId,
             askProfileAtStart = values[ASK_PROFILE_AT_START] ?: true,
+            profileRestrictions = restrictionsIn(values),
             remoteChannelKeyMode = values[REMOTE_CHANNEL_KEY_MODE]
                 ?.let { stored -> RemoteChannelKeyMode.entries.firstOrNull { it.name == stored } }
                 ?: RemoteChannelKeyMode.DPAD_AND_CHANNEL_KEYS,
@@ -252,6 +258,7 @@ class AppPreferencesRepository(
             autoPlayNextEpisodeEnabled = values[AUTO_PLAY_NEXT_EPISODE] ?: true,
             pictureInPictureEnabled = values[PICTURE_IN_PICTURE] ?: false,
             editorsShowHidden = values[EDITORS_SHOW_HIDDEN] ?: true,
+            showChannelNumbers = values[SHOW_CHANNEL_NUMBERS] ?: true,
             followedSports = values[FOLLOWED_SPORTS]
                 ?.mapNotNull { stored -> SportType.entries.firstOrNull { it.name == stored } }
                 ?.toSet()
@@ -369,6 +376,7 @@ class AppPreferencesRepository(
             values.remove(recentChannelIdsKey(profileId))
             values.remove(lastChannelIdKey(profileId))
             values.remove(lockedChannelIdsKey(profileId))
+            LibraryRoom.entries.forEach { room -> values.remove(allowedGroupsKey(profileId, room)) }
             if (values[ACTIVE_PROFILE_ID] == profileId) values.remove(ACTIVE_PROFILE_ID)
         }
     }
@@ -376,6 +384,25 @@ class AppPreferencesRepository(
     suspend fun setAskProfileAtStart(ask: Boolean) {
         context.sportMatePreferences.edit { values -> values[ASK_PROFILE_AT_START] = ask }
     }
+
+    /** The groups [profileId] may see in [room]; an empty set lifts the restriction for that room. */
+    suspend fun setAllowedGroups(profileId: String, room: LibraryRoom, groupKeys: Set<String>) {
+        context.sportMatePreferences.edit { values ->
+            val key = allowedGroupsKey(profileId, room)
+            if (groupKeys.isEmpty()) values.remove(key) else values[key] = groupKeys
+        }
+    }
+
+    private fun restrictionOf(values: Preferences, profileId: String): ProfileRestriction = ProfileRestriction(
+        live = values[allowedGroupsKey(profileId, LibraryRoom.LIVE)].orEmpty(),
+        movies = values[allowedGroupsKey(profileId, LibraryRoom.MOVIES)].orEmpty(),
+        series = values[allowedGroupsKey(profileId, LibraryRoom.SERIES)].orEmpty(),
+    )
+
+    private fun restrictionsIn(values: Preferences): Map<String, ProfileRestriction> =
+        (listOf(Profiles.DEFAULT_ID) + Profiles.decode(values[PROFILES]).map { it.id }).distinct()
+            .associateWith { restrictionOf(values, it) }
+            .filterValues { it.restricted }
 
     /** What [profileId] keeps, for a backup. */
     suspend fun profileData(profileId: String): ProfileData {
@@ -386,6 +413,7 @@ class AppPreferencesRepository(
             recentChannelIds = values[recentChannelIdsKey(profileId)]?.split(RECENT_SEPARATOR)?.filter(String::isNotBlank).orEmpty(),
             lastChannelId = values[lastChannelIdKey(profileId)],
             lockedChannelIds = values[lockedChannelIdsKey(profileId)]?.toSet().orEmpty(),
+            restriction = restrictionOf(values, profileId),
         )
     }
 
@@ -398,6 +426,11 @@ class AppPreferencesRepository(
                 values[recentChannelIdsKey(profileId)] = kept.recentChannelIds.take(MAX_RECENT_CHANNELS).joinToString(RECENT_SEPARATOR)
                 kept.lastChannelId?.let { values[lastChannelIdKey(profileId)] = it }
                 if (parentalPinConfigured) values[lockedChannelIdsKey(profileId)] = kept.lockedChannelIds
+                LibraryRoom.entries.forEach { room ->
+                    val key = allowedGroupsKey(profileId, room)
+                    val keys = kept.restriction.allowed(room)
+                    if (keys.isEmpty()) values.remove(key) else values[key] = keys
+                }
             }
         }
     }
@@ -510,6 +543,10 @@ class AppPreferencesRepository(
 
     suspend fun setEditorsShowHidden(show: Boolean) {
         context.sportMatePreferences.edit { values -> values[EDITORS_SHOW_HIDDEN] = show }
+    }
+
+    suspend fun setShowChannelNumbers(show: Boolean) {
+        context.sportMatePreferences.edit { values -> values[SHOW_CHANNEL_NUMBERS] = show }
     }
 
     suspend fun setFollowedSport(sport: SportType, followed: Boolean) {
@@ -656,6 +693,7 @@ class AppPreferencesRepository(
             values[AUTO_PLAY_NEXT_EPISODE] = restored.autoPlayNextEpisodeEnabled
             values[PICTURE_IN_PICTURE] = restored.pictureInPictureEnabled
             values[EDITORS_SHOW_HIDDEN] = restored.editorsShowHidden
+            values[SHOW_CHANNEL_NUMBERS] = restored.showChannelNumbers
             values[FOLLOWED_SPORTS] = restored.followedSports.mapTo(mutableSetOf()) { it.name }
             values[FOLLOWED_COMPETITIONS] = restored.followedCompetitionKeys
             values[PLAYLIST_EPG_REFRESH_INTERVAL] = restored.playlistEpgRefreshInterval.name
@@ -692,6 +730,8 @@ class AppPreferencesRepository(
     private companion object {
         val TIME_ZONE = stringPreferencesKey("time_zone")
         val PROFILES = stringPreferencesKey("profiles")
+        fun allowedGroupsKey(profileId: String, room: LibraryRoom) =
+            stringSetPreferencesKey(Profiles.keyName("allowed_groups_${room.name.lowercase()}", profileId))
         val ACTIVE_PROFILE_ID = stringPreferencesKey("active_profile_id")
         val ASK_PROFILE_AT_START = booleanPreferencesKey("ask_profile_at_start")
         val LAST_GUIDE_SOURCE_ID = stringPreferencesKey("last_guide_source_id")
@@ -707,6 +747,7 @@ class AppPreferencesRepository(
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
         val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
         val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")
+        val SHOW_CHANNEL_NUMBERS = booleanPreferencesKey("show_channel_numbers")
         val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")
         val FOLLOWED_COMPETITIONS = stringSetPreferencesKey("followed_competitions")
         val PLAYLIST_EPG_REFRESH_INTERVAL = stringPreferencesKey("playlist_epg_refresh_interval")

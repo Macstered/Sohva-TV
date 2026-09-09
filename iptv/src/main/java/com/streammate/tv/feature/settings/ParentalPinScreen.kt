@@ -37,6 +37,8 @@ fun ParentalPinScreen(
     onVerify: suspend (String) -> Boolean,
     onUnlocked: () -> Unit,
     onBack: () -> Unit,
+    /** What is behind the PIN: a locked channel unless the caller says otherwise. */
+    heading: String = stringResource(R.string.pin_locked_channel),
 ) {
     val palette = StreamMateThemeTokens.palette
     val initialMessage = if (pinConfigured) {
@@ -60,7 +62,7 @@ fun ParentalPinScreen(
         ) {
             SohvaTvBrand(modifier = Modifier.align(Alignment.Start))
             Text(
-                text = stringResource(R.string.pin_locked_channel),
+                text = heading,
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Black,
             )

@@ -63,6 +63,8 @@ import com.streammate.tv.feature.settings.ChannelEditorScreen
 import com.streammate.tv.feature.settings.LibraryManagerScreen
 import com.streammate.tv.core.model.LibraryRoom
 import com.streammate.tv.feature.settings.ParentalPinScreen
+import android.widget.Toast
+import com.streammate.tv.iptv.R as IptvR
 import com.streammate.tv.feature.today.TodayScreen
 import com.streammate.tv.feature.today.TodayViewModel
 import com.streammate.tv.feature.today.sportMateStatusSummary
@@ -97,6 +99,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
     val saveableStateHolder = rememberSaveableStateHolder()
     var startupApplied by remember { mutableStateOf(false) }
     // Answered once per process: a household with several profiles is asked who is watching.
+    var pendingProfile by remember { mutableStateOf<Profile?>(null) }
     var profileChosen by rememberSaveable { mutableStateOf(false) }
     var guideManagementReturn by remember { mutableStateOf(false) }
     var guideManagedGroup by remember { mutableStateOf<String?>(null) }
@@ -170,9 +173,10 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
     val appUpdateState by container.appUpdateChecker.state.collectAsStateWithLifecycle()
     val installedNotes by container.appUpdateChecker.installedNotes.collectAsStateWithLifecycle()
     val phoneSetupState by container.phoneSetupServer.state.collectAsStateWithLifecycle()
-    // The phone page lives only while Settings is open.
+    // The phone page lives only while the screen that opened it is on: Settings
+    // for a source, Channel management for a logo. Leaving either closes it.
     LaunchedEffect(destination) {
-        if (destination != Destination.Settings) container.phoneSetupServer.stop()
+        container.phoneSetupServer.stop()
     }
     val phoneSetupQr = remember(phoneSetupState) {
         (phoneSetupState as? PhoneSetupState.Running)?.let { running -> qrCodeBitmap(running.url) }
@@ -185,6 +189,25 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
     }
     fun navigateTo(next: Destination) {
         if (next != destination) backStack = backStack + next
+    }
+    // Settings is where a restriction is set and lifted, so a restricted
+    // profile reaches it only past the parental PIN.
+    fun openSettings() {
+        if (appPreferences.activeRestriction.restricted && appPreferences.parentalPinConfigured) {
+            navigateTo(Destination.ProfileGate(profileId = null, thenSettings = true))
+        } else {
+            navigateTo(Destination.Settings)
+        }
+    }
+    fun switchProfile(profileId: String) {
+        if (Profiles.entryNeedsPin(profileId, appPreferences.profileRestrictions, appPreferences.parentalPinConfigured)) {
+            navigateTo(Destination.ProfileGate(profileId = profileId, thenSettings = false))
+        } else {
+            coroutineScope.launch { container.preferencesRepository.setActiveProfile(profileId) }
+        }
+    }
+    fun refuseForProfile() {
+        Toast.makeText(context, resources.getString(IptvR.string.profile_content_blocked), Toast.LENGTH_SHORT).show()
     }
     // A reminder's notification asks for a channel or a match card. Taken
     // once the start-up screens are in place, so it lands on top of them.
@@ -227,6 +250,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
         if (rememberForGuide) guideFocusChannelId = channelId
         rememberPreviousChannel(channelId)
         coroutineScope.launch {
+            if (!container.guideRepository.channelAllowed(channelId)) return@launch refuseForProfile()
             if (channelId in appPreferences.lockedChannelIds) {
                 val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
                 navigateTo(
@@ -247,6 +271,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
         guideFocusChannelId = channelId
         rememberPreviousChannel(channelId)
         coroutineScope.launch {
+            if (!container.guideRepository.channelAllowed(channelId)) return@launch refuseForProfile()
             if (channelId in appPreferences.lockedChannelIds) {
                 val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
                 navigateTo(
@@ -268,6 +293,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
         guideFocusChannelId = channelId
         rememberPreviousChannel(channelId)
         coroutineScope.launch {
+            if (!container.guideRepository.channelAllowed(channelId)) return@launch refuseForProfile()
             if (channelId in appPreferences.lockedChannelIds) {
                 val channelName = container.guideRepository.activeChannel(channelId)?.name ?: genericChannelName
                 backStack = backStack + Destination.PinGate(channelId, channelName, replacePlayer = true)
@@ -458,14 +484,34 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 Text(text = stringResource(R.string.app_name))
             }
         } else if (!profileChosen) {
-            ProfilePickerScreen(
-                profiles = appPreferences.profiles,
-                activeProfileId = appPreferences.activeProfileId,
-                onChoose = { profile ->
-                    profileChosen = true
-                    coroutineScope.launch { container.preferencesRepository.setActiveProfile(profile.id) }
-                },
-            )
+            val gated = pendingProfile
+            if (gated != null) {
+                ParentalPinScreen(
+                    heading = stringResource(IptvR.string.pin_profile_gate),
+                    channelName = gated.name.ifBlank { stringResource(IptvR.string.profile_default_name) },
+                    pinConfigured = appPreferences.parentalPinConfigured,
+                    onVerify = container.secretSettingsStore::verifyParentalPin,
+                    onUnlocked = {
+                        pendingProfile = null
+                        profileChosen = true
+                        coroutineScope.launch { container.preferencesRepository.setActiveProfile(gated.id) }
+                    },
+                    onBack = { pendingProfile = null },
+                )
+            } else {
+                ProfilePickerScreen(
+                    profiles = appPreferences.profiles,
+                    activeProfileId = appPreferences.activeProfileId,
+                    onChoose = { profile ->
+                        if (Profiles.entryNeedsPin(profile.id, appPreferences.profileRestrictions, appPreferences.parentalPinConfigured)) {
+                            pendingProfile = profile
+                        } else {
+                            profileChosen = true
+                            coroutineScope.launch { container.preferencesRepository.setActiveProfile(profile.id) }
+                        }
+                    },
+                )
+            }
         } else when (val current = destination) {
             Destination.Home -> HomeScreen(
                 guideRepository = container.guideRepository,
@@ -479,7 +525,12 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 onMovies = { navigateTo(Destination.Catalogue(CatalogueMode.MOVIES)) },
                 onSeries = { navigateTo(Destination.Catalogue(CatalogueMode.SERIES)) },
                 onSearch = { navigateTo(Destination.Search) },
-                onSettings = { navigateTo(Destination.Settings) },
+                onSettings = ::openSettings,
+                onProfiles = if (Profiles.withDefault(appPreferences.profiles, "").size > 1) {
+                    { navigateTo(Destination.ProfilePicker) }
+                } else {
+                    null
+                },
                 onPlayChannel = ::playChannel,
                 onPlayVod = ::playVodFromHome,
             )
@@ -590,7 +641,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                     onRefreshDetails = { eventId -> todayViewModel.loadEventDetails(eventId, force = true) },
                     onMatchDecision = todayViewModel::setMatchDecision,
                     onGuide = { navigateTo(Destination.Guide) },
-                    onSettings = { navigateTo(Destination.Settings) },
+                    onSettings = ::openSettings,
                     // Not for the guide: back from the stream returns here,
                     // to the match card it was chosen from.
                     onPlay = { channelId ->
@@ -643,7 +694,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                     )
                 },
                 onBack = ::handleBack,
-                onSettings = { navigateTo(Destination.Settings) },
+                onSettings = ::openSettings,
                 onChannels = { navigateTo(Destination.ChannelEditor) },
                 onManageGroups = { group, source -> guideManagementReturn = true; guideManagedGroup = group; navigateTo(Destination.LibraryManager(LibraryRoom.LIVE, group, source)) },
                 onPlay = { channelId ->
@@ -712,6 +763,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 reminderOpenAllowed = reminderOpenAllowed,
                 onOpenReminderSettings = { ReminderOverlay.openSettings(context) },
                 onProfileRemoved = { id -> container.catalogueRepository.forgetProfile(id) },
+                onSwitchProfile = ::switchProfile,
                 onBack = ::handleBack,
             )
             Destination.LegalInformation -> LegalInformationScreen(onBack = ::handleBack)
@@ -728,6 +780,36 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
             Destination.ChannelEditor -> ChannelEditorScreen(
                 guideRepository = container.guideRepository,
                 preferencesRepository = container.preferencesRepository,
+                onBack = ::handleBack,
+                phoneLogo = phoneSetupState.toUiState(phoneSetupQr),
+                onStartLogoFromPhone = { channel ->
+                    container.phoneSetupServer.start(PhoneSetupMode.Logo(channel.id, channel.displayName))
+                },
+                onStopLogoFromPhone = { container.phoneSetupServer.stop() },
+            )
+            Destination.ProfilePicker -> ProfilePickerScreen(
+                profiles = appPreferences.profiles,
+                activeProfileId = appPreferences.activeProfileId,
+                onChoose = { profile ->
+                    backStack = backStack.dropLast(1)
+                    if (profile.id != appPreferences.activeProfileId) switchProfile(profile.id)
+                },
+            )
+            is Destination.ProfileGate -> ParentalPinScreen(
+                heading = stringResource(if (current.thenSettings) IptvR.string.pin_settings_gate else IptvR.string.pin_profile_gate),
+                channelName = Profiles.displayName(
+                    appPreferences.profiles,
+                    current.profileId ?: appPreferences.activeProfileId,
+                    stringResource(IptvR.string.profile_default_name),
+                ),
+                pinConfigured = appPreferences.parentalPinConfigured,
+                onVerify = container.secretSettingsStore::verifyParentalPin,
+                onUnlocked = {
+                    coroutineScope.launch {
+                        current.profileId?.let { container.preferencesRepository.setActiveProfile(it) }
+                        backStack = if (current.thenSettings) backStack.dropLast(1) + Destination.Settings else backStack.dropLast(1)
+                    }
+                },
                 onBack = ::handleBack,
             )
             is Destination.PinGate -> ParentalPinScreen(
@@ -757,6 +839,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
             )
             is Destination.Player -> PlayerScreen(
                 pictureInPicture = pictureInPicture.active,
+                showChannelNumbers = appPreferences.showChannelNumbers,
                 channelId = current.channelId,
                 catchupStartEpochMillis = current.catchupStartEpochMillis,
                 catchupStopEpochMillis = current.catchupStopEpochMillis,
@@ -798,6 +881,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
             )
             is Destination.VodPlayer -> PlayerScreen(
                 pictureInPicture = pictureInPicture.active,
+                showChannelNumbers = appPreferences.showChannelNumbers,
                 channelId = current.contentKey,
                 vodContentKey = current.contentKey,
                 resumePositionMillis = current.resumePositionMillis,
@@ -847,6 +931,10 @@ private sealed interface Destination {
     data class Catalogue(val mode: CatalogueMode) : Destination
     data class MovieDetails(val movie: VodMovie) : Destination
     data class SeriesDetails(val series: VodSeries) : Destination
+    /** Who is watching, opened from the home rail; a choice returns to the page it was opened from. */
+    data object ProfilePicker : Destination
+    /** The parental PIN before switching to [profileId], or before Settings when the active profile is restricted. */
+    data class ProfileGate(val profileId: String?, val thenSettings: Boolean) : Destination
     data class PinGate(
         val channelId: String,
         val channelName: String,

@@ -635,6 +635,7 @@ private fun RowScope.PlayerInlineAction(
 @Composable
 internal fun ChannelBrowserOverlay(
     channels: List<GuideChannel>,
+    showNumbers: Boolean = true,
     selectedIndex: Int,
     groups: List<String>,
     groupCounts: Map<String, Int>,
@@ -675,6 +676,7 @@ internal fun ChannelBrowserOverlay(
     ) {
         Row(modifier = Modifier.fillMaxHeight()) {
             ChannelBrowserPane(
+                showNumbers = showNumbers,
                 channels = channels,
                 selectedIndex = selectedIndex,
                 listState = listState,
@@ -777,6 +779,7 @@ private fun ChannelGroupBrowserPane(
 @Composable
 private fun ChannelBrowserPane(
     channels: List<GuideChannel>,
+    showNumbers: Boolean,
     selectedIndex: Int,
     listState: LazyListState,
     active: Boolean,
@@ -843,6 +846,17 @@ private fun ChannelBrowserPane(
                         .testTag("player-channel-${channel.id}"),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    if (showNumbers) {
+                        Text(
+                            text = (channel.channelNumber ?: (index + 1)).toString(),
+                            color = if (activeSelection) palette.background.copy(alpha = 0.7f) else palette.textDim,
+                            fontSize = typography.caption.fontSize,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.End,
+                            maxLines = 1,
+                            modifier = Modifier.widthIn(min = 28.dp).padding(end = 8.dp),
+                        )
+                    }
                     PlayerArtwork(channel.logoUrl, channel.name, size = CHANNEL_ROW_LOGO)
                     Column(Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(

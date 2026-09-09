@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.settings
 
+import com.streammate.tv.core.model.LibraryRoom
 import com.streammate.tv.app.SubtitleBackground
 import com.streammate.tv.app.SubtitleTextColor
 import com.streammate.tv.app.SubtitleTextSize
@@ -41,6 +42,8 @@ internal sealed class SettingsPickerTarget(val key: String) {
     object SubtitleBackgroundChoice : SettingsPickerTarget("subtitle-background")
     object ProfileChoice : SettingsPickerTarget("profile")
     object ProfileRemove : SettingsPickerTarget("profile-remove")
+    object ProfileContent : SettingsPickerTarget("profile-content")
+    data class ProfileGroups(val room: LibraryRoom) : SettingsPickerTarget("profile-groups-" + room.name.lowercase())
     object Reconnect : SettingsPickerTarget("reconnect")
     data class Language(val slot: PreferredLanguageSlot) : SettingsPickerTarget("language-" + slot.name.lowercase())
     object MetadataLanguage : SettingsPickerTarget("metadata-language")
@@ -87,6 +90,7 @@ internal fun interfaceLanguageOptions(): List<Pair<String?, String>> = listOf(
     "pt" to stringResource(R.string.interface_language_pt),
     "de" to stringResource(R.string.interface_language_de),
     "sv" to stringResource(R.string.interface_language_sv),
+    "it" to stringResource(R.string.interface_language_it),
 )
 
 internal tailrec fun Context.findActivity(): Activity? = when (this) {

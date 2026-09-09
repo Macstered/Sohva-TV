@@ -795,6 +795,8 @@ fun TvListRow(
     enabled: Boolean = true,
     dense: Boolean = false,
     divider: Boolean = false,
+    /** Lines the label may take before it is cut; the catalogue rail allows two, so a long group name is read whole. */
+    labelLines: Int = 1,
     focusRequester: FocusRequester? = null,
     testTag: String? = null,
 ) {
@@ -862,7 +864,7 @@ fun TvListRow(
                         fontSize = labelStyle.fontSize,
                         lineHeight = labelStyle.lineHeight,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
+                        maxLines = labelLines,
                         overflow = TextOverflow.Ellipsis,
                     )
                     supporting?.let {

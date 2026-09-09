@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -75,6 +76,10 @@ fun ChannelEditorScreen(
     guideRepository: GuideRepository,
     preferencesRepository: AppPreferencesRepository,
     onBack: () -> Unit,
+    /** The phone page while a logo is being sent for the selected channel, and how to open and close it. */
+    phoneLogo: PhoneSetupUiState = PhoneSetupUiState(),
+    onStartLogoFromPhone: ((EditableChannel) -> Unit)? = null,
+    onStopLogoFromPhone: () -> Unit = {},
 ) {
     val palette = StreamMateThemeTokens.palette
     val channels by guideRepository.observeEditableChannels()
@@ -99,6 +104,7 @@ fun ChannelEditorScreen(
     val addedToListMessage = stringResource(R.string.channels_added_to_list)
     val removedFromListMessage = stringResource(R.string.channels_removed_from_list)
     val listDeletedMessage = stringResource(R.string.channels_list_deleted)
+    val logoReceivedMessage = stringResource(R.string.channels_logo_received)
     val firstFocus = remember { FocusRequester() }
     var selectedChannelId by remember { mutableStateOf<String?>(null) }
     var selectedSourceId by remember { mutableStateOf<String?>(null) }
@@ -107,6 +113,13 @@ fun ChannelEditorScreen(
     var searchQuery by remember { mutableStateOf("") }
     var newListName by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<String?>(null) }
+    // A logo arriving from the phone is the end of that page's job.
+    LaunchedEffect(phoneLogo.receivedCount) {
+        if (phoneLogo.receivedCount > 0) {
+            status = logoReceivedMessage
+            onStopLogoFromPhone()
+        }
+    }
 
     val sources = channels.distinctBy(EditableChannel::sourceId)
     val sourceChannels = channels.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
@@ -287,13 +300,18 @@ fun ChannelEditorScreen(
                     locked = selectedChannel?.id?.let { it in appPreferences.lockedChannelIds } == true,
                     parentalPinConfigured = appPreferences.parentalPinConfigured,
                     status = status,
-                    onSave = { channel, name, group, manualEpg ->
+                    phoneLogo = phoneLogo,
+                    onLogoFromPhone = onStartLogoFromPhone,
+                    onStopLogoFromPhone = onStopLogoFromPhone,
+                    onSave = { channel, name, group, manualEpg, logoUrl, number ->
                         coroutineScope.launch {
                             guideRepository.updateChannel(
                                 channel = channel,
                                 customName = name,
                                 customGroupTitle = group,
                                 manualXmltvChannelId = manualEpg,
+                                customLogoUrl = logoUrl,
+                                channelNumber = number,
                             )
                             status = savedMessage
                         }
@@ -422,6 +440,16 @@ private fun ChannelListItem(
             .padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        channel.displayChannelNumber?.let { number ->
+            Text(
+                text = number.toString(),
+                color = palette.textMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.widthIn(min = 22.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+        }
         ChannelEditorLogo(channel)
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -458,7 +486,10 @@ private fun ChannelEditor(
     locked: Boolean,
     parentalPinConfigured: Boolean,
     status: String?,
-    onSave: (EditableChannel, String?, String?, String?) -> Unit,
+    phoneLogo: PhoneSetupUiState,
+    onLogoFromPhone: ((EditableChannel) -> Unit)?,
+    onStopLogoFromPhone: () -> Unit,
+    onSave: (EditableChannel, String?, String?, String?, String?, Int?) -> Unit,
     onToggleHidden: (EditableChannel) -> Unit,
     onToggleLocked: (EditableChannel, Boolean) -> Unit,
     /** Arrows mean nothing while the list is sorted by name. */
@@ -483,6 +514,10 @@ private fun ChannelEditor(
     var customGroup by remember(channel.id, channel.customGroupTitle) { mutableStateOf(channel.customGroupTitle.orEmpty()) }
     var manualEpg by remember(channel.id, channel.manualXmltvChannelId) {
         mutableStateOf(channel.manualXmltvChannelId)
+    }
+    var customLogo by remember(channel.id, channel.customLogoUrl) { mutableStateOf(channel.customLogoUrl.orEmpty()) }
+    var customNumber by remember(channel.id, channel.channelNumber) {
+        mutableStateOf(channel.channelNumber?.toString().orEmpty())
     }
     var selectedListId by remember(channel.id) { mutableStateOf<String?>(null) }
     LaunchedEffect(customLists.map(CustomChannelList::id)) {
@@ -542,6 +577,50 @@ private fun ChannelEditor(
             editOnClickOnly = true,
             keyboardType = KeyboardType.Text,
         )
+        Spacer(Modifier.height(8.dp))
+        TvUrlField(
+            value = customLogo,
+            onValueChange = { customLogo = it.take(MAX_URL_LENGTH) },
+            label = stringResource(R.string.channels_logo_url),
+            modifier = Modifier.fillMaxWidth(),
+            testTag = "channel-editor-logo-url",
+            editOnClickOnly = true,
+        )
+        Spacer(Modifier.height(8.dp))
+        TvUrlField(
+            value = customNumber,
+            onValueChange = { value -> customNumber = value.filter(Char::isDigit).take(MAX_NUMBER_DIGITS) },
+            label = stringResource(R.string.channels_number),
+            modifier = Modifier.fillMaxWidth(),
+            testTag = "channel-editor-number",
+            editOnClickOnly = true,
+            keyboardType = KeyboardType.Number,
+        )
+        Text(
+            text = channel.providerChannelNumber?.let { stringResource(R.string.channels_playlist_number, it) }
+                ?: stringResource(R.string.channels_playlist_number_none),
+            color = palette.textMuted,
+            fontSize = 12.sp,
+        )
+        if (onLogoFromPhone != null) {
+            // Typing an address with a remote is the hard way; the phone that
+            // set the playlist up can send a picture from its own library.
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                TvActionButton(
+                    label = stringResource(R.string.channels_logo_from_phone),
+                    onClick = { onLogoFromPhone(channel) },
+                    testTag = "channel-editor-logo-phone",
+                )
+            }
+            if (phoneLogo.running || phoneLogo.noNetwork) {
+                PhoneSetupDialog(
+                    state = phoneLogo,
+                    title = stringResource(R.string.phone_setup_page_logo_title, channel.displayName),
+                    onClose = onStopLogoFromPhone,
+                )
+            }
+        }
         Spacer(Modifier.height(10.dp))
         Text(text = stringResource(R.string.channels_epg_mapping), fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Text(
@@ -596,7 +675,7 @@ private fun ChannelEditor(
             TvActionButton(
                 label = stringResource(R.string.action_save),
                 icon = TvIcons.Check,
-                onClick = { onSave(channel, customName, customGroup, manualEpg) },
+                onClick = { onSave(channel, customName, customGroup, manualEpg, customLogo, customNumber.trim().toIntOrNull()) },
                 testTag = "channel-editor-save",
             )
             TvActionButton(
@@ -636,11 +715,11 @@ private fun ChannelEditorLogo(channel: EditableChannel, size: Int = 38) {
         modifier = Modifier.size(size.dp).background(palette.surfaceRaised, RoundedCornerShape(7.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        if (channel.logoUrl.isNullOrBlank()) {
+        if (channel.displayLogoUrl.isNullOrBlank()) {
             Text(text = channel.displayName.take(2).uppercase(), color = palette.focus, fontWeight = FontWeight.Black)
         } else {
             AsyncImage(
-                model = channel.logoUrl,
+                model = channel.displayLogoUrl,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize().padding(4.dp),
             )
@@ -655,3 +734,5 @@ private fun <T> nextValue(values: List<T>, current: T?): T? {
 }
 
 private const val MAX_TEXT_LENGTH = 100
+private const val MAX_URL_LENGTH = 500
+private const val MAX_NUMBER_DIGITS = 5

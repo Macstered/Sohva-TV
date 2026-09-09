@@ -505,6 +505,7 @@ fun CatalogueBrowserV2Screen(
                                     ),
                                     dense = true,
                                     divider = true,
+                                    labelLines = 2,
                                     onClick = {
                                         scope.launch {
                                             onSetPlaylistGroupHidden(group.name, !hidden)
@@ -533,7 +534,7 @@ fun CatalogueBrowserV2Screen(
                                         else -> null
                                     },
                                     selected = state.selectedPartition == partition,
-                                    dense = true, divider = true,
+                                    dense = true, divider = true, labelLines = 2,
                                     onClick = { activeSession.restoreFocusToWall = false; onSelectPartition(partition) },
                                     modifier = focusModifier
                                         .then(if (partition == wallReturnPartition) Modifier.focusRequester(wallReturnFocusRequester) else Modifier)
@@ -899,7 +900,10 @@ private fun CatalogueBrowsePartition.stableKey(): String = when (this) {
 }
 
 private val V2_POSTER_MIN_WIDTH = 88.dp
-private val V2_RAIL_WIDTH = 168.dp
+// Wide enough for a provider's "Series: Nordic Netflix" to be read, and no
+// wider: at 216 dp the wall beside it still fits six poster columns at the
+// default interface size on a 960 dp screen, which it loses beyond 220 dp.
+private val V2_RAIL_WIDTH = 216.dp
 private val V2_CONTENT_GAP = 22.dp
 private val V2_GRID_GAP_X = 22.dp
 private val V2_GRID_GAP_Y = 30.dp

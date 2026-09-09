@@ -14,6 +14,8 @@ import com.streammate.tv.core.database.TvProgrammeEntity
 import com.streammate.tv.core.database.XmlTvChannelEntity
 import com.streammate.tv.core.database.XmlTvChannelOptionRow
 import com.streammate.tv.core.model.IptvSourceConfiguration
+import com.streammate.tv.core.model.LibraryRoom
+import com.streammate.tv.app.ProfileRestriction
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -38,6 +40,8 @@ data class StoredIptvChannel(
     val catchupTimeZone: String? = null,
     val playlistOrder: Int = Int.MAX_VALUE,
     val providerGroupId: String? = null,
+    /** The playlist's own channel number, when it states one. */
+    val channelNumber: Int? = null,
 )
 
 data class StoredXmlTvChannel(
@@ -72,6 +76,8 @@ data class GuideChannel(
     val programmeStopEpochMillis: Long?,
     val organizationGroupKey: String = com.streammate.tv.core.model.organizationGroupKey(groupTitle),
     val legacyPosition: Long? = null,
+    /** The viewer's number when set, the playlist's otherwise; null when neither gives one. */
+    val channelNumber: Int? = null,
 )
 
 data class GuideTimelineProgramme(
@@ -99,6 +105,7 @@ data class GuideTimelineChannel(
     val programmes: List<GuideTimelineProgramme>,
     val organizationGroupKey: String = com.streammate.tv.core.model.organizationGroupKey(groupTitle),
     val legacyPosition: Long? = null,
+    val channelNumber: Int? = null,
 )
 
 /**
@@ -138,6 +145,7 @@ data class GuideSearchResult(
     val type: String,
     val sourceId: String,
     val channelId: String,
+    val organizationGroupKey: String = "",
     val title: String,
     val subtitle: String?,
     val logoUrl: String?,
@@ -161,9 +169,17 @@ data class EditableChannel(
     val manualXmltvChannelId: String?,
     val organizationGroupKey: String = com.streammate.tv.core.model.organizationGroupKey(customGroupTitle ?: originalGroupTitle),
     val sourceEnabled: Boolean = true,
+    /** The viewer's own logo: an address, or a file the phone page saved on this TV. */
+    val customLogoUrl: String? = null,
+    /** The number the playlist gives the channel, if any. */
+    val providerChannelNumber: Int? = null,
+    /** The number the viewer gave the channel, if any. */
+    val channelNumber: Int? = null,
 ) {
     val displayName: String get() = customName?.takeIf(String::isNotBlank) ?: originalName
     val displayGroupTitle: String? get() = customGroupTitle?.takeIf(String::isNotBlank) ?: originalGroupTitle
+    val displayLogoUrl: String? get() = customLogoUrl?.takeIf(String::isNotBlank) ?: logoUrl
+    val displayChannelNumber: Int? get() = channelNumber ?: providerChannelNumber
 }
 
 data class XmlTvChannelOption(
@@ -283,6 +299,7 @@ class RoomGuideStore(
                 catchupDays = channel.catchupDays,
                 xtreamStreamId = channel.xtreamStreamId,
                 catchupTimeZone = channel.catchupTimeZone,
+                channelNumber = channel.channelNumber,
             )
         })
     }
@@ -410,6 +427,7 @@ class GuideRepository(
                 .map { rows -> rows.map { it.toDomain() }.distinctBy(GuideChannel::id) }
                 .distinctUntilChanged()
                 .flowOn(Dispatchers.Default)
+                .let { organization?.restrict(it, LibraryRoom.LIVE, GuideChannel::organizationGroupKey) ?: it }
         }
 
     /** One group by its shown title across the enabled sources; null for the channels without one. */
@@ -501,6 +519,18 @@ class GuideRepository(
     suspend fun activeChannel(channelId: String): IptvChannelEntity? = dao.getActiveChannel(channelId)
 
     /** The source and the group a channel is shown under, custom name included; null if it is not active. */
+    /** Whether the active profile may open [channelId]; an unknown channel is nobody's to refuse. */
+    suspend fun channelAllowed(channelId: String): Boolean {
+        val restriction = organization?.currentRestriction() ?: return true
+        if (!restriction.restricted) return true
+        val channel = dao.getActiveChannel(channelId) ?: return true
+        // The same choice the guide queries make: a renamed group's own key, else the provider's.
+        val preference = dao.channelPreference(channelId)
+        val groupKey = preference?.customGroupTitle?.takeIf(String::isNotBlank)
+            ?.let { preference.customOrganizationGroupKey } ?: channel.organizationGroupKey
+        return restriction.allows(LibraryRoom.LIVE, groupKey)
+    }
+
     suspend fun channelPlacement(channelId: String): GuideChannelPlacement? {
         val channel = dao.getActiveChannel(channelId) ?: return null
         val custom = dao.channelPreference(channelId)?.customGroupTitle?.takeIf(String::isNotBlank)
@@ -510,11 +540,15 @@ class GuideRepository(
     suspend fun search(query: String, limit: Int = 80): List<GuideSearchResult> {
         val normalized = query.trim().take(MAX_SEARCH_QUERY_LENGTH)
         if (normalized.length < MIN_SEARCH_QUERY_LENGTH) return emptyList()
-        return dao.searchGuide(normalized, limit.coerceIn(1, MAX_SEARCH_RESULTS)).map { row ->
+        val restriction = organization?.currentRestriction() ?: ProfileRestriction.NONE
+        return dao.searchGuide(normalized, limit.coerceIn(1, MAX_SEARCH_RESULTS)).filter { row ->
+            restriction.allows(LibraryRoom.LIVE, row.organizationGroupKey)
+        }.map { row ->
             GuideSearchResult(
                 type = row.resultType,
                 sourceId = row.sourceId,
                 channelId = row.channelId,
+                organizationGroupKey = row.organizationGroupKey,
                 title = row.title,
                 subtitle = row.subtitle,
                 logoUrl = row.logoUrl,
@@ -575,6 +609,8 @@ class GuideRepository(
         hidden: Boolean = channel.hidden,
         sortOrder: Int? = channel.sortOrder,
         manualXmltvChannelId: String? = channel.manualXmltvChannelId,
+        customLogoUrl: String? = channel.customLogoUrl,
+        channelNumber: Int? = channel.channelNumber,
     ) {
         dao.upsertChannelPreference(
             ChannelPreferenceEntity(
@@ -586,7 +622,33 @@ class GuideRepository(
                 sortOrder = sortOrder,
                 manualXmltvChannelId = manualXmltvChannelId?.trim()?.takeIf(String::isNotBlank),
                 updatedAtEpochMillis = clock(),
+                customLogoUrl = customLogoUrl?.trim()?.takeIf(String::isNotBlank),
+                channelNumber = channelNumber?.takeIf { it > 0 },
             ),
+        )
+    }
+
+    /**
+     * Keeps [customLogoUrl] for a channel the viewer may never have opened in
+     * the editor: what the phone page saved lands here, on the preference the
+     * channel already has or on a fresh one for its source.
+     */
+    suspend fun setChannelLogo(channelId: String, customLogoUrl: String?) {
+        val existing = dao.channelPreference(channelId)
+        val sourceId = existing?.sourceId ?: dao.channelSourceId(channelId) ?: return
+        dao.upsertChannelPreference(
+            existing?.copy(customLogoUrl = customLogoUrl, updatedAtEpochMillis = clock())
+                ?: ChannelPreferenceEntity(
+                    channelId = channelId,
+                    sourceId = sourceId,
+                    customName = null,
+                    customGroupTitle = null,
+                    hidden = false,
+                    sortOrder = null,
+                    manualXmltvChannelId = null,
+                    updatedAtEpochMillis = clock(),
+                    customLogoUrl = customLogoUrl,
+                ),
         )
     }
 
@@ -603,6 +665,8 @@ class GuideRepository(
                     sortOrder = index,
                     manualXmltvChannelId = channel.manualXmltvChannelId,
                     updatedAtEpochMillis = now,
+                    customLogoUrl = channel.customLogoUrl,
+                    channelNumber = channel.channelNumber,
                 )
             },
         )
@@ -661,6 +725,7 @@ class GuideRepository(
         currentProgrammeSubtitle = currentProgrammeSubtitle,
         programmeStartEpochMillis = programmeStartEpochMillis,
         programmeStopEpochMillis = programmeStopEpochMillis,
+        channelNumber = channelNumber,
     )
 
     private fun SourceRefreshStateEntity.toDomain() = SourceRefreshHealth(
@@ -691,6 +756,9 @@ class GuideRepository(
         hidden = hidden,
         sortOrder = sortOrder,
         manualXmltvChannelId = manualXmltvChannelId,
+        customLogoUrl = customLogoUrl,
+        providerChannelNumber = providerChannelNumber,
+        channelNumber = channelNumber,
     )
 
     private fun XmlTvChannelOptionRow.toDomain() = XmlTvChannelOption(
@@ -716,6 +784,7 @@ class GuideRepository(
                 catchupType = channel.catchupType,
                 catchupSource = channel.catchupSource,
                 catchupDays = channel.catchupDays,
+                channelNumber = channel.channelNumber,
                 programmes = deduplicateGuideSchedule(
                     channelRows.mapNotNull { row ->
                         val id = row.programmeId ?: return@mapNotNull null

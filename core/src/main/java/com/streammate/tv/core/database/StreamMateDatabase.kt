@@ -35,7 +35,7 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
         ReminderEntity::class,
     ],
     views = [OrganizationMembershipView::class, OrganizationEligibleView::class, OrganizationVisibleMovie::class, OrganizationVisibleSeries::class, OrganizationVisibleChannel::class],
-    version = 25,
+    version = 26,
     exportSchema = true,
 )
 abstract class StreamMateDatabase : RoomDatabase() {
@@ -86,8 +86,18 @@ abstract class StreamMateDatabase : RoomDatabase() {
                 MIGRATION_22_23,
                 MIGRATION_23_24,
                 MIGRATION_24_25,
+                MIGRATION_25_26,
             )
             .build()
+
+        /** A channel's own logo and number: the viewer's on the preference, the playlist's on the channel. */
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE channel_preferences ADD COLUMN customLogoUrl TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE channel_preferences ADD COLUMN channelNumber INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE iptv_channels ADD COLUMN channelNumber INTEGER DEFAULT NULL")
+            }
+        }
 
         /** Profiles: a watched position belongs to a viewer, so the table is keyed by profile as well. */
         val MIGRATION_24_25 = object : Migration(24, 25) {

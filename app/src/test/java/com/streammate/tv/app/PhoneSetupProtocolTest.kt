@@ -2,6 +2,8 @@ package com.streammate.tv.app
 
 import com.streammate.tv.core.model.IptvSourceType
 import java.io.ByteArrayInputStream
+import kotlin.io.encoding.Base64
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -84,5 +86,36 @@ class PhoneSetupProtocolTest {
             assertEquals(8, token.length)
             assertTrue(token.all { it in "abcdefghjkmnpqrstuvwxyz23456789" })
         }
+    }
+
+    @Test
+    fun `a logo posted for the channel the page was opened for becomes its bytes`() {
+        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3)
+        val mode = PhoneSetupMode.Logo("source:one", "One")
+        val form = mapOf("type" to "logo", "channel" to "source:one", "image" to "data:image/png;base64," + Base64.encode(png))
+
+        val submission = PhoneSetupProtocol.submissionFrom(form, mode).getOrThrow()
+
+        assertArrayEquals(png, submission.logo!!.image)
+        assertEquals("source:one", submission.logo!!.channelId)
+        assertNull(submission.source)
+        // Another channel, the sources page, a text file and a body that is not an image are all refused.
+        assertTrue(PhoneSetupProtocol.submissionFrom(form + ("channel" to "source:two"), mode).isFailure)
+        assertTrue(PhoneSetupProtocol.submissionFrom(form, PhoneSetupMode.Sources).isFailure)
+        assertTrue(PhoneSetupProtocol.submissionFrom(form + ("image" to "data:text/plain;base64,aGVsbG8="), mode).isFailure)
+        assertTrue(PhoneSetupProtocol.submissionFrom(form + ("image" to Base64.encode(byteArrayOf(1, 2, 3, 4, 5))), mode).isFailure)
+    }
+
+    @Test
+    fun `the logo page accepts a body the sources page would refuse`() {
+        val body = "x".repeat(PhoneSetupProtocol.MAX_BODY_BYTES + 1)
+        val raw = "POST /submit HTTP/1.1\r\nContent-Length: ${body.length}\r\n\r\n$body"
+
+        assertNull(PhoneSetupProtocol.parseRequest(ByteArrayInputStream(raw.toByteArray(Charsets.ISO_8859_1))))
+        val request = PhoneSetupProtocol.parseRequest(
+            ByteArrayInputStream(raw.toByteArray(Charsets.ISO_8859_1)),
+            PhoneSetupProtocol.MAX_LOGO_BODY_BYTES,
+        )
+        assertEquals(body, request!!.body)
     }
 }

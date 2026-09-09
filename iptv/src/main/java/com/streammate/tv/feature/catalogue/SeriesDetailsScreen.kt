@@ -60,7 +60,6 @@ import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.feature.common.scrollsToTopWhenFocused
 import com.streammate.tv.iptv.R
 import com.streammate.tv.iptv.metadata.EnrichedMetadata
-import com.streammate.tv.iptv.metadata.MetadataCastMember
 import com.streammate.tv.iptv.metadata.MetadataLookup
 import com.streammate.tv.iptv.metadata.MetadataMatcher
 import com.streammate.tv.iptv.metadata.MetadataMediaType
@@ -90,7 +89,9 @@ fun SeriesDetailsScreen(
     }.collectAsStateWithLifecycle(initialValue = null)
     val episodes = episodesState.orEmpty()
     val progress by repository.observeProgress().collectAsStateWithLifecycle(initialValue = emptyMap())
-    var loading by remember(series.sourceId, series.seriesId) { mutableStateOf(false) }
+    // True from the first frame: the episode list is unknown until the
+    // database answers, and a first open then fetches it from the provider.
+    var loading by remember(series.sourceId, series.seriesId) { mutableStateOf(true) }
     var refreshAttempted by remember(series.sourceId, series.seriesId) { mutableStateOf(false) }
     var loadError by remember(series.sourceId, series.seriesId) { mutableStateOf<String?>(null) }
     var season by remember(series.sourceId, series.seriesId) { mutableIntStateOf(1) }
@@ -156,7 +157,7 @@ fun SeriesDetailsScreen(
     LaunchedEffect(series.sourceId, series.seriesId, episodesState) {
         if (episodesState == null || refreshAttempted) return@LaunchedEffect
         refreshAttempted = true
-        if (episodes.isEmpty()) refreshEpisodes()
+        if (episodes.isEmpty()) refreshEpisodes() else loading = false
     }
     LaunchedEffect(seriesMetadataLookup, metadataRepository) {
         if (!metadataRepository.isEnabled()) return@LaunchedEffect
@@ -271,7 +272,30 @@ fun SeriesDetailsScreen(
         )
     }
     StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { modifier ->
-        CatalogueDetailBackdrop(imageUrl = backdropUrl, modifier = modifier) {
+        CatalogueDetailBackdrop(
+            imageUrl = backdropUrl,
+            modifier = modifier,
+            overlay = {
+                // Pinned to the corner: no scroll made for a focused row can
+                // hide that the episode list is still being fetched.
+                if (loading) {
+                    Text(
+                        text = stringResource(R.string.series_loading_episodes),
+                        color = palette.textPrimary,
+                        fontSize = typography.body.fontSize,
+                        lineHeight = typography.body.lineHeight,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = StreamMateThemeTokens.spacing.xl, end = StreamMateThemeTokens.spacing.xxl)
+                            .background(palette.panel.copy(alpha = 0.94f), StreamMateThemeTokens.shapes.medium)
+                            .border(1.dp, palette.outline, StreamMateThemeTokens.shapes.medium)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .testTag("series-loading-episodes"),
+                    )
+                }
+            },
+        ) {
             KeepFocusedChildVisibleColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -318,6 +342,23 @@ fun SeriesDetailsScreen(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
+                // The cast as one line of names rather than a row of tiles: the
+                // tiles pushed the seasons and the episodes below the screen
+                // edge, and the names need no more room than this.
+                seriesMetadata?.cast?.takeIf { it.isNotEmpty() }?.let { cast ->
+                    Text(
+                        text = stringResource(R.string.series_cast_line, cast.joinToString { it.name }),
+                        modifier = Modifier
+                            .fillMaxWidth(DETAILS_TEXT_FRACTION)
+                            .padding(top = 10.dp)
+                            .testTag("series-cast-line"),
+                        color = palette.textMuted,
+                        fontSize = typography.label.fontSize,
+                        lineHeight = typography.label.lineHeight,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 selectedProgress?.takeIf { !it.completed }?.let { watched ->
                     CatalogueDetailProgress(
                         positionMillis = watched.positionMillis,
@@ -398,17 +439,6 @@ fun SeriesDetailsScreen(
                         )
                     }
                 }
-                seriesMetadata?.cast?.takeIf { it.isNotEmpty() }?.let { cast ->
-                    CatalogueDetailSectionHeading(
-                        text = stringResource(R.string.series_cast),
-                        modifier = Modifier.padding(top = 26.dp, bottom = 12.dp),
-                    )
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                        items(cast, key = MetadataCastMember::name) { member ->
-                            CatalogueCastMember(member)
-                        }
-                    }
-                }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 26.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -455,7 +485,11 @@ fun SeriesDetailsScreen(
                                 loadError != null -> loadError.orEmpty()
                                 else -> stringResource(R.string.series_no_episodes)
                             },
-                            color = if (loadError != null) palette.danger else palette.textDim,
+                            color = when {
+                                loadError != null -> palette.danger
+                                loading -> palette.textPrimary
+                                else -> palette.textDim
+                            },
                             fontSize = typography.body.fontSize,
                             lineHeight = typography.body.lineHeight,
                         )

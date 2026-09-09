@@ -181,7 +181,11 @@ class StreamMateContainer(context: Context) {
             }
         },
     )
+    val channelLogoStore = ChannelLogoStore(applicationContext)
     val phoneSetupServer = PhoneSetupServer(applicationContext) { submission ->
+        submission.logo?.let { logo ->
+            guideRepository.setChannelLogo(logo.channelId, channelLogoStore.save(logo.channelId, logo.image))
+        }
         submission.source?.let { source ->
             secretSettingsStore.upsertSource(source)
             guideRepository.upsertSourceState(source)

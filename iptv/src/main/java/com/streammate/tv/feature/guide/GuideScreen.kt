@@ -60,6 +60,10 @@ import com.streammate.tv.feature.common.TvIcons
 import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.feature.common.tickerFlow
 import com.streammate.tv.iptv.R
+import kotlinx.coroutines.flow.flowOf
+import com.streammate.tv.app.ProfileRestriction
+import com.streammate.tv.feature.common.ChannelDialOverlay
+import com.streammate.tv.feature.common.ChannelDial
 import com.streammate.tv.iptv.metadata.EnrichedMetadata
 import com.streammate.tv.iptv.metadata.MetadataLookup
 import com.streammate.tv.iptv.metadata.MetadataMediaType
@@ -160,6 +164,16 @@ fun GuideScreen(
     val optionsFocus = remember { FocusRequester() }
     val channelListState = rememberLazyListState()
     var channelFilter by remember { mutableStateOf(ChannelFilter.ALL) }
+    // Digits on the remote: the number being typed, the answer when no channel
+    // shows it, and the row a completed number moved focus to.
+    var dialBuffer by remember { mutableStateOf("") }
+    var dialMessage by remember { mutableStateOf<String?>(null) }
+    var jumpIndex by remember { mutableStateOf<Int?>(null) }
+    val dialResources = LocalResources.current
+    // What this profile may see. The timelines are narrowed in the repository;
+    // the rail is filtered here, where the groups are decided.
+    val restrictionFlow = remember(guideRepository) { guideRepository.organization?.restriction ?: flowOf(ProfileRestriction.NONE) }
+    val restriction by restrictionFlow.collectAsStateWithLifecycle(initialValue = ProfileRestriction.NONE)
     var selectedSourceId by remember { mutableStateOf<String?>(null) }
     var sourceSelectionInitialized by remember { mutableStateOf(false) }
     var selectedGroup by remember { mutableStateOf(initialManagedGroup) }
@@ -192,8 +206,9 @@ fun GuideScreen(
     }
     // Groups a rule has switched off are not on the rail; the organisation
     // view drops their channels the same way.
-    val sourceRail = remember(railRows, selectedSourceId, organizationState) {
+    val sourceRail = remember(railRows, selectedSourceId, organizationState, restriction) {
         railRows.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
+            .filter { row -> restriction.allows(liveRoom, row.organizationGroupKey) }
             .filter { row ->
                 row.groupTitle == null || organization.groupRule(
                     liveRoom,
@@ -383,6 +398,26 @@ fun GuideScreen(
             .takeIf { it >= 0 }
             ?: 0
     }
+    // A dialled number moves the grid's focus; a changed list forgets the jump.
+    val focusIndex = jumpIndex ?: initialFocusIndex
+    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id)) { jumpIndex = null }
+    LaunchedEffect(dialBuffer) {
+        if (dialBuffer.isEmpty()) return@LaunchedEffect
+        delay(ChannelDial.TIMEOUT_MILLIS)
+        val number = dialBuffer.toIntOrNull()
+        // Resolved before the buffer clears, as in the player: the clear
+        // restarts this effect.
+        val index = number?.let { ChannelDial.indexFor(filteredGuide.map(GuideTimelineChannel::channelNumber), it) }
+        dialBuffer = ""
+        if (number == null) return@LaunchedEffect
+        if (index != null) jumpIndex = index else dialMessage = dialResources.getString(R.string.dial_channel_none, number)
+    }
+    LaunchedEffect(dialMessage) {
+        if (dialMessage != null) {
+            delay(ChannelDial.MESSAGE_MILLIS)
+            dialMessage = null
+        }
+    }
 
     LaunchedEffect(Unit) {
         tickerFlow(periodMillis = 60_000, emitImmediately = false).collect {
@@ -462,10 +497,10 @@ fun GuideScreen(
     }
     // guideLoaded is a key so the empty state, which only appears after the
     // first read, still gets its focus once it is there.
-    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id), initialFocusIndex, guideLoaded) {
+    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id), focusIndex, guideLoaded) {
         if (optionsVisible || !guideLoaded) return@LaunchedEffect
         if (filteredGuide.isNotEmpty()) {
-            channelListState.scrollToItem(initialFocusIndex)
+            channelListState.scrollToItem(focusIndex)
             firstFocus.requestFocusWhenAttached()
         } else if (libraryEmpty) {
             firstFocus.requestFocusWhenAttached()
@@ -552,10 +587,14 @@ fun GuideScreen(
                     return@Column
                 }
                 selection?.let { selected ->
-                    val channelNumber = filteredGuide
-                        .indexOfFirst { it.id == selected.channel.id }
-                        .takeIf { it >= 0 }
-                        ?.plus(1)
+                    // The channel's own number when it has one, its place in the list
+                    // otherwise, and nothing when the viewer turned numbers off.
+                    val channelNumber = if (!preferences.showChannelNumbers) {
+                        null
+                    } else {
+                        selected.channel.channelNumber
+                            ?: filteredGuide.indexOfFirst { it.id == selected.channel.id }.takeIf { it >= 0 }?.plus(1)
+                    }
                     GuideHero(
                         selection = selected,
                         channelNumber = channelNumber,
@@ -709,13 +748,14 @@ fun GuideScreen(
                             GuideGrid(
                                 modifier = Modifier.fillMaxWidth().weight(1f),
                                 channels = filteredGuide,
+                                showNumbers = preferences.showChannelNumbers,
                                 windowStart = windowStart,
                                 windowEnd = windowEnd,
                                 now = now,
                                 timeZoneId = preferences.timeZoneId,
                                 selection = selection,
                                 listState = channelListState,
-                                initialFocusIndex = initialFocusIndex,
+                                initialFocusIndex = focusIndex,
                                 firstFocusRequester = firstFocus,
                                 returnFocusRequester = guideReturnFocus,
                                 onOpenGroupRail = {
@@ -761,7 +801,11 @@ fun GuideScreen(
                                     { moveWindow(-GuideTimeWindow.PAGE_MILLIS) }
                                 },
                                 onTransportKey = { key ->
-                                    when (key) {
+                                    val digit = ChannelDial.digitOf(key)
+                                    if (digit != null) {
+                                        dialBuffer = (dialBuffer + digit).take(ChannelDial.MAX_DIGITS)
+                                        true
+                                    } else when (key) {
                                         Key.MediaFastForward -> {
                                             moveWindow(GuideTimeWindow.PAGE_MILLIS)
                                             true
@@ -791,6 +835,11 @@ fun GuideScreen(
                     }
                 }
             }
+            ChannelDialOverlay(
+                buffer = dialBuffer,
+                message = dialMessage,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 12.dp, end = 12.dp).zIndex(1f),
+            )
             if (optionsVisible) {
                 GuideOptionsSheet(
                     modifier = Modifier.zIndex(1f),

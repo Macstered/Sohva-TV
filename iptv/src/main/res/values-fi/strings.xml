@@ -41,6 +41,7 @@
     <string name="series_seasons">Kaudet</string>
     <string name="series_episodes">Jaksot</string>
     <string name="series_cast">Näyttelijät</string>
+    <string name="series_cast_line">Näyttelijät: %1$s</string>
     <plurals name="series_season_count">
         <item quantity="one">%1$d kausi</item>
         <item quantity="other">%1$d kautta</item>
@@ -130,6 +131,8 @@
     <string name="pin_prompt">Anna PIN jatkaaksesi</string>
     <string name="pin_not_configured">Määritä PIN ensin asetuksissa</string>
     <string name="pin_locked_channel">Lukittu kanava</string>
+    <string name="pin_profile_gate">Profiilin vaihto</string>
+    <string name="pin_settings_gate">Asetukset on lukittu tältä profiililta</string>
     <string name="pin_code">PIN-koodi</string>
     <string name="pin_checking">Tarkistetaan…</string>
     <string name="pin_unlock">Avaa</string>
@@ -177,6 +180,12 @@
     <string name="channels_show_in_guide">Näytä oppaassa</string>
     <string name="channels_hide_from_guide">Piilota oppaasta</string>
     <string name="channels_show_hidden">Näytä piilotetut</string>
+    <string name="channels_logo_url">Logon osoite (tyhjä = soittolistan)</string>
+    <string name="channels_number">Kanavanumero (tyhjä = soittolistan)</string>
+    <string name="channels_playlist_number">Soittolistan numero: %1$d</string>
+    <string name="channels_playlist_number_none">Soittolista ei anna numeroa</string>
+    <string name="channels_logo_from_phone">Logo puhelimesta</string>
+    <string name="channels_logo_received">Logo vastaanotettu puhelimesta</string>
     <string name="channels_configure_pin">Määritä PIN asetuksissa</string>
     <string name="channels_remove_pin_lock">Poista PIN-lukitus</string>
     <string name="channels_lock_with_pin">Lukitse PIN-koodilla</string>
@@ -322,6 +331,8 @@
     <string name="interface_scale_small">Pieni</string>
     <string name="interface_scale_smaller">Pienempi</string>
     <string name="interface_scale_option">%1$s (%2$d %%)</string>
+    <string name="channel_numbers_title">Kanavanumerot</string>
+    <string name="channel_numbers_help">Näyttää kanavan numeron oppaassa: soittolistan oman tai kanavahallinnassa annetun. Pois päältä opas näyttää vain nimet.</string>
     <!-- Each language is named in its own language, so it stays findable when
          the interface is currently in one the reader does not speak. -->
     <string name="interface_language_en">English</string>
@@ -330,6 +341,7 @@
     <string name="interface_language_pt">Português (rascunho)</string>
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
+    <string name="interface_language_it">Italiano (bozza)</string>
     <string name="artwork_cache_title">Kuvamuisti</string>
     <string name="artwork_cache_help">Tila julisteille, logoille ja taustakuville; uusi raja voimaan seuraavassa käynnistyksessä.</string>
     <string name="artwork_cache_limit">%1$d MB</string>
@@ -410,6 +422,22 @@
     <string name="profile_name_hint">Uuden profiilin nimi</string>
     <string name="profile_remove">Poista profiili</string>
     <string name="profile_remove_help">Vie mukanaan suosikit, viimeksi katsotut, katselukohdat ja lukitukset.</string>
+    <string name="profile_content_title">Mitä tämä profiili saa nähdä</string>
+    <string name="profile_content_help">Rajaa profiili valittuihin kanava-, elokuva- ja sarjaryhmiin. Muu jää pois sen oppaasta, kirjastoista ja hausta.</string>
+    <string name="profile_content_live">TV-kanavaryhmät</string>
+    <string name="profile_content_movies">Elokuvaryhmät</string>
+    <string name="profile_content_series">Sarjaryhmät</string>
+    <string name="profile_content_all">Kaikki</string>
+    <plurals name="profile_content_count">
+        <item quantity="one">%1$d ryhmä</item>
+        <item quantity="other">%1$d ryhmää</item>
+    </plurals>
+    <string name="profile_content_picker_title">Ryhmät profiilille %1$s</string>
+    <string name="profile_content_ungrouped">Ryhmittelemättömät</string>
+    <string name="profile_content_none_yet">Ei vielä ryhmiä. Lisää lähde ja anna sen päivittyä ensin.</string>
+    <string name="profile_content_pin_ready">Vaihto rajoittamattomaan profiiliin ja asetusten avaaminen rajoitetusta profiilista kysyvät lapsilukon PIN-koodin.</string>
+    <string name="profile_content_pin_missing">Aseta lapsilukon PIN-koodi, jotta rajoitettu profiili ei voi vaihtaa profiilia eikä muuttaa tätä.</string>
+    <string name="profile_content_blocked">Tämä profiili ei voi katsoa tätä kanavaa</string>
     <string name="profile_picker_title">Kuka katsoo?</string>
     <string name="source_refresh_schedule_saved">Päivitysväliksi asetettu %1$s</string>
     <plurals name="source_refresh_interval_hours">
@@ -475,7 +503,7 @@
     <string name="diagnostics_saved">Vianmääritystiedot tallennettu. Jaa tiedosto kehittäjälle pyydettäessä.</string>
     <string name="translate_title">Käännökset</string>
     <string name="translate_help_title">Auta kääntämään Sohva TV</string>
-    <string name="translate_help">Espanja, portugali, saksa ja ruotsi ovat luonnoksia. Korjaukset ovat tervetulleita julkiseen koodivarastoon.</string>
+    <string name="translate_help">Espanja, portugali, saksa, ruotsi ja italia ovat luonnoksia. Korjaukset ovat tervetulleita julkiseen koodivarastoon.</string>
     <string name="player_stats_video">Kuva</string>
     <string name="player_stats_video_codec">Videokoodekki</string>
     <string name="player_stats_bitrate">Bittinopeus</string>
@@ -494,6 +522,8 @@
     <string name="guide_hint_options">Valinnat</string>
     <string name="guide_watched_percent">%1$d %% katsottu</string>
     <string name="guide_channel_number">Kanava %1$d</string>
+    <string name="dial_channel">Kanava %1$s</string>
+    <string name="dial_channel_none">Ei kanavaa %1$d</string>
     <string name="guide_close_options">Sulje</string>
     <string name="catalogue_sort_alphabetical">A–Ö</string>
     <string name="catalogue_sort_newest">Uusimmat</string>
@@ -802,5 +832,11 @@
     <string name="phone_setup_page_forbidden">Tämä sivu tarvitsee television ruudulla näkyvän koodin. Lue se uudelleen.</string>
     <string name="phone_setup_page_bad_request">Pyyntöä ei voitu lukea.</string>
     <string name="phone_setup_page_privacy">Mikään kirjoittamasi ei poistu kotiverkostasi. Sivu sulkeutuu television asetusten mukana.</string>
+    <string name="phone_setup_page_logo_title">Logo kanavalle %1$s</string>
+    <string name="phone_setup_page_logo_help">Valitse kuva tästä puhelimesta. Se pienennetään tässä, lähetetään televisioon ja säilytetään siellä kanavan logona.</string>
+    <string name="phone_setup_page_logo_choose">Valitse kuva</string>
+    <string name="phone_setup_page_logo_sending">Lähetetään televisioon…</string>
+    <string name="phone_setup_page_logo_saved">Logo tallennettu televisioon kanavalle %1$s. Voit sulkea tämän sivun.</string>
+    <string name="phone_setup_page_logo_invalid">Tiedosto ei ole kuva, jonka puhelin osaa lukea.</string>
     <string name="guide_loading">Luetaan opasta…</string>
 </resources>

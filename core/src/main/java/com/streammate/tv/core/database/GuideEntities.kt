@@ -34,6 +34,10 @@ data class ChannelPreferenceEntity(
     val manualXmltvChannelId: String?,
     val updatedAtEpochMillis: Long,
     @ColumnInfo(defaultValue = "NULL") val customOrganizationGroupKey: String? = customGroupTitle?.takeIf(String::isNotBlank)?.let { organizationGroupKey(it) },
+    /** A logo of the viewer's own: an address, or a file the phone page saved on this TV. */
+    @ColumnInfo(defaultValue = "NULL") val customLogoUrl: String? = null,
+    /** The number the viewer gave the channel; null keeps the playlist's own. */
+    @ColumnInfo(defaultValue = "NULL") val channelNumber: Int? = null,
 )
 
 @Entity(tableName = "channel_lists", primaryKeys = ["listId"])
@@ -87,6 +91,8 @@ data class IptvChannelEntity(
     val catchupTimeZone: String? = null,
     @ColumnInfo(defaultValue = "''") val organizationGroupKey: String = organizationGroupKey(groupTitle),
     @ColumnInfo(defaultValue = "''") val organizationNameKey: String = organizationGroupKey(groupTitle),
+    /** The playlist's own number for the channel: tvg-chno in an M3U, num on an Xtream panel. */
+    @ColumnInfo(defaultValue = "NULL") val channelNumber: Int? = null,
 )
 
 @Entity(
@@ -494,6 +500,8 @@ data class GuideChannelRow(
     val programmeStopEpochMillis: Long?,
     val organizationGroupKey: String = organizationGroupKey(groupTitle),
     val legacyPosition: Long? = null,
+    /** The viewer's number when set, the playlist's otherwise. */
+    val channelNumber: Int? = null,
 )
 
 data class GuideTimelineRow(
@@ -517,12 +525,14 @@ data class GuideTimelineRow(
     val programmeStopEpochMillis: Long?,
     val organizationGroupKey: String = organizationGroupKey(groupTitle),
     val legacyPosition: Long? = null,
+    val channelNumber: Int? = null,
 )
 
 data class GuideSearchResultRow(
     val resultType: String,
     val sourceId: String,
     val channelId: String,
+    val organizationGroupKey: String = "",
     val title: String,
     val subtitle: String?,
     val logoUrl: String?,
@@ -577,6 +587,9 @@ data class EditableChannelRow(
     val manualXmltvChannelId: String?,
     val organizationGroupKey: String = organizationGroupKey(originalGroupTitle),
     val sourceEnabled: Boolean = true,
+    val customLogoUrl: String? = null,
+    val providerChannelNumber: Int? = null,
+    val channelNumber: Int? = null,
 )
 
 /** One group of one source with its channel count: what the guide's rail is drawn from. */

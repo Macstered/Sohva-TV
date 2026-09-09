@@ -23,6 +23,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
+import com.streammate.tv.app.Profiles
+import com.streammate.tv.app.AppPreferencesRepository
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.rules.RuleChain
 
 class HomeScreenTest {
@@ -87,6 +92,31 @@ class HomeScreenTest {
             pressOnFocused(Key.DirectionDown)
             composeRule.waitForIdle()
             assertEquals("home-${DESTINATIONS[step]}", focusedTag())
+        }
+    }
+
+    @Test
+    fun theRailOffersWhoIsWatchingOnceThereIsASecondProfile() {
+        val prefs = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val kids = runBlocking { requireNotNull(prefs.addProfile("Kids", 2)) }
+        try {
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("home-profiles").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag("home-profiles").performClick()
+            composeRule.onNodeWithTag("profile-tile-${kids.id}").performClick()
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                runBlocking { prefs.preferences.first().activeProfileId == kids.id }
+            }
+            // Back on the home page, as the viewer who was chosen.
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("home-nav-home").fetchSemanticsNodes().isNotEmpty()
+            }
+        } finally {
+            runBlocking {
+                prefs.setActiveProfile(Profiles.DEFAULT_ID)
+                prefs.removeProfile(kids.id)
+            }
         }
     }
 

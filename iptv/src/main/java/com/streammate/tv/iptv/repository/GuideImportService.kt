@@ -103,6 +103,7 @@ class GuideImportService(
                         catchupSource = channel.catchupSource,
                         catchupDays = channel.catchupDays,
                         playlistOrder = channel.playlistOrder,
+                        channelNumber = channel.channelNumber,
                     )
                     channelCount += 1
                     if (channelBatch.size >= BATCH_SIZE) {

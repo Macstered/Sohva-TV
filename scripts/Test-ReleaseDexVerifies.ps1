@@ -11,7 +11,10 @@ PlayerScreenKt.ActivePlayer on 8 September 2026, and the build before it was
 merely lucky: the same source, built clean, failed.
 
 Run this before packaging any beta. It installs the release APK on the given
-device, forces a verification pass, and fails on any rejection.
+device, forces a verification pass, and fails on any rejection. On success it
+writes a receipt beside the APK naming the file's SHA-256; package-sohva-beta.ps1
+refuses any release APK without a matching receipt, so the APK that ships is
+the one a device verified, not a later rebuild of the same source.
 #>
 param(
     [string]$Serial = "emulator-5580",
@@ -31,6 +34,8 @@ if (-not $SkipBuild) {
 
 $apk = Join-Path $root "app/build/outputs/apk/release/app-release.apk"
 if (-not (Test-Path $apk)) { throw "No release APK at $apk" }
+$receipt = "$apk.dex-verified"
+if (Test-Path $receipt) { Remove-Item -LiteralPath $receipt -Force }
 
 Write-Host "Installing on $Serial..."
 & $Adb -s $Serial install -r -d $apk | Out-Null
@@ -57,4 +62,7 @@ if ($bad.Count -gt 0) {
     exit 1
 }
 
+$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $apk).Hash.ToLowerInvariant()
+[IO.File]::WriteAllText($receipt, "$hash $Serial $(Get-Date -Format o)`n", [Text.UTF8Encoding]::new($false))
 Write-Host "Release dex verifies cleanly ($ran verification lines, no rejections)." -ForegroundColor Green
+Write-Host "Receipt written for $hash; package-sohva-beta.ps1 will accept exactly this APK."

@@ -2,6 +2,7 @@ package com.streammate.tv.feature.catalogue
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -27,6 +28,8 @@ import com.streammate.tv.app.StreamMateThemeTokens
 internal fun CatalogueDetailBackdrop(
     imageUrl: String?,
     modifier: Modifier = Modifier,
+    /** Drawn over [content] and pinned to the box, where a scrolling page cannot carry it away. */
+    overlay: @Composable BoxScope.() -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val palette = StreamMateThemeTokens.palette
@@ -70,5 +73,6 @@ internal fun CatalogueDetailBackdrop(
                 ),
         )
         content()
+        overlay()
     }
 }

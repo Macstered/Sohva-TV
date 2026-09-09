@@ -2,6 +2,7 @@ package com.streammate.tv.feature.settings
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +36,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Text
 import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.feature.common.TvIcons
+import com.streammate.tv.iptv.R
+import com.streammate.tv.feature.common.TvActionButton
 import com.streammate.tv.feature.common.TvSurface
 import com.streammate.tv.feature.common.requestFocusWhenAttached
 
@@ -109,7 +113,8 @@ internal fun <T> SettingsPickerDialog(
             modifier = Modifier
                 .width(PICKER_WIDTH)
                 .heightIn(max = PICKER_MAX_HEIGHT)
-                .background(palette.surface, StreamMateThemeTokens.shapes.medium)
+                .background(palette.panel, StreamMateThemeTokens.shapes.medium)
+                .border(1.dp, palette.outline, StreamMateThemeTokens.shapes.medium)
                 .padding(18.dp)
                 .testTag(testTag),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -133,6 +138,79 @@ internal fun <T> SettingsPickerDialog(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Several choices at once: a row toggles, a tick marks the chosen ones, and
+ * Done closes. Back closes too and keeps what was toggled, since every
+ * toggle is applied as it happens.
+ */
+@Composable
+internal fun SettingsMultiPickerDialog(
+    title: String,
+    options: List<SettingsPickerOption<String>>,
+    selected: Set<String>,
+    onToggle: (String) -> Unit,
+    onDismiss: () -> Unit,
+    testTag: String = "settings-multi-picker",
+    /** Shown in place of the rows when there is nothing to choose from. */
+    emptyText: String? = null,
+) {
+    val palette = StreamMateThemeTokens.palette
+    val firstFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { firstFocus.requestFocusWhenAttached() }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            modifier = Modifier
+                .width(PICKER_WIDTH)
+                .heightIn(max = PICKER_MAX_HEIGHT)
+                .background(palette.panel, StreamMateThemeTokens.shapes.medium)
+                .border(1.dp, palette.outline, StreamMateThemeTokens.shapes.medium)
+                .padding(18.dp)
+                .testTag(testTag),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = title,
+                color = palette.textPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 6.dp, bottom = 4.dp),
+            )
+            if (options.isEmpty() && emptyText != null) {
+                Text(
+                    text = emptyText,
+                    color = palette.textMuted,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                )
+            }
+            LazyColumn(
+                modifier = Modifier.weight(1f, fill = false).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                options.forEachIndexed { index, option ->
+                    item(key = option.testTag ?: index) {
+                        PickerRow(
+                            option = option,
+                            selected = option.value in selected,
+                            onClick = { onToggle(option.value) },
+                            focusRequester = if (index == 0) firstFocus else null,
+                        )
+                    }
+                }
+            }
+            TvActionButton(
+                label = stringResource(R.string.category_edit_done),
+                onClick = onDismiss,
+                icon = TvIcons.Check,
+                compact = true,
+                focusRequester = if (options.isEmpty()) firstFocus else null,
+                testTag = "$testTag-done",
+                modifier = Modifier.align(Alignment.End),
+            )
         }
     }
 }

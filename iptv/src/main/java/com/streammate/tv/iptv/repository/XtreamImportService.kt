@@ -53,6 +53,7 @@ class XtreamImportService(
                             xtreamStreamId = channel.streamId,
                             catchupTimeZone = channel.serverTimeZoneId,
                             playlistOrder = channel.playlistOrder,
+                            channelNumber = channel.channelNumber,
                         )
                     },
                 )

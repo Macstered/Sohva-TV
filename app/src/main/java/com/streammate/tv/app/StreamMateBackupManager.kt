@@ -2,6 +2,7 @@ package com.streammate.tv.app
 
 import android.content.Context
 import android.net.Uri
+import kotlin.io.encoding.Base64
 import com.streammate.tv.R
 import com.streammate.tv.core.database.ChannelPreferenceEntity
 import com.streammate.tv.core.database.CustomChannelListEntity
@@ -48,6 +49,7 @@ class StreamMateBackupManager(
 ) {
     private val applicationContext = context.applicationContext
     private val contentResolver = applicationContext.contentResolver
+    private val logoStore = ChannelLogoStore(applicationContext)
 
     suspend fun write(uri: Uri, passphrase: String): BackupRestoreResult = withContext(Dispatchers.IO) {
         val sources = secretSettingsStore.loadSources()
@@ -143,6 +145,9 @@ class StreamMateBackupManager(
                     put("recentChannelIds", kept.recentChannelIds.toJsonArray())
                     put("lastChannelId", kept.lastChannelId?.let(::JsonPrimitive) ?: JsonNull)
                     put("lockedChannelIds", kept.lockedChannelIds.toJsonArray())
+                    put("allowedLiveGroupKeys", kept.restriction.live.toJsonArray())
+                    put("allowedMovieGroupKeys", kept.restriction.movies.toJsonArray())
+                    put("allowedSeriesGroupKeys", kept.restriction.series.toJsonArray())
                 })
             }
         })
@@ -185,6 +190,11 @@ class StreamMateBackupManager(
                     recentChannelIds = strings("recentChannelIds").take(20),
                     lastChannelId = kept["lastChannelId"]?.jsonPrimitive?.contentOrNull,
                     lockedChannelIds = strings("lockedChannelIds").toSet(),
+                    restriction = ProfileRestriction(
+                        live = strings("allowedLiveGroupKeys").toSet(),
+                        movies = strings("allowedMovieGroupKeys").toSet(),
+                        series = strings("allowedSeriesGroupKeys").toSet(),
+                    ),
                 )
             }.orEmpty(),
         )
@@ -250,6 +260,7 @@ class StreamMateBackupManager(
         put("autoPlayNextEpisodeEnabled", autoPlayNextEpisodeEnabled)
         put("pictureInPictureEnabled", pictureInPictureEnabled)
         put("editorsShowHidden", editorsShowHidden)
+        put("showChannelNumbers", showChannelNumbers)
         put("preferredCatalogueCopy", preferredCatalogueCopy.name)
         put("hiddenLiveCategories", hiddenLiveCategories.toJsonArray())
         put("hiddenMovieCategories", hiddenMovieCategories.toJsonArray())
@@ -363,6 +374,7 @@ class StreamMateBackupManager(
         autoPlayNextEpisodeEnabled = optionalBoolean("autoPlayNextEpisodeEnabled") ?: true,
         pictureInPictureEnabled = optionalBoolean("pictureInPictureEnabled") ?: false,
         editorsShowHidden = optionalBoolean("editorsShowHidden") ?: true,
+        showChannelNumbers = optionalBoolean("showChannelNumbers") ?: true,
         preferredCatalogueCopy = optionalString("preferredCatalogueCopy")
             ?.let { stored ->
                 CataloguePreferredCopy.entries.firstOrNull { it.name == stored }
@@ -388,6 +400,10 @@ class StreamMateBackupManager(
         put("sortOrder", sortOrder?.let(::JsonPrimitive) ?: JsonNull)
         put("manualXmltvChannelId", manualXmltvChannelId?.let(::JsonPrimitive) ?: JsonNull)
         put("updatedAtEpochMillis", updatedAtEpochMillis)
+        put("customLogoUrl", customLogoUrl?.let(::JsonPrimitive) ?: JsonNull)
+        put("channelNumber", channelNumber?.let(::JsonPrimitive) ?: JsonNull)
+        // A logo the phone sent lives only on this TV, so it travels as its bytes.
+        logoStore.read(customLogoUrl)?.let { put("customLogoData", Base64.encode(it)) }
     }
 
     private fun JsonObject.toChannelPreference(): ChannelPreferenceEntity = ChannelPreferenceEntity(
@@ -399,7 +415,22 @@ class StreamMateBackupManager(
         sortOrder = this["sortOrder"]?.jsonPrimitive?.contentOrNull?.toIntOrNull(),
         manualXmltvChannelId = optionalString("manualXmltvChannelId"),
         updatedAtEpochMillis = requiredLong("updatedAtEpochMillis"),
+        customLogoUrl = restoredLogoUrl(requiredString("channelId")),
+        channelNumber = this["channelNumber"]?.jsonPrimitive?.contentOrNull?.toIntOrNull(),
     )
+
+    /**
+     * A logo that travelled as bytes is written back to this TV and named by
+     * its new address; a plain address is kept; a file address from another
+     * device, with no bytes to rebuild it from, is dropped.
+     */
+    private fun JsonObject.restoredLogoUrl(channelId: String): String? {
+        val data = this["customLogoData"]?.jsonPrimitive?.contentOrNull
+        if (data != null) {
+            runCatching { logoStore.save(channelId, Base64.decode(data)) }.getOrNull()?.let { return it }
+        }
+        return logoStore.existingOrNull(optionalString("customLogoUrl"))
+    }
 
     private fun CustomChannelListEntity.toJson(): JsonObject = buildJsonObject {
         put("listId", listId)

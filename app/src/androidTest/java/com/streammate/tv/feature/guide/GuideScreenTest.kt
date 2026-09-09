@@ -463,7 +463,7 @@ class GuideScreenTest {
         composeRule.setContent {
             StreamMateTheme {
                 GuideScreen(
-                    guideRepository = GuideRepository(database.guideDao()),
+                    guideRepository = GuideRepository(database.guideDao(), organization = organization),
                     preferencesRepository = AppPreferencesRepository(context),
                     metadataRepository = MetadataRepository(
                         database.metadataDao(),
@@ -604,6 +604,44 @@ class GuideScreenTest {
     }
 
     @Test
+    fun aRestrictedProfileSeesOnlyItsGroups() {
+        val preferences = AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        val liveRoom = com.streammate.tv.core.model.LibraryRoom.LIVE
+        val profile = com.streammate.tv.app.Profiles.DEFAULT_ID
+        runBlocking { preferences.setAllowedGroups(profile, liveRoom, setOf("name:news")) }
+        try {
+            showGuide(com.streammate.tv.iptv.repository.OrganizationRepository(database.organizationDao(), preferences))
+            // Both channels are News, which this profile may see.
+            composeRule.awaitFocused("guide-channel-test:one")
+
+            runBlocking { preferences.setAllowedGroups(profile, liveRoom, setOf("name:sports")) }
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("guide-channel-test:one").fetchSemanticsNodes().isEmpty() &&
+                    composeRule.onAllNodesWithTag("guide-channel-test:two").fetchSemanticsNodes().isEmpty()
+            }
+
+            runBlocking { preferences.setAllowedGroups(profile, liveRoom, setOf("name:news")) }
+            composeRule.awaitUntil(timeoutMillis = 10_000) {
+                composeRule.onAllNodesWithTag("guide-channel-test:two").fetchSemanticsNodes().isNotEmpty()
+            }
+        } finally {
+            runBlocking { preferences.setAllowedGroups(profile, liveRoom, emptySet()) }
+        }
+    }
+
+    @Test
+    fun typingAChannelNumberMovesFocusToThatChannel() {
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.Two) }
+
+        composeRule.onNodeWithTag("channel-dial").assertIsDisplayed()
+        // The number completes on its own two seconds after the last digit.
+        composeRule.awaitFocused("guide-channel-test:two")
+    }
+
+    @Test
     fun channelManagementPersistsHiddenPreference() {
         composeRule.setContent {
             StreamMateTheme {
@@ -635,6 +673,38 @@ class GuideScreenTest {
         composeRule.onNodeWithTag("channel-editor-hidden").performScrollTo().performClick()
         composeRule.awaitUntil(timeoutMillis = 10_000) {
             runBlocking { database.guideDao().channelPreference("test:one")?.hidden == true }
+        }
+    }
+
+    @Test
+    fun channelManagementSavesALogoAddressAndANumber() {
+        composeRule.setContent {
+            StreamMateTheme {
+                ChannelEditorScreen(
+                    guideRepository = GuideRepository(database.guideDao()),
+                    preferencesRepository = AppPreferencesRepository(
+                        InstrumentationRegistry.getInstrumentation().targetContext,
+                    ),
+                    onBack = {},
+                )
+            }
+        }
+
+        composeRule.awaitFocused("channel-editor-item-test:one")
+        composeRule.onNodeWithTag("channel-editor-logo-url").performScrollTo().performClick()
+        composeRule.onNodeWithTag("channel-editor-logo-url").performTextInput("http://logo.example/one.png")
+        composeRule.onNodeWithTag("channel-editor-number").performScrollTo().performClick()
+        composeRule.onNodeWithTag("channel-editor-number").performTextInput("12")
+        composeRule.onNodeWithTag("channel-editor-save").performScrollTo().performClick()
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            runBlocking {
+                val preference = database.guideDao().channelPreference("test:one")
+                preference?.customLogoUrl == "http://logo.example/one.png" && preference.channelNumber == 12
+            }
+        }
+        // The list row carries the number the viewer gave the channel.
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithText("12").fetchSemanticsNodes().isNotEmpty()
         }
     }
 

@@ -158,5 +158,22 @@ class M3uParserTest {
         assertEquals(1, parser.parse("udp://@239.0.0.1:1234\n".stream()).size)
     }
 
+    @Test
+    fun `reads the playlist's own channel number and ignores one it cannot dial`() {
+        val playlist = """
+            #EXTM3U
+            #EXTINF:-1 tvg-chno="12" tvg-id="one",One
+            http://stream.example/1
+            #EXTINF:-1 channel-number="3",Two
+            http://stream.example/2
+            #EXTINF:-1 tvg-chno="12.1",Three
+            http://stream.example/3
+            #EXTINF:-1,Four
+            http://stream.example/4
+        """.trimIndent()
+
+        assertEquals(listOf(12, 3, null, null), parser.parse(playlist.stream()).map { it.channelNumber })
+    }
+
     private fun String.stream() = ByteArrayInputStream(toByteArray(Charsets.UTF_8))
 }
