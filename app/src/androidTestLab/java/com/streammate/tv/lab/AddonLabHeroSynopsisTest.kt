@@ -53,8 +53,7 @@ class AddonLabHeroSynopsisTest {
         // Open details: the fresh metadata from the hero must be reused, and Back must
         // restore the same original catalog card (metadata returned a canonical ID).
         card("Target").performClick()
-        compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("addon-details-loaded")).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Suomenkielinen kohteen kuvaus").assertIsDisplayed()
+        waitForDetailsSynopsis("Suomenkielinen kohteen kuvaus")
         assertEquals(1, f.calls("target"))
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         card("Target").assertIsFocused()
@@ -67,6 +66,20 @@ class AddonLabHeroSynopsisTest {
         card("Other catalog title").performKeyInput { pressKey(Key.DirectionUp) }
         waitForHero("Suomenkielinen kohteen kuvaus")
         assertEquals(1, f.calls("target")); assertEquals(0, f.unexpected.get())
+    }
+
+    @Test fun detailsPreviewTitleDoesNotMeanLocalizedSynopsisIsReady() = fixture { f ->
+        // Click without focusing the card first: metadata must come from details,
+        // not a completed hero lookup. Keep its HTTP response pending explicitly.
+        card("Deferred details").performClick()
+        compose.waitUntil(10_000) { f.calls("details") == 1 }
+        compose.onNodeWithTag("addon-details-loaded").assertIsDisplayed()
+        compose.onNodeWithText("English catalog synopsis").assertIsDisplayed()
+        compose.onNodeWithText("Viivästetty suomenkielinen kuvaus").assertDoesNotExist()
+        f.releaseDetails.countDown()
+        waitForDetailsSynopsis("Viivästetty suomenkielinen kuvaus")
+        compose.onNodeWithText("English catalog synopsis").assertDoesNotExist()
+        assertEquals(1, f.calls("details")); assertEquals(0, f.unexpected.get())
     }
 
     @Test fun lateResponseCannotOverwriteNewFocusAndRailAndUnavailableTitlesStayResponsive() = fixture { f ->
@@ -114,12 +127,24 @@ class AddonLabHeroSynopsisTest {
         compose.waitUntil(10_000) { compose.onAllNodes(hero and hasText(text)).fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hero and hasText(text)).assertIsDisplayed()
     }
+    private fun waitForDetailsSynopsis(text: String) {
+        // The details title is rendered from the catalog preview before HTTP or
+        // cache I/O completes. Its tag is not a metadata-readiness signal.
+        val synopsis = hasText(text) and hasAnyAncestor(
+            hasTestTag("addon-movie-details") or hasTestTag("addon-series-details"))
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(synopsis).fetchSemanticsNodes().size == 1 &&
+                compose.onNode(synopsis).isDisplayed()
+        }
+        compose.onNode(synopsis).assertIsDisplayed()
+    }
 
     private class Fixture {
         val requests = ConcurrentHashMap<String, AtomicInteger>()
         val otherRequests = AtomicInteger()
         val unexpected = AtomicInteger()
         val releaseSlow = CountDownLatch(1)
+        val releaseDetails = CountDownLatch(1)
         fun calls(id: String) = requests[id]?.get() ?: 0
     }
     private fun fixture(test: (Fixture) -> Unit): Unit = runBlocking {
@@ -136,7 +161,7 @@ class AddonLabHeroSynopsisTest {
                     val path = request.path.orEmpty()
                     if (path.contains("/catalog/")) {
                         val items = if (path.startsWith("/other/")) listOf("target" to "Other catalog title") else
-                            listOf("target" to "Target", "slow" to "Slow", "next" to "Next", "unavailable" to "Unavailable", "rail" to "Rail target")
+                            listOf("target" to "Target", "slow" to "Slow", "next" to "Next", "unavailable" to "Unavailable", "rail" to "Rail target", "details" to "Deferred details")
                         return MockResponse().setHeader("Cache-Control", "max-age=600").setBody(items.joinToString(",", "{\"metas\":[", "]}") { (id, name) ->
                             """{"id":"$id","type":"lab.hero","name":"$name","description":"English catalog synopsis","releaseInfo":"2026"}"""
                         })
@@ -147,15 +172,18 @@ class AddonLabHeroSynopsisTest {
                         if (other) f.otherRequests.incrementAndGet()
                         else f.requests.computeIfAbsent(id) { AtomicInteger() }.incrementAndGet()
                         if (id == "slow") check(f.releaseSlow.await(20, TimeUnit.SECONDS))
+                        if (id == "details") check(f.releaseDetails.await(20, TimeUnit.SECONDS))
                         if (id == "unavailable") return MockResponse().setResponseCode(503)
                         val description = when {
                             other -> "Toisen palvelun kuvaus"
                             id == "target" -> "Suomenkielinen kohteen kuvaus"
                             id == "next" -> "Seuraavan kohteen kuvaus"
                             id == "slow" -> "Hidas vanha kuvaus"
+                            id == "details" -> "Viivästetty suomenkielinen kuvaus"
                             else -> "Muu kuvaus"
                         }
-                        return MockResponse().setHeader("Cache-Control", "max-age=600").setBody(
+                        return MockResponse().setHeadersDelay(if (id == "details") 2 else 0, TimeUnit.SECONDS)
+                            .setHeader("Cache-Control", "max-age=600").setBody(
                             """{"meta":{"id":"canonical-$id","type":"lab.hero","name":"Canonical metadata title","description":"$description","behaviorHints":{"defaultVideoId":"original-video"}}}""")
                     }
                     f.unexpected.incrementAndGet(); return MockResponse().setResponseCode(404)
@@ -177,6 +205,7 @@ class AddonLabHeroSynopsisTest {
                 test(f)
             } finally {
                 f.releaseSlow.countDown()
+                f.releaseDetails.countDown()
                 compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
                 compose.runOnUiThread { compose.activity.setContent {} }
                 installed.forEach { host.store.remove(profile, it.installationId) }
