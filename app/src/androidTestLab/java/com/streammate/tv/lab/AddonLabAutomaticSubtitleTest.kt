@@ -179,7 +179,18 @@ class AddonLabAutomaticSubtitleTest {
                     // A later tracks/readiness event must not overwrite an explicit Off choice.
                     compose.onNodeWithTag("player-subtitles").performClick()
                     compose.onNodeWithText("Subtitles off").performClick()
-                    compose.waitUntil(10_000) { host.activePlayback?.ready == true }
+                    // The old media may still be ready while the choice validates
+                    // asynchronously. Wait for the applied Off state and re-prepare.
+                    compose.waitUntil(10_000) {
+                        compose.onAllNodes(hasTestTag("addon-player-subtitle-list")).fetchSemanticsNodes().isEmpty() &&
+                            compose.runOnIdle {
+                                val playback = host.activePlayback!!
+                                playback.ready && playback.selectedSubtitle == null &&
+                                    C.TRACK_TYPE_TEXT in playback.player.trackSelectionParameters.disabledTrackTypes &&
+                                    !playback.player.currentTracks.isTypeSelected(C.TRACK_TYPE_TEXT) &&
+                                    playback.player.currentCues.cues.isEmpty()
+                            }
+                    }
                     compose.runOnIdle { host.activePlayback!!.player.seekTo(10_000) }
                     compose.mainClock.advanceTimeBy(1_000)
                     assertNull(host.activePlayback!!.selectedSubtitle)

@@ -130,6 +130,14 @@ class AddonLabPlayerNavigationTest {
                     }
                 }
                 compose.waitUntil(10_000) { !exists("addon-player-subtitle-list") && playback.ready }
+                if (path == ReturnPath.SELECT) {
+                    // Verify the chosen track survived re-prepare, not just that
+                    // the dialog closed and control focus returned.
+                    compose.waitUntil(10_000) { compose.runOnIdle {
+                        playback.ready && playback.selectedSubtitle == "fin" &&
+                            playback.player.currentCues.cues.any { it.text.toString().contains("Navigation fixture subtitle") }
+                    } }
+                }
                 compose.onNodeWithTag(if (path == ReturnPath.AUDIO) "player-audio" else "player-subtitles").assertIsFocused()
                 assertEquals(!paused, compose.runOnIdle { playback.player.playWhenReady })
                 if (idle) {

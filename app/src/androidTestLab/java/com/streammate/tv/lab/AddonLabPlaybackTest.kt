@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.annotation.OptIn
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.addons.AddonEndpoint
@@ -27,6 +28,7 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.TimeUnit
 
 /** Entirely synthetic network/media; custom type prevents requests to real installed addons. */
 @OptIn(UnstableApi::class)
@@ -36,8 +38,9 @@ class AddonLabPlaybackTest {
     @Test fun hlsPlaybackAndSeek() = exercise("fixture.m3u8", full = false)
     @Test fun dashPlaybackAndSeek() = exercise("fixture.mpd", full = false)
     @Test fun episodePlaybackContinueAndStartOver() = exercise("fixture.mp4", full = true, series = true)
+    @Test fun delayedEpisodeSubtitleReprepareRetainsSelection() = exercise("fixture.mp4", full = true, series = true, delayedSubtitleReload = true)
 
-    private fun exercise(format: String, full: Boolean, series: Boolean = false): Unit = runBlocking {
+    private fun exercise(format: String, full: Boolean, series: Boolean = false, delayedSubtitleReload: Boolean = false): Unit = runBlocking {
         val app = compose.activity.application as StreamMateApplication
         check(app.packageName == "com.streammate.tv.lab")
         check(android.os.Build.FINGERPRINT.contains("generic") || android.os.Build.HARDWARE.contains("ranchu"))
@@ -56,6 +59,8 @@ class AddonLabPlaybackTest {
             val subtitleRequests = AtomicInteger()
             val offline = AtomicBoolean(false)
             val mediaAuth = AtomicBoolean(false)
+            val delayNextMedia = AtomicBoolean(false)
+            val delayedMediaRequests = AtomicInteger()
             server.dispatcher = object : Dispatcher() {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     val path = request.requestUrl!!.encodedPath
@@ -90,6 +95,10 @@ class AddonLabPlaybackTest {
                                         name.endsWith("ts") -> "video/mp2t"
                                         else -> "video/mp4"
                                     })
+                                    if (delayNextMedia.compareAndSet(true, false)) {
+                                        delayedMediaRequests.incrementAndGet()
+                                        response.setHeadersDelay(2, TimeUnit.SECONDS)
+                                    }
                                     if (range >= bytes.size) response.setResponseCode(416)
                                     else {
                                         if (range > 0) response.setResponseCode(206).setHeader("Content-Range", "bytes $range-${bytes.size - 1}/${bytes.size}")
@@ -129,8 +138,7 @@ class AddonLabPlaybackTest {
                 if (full) {
                     // Automatic sidecar attachment prepares the media item again.
                     // Exercise transport only after that asynchronous preparation.
-                    compose.waitUntil(20_000) { host.activePlayback?.selectedSubtitle == "eng" }
-                    waitReady()
+                    waitForSubtitle(host, "eng")
                 }
                 assertTrue(mediaAuth.get())
                 compose.runOnIdle { host.activePlayback!!.player.seekTo(12_000); host.activePlayback!!.player.pause() }
@@ -141,8 +149,7 @@ class AddonLabPlaybackTest {
                 assertTrue("VOD controls stay in the lower half", controlsBounds.top > playerBounds.height / 2)
                 if (!full) screenshot("addon-lab-playback-${format.substringAfterLast('.')}.png")
                 if (full) {
-                    compose.waitUntil(20_000) { host.activePlayback?.selectedSubtitle == "eng" }
-                    waitReady()
+                    waitForSubtitle(host, "eng")
                     assertEquals(1, subtitleRequests.get()) // Automatically applied the primary language.
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
                     compose.waitUntil(10_000) { compose.runOnIdle { host.activePlayback!!.player.isPlaying } }
@@ -160,10 +167,14 @@ class AddonLabPlaybackTest {
                     compose.onNodeWithText("Back to player").assertIsFocused()
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
                     compose.onAllNodes(hasTestTag("addon-select-subtitle"))[0].assertIsFocused()
+                    delayNextMedia.set(delayedSubtitleReload)
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
                     compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("addon-player-subtitle-list")).fetchSemanticsNodes().isEmpty() }
+                    // Closing the picker means the choice was applied, not that
+                    // Media3 has finished rebuilding the selected text track.
+                    waitForSubtitle(host, "eng")
                     assertEquals("eng", host.activePlayback?.selectedSubtitle)
-                    waitReady()
+                    if (delayedSubtitleReload) assertEquals(1, delayedMediaRequests.get())
                     assertEquals(2, subtitleRequests.get())
                     compose.waitUntil(10_000) { compose.runOnIdle { host.activePlayback!!.player.currentCues.cues.any { it.text.toString().contains("Fixture subtitle") } } }
                     screenshot("addon-lab-playback-subtitles.png")
@@ -177,9 +188,11 @@ class AddonLabPlaybackTest {
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
                     compose.onNodeWithText("Subtitles off").assertIsFocused()
+                    delayNextMedia.set(delayedSubtitleReload)
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
-                    compose.waitUntil(15_000) { host.activePlayback?.selectedSubtitle == null }
-                    waitReady()
+                    compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("addon-player-subtitle-list")).fetchSemanticsNodes().isEmpty() }
+                    waitForSubtitle(host, null)
+                    if (delayedSubtitleReload) assertEquals(2, delayedMediaRequests.get())
                     compose.onNodeWithTag("player-subtitles").assertIsFocused()
                     offline.set(true)
                     compose.runOnIdle { host.activePlayback!!.player.stop(); host.activePlayback!!.player.prepare(); host.activePlayback!!.player.play() }
@@ -240,6 +253,17 @@ class AddonLabPlaybackTest {
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
     }
     private fun waitReady() { compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("addon-player-ready")).fetchSemanticsNodes().isNotEmpty() } }
+    private fun waitForSubtitle(host: AddonHost, language: String?) {
+        compose.waitUntil(20_000) { compose.runOnIdle {
+            host.activePlayback?.let { playback ->
+                playback.ready && playback.selectedSubtitle == language &&
+                    playback.player.currentTracks.isTypeSelected(C.TRACK_TYPE_TEXT) == (language != null) &&
+                    (language != null || (C.TRACK_TYPE_TEXT in playback.player.trackSelectionParameters.disabledTrackTypes &&
+                        playback.player.currentCues.cues.isEmpty()))
+            } == true
+        } }
+        waitReady()
+    }
     private fun screenshot(name: String) {
         AddonLabScreenshots.capture(compose.activity, name)
     }
