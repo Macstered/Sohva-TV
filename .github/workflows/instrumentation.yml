@@ -40,10 +40,12 @@ jobs:
           # This project has no native build; remove only SDK-managed NDKs on
           # this disposable hosted runner, not arbitrary tool/cache directories.
           test "$RUNNER_ENVIRONMENT" = github-hosted
-          installed_sdk_packages="$(sdkmanager --list_installed)"
+          sdk_manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdk_manager"
+          installed_sdk_packages="$("$sdk_manager" --list_installed)"
           mapfile -t unused_ndks < <(printf '%s\n' "$installed_sdk_packages" | awk '$1 ~ /^ndk;[0-9][0-9.]*$/ {print $1}')
           if ((${#unused_ndks[@]})); then
-            sdkmanager --uninstall "${unused_ndks[@]}"
+            "$sdk_manager" --uninstall "${unused_ndks[@]}"
           fi
           df -h "$ANDROID_HOME" "$RUNNER_TEMP"
 
@@ -101,10 +103,12 @@ jobs:
         run: |
           # Same narrowly scoped cleanup as the ordinary instrumentation job.
           test "$RUNNER_ENVIRONMENT" = github-hosted
-          installed_sdk_packages="$(sdkmanager --list_installed)"
+          sdk_manager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$sdk_manager"
+          installed_sdk_packages="$("$sdk_manager" --list_installed)"
           mapfile -t unused_ndks < <(printf '%s\n' "$installed_sdk_packages" | awk '$1 ~ /^ndk;[0-9][0-9.]*$/ {print $1}')
           if ((${#unused_ndks[@]})); then
-            sdkmanager --uninstall "${unused_ndks[@]}"
+            "$sdk_manager" --uninstall "${unused_ndks[@]}"
           fi
           df -h "$ANDROID_HOME" "$RUNNER_TEMP"
       - name: Generate synthetic media tools
