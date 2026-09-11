@@ -10,9 +10,9 @@ to access.
 
 ## Download
 
-The current tester build is **0.1.0-beta.12 (build 13)**. It is an early beta, not
+The prepared tester build is **0.1.0-beta.13 (build 14)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.12)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.13)
 and verify the published SHA-256 value.
 
 - [Installation and setup](INSTALL.md)
@@ -27,9 +27,9 @@ automatic source archives contain its original release-document snapshot. The
 maintained application source is on `main`; future release tags will point to
 the corresponding source commit.
 
-This source snapshot prepares **0.1.0-beta.13 (build 14)**. It is not a published
-download until its numbered release appears. The beta 12 link above remains the
-current published build during preparation.
+This source snapshot is not itself an APK download. Use the numbered release
+only after it appears, and keep existing app data when updating from beta 12.
+Discover starts empty; the existing `.smbak` backup excludes Discover data.
 
 ## Build from source
 
