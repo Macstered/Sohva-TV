@@ -116,6 +116,10 @@ class AddonLabPlayerNavigationTest {
                 compose.onNodeWithTag("player-play-pause").assertIsFocused()
                 if (paused) compose.onNodeWithTag("player-play-pause").performClick()
                 compose.onNodeWithTag(if (path == ReturnPath.AUDIO) "player-audio" else "player-subtitles").performClick()
+                compose.waitUntil(5_000) {
+                    !compose.runOnIdle { compose.activity.hasWindowFocus() } &&
+                        exists(if (path == ReturnPath.AUDIO) "player-track-picker" else "addon-player-subtitle-list")
+                }
                 when (path) {
                     ReturnPath.REMOTE_BACK, ReturnPath.AUDIO -> remote(android.view.KeyEvent.KEYCODE_BACK)
                     ReturnPath.BUTTON -> compose.onNodeWithText("Back to player").performClick()
@@ -127,10 +131,18 @@ class AddonLabPlayerNavigationTest {
                         compose.onNodeWithTag("addon-subtitle-sync").performClick()
                         compose.waitUntil(5_000) { exists("addon-subtitle-sync-panel") }
                         remote(android.view.KeyEvent.KEYCODE_BACK)
+                        compose.waitUntil(5_000) {
+                            !exists("addon-subtitle-sync-panel") &&
+                                compose.onAllNodes(hasText("Back to player") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+                        }
                         compose.onNodeWithText("Back to player").performClick()
                     }
                 }
-                compose.waitUntil(10_000) { !exists("addon-player-subtitle-list") && playback.ready }
+                compose.waitUntil(10_000) {
+                    !exists("addon-player-subtitle-list") && !exists("player-track-picker") && playback.ready &&
+                        compose.runOnIdle { compose.activity.hasWindowFocus() } &&
+                        compose.onAllNodes(hasTestTag(if (path == ReturnPath.AUDIO) "player-audio" else "player-subtitles") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+                }
                 if (path == ReturnPath.SELECT) {
                     // Verify the chosen track survived re-prepare, not just that
                     // the dialog closed and control focus returned.

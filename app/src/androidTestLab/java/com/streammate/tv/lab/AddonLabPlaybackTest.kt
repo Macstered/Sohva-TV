@@ -160,11 +160,11 @@ class AddonLabPlaybackTest {
                     compose.onNodeWithTag("player-audio").performClick()
                     compose.onNodeWithTag("player-track-picker").assertIsDisplayed()
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
-                    compose.onNodeWithTag("player-audio").assertIsFocused()
+                    waitForPlayerControl("player-audio")
                     compose.onNodeWithTag("player-subtitles").performClick()
                     compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("addon-select-subtitle")).fetchSemanticsNodes().isNotEmpty() }
                     // Real remote events: performClick bypasses focus and hid the Shield bug.
-                    compose.onNodeWithText("Back to player").assertIsFocused()
+                    waitForSubtitlePicker()
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
                     compose.onAllNodes(hasTestTag("addon-select-subtitle"))[0].assertIsFocused()
                     delayNextMedia.set(delayedSubtitleReload)
@@ -178,13 +178,18 @@ class AddonLabPlaybackTest {
                     assertEquals(2, subtitleRequests.get())
                     compose.waitUntil(10_000) { compose.runOnIdle { host.activePlayback!!.player.currentCues.cues.any { it.text.toString().contains("Fixture subtitle") } } }
                     screenshot("addon-lab-playback-subtitles.png")
-                    compose.onNodeWithTag("player-subtitles").assertIsFocused()
+                    // Android window focus and Compose's remembered button focus
+                    // settle separately. Do not inject the next key into a closing
+                    // dialog, or assert the next dialog before it is attached.
+                    repeat(3) {
+                        waitForPlayerControl("player-subtitles")
+                        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
+                        waitForSubtitlePicker()
+                        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                    }
+                    waitForPlayerControl("player-subtitles")
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
-                    compose.onNodeWithText("Back to player").assertIsFocused()
-                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
-                    compose.onNodeWithTag("player-subtitles").assertIsFocused()
-                    InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
-                    compose.onNodeWithText("Back to player").assertIsFocused()
+                    waitForSubtitlePicker()
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
                     compose.onNodeWithText("Subtitles off").assertIsFocused()
@@ -193,7 +198,7 @@ class AddonLabPlaybackTest {
                     compose.waitUntil(15_000) { compose.onAllNodes(hasTestTag("addon-player-subtitle-list")).fetchSemanticsNodes().isEmpty() }
                     waitForSubtitle(host, null)
                     if (delayedSubtitleReload) assertEquals(2, delayedMediaRequests.get())
-                    compose.onNodeWithTag("player-subtitles").assertIsFocused()
+                    waitForPlayerControl("player-subtitles")
                     offline.set(true)
                     compose.runOnIdle { host.activePlayback!!.player.stop(); host.activePlayback!!.player.prepare(); host.activePlayback!!.player.play() }
                     compose.waitUntil(25_000) { host.activePlayback?.failed == true }
@@ -253,6 +258,22 @@ class AddonLabPlaybackTest {
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
     }
     private fun waitReady() { compose.waitUntil(25_000) { compose.onAllNodes(hasTestTag("addon-player-ready")).fetchSemanticsNodes().isNotEmpty() } }
+    private fun waitForSubtitlePicker() {
+        compose.waitUntil(5_000) {
+            !compose.runOnIdle { compose.activity.hasWindowFocus() } &&
+                compose.onAllNodes(hasTestTag("addon-player-subtitle-list")).fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodes(hasText("Back to player") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Back to player").assertIsDisplayed().assertIsFocused()
+    }
+    private fun waitForPlayerControl(tag: String) {
+        compose.waitUntil(5_000) {
+            compose.runOnIdle { compose.activity.hasWindowFocus() } &&
+                compose.onAllNodes(hasTestTag("addon-player-subtitle-list") or hasTestTag("player-track-picker")).fetchSemanticsNodes().isEmpty() &&
+                compose.onAllNodes(hasTestTag(tag) and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag(tag).assertIsDisplayed().assertIsFocused()
+    }
     private fun waitForSubtitle(host: AddonHost, language: String?) {
         compose.waitUntil(20_000) { compose.runOnIdle {
             host.activePlayback?.let { playback ->

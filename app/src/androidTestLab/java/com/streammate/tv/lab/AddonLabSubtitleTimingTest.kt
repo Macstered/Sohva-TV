@@ -256,9 +256,18 @@ class AddonLabSubtitleTimingTest {
                     compose.waitUntil(10_000) { compose.runOnIdle { playback.player.isPlaying } }
                 }
                 InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+                compose.waitUntil(5_000) {
+                    compose.onAllNodes(hasTestTag("addon-subtitle-sync-panel")).fetchSemanticsNodes().isEmpty() &&
+                        compose.onAllNodes(hasText("Back to player") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+                }
                 compose.onNodeWithText("Back to player").assertIsFocused()
                 assertFalse(compose.runOnIdle { playback.player.playWhenReady })
                 compose.onNodeWithText("Back to player").performClick()
+                compose.waitUntil(5_000) {
+                    compose.runOnIdle { compose.activity.hasWindowFocus() } &&
+                        compose.onAllNodes(hasTestTag("addon-player-subtitle-list")).fetchSemanticsNodes().isEmpty() &&
+                        compose.onAllNodes(hasTestTag("player-subtitles") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+                }
                 compose.onNodeWithTag("player-subtitles").assertIsFocused()
                 assertEquals(!embedded, compose.runOnIdle { playback.player.playWhenReady })
                 if (!embedded || externalPayload != null) assertEquals("Timing reuses downloaded subtitle bytes", 1, subtitleRequests.get())
