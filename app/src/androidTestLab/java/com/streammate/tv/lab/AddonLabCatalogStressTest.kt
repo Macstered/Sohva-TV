@@ -13,20 +13,28 @@ import com.streammate.tv.app.MainActivity
 import com.streammate.tv.app.StreamMateApplication
 import com.streammate.tv.app.StreamMateTheme
 import com.streammate.tv.feature.common.StreamMateScreenBackground
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import okhttp3.mockwebserver.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Bounded synthetic stress, not a Shield/frame-time or real poster-decoding benchmark. */
 class AddonLabCatalogStressTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun largeCatalogsStayViewportBoundedAndEvictedShelvesReturnFromDiskCache(): Unit = runBlocking {
+    @Test fun largeCatalogsStayViewportBoundedAndEvictedShelvesReturnFromDiskCache() = exercise(false)
+
+    @Test fun pendingLookaheadDoesNotCountAsAReturnNavigationFetch() = exercise(true)
+
+    private fun exercise(delayLastPrefetch: Boolean): Unit = runBlocking {
         check(android.os.Build.FINGERPRINT.contains("generic") || android.os.Build.HARDWARE.contains("ranchu"))
         val app = compose.activity.application as StreamMateApplication
         check(app.packageName == "com.streammate.tv.lab")
@@ -35,6 +43,8 @@ class AddonLabCatalogStressTest {
         MockWebServer().use { server ->
             val requested = ConcurrentHashMap<Int, AtomicInteger>()
             val unexpected = AtomicInteger()
+            val finalPrefetchArrived = CountDownLatch(1)
+            val releaseFinalPrefetch = CountDownLatch(1)
             val page = """{"metas":[${(1..1000).joinToString(",") {
                 """{"id":"title$it","type":"lab.stress","name":"Synthetic title $it","description":"Synthetic catalog payload for bounded parsing and navigation","releaseInfo":"2026"}"""
             }}]}"""
@@ -42,6 +52,10 @@ class AddonLabCatalogStressTest {
                 override fun dispatch(request: RecordedRequest): MockResponse {
                     val row = Regex("/catalog/lab.stress/row(\\d+)\\.json").find(request.path.orEmpty())?.groupValues?.get(1)?.toInt()
                     if (row == null) { unexpected.incrementAndGet(); return MockResponse().setResponseCode(404) }
+                    if (delayLastPrefetch && row == 34) {
+                        finalPrefetchArrived.countDown()
+                        if (!releaseFinalPrefetch.await(20, TimeUnit.SECONDS)) return MockResponse().setResponseCode(500)
+                    }
                     requested.computeIfAbsent(row) { AtomicInteger() }.incrementAndGet()
                     return MockResponse().setHeader("Cache-Control", "max-age=600").setBody(page)
                 }
@@ -72,19 +86,34 @@ class AddonLabCatalogStressTest {
                     focusTimes += android.os.SystemClock.elapsedRealtime() - before
                 }
                 assertTrue("Only visited and nearby rows should load", requested.size in 33..36)
+                if (delayLastPrefetch) compose.waitUntil(10_000) { finalPrefetchArrived.count == 0L }
+                releaseFinalPrefetch.countDown()
+                // Row 32 has two look-ahead requests. Focus readiness does not
+                // prove those have reached the server or the encrypted cache.
+                // Finish that known work before measuring return-navigation I/O.
+                withTimeout(10_000) {
+                    for (row in 0..34) {
+                        while (host.browser.cachedCatalog(preferences.activeProfileId,
+                                installed.installationId, "lab.stress", "row$row") == null) delay(10)
+                    }
+                }
+                assertEquals("Only visited rows and the two look-ahead rows should load",
+                    (0..34).toSet(), requested.keys.toSet())
                 val requestsBeforeReturn = requested.values.sumOf { it.get() }
                 // Cross the 24-shelf retention bound, then return: old rows should use encrypted cache.
                 for (row in 31 downTo 0) {
                     compose.onNode(isFocused()).performKeyInput { pressKey(Key.DirectionUp) }
                     waitForRow(row)
                 }
-                assertEquals(requestsBeforeReturn, requested.values.sumOf { it.get() })
+                assertEquals("Requests by row: ${requested.toSortedMap().mapValues { it.value.get() }}",
+                    requestsBeforeReturn, requested.values.sumOf { it.get() })
                 assertTrue("Coalesced shelf loads should request each page only once: ${requested.toSortedMap().mapValues { it.value.get() }}",
                     requested.values.all { it.get() == 1 })
                 assertEquals("No metadata, streams or subtitle prefetch", 0, unexpected.get())
                 val heapMiB = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024)
                 println("SOHVA_SYNTHETIC_STRESS catalogs=40 titlesPerResponse=1000 requests=$requestsBeforeReturn firstVisibleMs=$firstVisibleMillis navigationSamples=${focusTimes.size} navigationMaxMs=${focusTimes.maxOrNull()} managedHeapMiB=$heapMiB")
             } finally {
+                releaseFinalPrefetch.countDown()
                 host.store.remove(preferences.activeProfileId, installed.installationId)
             }
         }
