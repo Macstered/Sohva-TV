@@ -14,7 +14,7 @@ local.properties
 .codex/
 .codex-artifacts/
 artifacts/
-assets/
+/assets/
 concept_images/
 *.apk
 *.aab
