@@ -34,6 +34,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Reserve disk for the Android TV image
+        run: |
+          # The image's minimum userdata size can override disk-size below.
+          # This project has no native build; remove only SDK-managed NDKs on
+          # this disposable hosted runner, not arbitrary tool/cache directories.
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          installed_sdk_packages="$(sdkmanager --list_installed)"
+          mapfile -t unused_ndks < <(printf '%s\n' "$installed_sdk_packages" | awk '$1 ~ /^ndk;[0-9][0-9.]*$/ {print $1}')
+          if ((${#unused_ndks[@]})); then
+            sdkmanager --uninstall "${unused_ndks[@]}"
+          fi
+          df -h "$ANDROID_HOME" "$RUNNER_TEMP"
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
@@ -84,6 +97,16 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v5
+      - name: Reserve disk for the Android TV image
+        run: |
+          # Same narrowly scoped cleanup as the ordinary instrumentation job.
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          installed_sdk_packages="$(sdkmanager --list_installed)"
+          mapfile -t unused_ndks < <(printf '%s\n' "$installed_sdk_packages" | awk '$1 ~ /^ndk;[0-9][0-9.]*$/ {print $1}')
+          if ((${#unused_ndks[@]})); then
+            sdkmanager --uninstall "${unused_ndks[@]}"
+          fi
+          df -h "$ANDROID_HOME" "$RUNNER_TEMP"
       - name: Generate synthetic media tools
         timeout-minutes: 10
         run: |
