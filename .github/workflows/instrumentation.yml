@@ -48,8 +48,11 @@ jobs:
           target: android-tv
           arch: x86
           profile: tv_1080p
+          # Default TV userdata grew beyond the hosted runner's available disk.
+          # These synthetic suites need well under 2 GB; no user data is involved.
+          disk-size: 2048M
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-metrics -noaudio -no-boot-anim -camera-back none
           # The screensaver is the reason this suite was red on real hardware:
           # once it takes the foreground mid-run every later test fails to find
           # a Compose hierarchy. Turn it off before any test starts.
@@ -101,8 +104,9 @@ jobs:
           target: android-tv
           arch: x86
           profile: tv_1080p
+          disk-size: 2048M
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-metrics -noaudio -no-boot-anim -camera-back none
           script: |
             adb shell settings put secure screensaver_enabled 0
             adb shell settings put system screen_off_timeout 2147483647
