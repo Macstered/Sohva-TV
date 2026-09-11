@@ -171,7 +171,9 @@ internal fun AddonDiscoverScreen(host: AddonHost, preferences: AppPreferences, o
     catalog?.let { (installation, value) ->
         AddonCatalogScreen(host, preferences.activeProfileId, installation, value, { catalog = null }, modifier); return
     }
-    LaunchedEffect(installations) {
+    // An empty first result equals the initial list. Readiness must also restart
+    // this effect or fresh installs remain on "Loading watch history" forever.
+    LaunchedEffect(loaded, installations) {
         if (!loaded) return@LaunchedEffect
         try {
             host.pendingProgressWrite?.join()

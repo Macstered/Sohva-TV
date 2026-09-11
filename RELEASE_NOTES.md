@@ -26,6 +26,7 @@ remain available. No addons, subscriptions, channels or credentials are included
   The temporary phone browser page is in English. Addon metadata language is
   configured with the metadata provider, independently of the app's menus.
 - A guide instrumentation teardown race is fixed; no guide behavior changed.
+- Fresh Discover with no addons correctly finishes loading its empty watch history.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 

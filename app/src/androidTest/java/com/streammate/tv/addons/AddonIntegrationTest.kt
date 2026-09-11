@@ -3,6 +3,12 @@ package com.streammate.tv.addons
 import androidx.activity.compose.setContent
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.Modifier
+import com.sohva.tv.addons.InstalledAddon
+import kotlinx.coroutines.CompletableDeferred
+import com.streammate.tv.R
+import androidx.test.platform.app.InstrumentationRegistry
+import android.view.KeyEvent
 import com.sohva.tv.addons.AddonEndpoint
 import com.sohva.tv.addons.AddonException
 import com.sohva.tv.addons.AddonFailure
@@ -28,6 +34,9 @@ class AddonIntegrationTest {
 
     @Before fun homeReady() {
         compose.awaitUntil(15_000) { compose.onAllNodesWithTag("home-hero-primary").fetchSemanticsNodes().isNotEmpty() }
+        // A manual emulator tap leaves Android in touch mode, where these
+        // remote-first clickable surfaces are not focusable. Exercise D-pad mode.
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP)
         assertEquals("com.streammate.tv.debug", app.packageName)
         assertFalse(app.container.runtimePolicy.isLab)
         assertTrue(app.container.runtimePolicy.automaticMaintenanceAllowed)
@@ -43,6 +52,10 @@ class AddonIntegrationTest {
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithTag("addon-shelves").assertIsDisplayed()
         // Settings restores focus to the rail. Back first collapses the rail.
+        compose.awaitUntil(5_000) {
+            compose.onAllNodes(hasTestTag("addon-manage") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("addon-manage").assertIsFocused()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
         compose.onNodeWithTag("addon-shelves").assertIsDisplayed()
@@ -51,6 +64,24 @@ class AddonIntegrationTest {
         compose.onNodeWithTag("home-live").assertIsDisplayed()
         compose.onNodeWithTag("home-movies").assertIsDisplayed()
         assertFalse(compose.activity.isFinishing)
+    }
+
+    @Test fun freshDiscoverFinishesHistoryLoadingWhenTheInstallationListIsEmpty(): Unit = runBlocking {
+        val host = AddonHost.get(app, app.container)
+        val preferences = app.container.preferencesRepository.preferences.first()
+        val installations = CompletableDeferred<List<InstalledAddon>>()
+        compose.runOnUiThread { compose.activity.setContent {
+            StreamMateTheme {
+                AddonDiscoverScreen(host, preferences, {}, Modifier, loadInstallations = { installations.await() })
+            }
+        } }
+        compose.onNodeWithText(app.getString(R.string.addon_ui_loading_watch_history)).assertIsDisplayed()
+        installations.complete(emptyList())
+        compose.awaitUntil(5_000) {
+            compose.onAllNodesWithText(app.getString(R.string.addon_ui_nothing_to_continue_yet)).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText(app.getString(R.string.addon_ui_nothing_to_continue_yet)).assertIsDisplayed()
+        compose.onAllNodesWithText(app.getString(R.string.addon_ui_loading_watch_history)).assertCountEquals(0)
     }
 
     @Test fun homeDoesNotFetchInstalledAddonsUntilDiscoverIsEntered(): Unit = runBlocking {
