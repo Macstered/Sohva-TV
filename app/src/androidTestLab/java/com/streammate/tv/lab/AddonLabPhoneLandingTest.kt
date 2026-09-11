@@ -242,6 +242,16 @@ class AddonLabPhoneLandingTest {
 
     @Test fun historyArtworkRepairWaitsForRealIoWithinItsDeadline() = verifyHistoryArtworkRepair(6)
 
+    @Test fun repeatedColdHistoryEntriesRepairArtworkExactlyOnce() {
+        repeat(4) {
+            verifyHistoryArtworkRepair(0)
+            // Each pass starts a new Discover composition and an uncached,
+            // no-store metadata fixture, rather than reusing a warm shelf.
+            compose.runOnUiThread { compose.activity.setContent {} }
+            compose.waitForIdle()
+        }
+    }
+
     private fun verifyHistoryArtworkRepair(metadataDelaySeconds: Long): Unit = runBlocking {
         val app = app(); val host = AddonHost.get(app, app.container)
         val preferences = app.container.preferencesRepository.preferences.first()
@@ -263,6 +273,8 @@ class AddonLabPhoneLandingTest {
             host.progress.save(host.progress.begin(preferences.activeProfileId, watch, "Old history title"), 1, 5_000, 45_000)
             val before = host.progress.get(preferences.activeProfileId, watch)!!
             val generation = androidx.compose.runtime.mutableIntStateOf(0)
+            val automaticClock = compose.mainClock.autoAdvance
+            compose.mainClock.autoAdvance = false
             try {
                 compose.runOnUiThread { compose.activity.setContent {
                     StreamMateTheme { StreamMateScreenBackground(contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) { modifier ->
@@ -271,8 +283,6 @@ class AddonLabPhoneLandingTest {
                 } }
                 val clockStart = compose.mainClock.currentTime
                 val wallStart = android.os.SystemClock.elapsedRealtime()
-                val automaticClock = compose.mainClock.autoAdvance
-                compose.mainClock.autoAdvance = false
                 try {
                     compose.waitUntil(15_000) {
                         // HTTP/Room use real time, but LaunchedEffect's 8s timeout
@@ -283,6 +293,10 @@ class AddonLabPhoneLandingTest {
                             (elapsed - (compose.mainClock.currentTime - clockStart)).coerceAtLeast(0),
                             ignoreFrameDuration = true,
                         )
+                        // Advancing Compose time alone does not drain Android's
+                        // layout/draw passes. Pump those too, without auto-advancing
+                        // the coroutine deadline, before sampling real I/O state.
+                        compose.waitForIdle()
                         posters.get() > 0 && runBlocking { host.progress.get(preferences.activeProfileId, watch)?.artwork?.poster != null }
                     }
                 } catch (timeout: ComposeTimeoutException) {
@@ -305,7 +319,11 @@ class AddonLabPhoneLandingTest {
                 compose.waitUntil(10_000) { compose.onAllNodes(hasTestTag("addon-continue-card") and hasContentDescription("Recovered title")).fetchSemanticsNodes().isNotEmpty() }
                 assertEquals(1, metadata.get()) // Durable artwork, not the no-store response, supplies the second Home entry.
                 screenshot("addon-history-artwork-repaired.png")
-            } finally { host.progress.remove(preferences.activeProfileId, watch); host.store.remove(preferences.activeProfileId, installed.installationId) }
+            } finally {
+                compose.mainClock.autoAdvance = automaticClock
+                host.progress.remove(preferences.activeProfileId, watch)
+                host.store.remove(preferences.activeProfileId, installed.installationId)
+            }
         }
     }
     private fun artwork(poster: Boolean): ByteArray {

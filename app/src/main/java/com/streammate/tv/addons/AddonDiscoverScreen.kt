@@ -171,14 +171,16 @@ internal fun AddonDiscoverScreen(host: AddonHost, preferences: AppPreferences, o
     catalog?.let { (installation, value) ->
         AddonCatalogScreen(host, preferences.activeProfileId, installation, value, { catalog = null }, modifier); return
     }
-    // An empty first result equals the initial list. Readiness must also restart
-    // this effect or fresh installs remain on "Loading watch history" forever.
-    LaunchedEffect(loaded, installations) {
-        if (!loaded) return@LaunchedEffect
+    // Capture the input associated with this effect's key. An obsolete not-ready
+    // job must not read newer ready state and overlap the actual ready job.
+    // null -> empty also loads history correctly on a fresh installation.
+    val historyOwners = installations.takeIf { loaded }
+    LaunchedEffect(historyOwners) {
+        val owners = historyOwners ?: return@LaunchedEffect
         try {
             host.pendingProgressWrite?.join()
             history = host.progress.recent(preferences.activeProfileId).filter { item -> item.resumePositionMillis > 0 &&
-                installations.any { it.enabled && it.installationId == item.identity.metadataInstallationId } }
+                owners.any { it.enabled && it.installationId == item.identity.metadataInstallationId } }
                 .distinctBy { it.identity.metadataInstallationId to it.identity.media }.take(20).map { item ->
                     val cached = host.browser.cachedDetails(preferences.activeProfileId, item.identity.metadataInstallationId, item.identity.media)
                     if (item.artwork?.poster == null && cached?.poster != null) try {
@@ -199,9 +201,11 @@ internal fun AddonDiscoverScreen(host: AddonHost, preferences: AppPreferences, o
     // Older watch rows predate durable artwork. Repair only missing posters, after
     // rendering history; two workers, twenty entries maximum, once per Discover session.
     // Leaving Home cancels work. No catalog scan, stream lookup or media playback.
-    LaunchedEffect(historyVersion) {
-        if (historyVersion == 0) return@LaunchedEffect
-        val pending = ArrayDeque(history.filter { it.second.poster == null })
+    val artworkGeneration = historyVersion
+    val historyForArtwork = history
+    LaunchedEffect(artworkGeneration) {
+        if (artworkGeneration == 0) return@LaunchedEffect
+        val pending = ArrayDeque(historyForArtwork.filter { it.second.poster == null })
         coroutineScope { repeat(2) { launch {
             while (pending.isNotEmpty()) {
                 val (item, _) = pending.removeFirst()
