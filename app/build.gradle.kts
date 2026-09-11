@@ -20,6 +20,19 @@ val releaseSigningProperties = Properties().apply {
 }
 
 android {
+    // Opt-in Lab instrumentation is separate from the ordinary debug regression suite.
+    testBuildType = providers.gradleProperty("sohvaTestBuildType").orElse("debug").get().also {
+        require(it in setOf("debug", "lab", "release")) { "Only debug, lab or release instrumentation is supported" }
+    }
+    if (testBuildType == "lab") {
+        sourceSets.getByName("androidTest").setRoot("src/androidTestLab")
+        sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("generated/addonPlaybackFixtures"))
+    }
+    // Explicit opt-in, disposable-emulator-only tests for the exact signed APK.
+    // Never mix the ordinary debug suite's data-clearing fixtures into release.
+    if (testBuildType == "release") {
+        sourceSets.getByName("androidTest").setRoot("src/androidTestRelease")
+    }
     namespace = "com.streammate.tv"
     compileSdk = 36
 
@@ -28,8 +41,8 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 13
-        versionName = "0.1.0-beta.12"
+        versionCode = 14
+        versionName = "0.1.0-beta.13"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // AGP leaves the instrumentation timeout at a year, so one hung test
@@ -79,6 +92,16 @@ android {
                 "proguard-rules.pro",
             )
         }
+
+        create("lab") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".lab"
+            versionNameSuffix = "-lab"
+            // Persistent local development identity; never needs the production key.
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {
@@ -113,6 +136,19 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// AGP 8.13.2 trims the non-debuggable test APK's desugared library independently
+// of the app. Its partial j$.time classes shadow the app's complete classes and
+// crash Application.onCreate before tests run. Keep the TEST copy complete;
+// neither the Lab APK nor ordinary debug/release packaging is changed.
+afterEvaluate {
+    if (android.testBuildType in setOf("lab", "release")) {
+        val variant = android.testBuildType.replaceFirstChar(Char::uppercaseChar)
+        tasks.named<com.android.build.gradle.internal.tasks.L8DexDesugarLibTask>("l8DexDesugarLib${variant}AndroidTest") {
+            keepRulesConfigurations.add("-keep class j$.** { *; }")
+        }
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -125,6 +161,8 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":iptv"))
     implementation(project(":sportmate"))
+    // Lazy Discover host owns the independent stores; no startup initializer.
+    implementation(project(":addons"))
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
 

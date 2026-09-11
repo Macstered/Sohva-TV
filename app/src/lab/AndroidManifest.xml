@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
+    <application
+        android:label="@string/lab_app_name"
+        android:icon="@drawable/lab_icon"
+        android:banner="@drawable/lab_banner"
+        tools:replace="android:label,android:icon,android:banner">
+        <receiver android:name=".app.ReminderReceiver" android:enabled="false" />
+        <provider android:name="androidx.core.content.FileProvider" tools:node="remove" />
+    </application>
+</manifest>

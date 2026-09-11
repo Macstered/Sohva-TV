@@ -23,6 +23,7 @@ import kotlinx.coroutines.delay
 
 object GuideRefreshScheduler {
     fun schedule(context: Context, playlistEpgInterval: PlaylistEpgRefreshInterval) {
+        if (!AppRuntimePolicy.forPackage(context.packageName).automaticMaintenanceAllowed) return
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -119,6 +120,9 @@ class GuideRefreshWorker(
     override suspend fun doWork(): Result {
         val kinds = refreshKindsFor(inputData.getString(KEY_KIND)) ?: return Result.failure()
         val immediate = inputData.getBoolean(KEY_IMMEDIATE, false)
+        if (!immediate && !AppRuntimePolicy.forPackage(applicationContext.packageName).automaticMaintenanceAllowed) {
+            return Result.success()
+        }
         val onlySourceId = inputData.getString(KEY_SOURCE_ID)
         val sources = container().secretSettingsStore.loadSources()
             .asSequence()

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="update_disabled_development" translatable="false">Public updates are disabled in development builds. Install a new development APK manually.</string>
     <string name="action_back">Back</string>
     <string name="catalogue_movies">Movies</string>
     <string name="catalogue_series">Series</string>

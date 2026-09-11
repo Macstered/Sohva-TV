@@ -11,7 +11,7 @@ data class AppUpdateUiState(
     val percent: Int? = null,
     val failure: Failure? = null,
 ) {
-    enum class Phase { IDLE, CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, DOWNLOADED, NEEDS_PERMISSION, FAILED }
+    enum class Phase { DISABLED, IDLE, CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, DOWNLOADED, NEEDS_PERMISSION, FAILED }
 
     enum class Failure { NETWORK, NO_CHECKSUMS, CHECKSUM_MISMATCH, INSTALL_BLOCKED }
 }

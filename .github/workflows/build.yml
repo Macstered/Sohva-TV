@@ -45,6 +45,9 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
 
+      - name: Phone setup page tests (Node built-ins only)
+        run: node --test scripts/tests/addon-phone-page.test.cjs
+
       - name: Lint
         run: ./gradlew lintDebug
 
@@ -53,6 +56,11 @@ jobs:
 
       - name: Assemble release
         run: ./gradlew assembleRelease
+
+      # Discover lives in main and is covered by the ordinary tests/lint above.
+      # Keep the isolated release-like Lab package and its test entry points buildable.
+      - name: Compile and lint isolated addon Lab
+        run: ./gradlew -PsohvaTestBuildType=lab :app:assembleLab :app:lintLab :app:assembleLabAndroidTest
 
       - name: Upload test and lint reports
         if: always()

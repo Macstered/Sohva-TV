@@ -912,6 +912,10 @@ fun BottomTransportControls(
     dismissRequest: Int = 0,
     onVisibilityChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
+    audioFocusRequester: FocusRequester? = null,
+    subtitleFocusRequester: FocusRequester? = null,
+    /** Opt-in for TV clients that restore picker focus but still hide idle chrome. */
+    autoHideWhileFocused: Boolean = false,
 ) {
     val palette = StreamMateThemeTokens.palette
     var visible by remember { mutableStateOf(true) }
@@ -924,11 +928,11 @@ fun BottomTransportControls(
         if (dismissRequest > 0) visible = false
     }
     LaunchedEffect(visible) { onVisibilityChanged(visible) }
-    LaunchedEffect(visible, controlsFocused, visibilityKey, holdVisible) {
+    LaunchedEffect(visible, controlsFocused, visibilityKey, holdVisible, autoHideWhileFocused) {
         if (holdVisible) return@LaunchedEffect
-        if (visible && !controlsFocused) {
+        if (visible && (!controlsFocused || autoHideWhileFocused)) {
             delay(PLAYER_CONTROLS_TIMEOUT_MILLIS.toLong())
-            if (!controlsFocused) {
+            if (!controlsFocused || autoHideWhileFocused) {
                 visible = false
                 onDismissed()
             }
@@ -991,12 +995,14 @@ fun BottomTransportControls(
                     label = stringResource(R.string.player_audio_track, audioTrackLabel),
                     onClick = onCycleAudioTrack,
                     compact = true,
+                    focusRequester = audioFocusRequester,
                     testTag = "player-audio",
                 )
                 TvActionButton(
                     label = stringResource(R.string.player_subtitle_track, subtitleTrackLabel),
                     onClick = onCycleSubtitleTrack,
                     compact = true,
+                    focusRequester = subtitleFocusRequester,
                     testTag = "player-subtitles",
                 )
             }

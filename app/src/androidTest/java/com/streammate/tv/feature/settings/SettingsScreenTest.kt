@@ -402,7 +402,11 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-remote-slot-up-press").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-about").performClick()
-        composeRule.onNodeWithTag("settings-update-check").assertIsFocused()
+        val updatesAllowed = com.streammate.tv.app.AppRuntimePolicy.forPackage(
+            InstrumentationRegistry.getInstrumentation().targetContext.packageName,
+        ).publicUpdatesAllowed
+        composeRule.onNodeWithTag(if (updatesAllowed) "settings-update-check" else "settings-about-licenses").assertIsFocused()
+        if (!updatesAllowed) composeRule.onNodeWithTag("settings-update-check").assertDoesNotExist()
     }
 
     @Test

@@ -82,8 +82,8 @@
     <string name="about_privacy_title">Integritet på enheten</string>
     <string name="about_privacy_intro">Sohva TV använder inget användarkonto, ingen analys, ingen reklam och ingen telemetri som skickas till utvecklaren.</string>
     <string name="about_privacy_local">IPTV-inloggningar, API-nycklar, tittarhistorik och inställningar stannar på Android TV-enheten. Hemligheter skyddas med Android Keystore och portabla säkerhetskopior krypteras med användarens lösenord.</string>
-    <string name="about_privacy_network">Appen ansluter bara till de IPTV-tjänster användaren ställt in och till aktiverade API-Sports-, TMDB- och TVmaze-tjänster. Dessa tjänster tar emot nätverksbegäran och IP-adressen enligt sina egna villkor.</string>
-    <string name="about_privacy_cleartext">HTTP tillåts bara för IPTV-kompatibilitet. En okrypterad anslutning kan avslöja inloggningar och tittande för andra i samma nätverk.</string>
+    <string name="about_privacy_network">Appen ansluter till inställda IPTV-tjänster och tillägg, deras medieservrar samt aktiverade API-Sports-, TMDB- och TVmaze-tjänster. Dessa tjänster tar emot nätverksbegäran och IP-adressen enligt sina egna villkor.</string>
+    <string name="about_privacy_cleartext">HTTP stöds för IPTV, uttryckligen godkända tilläggsanslutningar och lokal inställning via telefon. En okrypterad anslutning kan avslöja inloggningar och tittande för andra i samma nätverk.</string>
     <string name="about_privacy_retention">Lokala data finns kvar tills användaren rensar dem eller avinstallerar appen. Metadata- och sportcacher förfaller automatiskt.</string>
     <string name="about_contact_title">Kontakt för support och integritet</string>
     <string name="about_contact_body">Frågor, integritetsärenden och felrapporter: hello@luontra.fi</string>

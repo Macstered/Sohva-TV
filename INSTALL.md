@@ -1,6 +1,6 @@
 # Install and set up Sohva TV
 
-For **0.1.0-beta.12**, Android build **13**.
+For **0.1.0-beta.13**, Android build **14**.
 
 ## Before you start
 
@@ -10,6 +10,8 @@ For **0.1.0-beta.12**, Android build **13**.
   not the intended interface. Not every format works on every device.
 - Have your own authorized M3U playlist or Xtream server details ready. An
   XMLTV address is optional for an M3U programme guide.
+  Alternatively, use Discover with your own configured addons; IPTV is not
+  required for Discover. See [Discover setup and multi-URL import](ADDONS.md).
 - TMDB and API-Sports credentials are optional and must be your own. Neither
   is required to play your IPTV source. API-Sports plan coverage and quotas
   affect the sports information available.
@@ -18,7 +20,7 @@ For **0.1.0-beta.12**, Android build **13**.
 
 ## Install using your TV
 
-1. Download `sohva-tv-0.1.0-beta.12.apk` from the developer's supplied package
+1. Download `sohva-tv-0.1.0-beta.13.apk` from the developer's supplied package
    or the approved release page. Do not use an APK from an unknown mirror.
 2. Transfer that file to the TV using a USB drive or your existing trusted
    file-transfer method, then open it with a file manager on the TV.
@@ -30,7 +32,7 @@ For **0.1.0-beta.12**, Android build **13**.
 5. Open **Sohva TV** from the TV's app list. You may turn off the file manager's
    install permission afterwards.
 6. Check **Settings > About > About, privacy and licences**. The version must
-   be **0.1.0-beta.12**.
+   be **0.1.0-beta.13**.
 
 If your TV does not offer APK installation, record the TV model, Android
 version and exact message and contact the developer. Device installation
@@ -52,6 +54,8 @@ comes from this repository's Releases page and nothing else.
 For extra safety, use **Settings > Backup & tools > Save backup**, set a strong
 password and store the encrypted `.smbak` file somewhere private. This is a
 configuration backup, not a complete copy of all cached media or viewing state.
+It does **not** include Discover addons, Library, history, catalog ordering or
+visibility. Keep configured addon URLs/list files privately; they can contain secrets.
 Keep the password yourself; the developer cannot recover it. Never upload the
 backup to an issue or include it with the APK.
 

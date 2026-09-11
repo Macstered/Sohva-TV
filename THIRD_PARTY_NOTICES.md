@@ -1,6 +1,6 @@
 # Sohva TV third-party notices
 
-For the **0.1.0-beta.12** tester package and accompanying public source. Sohva
+For the **0.1.0-beta.13** tester package and accompanying public source. Sohva
 TV's original source is licensed separately under `GPL-3.0-only`. This document
 does not relicense third-party material; third-party copyrights, licences,
 service terms, logos, and trademarks remain in force.
@@ -53,3 +53,11 @@ third-party rights.
 
 QR code generation for the phone setup page. Apache License 2.0.
 <https://github.com/zxing/zxing>
+
+## Discover and third-party addons
+
+Stremio, Nuvio, AIOMetadata and other addon/service names identify compatibility
+or user-configured services, not bundled media or endorsement. No addon server
+code, provider configuration, artwork catalog or account is distributed with
+Sohva TV. Providers retain rights to their metadata, images and services; users
+must comply with those services' terms and obtain any required authorization.

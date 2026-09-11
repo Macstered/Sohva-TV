@@ -92,6 +92,7 @@ internal fun shouldReturnPlaybackToGuide(
 
 @Composable
 fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPictureState = PictureInPictureState()) {
+    val addonFeature = remember(container) { AddonFeature.load(container.runtimePolicy) }
     var backStack by remember { mutableStateOf(listOf<Destination>(Destination.Home)) }
     // Screens leave the composition while the player is up. The sport screen
     // keeps the match card it had open in saveable state, so it needs a holder
@@ -382,6 +383,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 repository = container.sportsRepository,
                 matchingRepository = container.eventChannelMatchingRepository,
                 preferencesRepository = container.preferencesRepository,
+                automaticRefreshAllowed = container.runtimePolicy.automaticSportsRefreshAllowed,
             )
         },
     )
@@ -526,6 +528,9 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 onSeries = { navigateTo(Destination.Catalogue(CatalogueMode.SERIES)) },
                 onSearch = { navigateTo(Destination.Search) },
                 onSettings = ::openSettings,
+                onDiscover = if (addonFeature != null && !appPreferences.activeRestriction.restricted) {
+                    { navigateTo(Destination.Discover) }
+                } else null,
                 onProfiles = if (Profiles.withDefault(appPreferences.profiles, "").size > 1) {
                     { navigateTo(Destination.ProfilePicker) }
                 } else {
@@ -534,6 +539,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 onPlayChannel = ::playChannel,
                 onPlayVod = ::playVodFromHome,
             )
+            Destination.Discover -> addonFeature?.Screen(container, ::handleBack)
             Destination.Search -> SearchScreen(
                 guideRepository = container.guideRepository,
                 catalogueRepository = container.catalogueRepository,
@@ -921,6 +927,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
 
 private sealed interface Destination {
     data object Home : Destination
+    data object Discover : Destination
     data object Today : Destination
     data object Guide : Destination
     data object Settings : Destination
@@ -970,6 +977,7 @@ internal fun AppUpdateState.toUiState(installedVersionName: String, installedNot
         notes = update?.let { AppUpdates.releaseNotes(it.notes) },
     )
     return when (this) {
+        AppUpdateState.Disabled -> base.copy(phase = AppUpdateUiState.Phase.DISABLED)
         AppUpdateState.Idle -> base.copy(phase = AppUpdateUiState.Phase.IDLE)
         AppUpdateState.Checking -> base.copy(phase = AppUpdateUiState.Phase.CHECKING)
         AppUpdateState.UpToDate -> base.copy(phase = AppUpdateUiState.Phase.UP_TO_DATE)

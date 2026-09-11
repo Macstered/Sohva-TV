@@ -21,6 +21,7 @@ import okhttp3.Request
 enum class AppUpdateFailure { NETWORK, NO_CHECKSUMS, CHECKSUM_MISMATCH, INSTALL_BLOCKED }
 
 sealed interface AppUpdateState {
+    data object Disabled : AppUpdateState
     data object Idle : AppUpdateState
     data object Checking : AppUpdateState
     data object UpToDate : AppUpdateState
@@ -46,8 +47,9 @@ class AppUpdateChecker(
     private val httpClient: OkHttpClient,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
+    private val updatesAllowed = AppRuntimePolicy.forPackage(context.packageName).publicUpdatesAllowed
     private val preferences = context.getSharedPreferences("streammate_updates", Context.MODE_PRIVATE)
-    private val mutableState = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
+    private val mutableState = MutableStateFlow<AppUpdateState>(if (updatesAllowed) AppUpdateState.Idle else AppUpdateState.Disabled)
     val state: StateFlow<AppUpdateState> = mutableState
 
     val installedVersionCode: Int = context.packageManager.getPackageInfo(context.packageName, 0).let { info ->
@@ -58,7 +60,13 @@ class AppUpdateChecker(
         context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "?"
 
     private val mutableInstalledNotes =
-        MutableStateFlow(preferences.getString(KEY_INSTALLED_NOTES_PREFIX + installedVersionCode, null))
+        MutableStateFlow(
+            if (AppRuntimePolicy.forPackage(context.packageName).isLab) {
+                context.getString(com.streammate.tv.R.string.lab_safety_notice)
+            } else {
+                preferences.getString(KEY_INSTALLED_NOTES_PREFIX + installedVersionCode, null)
+            },
+        )
 
     /**
      * What changed in the build that is installed, from its own published
@@ -68,12 +76,14 @@ class AppUpdateChecker(
 
     /** A daily look, from app start; the settings row can always ask again. */
     suspend fun checkIfDue() {
+        if (!updatesAllowed) return
         val last = preferences.getLong(KEY_LAST_CHECK, 0L)
         if (clock() - last < CHECK_INTERVAL_MILLIS) return
         check()
     }
 
     suspend fun check() {
+        if (!updatesAllowed) return
         val current = mutableState.value
         if (current is AppUpdateState.Downloading) return
         mutableState.value = AppUpdateState.Checking
@@ -103,6 +113,7 @@ class AppUpdateChecker(
     }
 
     suspend fun download(update: AvailableUpdate) {
+        if (!updatesAllowed) return
         val checksums = update.checksums
         if (checksums == null) {
             mutableState.value = AppUpdateState.Failed(AppUpdateFailure.NO_CHECKSUMS, update)
@@ -162,6 +173,7 @@ class AppUpdateChecker(
 
     /** Hands the verified file to the system installer, or asks for the permission it needs first. */
     fun install(update: AvailableUpdate, file: File) {
+        if (!updatesAllowed) return
         if (!file.isFile) {
             mutableState.value = AppUpdateState.Failed(AppUpdateFailure.NETWORK, update)
             return
@@ -180,6 +192,7 @@ class AppUpdateChecker(
 
     /** Opens Android's "install unknown apps" page for this app; [install] can be tried again after. */
     fun openInstallPermissionSettings() {
+        if (!updatesAllowed) return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
             .setData(Uri.parse("package:${context.packageName}"))

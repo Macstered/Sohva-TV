@@ -15,6 +15,7 @@ function Add-Violation([string]$Message) {
 $allowedRootDirectories = @(
     '.github',
     'app',
+    'addons',
     'core',
     'docs',
     'gradle',
@@ -32,6 +33,7 @@ $allowedRootFiles = @(
     'gradlew',
     'gradlew.bat',
     'INSTALL.md',
+    'ADDONS.md',
     'LICENSE',
     'LICENSE-APACHE-2.0.txt',
     'LICENSE-KXML2.txt',
@@ -67,7 +69,7 @@ $forbiddenNames = @(
     'keystore.properties', 'local.properties', 'secrets.properties'
 )
 $textExtensions = @(
-    '', '.css', '.gradle', '.html', '.java', '.js', '.json', '.kt', '.kts',
+    '', '.css', '.gradle', '.html', '.java', '.js', '.cjs', '.json', '.kt', '.kts',
     '.md', '.pro', '.properties', '.ps1', '.sh', '.svg', '.toml', '.txt',
     '.xml', '.yml', '.yaml'
 )
@@ -94,6 +96,10 @@ foreach ($file in $files) {
         Add-Violation "${relativePath}: internal planning or handoff file"
         continue
     }
+    if ($relativePath -match '(?i)^docs[\\/]SOHVA_TV_ADDONS_(LAB_PLAN|OVERNIGHT|INTEGRATION|COMPATIBILITY)\.md$') {
+        Add-Violation "${relativePath}: private addon planning or device receipt"
+        continue
+    }
     if ($textExtensions -notcontains $extension) { continue }
     if ($relativePath -eq 'scripts\Test-PublicSourceContent.ps1' -or
         $relativePath -eq 'scripts/Test-PublicSourceContent.ps1') {
@@ -110,12 +116,15 @@ foreach ($file in $files) {
         if ($line -match '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----') {
             Add-Violation "${location}: private key material"
         }
-        $isReservedCredentialFixture =
-            $relativePath -match '(^|[\\/])src[\\/](test|androidTest)[\\/]' -and
-            $line -match '(?i)@[^\s/]*(\.example|\.test)(:\d+)?([/\s]|$)'
-        if ($line -match '(?i)https?://[^\s/:@]+:[^\s/@]+@' -and
-            -not $isReservedCredentialFixture) {
-            Add-Violation "${location}: URL contains embedded credentials"
+        # Check each URL, not the entire line: a reserved test URL must not
+        # conceal a real credential-bearing URL elsewhere on the same line.
+        foreach ($credentialUrl in [regex]::Matches($line, '(?i)https?://[^\s/:@]+:[^\s/@]+@[^\s/"'']+')) {
+            $isReservedCredentialFixture =
+                $relativePath -match '(^|[\\/])src[\\/](test|androidTest|androidTestLab|androidTestRelease)[\\/]' -and
+                $credentialUrl.Value -match '(?i)@[^\s/:]*(\.example|\.test|\.invalid)(:\d+)?$'
+            if (-not $isReservedCredentialFixture) {
+                Add-Violation "${location}: URL contains embedded credentials"
+            }
         }
         if ($line -match '(?i)\b[A-Z]:\\(Users|SportMate|Android\\sdk)\\') {
             Add-Violation "${location}: machine-specific Windows path"

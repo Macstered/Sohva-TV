@@ -17,14 +17,19 @@ refuses any release APK without a matching receipt, so the APK that ships is
 the one a device verified, not a later rebuild of the same source.
 #>
 param(
-    [string]$Serial = "emulator-5580",
-    [string]$Adb = "C:/Android/sdk/platform-tools/adb.exe",
+    [Parameter(Mandatory = $true)]
+    [string]$Serial,
+    [string]$Adb,
     [string]$Package = "com.streammate.tv",
     [switch]$SkipBuild
 )
 
 $ErrorActionPreference = "Stop"
+if ($Package -ne 'com.streammate.tv') {
+    throw 'This verifier selects the production APK only. Use Install-SohvaLab.ps1 for Lab; changing -Package does not select another APK.'
+}
 $root = Split-Path -Parent $PSScriptRoot
+$Adb = (& (Join-Path $PSScriptRoot 'Resolve-SohvaAndroidTools.ps1') -Adb $Adb).Adb
 
 if (-not $SkipBuild) {
     Write-Host "Building the release APK..."
@@ -38,12 +43,15 @@ $receipt = "$apk.dex-verified"
 if (Test-Path $receipt) { Remove-Item -LiteralPath $receipt -Force }
 
 Write-Host "Installing on $Serial..."
-& $Adb -s $Serial install -r -d $apk | Out-Null
+& $Adb -s $Serial install -r $apk | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "install failed" }
 
 & $Adb -s $Serial logcat -c
 Write-Host "Verifying..."
-& $Adb -s $Serial shell cmd package compile -m verify -f $Package | Out-Null
+$verification = & $Adb -s $Serial shell cmd package compile -m verify -f $Package
+if ($LASTEXITCODE -ne 0 -or ($verification -join "`n") -notmatch '(?m)^Success\s*$') {
+    throw 'The device did not report successful package verification.'
+}
 $log = & $Adb -s $Serial logcat -d
 
 $ran = @($log | Select-String -SimpleMatch "dex2oat").Count

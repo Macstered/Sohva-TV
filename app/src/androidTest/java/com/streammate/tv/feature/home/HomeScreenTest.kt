@@ -179,6 +179,6 @@ class HomeScreenTest {
         }
 
     private companion object {
-        val DESTINATIONS = listOf("live", "sportmate", "movies", "series", "search", "settings")
+        val DESTINATIONS = listOf("live", "sportmate", "movies", "series", "search", "discover", "settings")
     }
 }

@@ -63,8 +63,9 @@ class TodayViewModel(
     private val preferencesRepository: AppPreferencesRepository,
     initialZoneId: ZoneId = ZoneId.of("Europe/Helsinki"),
     private val clock: Clock = Clock.systemUTC(),
+    private val automaticRefreshAllowed: Boolean = true,
 ) : ViewModel() {
-    private val mutableUiState = MutableStateFlow(TodayUiState())
+    private val mutableUiState = MutableStateFlow(TodayUiState(isLoading = automaticRefreshAllowed))
     val uiState: StateFlow<TodayUiState> = mutableUiState.asStateFlow()
     private var refreshJob: Job? = null
     private var autoRefreshJob: Job? = null
@@ -98,7 +99,7 @@ class TodayViewModel(
                         timeZoneId = zoneId.id,
                     )
                 }
-                if (feedChanged) refresh()
+                if (feedChanged && automaticRefreshAllowed) refresh()
             }
         }
     }
@@ -206,6 +207,7 @@ class TodayViewModel(
     }
 
     fun setAutoRefreshEnabled(enabled: Boolean) {
+        if (!automaticRefreshAllowed) return
         if (autoRefreshEnabled == enabled) return
         autoRefreshEnabled = enabled
         if (!enabled) {
@@ -320,8 +322,11 @@ class TodayViewModel(
             repository: SportsRepository,
             matchingRepository: EventChannelMatchingRepository,
             preferencesRepository: AppPreferencesRepository,
+            automaticRefreshAllowed: Boolean = true,
         ): ViewModelProvider.Factory = viewModelFactory {
-            initializer { TodayViewModel(repository, matchingRepository, preferencesRepository) }
+            initializer {
+                TodayViewModel(repository, matchingRepository, preferencesRepository, automaticRefreshAllowed = automaticRefreshAllowed)
+            }
         }
     }
 }

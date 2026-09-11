@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,6 +78,7 @@ import com.streammate.tv.core.model.TodayEventStatus
 import com.streammate.tv.feature.common.SohvaTvBrand
 import com.streammate.tv.feature.common.StreamMateScreenBackground
 import com.streammate.tv.feature.common.TvIcons
+import com.streammate.tv.feature.common.SohvaNavigationIcons
 import com.streammate.tv.feature.common.TvSurface
 import com.streammate.tv.feature.common.InheritedFocusScrollBehavior
 import com.streammate.tv.feature.common.KeepFocusedChildVisibleLazyColumn
@@ -106,6 +109,8 @@ fun HomeScreen(
     onSettings: () -> Unit,
     /** Opens the who-is-watching page; null while the household has one profile. */
     onProfiles: (() -> Unit)? = null,
+    /** Optional addon destination; unavailable in demo and restricted profiles. */
+    onDiscover: (() -> Unit)? = null,
     onPlayChannel: (String) -> Unit,
     onPlayVod: (String, Long) -> Unit,
 ) {
@@ -296,6 +301,7 @@ fun HomeScreen(
                 onSearch = onSearch,
                 onSettings = onSettings,
                 onProfiles = onProfiles,
+                onDiscover = onDiscover,
                 modifier = Modifier.zIndex(1f),
             )
         }
@@ -783,6 +789,7 @@ private fun HomeRail(
     onSearch: () -> Unit,
     onSettings: () -> Unit,
     onProfiles: (() -> Unit)?,
+    onDiscover: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val palette = StreamMateThemeTokens.palette
@@ -795,14 +802,15 @@ private fun HomeRail(
     val scrim by animateFloatAsState(if (expanded) 0.97f else 0.70f, label = "rail scrim")
     val navigation = stringResource(R.string.home_navigation)
     val destinations = listOfNotNull(
-        HomeDestination("live", R.string.home_live_tv, TvIcons.Guide, onLiveTv),
-        HomeDestination("sportmate", R.string.home_sportmate, TvIcons.Target, onSportMate),
-        HomeDestination("movies", R.string.home_movies, TvIcons.Play, onMovies),
-        HomeDestination("series", R.string.home_series, TvIcons.Epg, onSeries),
-        HomeDestination("search", R.string.home_search, TvIcons.Search, onSearch),
+        HomeDestination("live", R.string.home_live_tv, SohvaNavigationIcons.LiveTv, onLiveTv),
+        HomeDestination("sportmate", R.string.home_sportmate, SohvaNavigationIcons.Sport, onSportMate),
+        HomeDestination("movies", R.string.home_movies, SohvaNavigationIcons.Movies, onMovies),
+        HomeDestination("series", R.string.home_series, SohvaNavigationIcons.Series, onSeries),
+        HomeDestination("search", R.string.home_search, SohvaNavigationIcons.Search, onSearch),
+        onDiscover?.let { HomeDestination("discover", R.string.home_discover, SohvaNavigationIcons.Discover, it) },
         // Who is watching sits beside Settings once there is a choice to make.
         onProfiles?.let { HomeDestination("profiles", IptvR.string.profile_active_title, TvIcons.Star, it) },
-        HomeDestination("settings", R.string.home_settings, TvIcons.Settings, onSettings),
+        HomeDestination("settings", R.string.home_settings, SohvaNavigationIcons.Settings, onSettings),
     )
     Column(
         modifier = modifier
@@ -829,7 +837,9 @@ private fun HomeRail(
                 bottom = spacing.xl,
                 start = spacing.xl,
                 end = spacing.sm,
-            ),
+            )
+            // Discover adds a destination; keep Settings reachable at smaller TV scales.
+            .then(if (onDiscover != null) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         HomeRailCurrentPage(expanded = expanded)
@@ -861,7 +871,7 @@ private fun HomeRailCurrentPage(expanded: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
-            painter = painterResource(TvIcons.Home),
+            painter = painterResource(SohvaNavigationIcons.FrontPage),
             contentDescription = null,
             colorFilter = ColorFilter.tint(palette.background),
             modifier = Modifier.size(HOME_RAIL_ICON_SIZE).clearAndSetSemantics { },

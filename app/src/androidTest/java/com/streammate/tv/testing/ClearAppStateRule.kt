@@ -31,6 +31,9 @@ class ClearAppStateRule : TestWatcher() {
 
     override fun starting(description: Description) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        check(context.packageName == "com.streammate.tv.debug") {
+            "State-resetting regression tests may only target the debug test app"
+        }
         listOf(SECURE_SOURCES_PREFERENCES, ARTWORK_CACHE_PREFERENCES, LOCALE_PREFERENCES).forEach { name ->
             context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
         }

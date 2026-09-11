@@ -2,7 +2,7 @@
 
 Sohva TV is a remote-controlled media player for Android TV and Google TV. It
 combines Live TV, programme data, provider movie and series catalogues, playback
-resume, search, and the optional Sohva Sport section in one D-pad-first app.
+resume, search, Discover addons, and the optional Sohva Sport section in one D-pad-first app.
 
 Sohva TV supplies no channels, subscriptions, playlists, provider credentials,
 or developer API keys. Use only media sources and services you are authorized
@@ -17,7 +17,8 @@ and verify the published SHA-256 value.
 
 - [Installation and setup](INSTALL.md)
 - [Testing and feedback](TESTING.md)
-- [Beta 2 release notes](RELEASE_NOTES.md)
+- [Prepared beta 13 release notes](RELEASE_NOTES.md)
+- [Discover setup and imports](ADDONS.md)
 - [Privacy policy](PRIVACY.md)
 - [Security reporting](SECURITY.md)
 
@@ -25,6 +26,10 @@ The beta 1 tag was created before the source was published, so that release's
 automatic source archives contain its original release-document snapshot. The
 maintained application source is on `main`; future release tags will point to
 the corresponding source commit.
+
+This source snapshot prepares **0.1.0-beta.13 (build 14)**. It is not a published
+download until its numbered release appears. The beta 12 link above remains the
+current published build during preparation.
 
 ## Build from source
 
@@ -44,12 +49,19 @@ On macOS or Linux, use `./gradlew` with the same tasks. A public clone contains
 no release signing key. Debug APKs are signed with the normal Android debug key;
 `assembleRelease` produces an unsigned verification build.
 
-The source is split into four modules:
+The source is split into five modules:
 
 - `app` — application shell, Home, navigation, scheduling, and packaging
 - `core` — database, models, security, preferences, and shared TV UI
 - `iptv` — source clients, guide, catalogue, metadata, settings, and playback
 - `sportmate` — sports retrieval, normalization, matching, and Sohva Sport UI
+- `addons` — independent addon protocol, catalog/search, Library and progress storage
+
+Synthetic addon tests additionally use Node.js (phone-page built-in tests) and
+FFmpeg (generated test media), not bundled services or credentials. See the
+[addon module](addons/README.md). The opt-in `sohvaTestBuildType=release` suite
+is only for guarded disposable-emulator release-upgrade checks and requires a
+matching local signing identity; ordinary CI uses debug and isolated Lab tests.
 
 The `com.streammate.tv` application ID and some internal StreamMate class names
 are retained deliberately. Changing them would break in-place updates and access

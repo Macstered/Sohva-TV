@@ -46,6 +46,7 @@ import okhttp3.OkHttpClient
 
 class StreamMateContainer(context: Context) {
     private val applicationContext = context.applicationContext
+    val runtimePolicy = AppRuntimePolicy.forPackage(applicationContext.packageName)
     private val database = StreamMateDatabase.create(applicationContext)
     private val keyProvider = AndroidKeystoreKeyProvider()
     // The keystore key wraps one software data key; every stream URL and

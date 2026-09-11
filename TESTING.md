@@ -1,7 +1,31 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.12 (13)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.13 (14)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 13: Discover first session
+
+1. After upgrading, check your existing IPTV sources, favourites, settings and
+   resume points. Discover should start empty unless already configured in this app.
+2. Follow [Discover setup](ADDONS.md). Try a multi-URL file or phone import and
+   check the TV preview before confirming. Existing duplicates should be skipped.
+3. Browse catalog rows and Show all, use Search and required filters in Discover,
+   reorder/hide a catalog, then check focus and Back navigation.
+4. Open a movie and a series episode, select a source, stop and Continue watching.
+   Check primary/secondary subtitles and the bottom controls. Apply a timing
+   adjustment to an external subtitle and verify the actual displayed cues change.
+5. Add/remove a movie and series in Library. Restart the app and check saved
+   Library, catalog settings and resume points. Do not clear app storage.
+6. Try English/Finnish menus and your provider's metadata language. Report an
+   untranslated app label separately from a provider's untranslated description.
+7. If a provider fails or the TV loses its network, confirm Back/Cancel/retry
+   remain usable. Never post configured URLs, phone QR codes or raw logs.
+
+The existing `.smbak` backup excludes Discover data. Stremio/Nuvio copy is
+configuration-only; source accounts are not modified or kept synchronized.
+See [release compatibility limits](RELEASE_NOTES.md). An intermittent external
+subtitle-sync issue needs the title, subtitle provider and non-secret subtitle
+identifier if it recurs; do not send an authenticated subtitle URL.
 
 ## Suggested first session
 
@@ -156,11 +180,11 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.12 (13)
+Version: 0.1.0-beta.13 (14)
 Device model:
 Android / Google TV version:
 Fresh install or update:
-Source type: M3U or Xtream (no address or login)
+Source type: M3U, Xtream or Discover addon name (no address or login)
 Approximate library size, if relevant:
 Steps to reproduce:
 Expected result:

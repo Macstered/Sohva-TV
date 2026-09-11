@@ -83,6 +83,7 @@ object ReminderScheduler {
     const val ACTION_FIRE = "com.streammate.tv.REMINDER_FIRE"
 
     suspend fun reschedule(context: Context, dao: RemindersDao, nowEpochMillis: Long) {
+        if (!AppRuntimePolicy.forPackage(context.packageName).remindersAllowed) return
         dao.deleteStartedBefore(ReminderSchedule.staleCutoff(nowEpochMillis))
         val next = ReminderSchedule.nextFireAt(dao.all(), nowEpochMillis)
         val alarms = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -143,6 +144,7 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (!AppRuntimePolicy.forPackage(context.packageName).remindersAllowed) return
         val action = intent.action
         if (action != ReminderScheduler.ACTION_FIRE && action != Intent.ACTION_BOOT_COMPLETED) return
         val container = (context.applicationContext as StreamMateApplication).container

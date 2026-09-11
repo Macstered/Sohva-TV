@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Policy packaged: 3 September 2026, updated 7 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.12.
+Policy packaged: 3 September 2026, updated 11 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.13.
 
 Sohva TV plays media sources configured by the user. It contains no channels
 or media and does not provide an IPTV subscription. There is no
@@ -49,6 +49,9 @@ from GitHub is subject to GitHub's own privacy practices.
 
 ## Children and parental controls
 
+Discover is unavailable to restricted profiles. This is an access boundary,
+not an age-rating classification of content supplied by third-party addons.
+
 Parental controls restrict playback locally. They do not create a child
 profile or transmit information about a child. The app is not designed to
 collect personal information from children.
@@ -95,4 +98,29 @@ app draws nothing over other apps except its own screen when it opens.
 
 ## Setting up from a phone
 
-The optional "Set up from a phone" page is served by the TV itself, on the home network only, while the settings screen shows it, and only to a browser that opened it through the code on the TV screen. What is typed there is saved on the TV and sent nowhere else. The page uses plain HTTP inside the home network.
+The optional "Set up from a phone" page is served by the TV itself while its
+setup screen is open, using an expiring capability link. It uses plain HTTP on
+the local network, not a developer-hosted website. Use a trusted network and
+keep the QR/link private. Imported configuration is received by the TV; after
+confirmation, the TV contacts configured services to validate or use it.
+
+## Discover addons
+
+Discover connects directly to user-installed addons and their media, artwork
+and subtitle hosts. Requests can include search text, filters and title/episode
+identifiers, and expose the requester's IP address. Provider behavior is outside
+Sohva's control: some addons use subtitle requests for their own watch tracking.
+Sohva does not add background subtitle polling or send watch history to the developer.
+
+Configured addon URLs and stored addon payloads are encrypted with device-local
+keys protected by Android Keystore. Catalog caches, profile-scoped Library and
+viewing progress, catalog order/visibility and subtitle preferences remain local.
+**The existing portable Sohva backup does not include Discover data.** Clearing
+storage or uninstalling removes it. Keep your addon configuration privately.
+
+Optional Stremio authorization copies addon configurations after confirmation;
+it does not modify the source account or persist temporary authorization tokens.
+File imports copy configurations only, not external watch history or Library.
+Configured URLs and configuration lists may contain credentials and must be
+treated as secrets. Addon HTTP connections require explicit acceptance; their
+traffic is unencrypted. Prefer HTTPS. No addon or credential is bundled.

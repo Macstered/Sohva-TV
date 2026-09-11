@@ -43,17 +43,26 @@ import com.streammate.tv.iptv.metadata.MetadataRepository
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
+import org.junit.rules.RuleChain
 
 class GuideScreenTest {
-    @get:Rule
-    val composeRule = createComposeRule()
+    private val composeRule = createComposeRule()
 
     private lateinit var database: StreamMateDatabase
+
+    // Compose must dispose its Room collectors before their database is closed.
+    // JUnit @After runs inside the Compose rule, which raced teardown on CI.
+    @get:Rule
+    val rules: RuleChain = RuleChain.outerRule(object : ExternalResource() {
+        override fun after() {
+            if (::database.isInitialized) database.close()
+        }
+    }).around(composeRule)
 
     @Before
     fun createGuide() = runBlocking {
@@ -156,9 +165,6 @@ class GuideScreenTest {
         )
         dao.activateEpgSnapshot("test", "epg", 2, now)
     }
-
-    @After
-    fun closeGuide() = database.close()
 
     @Test
     fun timelineShowsPreviewFiltersSearchAndInitialChannelFocus() {

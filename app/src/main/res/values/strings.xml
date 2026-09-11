@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="lab_safety_notice" translatable="false">Private Lab build with separate app data. Automatic IPTV imports, background metadata enrichment, sports polling and reminder alarms are disabled. Manual refresh remains available. No public updates are offered.</string>
     <string name="app_name">Sohva TV</string>
     <string name="reminders_channel_name">Match and programme reminders</string>
     <string name="reminder_notification_title">%1$s starts now</string>
@@ -82,8 +83,8 @@
     <string name="about_privacy_title">On-device privacy</string>
     <string name="about_privacy_intro">Sohva TV uses no user account, analytics, advertising or telemetry sent to the developer.</string>
     <string name="about_privacy_local">IPTV credentials, API keys, viewing history and settings remain on the Android TV device. Secrets are protected with Android Keystore, and portable backups are encrypted with the user’s password.</string>
-    <string name="about_privacy_network">The app connects only to IPTV services configured by the user and to enabled API-Sports, TMDB and TVmaze services. Those services receive the network request and IP address under their own policies.</string>
-    <string name="about_privacy_cleartext">HTTP is allowed only for IPTV compatibility. An unencrypted connection can expose credentials and viewing activity to others on the same network.</string>
+    <string name="about_privacy_network">The app connects to user-configured IPTV services and addons, their media hosts, and enabled API-Sports, TMDB and TVmaze services. Those services receive the network request and IP address under their own policies.</string>
+    <string name="about_privacy_cleartext">HTTP is supported for IPTV, explicitly accepted addon connections and local phone setup. An unencrypted connection can expose credentials and viewing activity to others on the same network.</string>
     <string name="about_privacy_retention">Local data remains until the user clears it or uninstalls the app. Metadata and sports caches expire automatically.</string>
     <string name="about_contact_title">Support and privacy contact</string>
     <string name="about_contact_body">Questions, privacy requests and issue reports: hello@luontra.fi</string>

@@ -6,6 +6,13 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AppUpdateUiMappingTest {
+    @Test
+    fun `development build explains disabled updates`() {
+        val ui = AppUpdateState.Disabled.toUiState("0.1.0-beta.12-lab")
+        assertEquals(AppUpdateUiState.Phase.DISABLED, ui.phase)
+        assertNull(ui.versionName)
+    }
+
     private val update = AvailableUpdate(
         versionName = "0.1.0-beta.11",
         versionCode = 12,

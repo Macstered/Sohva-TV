@@ -82,8 +82,8 @@
     <string name="about_privacy_title">Privacidade no dispositivo</string>
     <string name="about_privacy_intro">O Sohva TV não usa conta de usuário, análise de uso, publicidade nem telemetria enviada ao desenvolvedor.</string>
     <string name="about_privacy_local">Credenciais de IPTV, chaves de API, histórico de exibição e configurações ficam no dispositivo Android TV. Os segredos são protegidos pelo Android Keystore e os backups portáteis são criptografados com a senha do usuário.</string>
-    <string name="about_privacy_network">O app se conecta apenas aos serviços IPTV configurados pelo usuário e aos serviços API-Sports, TMDB e TVmaze que estiverem ativados. Esses serviços recebem a solicitação de rede e o endereço IP conforme suas próprias políticas.</string>
-    <string name="about_privacy_cleartext">HTTP é permitido apenas por compatibilidade com IPTV. Uma conexão sem criptografia pode expor credenciais e atividade de exibição a outras pessoas na mesma rede.</string>
+    <string name="about_privacy_network">O app se conecta aos serviços IPTV e complementos configurados, aos seus servidores de mídia e aos serviços API-Sports, TMDB e TVmaze ativados. Esses serviços recebem a solicitação de rede e o endereço IP conforme suas próprias políticas.</string>
+    <string name="about_privacy_cleartext">HTTP é compatível com IPTV, conexões de complementos explicitamente aceitas e configuração local pelo telefone. Uma conexão sem criptografia pode expor credenciais e atividade de exibição a outras pessoas na mesma rede.</string>
     <string name="about_privacy_retention">Os dados locais permanecem até que o usuário os apague ou desinstale o app. Os caches de metadados e esportes expiram automaticamente.</string>
     <string name="about_contact_title">Contato de suporte e privacidade</string>
     <string name="about_contact_body">Dúvidas, solicitações de privacidade e relatos de problemas: hello@luontra.fi</string>

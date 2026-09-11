@@ -187,6 +187,12 @@ fun LegalInformationScreen(onBack: () -> Unit) {
                 }
                 item {
                     LegalSection(
+                        title = stringResource(R.string.about_addons_title),
+                        body = stringResource(R.string.about_addons_body),
+                    )
+                }
+                item {
+                    LegalSection(
                         title = stringResource(R.string.about_open_source_title),
                         body = stringResource(R.string.about_open_source_notice),
                     ) {

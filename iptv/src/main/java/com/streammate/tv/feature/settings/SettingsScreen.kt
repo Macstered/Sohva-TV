@@ -2404,6 +2404,9 @@ fun SettingsScreen(
                         label = stringResource(R.string.settings_about_licenses),
                         icon = TvIcons.Info,
                         onClick = onLegalInformation,
+                        focusRequester = if (appUpdate.phase == AppUpdateUiState.Phase.DISABLED) {
+                            sectionFocusRequesters.getValue(SettingsSection.ABOUT)
+                        } else null,
                         testTag = "settings-about-licenses",
                     )
                 }

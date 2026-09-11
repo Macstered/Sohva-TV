@@ -69,6 +69,7 @@ object CatalogueMetadataScheduler {
         policy: ExistingWorkPolicy,
         initialDelayMillis: Long,
     ) {
+        if (!AppRuntimePolicy.forPackage(context.packageName).automaticMaintenanceAllowed) return
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -94,6 +95,7 @@ class CatalogueMetadataWorker(
     parameters: WorkerParameters,
 ) : CoroutineWorker(appContext, parameters) {
     override suspend fun doWork(): Result {
+        if (!AppRuntimePolicy.forPackage(applicationContext.packageName).automaticMaintenanceAllowed) return Result.success()
         if (StreamMateForegroundState.isForeground) return Result.success()
         val container = (applicationContext as StreamMateApplication).container
         val metadataRepository = container.metadataRepository

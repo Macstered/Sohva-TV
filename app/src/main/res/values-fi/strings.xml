@@ -82,8 +82,8 @@
     <string name="about_privacy_title">Tietosuoja laitteella</string>
     <string name="about_privacy_intro">Sohva TV ei käytä käyttäjätiliä, analytiikkaa, mainontaa tai kehittäjälle lähetettävää telemetriaa.</string>
     <string name="about_privacy_local">IPTV-tunnukset, API-avaimet, katseluhistoria ja asetukset säilytetään vain Android TV -laitteella. Salaisuudet suojataan Android Keystorella, ja siirrettävä varmuuskopio salataan käyttäjän salasanalla.</string>
-    <string name="about_privacy_network">Sovellus muodostaa yhteyden vain käyttäjän määrittämiin IPTV-palveluihin sekä käyttöön otettuihin API-Sports-, TMDB- ja TVmaze-palveluihin. Nämä palvelut vastaanottavat verkkopyynnön ja IP-osoitteen omien käytäntöjensä mukaisesti.</string>
-    <string name="about_privacy_cleartext">HTTP on sallittu vain IPTV-yhteensopivuuden vuoksi. Salaamaton yhteys voi paljastaa tunnukset ja katselun samassa verkossa oleville.</string>
+    <string name="about_privacy_network">Sovellus muodostaa yhteyksiä käyttäjän määrittämiin IPTV-palveluihin, lisäosiin ja niiden mediapalvelimiin sekä käyttöön otettuihin API-Sports-, TMDB- ja TVmaze-palveluihin. Palvelut vastaanottavat verkkopyynnön ja IP-osoitteen omien käytäntöjensä mukaisesti.</string>
+    <string name="about_privacy_cleartext">HTTP on tuettu IPTV-yhteyksissä, erikseen hyväksytyissä lisäosayhteyksissä ja paikallisessa puhelinasennuksessa. Salaamaton yhteys voi paljastaa tunnukset ja katselun samassa verkossa oleville.</string>
     <string name="about_privacy_retention">Paikalliset tiedot säilyvät, kunnes käyttäjä tyhjentää ne tai poistaa sovelluksen. Metatieto- ja urheiluvälimuistit vanhenevat automaattisesti.</string>
     <string name="about_contact_title">Tuki ja tietosuoja</string>
     <string name="about_contact_body">Kysymykset, tietosuojapyynnöt ja vikailmoitukset: hello@luontra.fi</string>

@@ -49,13 +49,14 @@ class TodayPollingTest {
     @After
     fun closeDatabase() = database.close()
 
-    private fun viewModel(): TodayViewModel {
+    private fun viewModel(automaticRefreshAllowed: Boolean = true): TodayViewModel {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         return TodayViewModel(
             repository = CountingRepository(),
             matchingRepository = EventChannelMatchingRepository(database.guideDao()),
             preferencesRepository = AppPreferencesRepository(context),
             clock = clock,
+            automaticRefreshAllowed = automaticRefreshAllowed,
         )
     }
 
@@ -95,6 +96,25 @@ class TodayPollingTest {
             Thread.sleep(50)
         }
         throw AssertionError("expected $target loads, saw $loadCount")
+    }
+
+    @Test
+    fun labDoesNotLoadAutomaticallyButManualRefreshStillWorks() {
+        val model = viewModel(automaticRefreshAllowed = false)
+        awaitQuiet(model)
+        assertEquals(0, loadCount)
+        model.setAutoRefreshEnabled(true)
+        clock.instant = clock.instant.plusSeconds(20 * 60)
+        awaitQuiet(model)
+        assertEquals(0, loadCount)
+        model.refresh()
+        awaitFirstLoad(model)
+        awaitQuiet(model)
+        assertEquals(1, loadCount)
+        clock.instant = clock.instant.plusSeconds(20 * 60)
+        model.setAutoRefreshEnabled(true)
+        awaitQuiet(model)
+        assertEquals(1, loadCount)
     }
 
     @Test

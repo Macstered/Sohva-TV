@@ -58,6 +58,7 @@ internal fun AppUpdateSection(
             fontSize = 13.sp,
         )
         val statusText = when (state.phase) {
+            AppUpdateUiState.Phase.DISABLED -> stringResource(R.string.update_disabled_development)
             AppUpdateUiState.Phase.IDLE -> stringResource(R.string.update_idle)
             AppUpdateUiState.Phase.CHECKING -> stringResource(R.string.update_checking)
             AppUpdateUiState.Phase.UP_TO_DATE -> stringResource(R.string.update_up_to_date)
@@ -81,6 +82,7 @@ internal fun AppUpdateSection(
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             when (state.phase) {
+                AppUpdateUiState.Phase.DISABLED -> Unit
                 AppUpdateUiState.Phase.AVAILABLE -> TvActionButton(
                     label = stringResource(R.string.update_download),
                     icon = TvIcons.Save,

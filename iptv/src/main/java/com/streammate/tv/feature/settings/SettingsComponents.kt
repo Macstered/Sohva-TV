@@ -49,7 +49,7 @@ import com.streammate.tv.feature.common.TvSurface
 
 /** The uppercase label that opens a group of settings. */
 @Composable
-internal fun SettingsOverline(text: String, modifier: Modifier = Modifier) {
+fun SettingsOverline(text: String, modifier: Modifier = Modifier) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     Text(
@@ -73,7 +73,7 @@ internal fun SettingsOverline(text: String, modifier: Modifier = Modifier) {
  * single choice.
  */
 @Composable
-internal fun SettingsRow(
+fun SettingsRow(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
@@ -156,7 +156,7 @@ private fun SettingsRowIcon(@DrawableRes icon: Int?) {
  * says on or off and never has to double as the focus signal.
  */
 @Composable
-internal fun SettingsSwitch(
+fun SettingsSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -216,7 +216,7 @@ internal fun SettingsSwitch(
  * without being opened.
  */
 @Composable
-internal fun SettingsValueRow(
+fun SettingsValueRow(
     title: String,
     value: String,
     onClick: () -> Unit,
