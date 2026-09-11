@@ -16,7 +16,7 @@ import androidx.tv.material3.Text
 import com.sohva.tv.addons.*
 import com.streammate.tv.app.*
 import com.streammate.tv.feature.player.BottomTransportControls
-import kotlinx.coroutines.delay
+import com.streammate.tv.feature.player.PLAYER_CONTROLS_TIMEOUT_MILLIS
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.*
@@ -52,7 +52,8 @@ class AddonLabPlayerNavigationTest {
                 onRewind = {}, onPlayPause = {}, onForward = {}, onControlsFocusChanged = {}, onDismissed = {})
         } } }
         compose.waitUntil(5_000) { compose.onAllNodes(hasTestTag("player-play-pause") and isFocused()).fetchSemanticsNodes().isNotEmpty() }
-        delay(5500)
+        compose.mainClock.advanceTimeBy(PLAYER_CONTROLS_TIMEOUT_MILLIS + 500L)
+        compose.waitForIdle()
         compose.onNodeWithTag("player-play-pause").assertIsDisplayed().assertIsFocused()
     }
 
@@ -141,14 +142,32 @@ class AddonLabPlayerNavigationTest {
                 compose.onNodeWithTag(if (path == ReturnPath.AUDIO) "player-audio" else "player-subtitles").assertIsFocused()
                 assertEquals(!paused, compose.runOnIdle { playback.player.playWhenReady })
                 if (idle) {
-                    if (interact) {
-                        delay(3000)
-                        remote(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
-                        delay(2500)
-                        compose.onNodeWithTag("player-bottom-controls").assertIsDisplayed()
+                    compose.waitUntil(10_000) { compose.runOnIdle { playback.player.isPlaying } }
+                    val automaticClock = compose.mainClock.autoAdvance
+                    compose.mainClock.autoAdvance = false
+                    try {
+                        // The idle deadline uses Compose time, not Media3/wall
+                        // time. A slow renderer may advance fewer than five
+                        // virtual seconds during an eight-second wall wait.
+                        compose.mainClock.advanceTimeByFrame()
+                        compose.waitForIdle()
+                        var remaining = PLAYER_CONTROLS_TIMEOUT_MILLIS + 500L
+                        if (interact) {
+                            compose.mainClock.advanceTimeBy(3000)
+                            remote(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
+                            compose.mainClock.advanceTimeByFrame()
+                            compose.waitForIdle()
+                            compose.mainClock.advanceTimeBy(2500)
+                            compose.waitForIdle()
+                            compose.onNodeWithTag("player-bottom-controls").assertIsDisplayed()
+                            remaining -= 2500
+                        }
+                        compose.mainClock.advanceTimeBy(remaining)
+                        compose.waitForIdle()
+                        compose.onNodeWithTag("player-bottom-controls").assertDoesNotExist()
+                    } finally {
+                        compose.mainClock.autoAdvance = automaticClock
                     }
-                    try { compose.waitUntil(8_000) { !exists("player-bottom-controls") } }
-                    catch (error: ComposeTimeoutException) { throw AssertionError("Returned picker focus held playback controls visible indefinitely", error) }
                 } else {
                     if (screenBack) compose.onNodeWithTag("player-back").performClick()
                     else remote(android.view.KeyEvent.KEYCODE_BACK)
