@@ -238,7 +238,11 @@ class AddonLabPhoneLandingTest {
             } finally { host.progress.remove(preferences.activeProfileId, watch); host.store.remove(preferences.activeProfileId, installed.installationId) }
         }
     }
-    @Test fun missingHistoryArtworkIsRepairedOnceAndSurvivesWithoutMetadataCache(): Unit = runBlocking {
+    @Test fun missingHistoryArtworkIsRepairedOnceAndSurvivesWithoutMetadataCache() = verifyHistoryArtworkRepair(0)
+
+    @Test fun historyArtworkRepairWaitsForRealIoWithinItsDeadline() = verifyHistoryArtworkRepair(6)
+
+    private fun verifyHistoryArtworkRepair(metadataDelaySeconds: Long): Unit = runBlocking {
         val app = app(); val host = AddonHost.get(app, app.container)
         val preferences = app.container.preferencesRepository.preferences.first()
         MockWebServer().use { server ->
@@ -247,7 +251,7 @@ class AddonLabPhoneLandingTest {
                 override fun dispatch(request: RecordedRequest): MockResponse = when {
                     request.path!!.contains("/meta/") -> {
                         metadata.incrementAndGet()
-                        MockResponse().setHeader("Cache-Control", "no-store").setBody("""{"meta":{"id":"canonical","type":"lab.history","name":"Recovered title","poster":"${server.url("/poster.png")}"}}""")
+                        MockResponse().setHeadersDelay(metadataDelaySeconds, java.util.concurrent.TimeUnit.SECONDS).setHeader("Cache-Control", "no-store").setBody("""{"meta":{"id":"canonical","type":"lab.history","name":"Recovered title","poster":"${server.url("/poster.png")}"}}""")
                     }
                     request.path == "/poster.png" -> { posters.incrementAndGet(); MockResponse().setHeader("Content-Type", "image/png").setBody(okio.Buffer().write(artwork(true))) }
                     else -> { unexpected.incrementAndGet(); MockResponse().setResponseCode(404) }
@@ -265,7 +269,31 @@ class AddonLabPhoneLandingTest {
                         androidx.compose.runtime.key(generation.intValue) { AddonDiscoverScreen(host, preferences, {}, modifier, loadInstallations = { listOf(installed) }) }
                     } }
                 } }
-                compose.waitUntil(15_000) { posters.get() > 0 && runBlocking { host.progress.get(preferences.activeProfileId, watch)?.artwork?.poster != null } }
+                val clockStart = compose.mainClock.currentTime
+                val wallStart = android.os.SystemClock.elapsedRealtime()
+                val automaticClock = compose.mainClock.autoAdvance
+                compose.mainClock.autoAdvance = false
+                try {
+                    compose.waitUntil(15_000) {
+                        // HTTP/Room use real time, but LaunchedEffect's 8s timeout
+                        // uses the Compose test clock. Don't fast-forward that
+                        // deadline while waiting for real I/O on a slower runner.
+                        val elapsed = android.os.SystemClock.elapsedRealtime() - wallStart
+                        compose.mainClock.advanceTimeBy(
+                            (elapsed - (compose.mainClock.currentTime - clockStart)).coerceAtLeast(0),
+                            ignoreFrameDuration = true,
+                        )
+                        posters.get() > 0 && runBlocking { host.progress.get(preferences.activeProfileId, watch)?.artwork?.poster != null }
+                    }
+                } catch (timeout: ComposeTimeoutException) {
+                    // Distinguish persistence/metadata failures from image loading.
+                    // Counts and synthetic UI state only: never log addon URLs.
+                    throw AssertionError("History artwork not ready: virtual=${compose.mainClock.currentTime - clockStart}, " +
+                        "wall=${android.os.SystemClock.elapsedRealtime() - wallStart}, metadata=${metadata.get()}, " +
+                        "posters=${posters.get()}, unexpected=${unexpected.get()}, " +
+                        "savedPoster=${host.progress.get(preferences.activeProfileId, watch)?.artwork?.poster != null}, " +
+                        "cards=${compose.onAllNodes(hasTestTag("addon-continue-card")).fetchSemanticsNodes().size}", timeout)
+                } finally { compose.mainClock.autoAdvance = automaticClock }
                 val repaired = host.progress.get(preferences.activeProfileId, watch)!!
                 assertEquals(before.updatedAtMillis, repaired.updatedAtMillis)
                 assertEquals(before.positionMillis, repaired.positionMillis)

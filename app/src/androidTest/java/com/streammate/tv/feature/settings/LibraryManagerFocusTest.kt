@@ -21,6 +21,15 @@ import org.junit.runner.RunWith
 class LibraryManagerFocusTest {
     @get:Rule val compose = createComposeRule()
 
+    // Group summaries and item slices are computed on Dispatchers.Default.
+    // Compose idleness alone does not mean that those rows exist or have focus.
+    private fun focusedRow(tag: String): SemanticsNodeInteraction {
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(hasTestTag(tag) and isFocused()).fetchSemanticsNodes().size == 1
+        }
+        return compose.onNodeWithTag(tag).assertIsFocused()
+    }
+
     @Test fun togglingAChannelRetainsFocusAndLeftReturnsToGroup() {
         var changes = 0
         compose.setContent {
@@ -41,8 +50,8 @@ class LibraryManagerFocusTest {
                 )
             }
         }
-        compose.onNodeWithTag("manager-group-name:sports").assertIsFocused().performKeyInput { pressKey(Key.DirectionRight) }
-        compose.onNodeWithTag("manager-item-a").assertIsFocused().performKeyInput { pressKey(Key.DirectionCenter) }
+        focusedRow("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
+        focusedRow("manager-item-a").performKeyInput { pressKey(Key.DirectionCenter) }
         compose.waitForIdle()
         assertEquals(1, changes)
         compose.onNodeWithTag("manager-item-a").assertIsFocused().performKeyInput { pressKey(Key.DirectionLeft) }
@@ -54,10 +63,7 @@ class LibraryManagerFocusTest {
         compose.setContent { StreamMateTheme {
             LibraryManagerContent(LibraryRoom.LIVE, ManagedLibrary(listOf(OrganizationItem("a", "source", "A", "Sports"))), "Sports", onRoom = {}, onChange = {}, onBack = { exits++ })
         } }
-        // A key press needs the row to hold focus already; on the public CI
-        // emulator the initial focus request can land after this line runs.
-        compose.waitUntil(3_000) { runCatching { compose.onNodeWithTag("manager-group-name:sports").assertIsFocused() }.isSuccess }
-        compose.onNodeWithTag("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionCenter) }
+        focusedRow("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionCenter) }
         compose.onAllNodes(isDialog()).assertCountEquals(1)
         compose.onNode(isDialog()).performKeyInput { pressKey(Key.Back) }
         compose.waitForIdle()
@@ -69,9 +75,8 @@ class LibraryManagerFocusTest {
         compose.setContent { StreamMateTheme {
             LibraryManagerContent(LibraryRoom.LIVE, ManagedLibrary(listOf(OrganizationItem("a", "source", "A", "Sports"))), "Sports", onRoom = {}, onChange = { error("Synthetic write failure") }, onBack = {})
         } }
-        compose.waitUntil(3_000) { runCatching { compose.onNodeWithTag("manager-group-name:sports").assertIsFocused() }.isSuccess }
-        compose.onNodeWithTag("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
-        compose.onNodeWithTag("manager-item-a").performKeyInput { pressKey(Key.DirectionCenter) }
+        focusedRow("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
+        focusedRow("manager-item-a").performKeyInput { pressKey(Key.DirectionCenter) }
         val message = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.manager_save_error)
         compose.onNodeWithText(message).assertIsDisplayed()
         compose.onNodeWithTag("manager-item-a").assertIsFocused()
@@ -84,8 +89,8 @@ class LibraryManagerFocusTest {
             LibraryManagerContent(LibraryRoom.LIVE, ManagedLibrary(listOf(OrganizationItem("a", "source", "A", "Sports"), OrganizationItem("b", "source", "B", "Sports"))), "Sports", onRoom = {}, onChange = { writes++ }, onBack = {})
         } }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        compose.waitUntil(3_000) { runCatching { compose.onNodeWithTag("manager-group-name:sports").assertIsFocused() }.isSuccess }
-        compose.onNodeWithTag("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
+        focusedRow("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
+        focusedRow("manager-item-a")
         compose.onNodeWithTag("manager-bulk").performClick()
         compose.onNodeWithText(context.getString(R.string.manager_disable_selected)).performClick()
         assertEquals(0, writes)
@@ -100,8 +105,8 @@ class LibraryManagerFocusTest {
             LibraryManagerContent(LibraryRoom.LIVE, ManagedLibrary((1..12).map { OrganizationItem("c$it", "source", "Channel ${it.toString().padStart(2, '0')}", "Sports", providerOrder = it) }), "Sports", onRoom = {}, onChange = { written = it }, onBack = {})
         } }
         val moveLabel = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.manager_move)
-        compose.onNodeWithTag("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
-        compose.onNodeWithTag("manager-item-c1").performKeyInput { pressKey(Key.DirectionRight) }
+        focusedRow("manager-group-name:sports").performKeyInput { pressKey(Key.DirectionRight) }
+        focusedRow("manager-item-c1").performKeyInput { pressKey(Key.DirectionRight) }
         compose.onNodeWithText(moveLabel).performClick()
         compose.onNodeWithTag("manager-item-c1").assertIsFocused().performKeyInput { pressKey(Key.DirectionDown); pressKey(Key.Back) }
         assertTrue(written.isEmpty())
@@ -138,7 +143,7 @@ class LibraryManagerFocusTest {
         val moveLabel = InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.manager_move)
         // Only what is shown is listed, and the move keeps it that way.
         compose.onNodeWithTag("manager-group-name:b").assertDoesNotExist()
-        compose.onNodeWithTag("manager-group-name:a").assertIsFocused().performKeyInput { pressKey(Key.DirectionCenter) }
+        focusedRow("manager-group-name:a").performKeyInput { pressKey(Key.DirectionCenter) }
         compose.onNodeWithText(moveLabel).performClick()
         compose.onNodeWithTag("manager-group-name:b").assertDoesNotExist()
         compose.onNodeWithTag("manager-group-name:a").assertIsFocused().performKeyInput { pressKey(Key.DirectionDown); pressKey(Key.DirectionCenter) }
