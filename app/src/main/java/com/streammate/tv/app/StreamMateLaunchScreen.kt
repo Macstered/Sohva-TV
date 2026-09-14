@@ -13,10 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.streammate.tv.R
-import com.streammate.tv.feature.common.SohvaTvBrand
 import com.streammate.tv.feature.common.StreamMateScreenBackground
 
 @Composable
@@ -33,9 +32,12 @@ fun StreamMateLaunchScreen() {
                 modifier = Modifier.size(188.dp).testTag("launch-mark"),
             )
             Spacer(Modifier.height(18.dp))
-            SohvaTvBrand(
-                fontSize = 54.sp,
-                modifier = Modifier.testTag("launch-brand"),
+            // The logo's own lettering, so this screen matches the window
+            // background drawn before Compose is up and nothing jumps.
+            Image(
+                painter = painterResource(R.drawable.sohva_wordmark),
+                contentDescription = stringResource(com.streammate.tv.core.R.string.brand_sohva_tv),
+                modifier = Modifier.height(56.dp).testTag("launch-brand"),
             )
         }
     }

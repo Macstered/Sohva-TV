@@ -201,8 +201,12 @@ fun SettingsScreen(
     onOpenReminderSettings: () -> Unit = {},
     /** After a profile is removed: whatever else it owned, such as watched positions, goes too. */
     onProfileRemoved: suspend (String) -> Unit = {},
+    /** Optional coordinated host workflow, including preference removal itself. */
+    onRemoveProfile: (suspend (String) -> Unit)? = null,
     /** Switches the active profile, past the parental PIN where a restriction asks for it; null switches directly. */
     onSwitchProfile: ((String) -> Unit)? = null,
+    /** Host-owned account providers; absent until the integration is qualified. */
+    accountsContent: (@Composable (FocusRequester) -> Unit)? = null,
 ) {
     val resources = LocalResources.current
     val context = LocalContext.current
@@ -272,6 +276,11 @@ fun SettingsScreen(
     var competitionLoadGeneration by remember { mutableIntStateOf(0) }
     var competitionQuery by remember { mutableStateOf("") }
     var selectedSection by remember { mutableStateOf(SettingsSection.SOURCES) }
+    LaunchedEffect(accountsContent != null) {
+        if (accountsContent == null && selectedSection == SettingsSection.ACCOUNTS) {
+            selectedSection = SettingsSection.SOURCES
+        }
+    }
     var timeZonePickerOpen by remember { mutableStateOf(false) }
     var maintenanceStatus by remember { mutableStateOf("") }
     // A source is a page: the Playlists section lists them, and opening one
@@ -487,8 +496,10 @@ fun SettingsScreen(
                 onSelect = { id ->
                     closePicker(target)
                     scope.launch {
-                        preferencesRepository.removeProfile(id)
-                        onProfileRemoved(id)
+                        if (onRemoveProfile != null) onRemoveProfile(id) else {
+                            preferencesRepository.removeProfile(id)
+                            onProfileRemoved(id)
+                        }
                     }
                 },
                 onDismiss = { closePicker(target) },
@@ -820,6 +831,7 @@ fun SettingsScreen(
                 SettingsSectionRail(
                     modifier = Modifier.width(SETTINGS_SIDEBAR_WIDTH).fillMaxHeight(),
                     selected = selectedSection,
+                    accountsAvailable = accountsContent != null,
                     onSelected = { section ->
                         openPicker = null
                         sourcePageOpen = false
@@ -837,6 +849,9 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(bottom = 14.dp),
                 ) {
+            if (selectedSection == SettingsSection.ACCOUNTS) {
+                item { accountsContent?.invoke(sectionFocusRequesters.getValue(SettingsSection.ACCOUNTS)) }
+            }
             if (selectedSection == SettingsSection.GENERAL) {
             item {
                 SettingsGroup {

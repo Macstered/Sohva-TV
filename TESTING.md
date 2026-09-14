@@ -1,7 +1,30 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.13 (14)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.14 (20)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 14: Home and Trakt first session
+
+1. After upgrading, open Home. The top of the screen now describes whichever
+   card is focused; the rows below scroll under it. Check that Continue
+   watching, Today's sport and Recently watched channels show what you expect,
+   and that Back from the rail returns to the row you left.
+2. Optional: **Settings > Accounts > Connect Trakt**, scan the code with a
+   phone and approve. Connecting is per profile and needs a free Trakt account.
+3. Play a movie and a series episode in Movies/Series, and one title in
+   Discover, for a minute each. Leave the player normally. Within a minute
+   they should appear in your Trakt account's playback progress. Live TV and
+   catch-up are never sent.
+4. Pause a title on another Trakt-connected device or on trakt.tv. On Home,
+   Continue watching should show it with a bar; the series page shows Trakt
+   watched ticks and progress on episodes; Continue on the page resumes there.
+5. Check the **Watch next** and **Recommended for you** rows. A card opens the
+   title's own page when your library has it, otherwise a lookup over your
+   Discover addons. Report a card that opens the wrong title.
+6. Play a series with several episodes for a moment each: Continue watching
+   should show one card per series, the newest episode.
+7. **Disconnect** in Accounts removes the sign-in from the TV only; your Trakt
+   history stays. Restricted profiles never see Trakt rows.
 
 ## Beta 13: Discover first session
 
@@ -180,7 +203,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.13 (14)
+Version: 0.1.0-beta.14 (20)
 Device model:
 Android / Google TV version:
 Fresh install or update:

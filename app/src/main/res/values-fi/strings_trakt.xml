@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trakt_profile">Sohva-profiili: %1$s</string>
+    <string name="trakt_connect">Yhdistä Trakt</string>
+    <string name="trakt_reconnect">Kirjaudu uudelleen</string>
+    <string name="trakt_disconnect">Katkaise yhteys</string>
+    <string name="trakt_cancel">Peruuta kirjautuminen</string>
+    <string name="trakt_not_connected">Ei yhdistetty</string>
+    <string name="trakt_connected">Yhdistetty käyttäjänä %1$s</string>
+    <string name="trakt_reauthorization">Trakt ei enää hyväksy tallennettua kirjautumista. Kirjaudu uudelleen jatkaaksesi synkronointia.</string>
+    <string name="trakt_waiting">Hyväksy Sohva TV Traktissa</string>
+    <string name="trakt_scan">Skannaa koodi puhelimella tai avaa osoite ja syötä tunnus.</string>
+    <string name="trakt_qr_description">Trakt-kirjautumisen QR-koodi</string>
+    <string name="trakt_unconfigured">Tässä versiossa ei ole Trakt-sovellustunnuksia, joten tiliä ei voi yhdistää.</string>
+    <string name="trakt_help">VOD:ssa ja Discoverissa katsomasi elokuvat ja jaksot tallentuvat Trakt-tilillesi, ja Traktin katselukohdat ja katsotut-merkinnät näkyvät nimikkeissä täällä. Suoria lähetyksiä ja arkistoa ei tallenneta.</string>
+    <string name="trakt_disconnect_help">Yhteyden katkaisu poistaa kirjautumisen tältä televisiolta. Trakt-historiasi säilyy ennallaan.</string>
+    <string name="trakt_cancelled_background">Kirjautuminen keskeytettiin, koska Sohva siirtyi taustalle. Aloita uudelleen, kun olet valmis.</string>
+    <string name="trakt_denied">Käyttöoikeutta ei hyväksytty. Voit yrittää uudelleen.</string>
+    <string name="trakt_expired">Koodi vanheni. Aloita kirjautuminen uudelleen saadaksesi uuden koodin.</string>
+    <string name="trakt_code_unusable">Tätä koodia ei voi enää käyttää. Aloita kirjautuminen uudelleen.</string>
+    <string name="trakt_rate_limited">Trakt pyysi odottamaan. Yritä myöhemmin uudelleen.</string>
+    <string name="trakt_connection_error">Yhdistäminen ei onnistunut. Yritä uudelleen.</string>
+    <string name="home_watch_next">Katso seuraavaksi</string>
+    <string name="home_recommended">Suosituksia sinulle</string>
+    <string name="trakt_title_loading">Etsitään nimikettä lähteistäsi…</string>
+    <string name="trakt_title_unavailable">Nimike ei ole juuri nyt saatavilla lähteistäsi.</string>
+</resources>

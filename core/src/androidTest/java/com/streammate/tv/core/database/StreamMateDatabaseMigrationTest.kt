@@ -5,6 +5,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -19,6 +20,62 @@ class StreamMateDatabaseMigrationTest {
         emptyList(),
         FrameworkSQLiteOpenHelperFactory(),
     )
+
+    @Test
+    fun migratesTwentyEightToTwentyNineAddingTraktState() {
+        helper.createDatabase(TEST_DATABASE_FROM_TWENTY_EIGHT, 28).apply {
+            execSQL(
+                "INSERT INTO catalogue_metadata_overrides (contentKey, providerPosterUrl, replacementPosterUrl, replaceProviderPoster, " +
+                    "replacementTitle, externalId, genresVersion, updatedAtEpochMillis) VALUES ('vod:movie:s:1', NULL, NULL, 0, 'Film', '603', 0, 1)",
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DATABASE_FROM_TWENTY_EIGHT, 29, true, StreamMateDatabase.MIGRATION_28_29)
+        db.execSQL("INSERT INTO trakt_state (profileId, `key`, kind, tmdb, imdb, season, number, progress, watched, plays, updatedAtMillis) VALUES ('default', 'movie:603', 'movie', 603, 'tt0133093', NULL, NULL, 42.5, 0, 0, 7)")
+        db.query("SELECT externalId FROM catalogue_metadata_overrides WHERE externalId = '603'").use { cursor -> assertTrue(cursor.moveToFirst()) }
+        db.query("SELECT progress FROM trakt_state WHERE profileId = 'default'").use { cursor ->
+            assertTrue(cursor.moveToFirst()); assertEquals(42.5, cursor.getDouble(0), 0.0)
+        }
+        db.close()
+    }
+
+    @Test
+    fun migratesTwentySixToTwentyEightKeepingProgress() {
+        helper.createDatabase(TEST_DATABASE_FROM_TWENTY_SIX, 26).apply {
+            execSQL(
+                "INSERT INTO playback_progress (contentKey, profileId, sourceId, contentType, itemId, positionMillis, durationMillis, " +
+                    "completed, lastWatchedEpochMillis, workKey) VALUES ('vod:movie:s:1', 'default', 's', 'movie', '1', 300000, 1000000, 0, 5, 'work:x')",
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DATABASE_FROM_TWENTY_SIX, 28, true, StreamMateDatabase.MIGRATION_26_28)
+        db.query("SELECT positionMillis FROM playback_progress WHERE contentKey = 'vod:movie:s:1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(300000L, cursor.getLong(0))
+        }
+        db.close()
+    }
+
+    @Test
+    fun migratesTrialTwentySevenToTwentyEightDroppingItsTable() {
+        helper.createDatabase(TEST_DATABASE_FROM_TWENTY_SEVEN, 27).apply {
+            execSQL("INSERT INTO viewing_projection_receipts (profileId, sourceKey, workId, revision, receiptId) VALUES ('default', 'k', 'w', 1, 'r')")
+            execSQL(
+                "INSERT INTO playback_progress (contentKey, profileId, sourceId, contentType, itemId, positionMillis, durationMillis, " +
+                    "completed, lastWatchedEpochMillis, workKey) VALUES ('vod:movie:s:1', 'default', 's', 'movie', '1', 300000, 1000000, 0, 5, 'work:x')",
+            )
+            close()
+        }
+        val db = helper.runMigrationsAndValidate(TEST_DATABASE_FROM_TWENTY_SEVEN, 28, true, StreamMateDatabase.MIGRATION_27_28)
+        db.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'viewing_projection_receipts'").use { cursor ->
+            assertFalse(cursor.moveToFirst())
+        }
+        db.query("SELECT positionMillis FROM playback_progress WHERE contentKey = 'vod:movie:s:1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(300000L, cursor.getLong(0))
+        }
+        db.close()
+    }
 
     @Test
     fun migratesTwentyFiveToTwentySix() {
@@ -917,6 +974,9 @@ class StreamMateDatabaseMigrationTest {
         const val TEST_DATABASE_FROM_TWENTY_THREE = "migration-from-23"
         const val TEST_DATABASE_FROM_TWENTY_FOUR = "migration-test-from-24"
         const val TEST_DATABASE_FROM_TWENTY_FIVE = "migration-test-from-25"
+        const val TEST_DATABASE_FROM_TWENTY_SIX = "migration-test-from-26"
+        const val TEST_DATABASE_FROM_TWENTY_SEVEN = "migration-test-from-27"
+        const val TEST_DATABASE_FROM_TWENTY_EIGHT = "migration-test-from-28"
         const val TEST_DATABASE_FROM_TWO = "migration-test-from-two"
         const val TEST_DATABASE_FROM_THREE = "migration-test-from-three"
         const val TEST_DATABASE_FROM_FOUR = "migration-test-from-four"

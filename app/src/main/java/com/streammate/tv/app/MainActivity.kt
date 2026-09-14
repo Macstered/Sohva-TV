@@ -98,12 +98,12 @@ class MainActivity : ComponentActivity() {
                 container.preferencesRepository.preferences.map { it.interfaceScale }.distinctUntilChanged()
             }
             val interfaceScale by interfaceScaleFlow.collectAsStateWithLifecycle(initialValue = InterfaceScale.DEFAULT)
-            InterfaceScaled(interfaceScale) {
-                if (showLaunchSplash) {
-                    StreamMateTheme { StreamMateLaunchScreen() }
-                } else {
-                    StreamMateApp(container, pictureInPicture)
-                }
+            // The launch picture stays at device density, like the window
+            // background before it; scaled with the interface it would jump.
+            if (showLaunchSplash) {
+                StreamMateTheme { StreamMateLaunchScreen() }
+            } else {
+                InterfaceScaled(interfaceScale) { StreamMateApp(container, pictureInPicture) }
             }
         }
     }

@@ -31,7 +31,8 @@ import com.streammate.tv.app.StreamMateThemeTokens
 /** VOD-style poster: focus is an inset artwork border, not a scaled lazy-list child. */
 @Composable
 internal fun AddonPosterCard(media: AddonMedia, onClick: () -> Unit, modifier: Modifier = Modifier,
-    focusRequester: FocusRequester? = null, onFocus: () -> Unit = {}, tag: String = "addon-media-card", progress: Float? = null, showCaption: Boolean = true) {
+    focusRequester: FocusRequester? = null, onFocus: () -> Unit = {}, tag: String = "addon-media-card", progress: Float? = null, showCaption: Boolean = true,
+    watched: Boolean = false) {
     var focused by remember { mutableStateOf(false) }
     var imageFailed by remember(media.poster) { mutableStateOf(false) }
     val context = LocalContext.current
@@ -49,6 +50,7 @@ internal fun AddonPosterCard(media: AddonMedia, onClick: () -> Unit, modifier: M
             AsyncImage(request, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize(),
                 onError = { imageFailed = true }, onSuccess = { imageFailed = false })
             progress?.let { fraction -> Box(Modifier.align(androidx.compose.ui.Alignment.BottomStart).fillMaxWidth(fraction.coerceIn(0f, 1f)).height(4.dp).background(palette.focus)) }
+            if (watched) TraktWatchedBadge(Modifier.align(Alignment.TopEnd).padding(6.dp))
             // Paint the border above the image, inside the measured card bounds.
             if (focused) Box(Modifier.fillMaxSize().border(3.dp, palette.textPrimary, shape))
         }
@@ -58,6 +60,15 @@ internal fun AddonPosterCard(media: AddonMedia, onClick: () -> Unit, modifier: M
             Text(listOfNotNull(media.releaseInfo, media.imdbRating).joinToString(" · "), color = palette.textDim,
                 fontSize = StreamMateThemeTokens.typography.caption.fontSize, maxLines = 1)
         }
+    }
+}
+
+/** A small tick in the corner: Trakt says this was watched. */
+@Composable
+internal fun TraktWatchedBadge(modifier: Modifier = Modifier) {
+    val palette = StreamMateThemeTokens.palette
+    Box(modifier.size(22.dp).clip(androidx.compose.foundation.shape.CircleShape).background(palette.focus).testTag("trakt-watched"), contentAlignment = Alignment.Center) {
+        Text("\u2713", color = palette.background, fontSize = StreamMateThemeTokens.typography.caption.fontSize)
     }
 }
 

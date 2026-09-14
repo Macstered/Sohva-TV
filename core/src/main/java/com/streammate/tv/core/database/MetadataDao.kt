@@ -17,6 +17,14 @@ interface MetadataDao {
     @Upsert
     suspend fun upsert(entry: MetadataCacheEntity)
 
+    /** Whether [provider] is the one that produced [externalId]; overrides do not record the provider themselves. */
+    @Query("SELECT COUNT(*) FROM metadata_cache WHERE provider = :provider AND externalId = :externalId LIMIT 1")
+    suspend fun providerKnows(provider: String, externalId: String): Int
+
+    /** The library copies the metadata lookup matched to one external id; callers check the provider. */
+    @Query("SELECT contentKey FROM catalogue_metadata_overrides WHERE externalId = :externalId ORDER BY contentKey LIMIT 20")
+    suspend fun contentKeysForExternalId(externalId: String): List<String>
+
     @Query("SELECT * FROM catalogue_metadata_overrides")
     fun observeCatalogueMetadataOverrides(): Flow<List<CatalogueMetadataOverrideEntity>>
 

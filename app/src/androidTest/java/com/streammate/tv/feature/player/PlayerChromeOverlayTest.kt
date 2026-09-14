@@ -3,6 +3,7 @@ package com.streammate.tv.feature.player
 import com.streammate.tv.testing.awaitFocused
 import android.view.View
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.platform.LocalView
@@ -14,6 +15,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.streammate.tv.app.MainActivity
+import com.streammate.tv.iptv.repository.GuideTimelineChannel
+import com.streammate.tv.iptv.repository.GuideTimelineProgramme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -94,6 +97,90 @@ class PlayerChromeOverlayTest {
     }
 
     @Test
+    fun liveInfoStaysHiddenAcrossProgrammeRolloversAndGuideRefreshes() {
+        val first = programme("first", 0L, 60_000L)
+        val second = programme("second", 60_000L, 120_000L)
+        val channel = mutableStateOf<GuideTimelineChannel?>(timelineChannel(listOf(first, second)))
+        val now = mutableStateOf(30_000L)
+        val interactionVersion = mutableIntStateOf(0)
+        val channelId = mutableStateOf("channel")
+        composeRule.mainClock.autoAdvance = false
+        composeRule.activity.setContent {
+            LiveInfoTestContent(channel.value, channelId.value, now.value, interactionVersion.intValue)
+        }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertIsDisplayed()
+        composeRule.onNodeWithText("first").assertIsDisplayed()
+
+        composeRule.mainClock.advanceTimeBy(PLAYER_CONTROLS_TIMEOUT_MILLIS + 500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertDoesNotExist()
+
+        // The clock enters the next programme without a keypress.
+        composeRule.runOnUiThread { now.value = 90_000L }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertDoesNotExist()
+
+        // A guide refresh may temporarily remove the row and replace programme IDs.
+        composeRule.runOnUiThread { channel.value = null }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.runOnUiThread {
+            channel.value = timelineChannel(listOf(second.copy(id = "refreshed", title = "Updated programme")))
+        }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertDoesNotExist()
+
+        // Explicit remote interaction still reveals the latest guide contents.
+        composeRule.runOnUiThread { interactionVersion.intValue += 1 }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertIsDisplayed()
+        composeRule.onNodeWithText("Updated programme").assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(PLAYER_CONTROLS_TIMEOUT_MILLIS + 500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertDoesNotExist()
+
+        // Tuning another channel still shows its initial information.
+        composeRule.runOnUiThread {
+            channelId.value = "other-channel"
+            channel.value = channel.value?.copy(id = "other-channel", name = "Other channel")
+            interactionVersion.intValue = 0
+        }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertIsDisplayed()
+        composeRule.onNodeWithText("Other channel").assertIsDisplayed()
+    }
+
+    @Test
+    fun liveProgrammeUpdatesDoNotRestartTheIdleTimeout() {
+        val channel = mutableStateOf(timelineChannel(listOf(programme("first", 0L, 120_000L))))
+        composeRule.mainClock.autoAdvance = false
+        composeRule.activity.setContent {
+            LiveInfoTestContent(channel.value, "channel", 30_000L, 0)
+        }
+        composeRule.mainClock.advanceTimeBy(500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(PLAYER_CONTROLS_TIMEOUT_MILLIS / 2L)
+        composeRule.runOnUiThread {
+            channel.value = timelineChannel(listOf(programme("Updated programme", 0L, 120_000L)))
+        }
+        composeRule.mainClock.advanceTimeBy(100L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("Updated programme").assertIsDisplayed()
+
+        // The original deadline still applies even though programme data changed.
+        composeRule.mainClock.advanceTimeBy(PLAYER_CONTROLS_TIMEOUT_MILLIS / 2L + 500L)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("player-live-info").assertDoesNotExist()
+    }
+
+    @Test
     fun vodControlsShowStreamTracksAndFocusPlayPauseOnRemoteEntry() {
         composeRule.mainClock.autoAdvance = false
         composeRule.runOnUiThread {
@@ -155,4 +242,42 @@ class PlayerChromeOverlayTest {
         composeRule.awaitFocused("player-track-option-1")
     }
 
+    @Composable
+    private fun LiveInfoTestContent(channel: GuideTimelineChannel?, channelId: String, now: Long, interactionVersion: Int) {
+        LiveProgrammeInfoOverlay(
+            channel = channel,
+            streamName = channel?.name.orEmpty(),
+            nowEpochMillis = now,
+            timeZoneId = "UTC",
+            metadata = null,
+            aspectModeLabel = "Fit",
+            audioTrackLabel = "Automatic",
+            subtitleTrackLabel = "Off",
+            statsVisible = false,
+            onBack = {},
+            onCycleAspectMode = {},
+            onCycleAudioTrack = {},
+            onCycleSubtitleTrack = {},
+            onOpenChannelBrowser = {},
+            onToggleStats = {},
+            onOpenQuickActions = {},
+            externalPlayerBusy = false,
+            onOpenExternal = null,
+            channelId = channelId,
+            interactionVersion = interactionVersion,
+            enabled = true,
+        )
+    }
+
+    private fun programme(id: String, start: Long, stop: Long) = GuideTimelineProgramme(
+        id = id, title = id, subtitle = null, description = null, categories = emptyList(),
+        startEpochMillis = start, stopEpochMillis = stop,
+    )
+
+    private fun timelineChannel(programmes: List<GuideTimelineProgramme>) = GuideTimelineChannel(
+        sourceId = "source", sourceName = "Source", sourcePriority = 0,
+        id = "channel", name = "Test channel", groupTitle = null, logoUrl = null,
+        playlistOrder = 0, catchupType = null, catchupSource = null, catchupDays = null,
+        programmes = programmes,
+    )
 }

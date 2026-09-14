@@ -377,7 +377,8 @@ internal val SETTINGS_ROW_HEIGHT = 74.dp
 internal val SETTINGS_ROW_PADDING = 14.dp
 internal val SETTINGS_ICON_SIZE = 20.dp
 internal val SETTINGS_CHIP_HEIGHT = 44.dp
-internal val SETTINGS_RAIL_ROW_HEIGHT = 46.dp
+// Ten sections since Accounts arrived; at this height they still fit a 540dp screen at the normal interface size.
+internal val SETTINGS_RAIL_ROW_HEIGHT = 41.dp
 
 private val SWITCH_WIDTH = 52.dp
 private val SWITCH_HEIGHT = 30.dp

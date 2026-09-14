@@ -33,9 +33,10 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
         OrganizationRuleEntity::class,
         OrganizationAliasEntity::class,
         ReminderEntity::class,
+        TraktStateEntity::class,
     ],
     views = [OrganizationMembershipView::class, OrganizationEligibleView::class, OrganizationVisibleMovie::class, OrganizationVisibleSeries::class, OrganizationVisibleChannel::class],
-    version = 26,
+    version = 29,
     exportSchema = true,
 )
 abstract class StreamMateDatabase : RoomDatabase() {
@@ -54,6 +55,7 @@ abstract class StreamMateDatabase : RoomDatabase() {
     abstract fun sportsCacheDao(): SportsCacheDao
     abstract fun organizationDao(): OrganizationDao
     abstract fun remindersDao(): RemindersDao
+    abstract fun traktStateDao(): TraktStateDao
 
     companion object {
         fun create(context: Context): StreamMateDatabase = Room.databaseBuilder(
@@ -87,8 +89,38 @@ abstract class StreamMateDatabase : RoomDatabase() {
                 MIGRATION_23_24,
                 MIGRATION_24_25,
                 MIGRATION_25_26,
+                MIGRATION_26_28,
+                MIGRATION_27_28,
+                MIGRATION_28_29,
             )
             .build()
+
+        /** Trakt's view of the profile's titles, and an index so it can be joined to the library by TMDB id. */
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `trakt_state` (`profileId` TEXT NOT NULL, `key` TEXT NOT NULL, `kind` TEXT NOT NULL, `tmdb` INTEGER, `imdb` TEXT, `season` INTEGER, `number` INTEGER, `progress` REAL NOT NULL, `watched` INTEGER NOT NULL, `plays` INTEGER NOT NULL, `updatedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `key`))")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_trakt_state_profileId_tmdb` ON `trakt_state` (`profileId`, `tmdb`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_trakt_state_profileId_imdb` ON `trakt_state` (`profileId`, `imdb`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_catalogue_metadata_overrides_externalId` ON `catalogue_metadata_overrides` (`externalId`)")
+            }
+        }
+
+        /**
+         * No schema change of our own. The private Trakt trial build (codes 16-18)
+         * moved installations to 27 with one extra table and its own schema hash;
+         * 28 lets those installations open and removes the leftover table. Ordinary
+         * installations at 26 take the direct step.
+         */
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS viewing_projection_receipts")
+            }
+        }
+        val MIGRATION_26_28 = object : Migration(26, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS viewing_projection_receipts")
+            }
+        }
 
         /** A channel's own logo and number: the viewer's on the preference, the playlist's on the channel. */
         val MIGRATION_25_26 = object : Migration(25, 26) {

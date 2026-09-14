@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +67,8 @@ internal fun AddonCatalogScreen(
     val labels = addonStrings()
     val scope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
+    val traktState by remember(host, profileId) { host.trakt.observeDiscoverState(profileId) }
+        .collectAsStateWithLifecycle(initialValue = emptyMap())
     var media by remember { mutableStateOf<List<AddonMedia>>(emptyList()) }
     var nextSkip by remember { mutableStateOf<Int?>(null) }
     var extras by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
@@ -187,8 +190,10 @@ internal fun AddonCatalogScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp), horizontalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 items(media, key = { "${it.key.type.length}:${it.key.type}${it.key.id}" }) { item ->
+                    val trakt = traktState["${item.key.type}:${item.key.id}"]
                     AddonPosterCard(item, { returningKey = null; selected = item },
-                        modifier = Modifier.fillMaxWidth(), focusRequester = if (returningKey == item.key) returnFocus else null)
+                        modifier = Modifier.fillMaxWidth(), focusRequester = if (returningKey == item.key) returnFocus else null,
+                        progress = trakt?.fraction, watched = trakt?.watched == true)
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     if (loading && media.isNotEmpty()) Text(labels(R.string.addon_ui_loading_more_titles), Modifier.testTag("addon-page-loading"))

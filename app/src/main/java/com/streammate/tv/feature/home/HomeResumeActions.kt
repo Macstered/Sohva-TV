@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import com.streammate.tv.iptv.R as IptvR
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,7 +61,10 @@ internal fun HomeResumeActionsDialog(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(start = 6.dp),
             )
-            item.subtitle?.let { subtitle ->
+            val episode = item.seasonNumber?.let { s -> item.episodeNumber?.let { e ->
+                stringResource(IptvR.string.series_episode_label, s, e) + (item.episodeTitle?.let { " · $it" } ?: "")
+            } }
+            (episode ?: item.subtitle)?.let { subtitle ->
                 Text(
                     text = subtitle,
                     color = palette.textMuted,

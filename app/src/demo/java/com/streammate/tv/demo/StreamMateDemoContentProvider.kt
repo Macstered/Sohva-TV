@@ -242,6 +242,8 @@ class StreamMateDemoContentProvider : DemoContentProvider {
             ),
         )
 
+        DemoTraktSeed.seed(context, database, secretCipher, now, ::movieContentKey, ::seriesContentKey, moviePosterUrls, seriesPosterUrls)
+
         demoSportsRepository.updateArtwork(
             summit = drawableUrl(context, R.drawable.demo_mark_summit),
             aurora = drawableUrl(context, R.drawable.demo_mark_northstar),

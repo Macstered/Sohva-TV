@@ -121,6 +121,23 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
     val appPreferences by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
         initialValue = AppPreferences(),
     )
+    // Discover's part-watched titles for Home's Continue Watching row, re-read each time Home comes up.
+    var discoverHistory by remember { mutableStateOf<List<com.sohva.tv.addons.AddonWatchProgress>>(emptyList()) }
+    LaunchedEffect(destination, appPreferences.activeProfileId, addonFeature) {
+        if (destination != Destination.Home) return@LaunchedEffect
+        discoverHistory = if (addonFeature == null || appPreferences.activeRestriction.restricted) emptyList() else runCatching {
+            com.streammate.tv.addons.AddonHost.get(context, container).progress.recent(appPreferences.activeProfileId)
+                .filter { !it.completed && it.resumePositionMillis > 0L }
+        }.getOrDefault(emptyList())
+    }
+    val traktNextUp by remember(appPreferences.activeProfileId) { container.trakt.nextUp(appPreferences.activeProfileId) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val traktRecommendations by remember(appPreferences.activeProfileId) { container.trakt.recommendations(appPreferences.activeProfileId) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    // Trakt's cached state follows the active profile; a change of viewer restarts the loop for theirs.
+    LaunchedEffect(container, profileChosen, appPreferences.activeProfileId) {
+        if (profileChosen) container.trakt.runSync(appPreferences.activeProfileId)
+    }
     // Home may shrink the picture to a corner only while a stream is on screen and the viewer allows it.
     LaunchedEffect(destination, appPreferences.pictureInPictureEnabled) {
         pictureInPicture.allowed = appPreferences.pictureInPictureEnabled &&
@@ -328,6 +345,21 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
             }
         }
     }
+    /**
+     * A Trakt title opens the library's own page when a copy was matched to
+     * the same TMDB record, otherwise a lookup over the Discover addons.
+     */
+    fun openTraktTitle(title: com.streammate.tv.trakt.TraktHomeTitle) {
+        coroutineScope.launch {
+            val route = container.traktLibraryLookup.route(title)
+            val destination: Destination = when (route) {
+                is com.streammate.tv.trakt.TraktLibraryRoute.Movie -> Destination.MovieDetails(route.movie)
+                is com.streammate.tv.trakt.TraktLibraryRoute.Series -> Destination.SeriesDetails(route.series)
+                null -> Destination.TraktTitle(title)
+            }
+            if (backStack.lastOrNull() == Destination.Home) navigateTo(destination)
+        }
+    }
     fun continueToNextEpisode(player: Destination.VodPlayer) {
         if (!appPreferences.autoPlayNextEpisodeEnabled) return
         coroutineScope.launch {
@@ -524,6 +556,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 sportsEvents = todayUiState.events,
                 onLiveTv = { navigateTo(Destination.Guide) },
                 onSportMate = { navigateTo(Destination.Today) },
+                onOpenSportEvent = { event -> todayOpenEventId = event.id; navigateTo(Destination.Today) },
                 onMovies = { navigateTo(Destination.Catalogue(CatalogueMode.MOVIES)) },
                 onSeries = { navigateTo(Destination.Catalogue(CatalogueMode.SERIES)) },
                 onSearch = { navigateTo(Destination.Search) },
@@ -538,7 +571,21 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 },
                 onPlayChannel = ::playChannel,
                 onPlayVod = ::playVodFromHome,
+                discoverHistory = discoverHistory,
+                onOpenDiscoverTitle = { navigateTo(Destination.DiscoverTitle(it)) },
+                metadataRepository = container.metadataRepository,
+                nextUp = if (appPreferences.activeRestriction.restricted) emptyList() else traktNextUp,
+                recommendations = if (appPreferences.activeRestriction.restricted) emptyList() else traktRecommendations,
+                onOpenTraktTitle = ::openTraktTitle,
+                discoverSynopsis = { progress ->
+                    val host = com.streammate.tv.addons.AddonHost.get(context, container)
+                    val media = host.browser.cachedDetails(appPreferences.activeProfileId, progress.identity.metadataInstallationId, progress.identity.media)
+                    media?.videos?.firstOrNull { it.id == progress.identity.video.id }?.overview?.takeIf { it.isNotBlank() }
+                        ?: media?.description?.takeIf { it.isNotBlank() }
+                },
             )
+            is Destination.DiscoverTitle -> com.streammate.tv.addons.DiscoverTitleScreen(container, appPreferences.activeProfileId, current.progress, ::handleBack)
+            is Destination.TraktTitle -> com.streammate.tv.trakt.TraktTitleScreen(container, appPreferences.activeProfileId, current.title, ::handleBack)
             Destination.Discover -> addonFeature?.Screen(container, ::handleBack)
             Destination.Search -> SearchScreen(
                 guideRepository = container.guideRepository,
@@ -768,7 +815,17 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 onSaveDiagnostics = { uri -> runCatching { container.diagnosticsReport.writeTo(uri) } },
                 reminderOpenAllowed = reminderOpenAllowed,
                 onOpenReminderSettings = { ReminderOverlay.openSettings(context) },
-                onProfileRemoved = { id -> container.catalogueRepository.forgetProfile(id) },
+                onProfileRemoved = { id ->
+                    container.catalogueRepository.forgetProfile(id)
+                    container.trakt.disconnect(id)
+                },
+                accountsContent = if (!appPreferences.activeRestriction.restricted) {
+                    { focus -> com.streammate.tv.trakt.TraktSettingsPanel(
+                        container.trakt, appPreferences.activeProfileId,
+                        Profiles.displayName(appPreferences.profiles, appPreferences.activeProfileId, stringResource(IptvR.string.profile_default_name)),
+                        focus,
+                    ) }
+                } else null,
                 onSwitchProfile = ::switchProfile,
                 onBack = ::handleBack,
             )
@@ -928,6 +985,8 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
 private sealed interface Destination {
     data object Home : Destination
     data object Discover : Destination
+    data class DiscoverTitle(val progress: com.sohva.tv.addons.AddonWatchProgress) : Destination
+    data class TraktTitle(val title: com.streammate.tv.trakt.TraktHomeTitle) : Destination
     data object Today : Destination
     data object Guide : Destination
     data object Settings : Destination

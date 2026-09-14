@@ -1,32 +1,33 @@
-# Sohva TV 0.1.0-beta.13
+# Sohva TV 0.1.0-beta.14
 
-Prepared: **11 September 2026**. Android version code: **14**.
+Prepared: **14 September 2026**. Android version code: **20**.
 
-This beta adds **Discover**, an independent section for user-installed,
-Stremio-compatible addons. Existing Live TV, Movies, Series and Sohva Sport
-remain available. No addons, subscriptions, channels or credentials are included.
+This beta reworks the **Home** screen and adds optional **Trakt** sync.
+Existing Live TV, Movies, Series, Sohva Sport and Discover remain available.
+No addons, subscriptions, channels, credentials or Trakt accounts are included.
 
-## New in beta 13
+## New in beta 14
 
-- Catalog poster rows with a focused-title hero, Continue Watching at the top,
-  cached browsing and nearby-row preloading. Required-filter catalogs live in
-  Discover; plain Search returns separate movie and series rows.
-- Movie details, cast, seasons and episode pages, source-provider selection,
-  playback and resume. Artwork and synopsis come from your configured providers.
-- A per-profile saved Library and catalog ordering/visibility controls.
-- Addon installation by URL, a text file with multiple URLs, or temporary phone
-  setup. Stremio authorization copies configurations after a preview; supported
-  Nuvio JSON files can also be imported. Source accounts are not modified.
-- Automatic primary/secondary subtitle selection, a remote-friendly subtitle
-  picker, subtitle timing adjustment and shared Sohva subtitle appearance settings.
-- Playback startup artwork and status, bottom playback controls, and improved
-  Back/focus behavior.
-- Discover screens follow Sohva's saved interface language. English and Finnish
-  are supported; Spanish, Portuguese, German, Swedish and Italian remain drafts.
-  The temporary phone browser page is in English. Addon metadata language is
-  configured with the metadata provider, independently of the app's menus.
-- A guide instrumentation teardown race is fixed; no guide behavior changed.
-- Fresh Discover with no addons correctly finishes loading its empty watch history.
+- **Home rework.** A fixed hero at the top describes whichever card is focused:
+  title, episode, minutes left, synopsis and artwork for movies and episodes;
+  the programme, its image and description for a channel; the fixture, score
+  and club crests for a match. The rows scroll under it on a fixed focus line.
+- **Continue watching in one row.** Movies and episodes from your library,
+  positions paused on Trakt, and Discover history, newest first, one card per
+  series. Series cards open on the episode you were watching.
+- **Trakt sync (optional).** Connect under Settings > Accounts with a code
+  shown on the TV. What you play in Movies, Series and Discover is recorded to
+  Trakt as it happens; Trakt's own progress and watched marks show on library
+  and Discover cards, and a title paused elsewhere resumes here from that
+  position. Matching is by TMDB/IMDb identifier only.
+- **Watch next and Recommended for you rows** from Trakt: the next unwatched
+  episode of the shows you have been watching, and Trakt's picks for you. A
+  card opens the title in your library when you have it, otherwise looks it up
+  in your Discover addons. Synopses come from TMDB in your interface language.
+- **A match card opens its fixture** in Sohva Sport rather than the day's list.
+- **New logo** on the launcher banner, the icon and the launch screen, and a
+  new Home background.
+- Episode labels read S1 E2 in English and K1 J2 in Finnish throughout.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -34,9 +35,11 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 14 uses the existing production signing identity.
-The IPTV database remains at version 26, unchanged from beta 12; Discover uses
-separate storage and starts empty. No data is copied from a separate Lab app.
+published. Android build 20 uses the existing production signing identity.
+The IPTV database moves from version 26 to 29 and the Discover progress
+database from 1 to 4; both migrate in place and keep every position and
+setting. No data is copied from a separate Lab app. Trakt is off until you
+connect an account.
 
 The existing password-protected `.smbak` backup **does not include Discover
 addons, Library, watch history, catalog order or visibility**. Keep your own

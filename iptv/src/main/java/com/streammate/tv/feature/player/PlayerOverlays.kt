@@ -94,7 +94,7 @@ import kotlinx.coroutines.delay
  * inventing a schedule.
  */
 @Composable
-internal fun LiveProgrammeInfoOverlay(
+fun LiveProgrammeInfoOverlay(
     channel: GuideTimelineChannel?,
     streamName: String,
     nowEpochMillis: Long,
@@ -113,7 +113,8 @@ internal fun LiveProgrammeInfoOverlay(
     onOpenQuickActions: () -> Unit,
     externalPlayerBusy: Boolean,
     onOpenExternal: (() -> Unit)?,
-    visibilityKey: Any?,
+    channelId: String,
+    interactionVersion: Int,
     enabled: Boolean,
     dismissRequest: Int = 0,
     /** Bumped to hand focus to the row of buttons along the bottom. */
@@ -123,10 +124,12 @@ internal fun LiveProgrammeInfoOverlay(
 ) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
-    var visible by remember(visibilityKey, enabled) { mutableStateOf(enabled) }
-    var actionsFocused by remember(visibilityKey) { mutableStateOf(false) }
+    // Programme rollovers and EPG refreshes update the contents, not visibility.
+    // Only tuning a channel or interacting with the player restarts idle chrome.
+    var visible by remember(channelId, interactionVersion, enabled) { mutableStateOf(enabled) }
+    var actionsFocused by remember(channelId, interactionVersion) { mutableStateOf(false) }
     val actionsFocus = remember { FocusRequester() }
-    LaunchedEffect(visibilityKey, enabled, actionsFocused) {
+    LaunchedEffect(channelId, interactionVersion, enabled, actionsFocused) {
         if (!enabled) return@LaunchedEffect
         visible = true
         // Idle chrome times out. A box somebody is working their way along is

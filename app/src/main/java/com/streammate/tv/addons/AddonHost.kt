@@ -24,6 +24,7 @@ internal class AddonHost(context: Context, container: StreamMateContainer) {
     private val database = AddonDatabase.open(context)
     val client = AddonClient()
     val preferences = container.preferencesRepository.preferences
+    val trakt = container.trakt
     private val uiPreferences = context.getSharedPreferences("sohva_addon_ui", Context.MODE_PRIVATE)
     private val allSubtitleLanguages = kotlinx.coroutines.flow.MutableStateFlow(uiPreferences.getBoolean("all_subtitle_languages", false))
     val showAllSubtitleLanguages: kotlinx.coroutines.flow.StateFlow<Boolean> = allSubtitleLanguages

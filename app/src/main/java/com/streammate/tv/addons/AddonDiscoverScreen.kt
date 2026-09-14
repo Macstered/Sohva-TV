@@ -8,6 +8,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -66,6 +67,8 @@ private data class DiscoverRow(val installation: InstalledAddon, val catalog: Ad
 internal fun AddonDiscoverScreen(host: AddonHost, preferences: AppPreferences, onBack: () -> Unit, modifier: Modifier,
     initiallyManage: Boolean = false, loadInstallations: suspend () -> List<InstalledAddon> = { host.manager.list(preferences.activeProfileId) }) {
     val labels = addonStrings()
+    val traktState by remember(host, preferences.activeProfileId) { host.trakt.observeDiscoverState(preferences.activeProfileId) }
+        .collectAsStateWithLifecycle(initialValue = emptyMap())
     var manage by remember { mutableStateOf(initiallyManage) }
     var discover by remember { mutableStateOf(false) }
     var search by remember { mutableStateOf(false) }
@@ -367,7 +370,9 @@ internal fun AddonDiscoverScreen(host: AddonHost, preferences: AppPreferences, o
                                             if (it.type == KeyEventType.KeyDown) { pendingRow = null; scope.launch { railFocus.requestFocusWhenAttached() } }
                                             true
                                         } else false
-                                    }, tag = "addon-landing-card", focusRequester = cardFocus, showCaption = false)
+                                    }, tag = "addon-landing-card", focusRequester = cardFocus, showCaption = false,
+                                    progress = traktState["${media.key.type}:${media.key.id}"]?.fraction,
+                                    watched = traktState["${media.key.type}:${media.key.id}"]?.watched == true)
                             }
                             if (!shelf.loaded && shelf.failure == null) items(6, key = { "loading-$it" }) { placeholder ->
                                 if (placeholder == 0) TvSurface({}, Modifier.width(126.dp).aspectRatio(2f / 3f)

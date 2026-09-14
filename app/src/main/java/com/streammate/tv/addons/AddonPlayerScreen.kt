@@ -50,11 +50,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 @OptIn(UnstableApi::class)
 internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: AddonWatchIdentity, title: String,
     selection: AddonPlaybackSelection, resume: Boolean, onBack: () -> Unit, modifier: Modifier, artwork: AddonWatchArtwork? = null, startupLogo: String? = null,
-    subtitleStartupTimeoutMillis: Long = 20_000) {
+    subtitleStartupTimeoutMillis: Long = 20_000, episode: AddonVideo? = null) {
     val labels = addonStrings()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val playback = remember { AddonPlayback(context, host, profileId, identity, title, selection, artwork) }
+    val playback = remember { AddonPlayback(context, host, profileId, identity, title, selection, artwork, episode) }
     val player = playback.player
     var failure by remember { mutableStateOf<AddonFailure?>(null) }
     var busy by remember { mutableStateOf(true) }

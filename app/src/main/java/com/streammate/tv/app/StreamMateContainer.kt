@@ -101,6 +101,7 @@ class StreamMateContainer(context: Context) {
         database.catalogueDao(),
         organization = organizationRepository,
         activeProfile = preferencesRepository.preferences.map { it.activeProfileId }.distinctUntilChanged(),
+        trakt = database.traktStateDao(),
     )
     init {
         // Complete the small, idempotent legacy preference import before any screen reads it.
@@ -159,6 +160,10 @@ class StreamMateContainer(context: Context) {
         catalogueRepository,
     )
     val externalPlayerLauncher = ExternalPlayerLauncher(applicationContext, playbackRepository)
+    /** Trakt sign-in and scrobbling. Local VOD and Discover progress are unaffected by it. */
+    val trakt = com.streammate.tv.trakt.TraktService(applicationContext, secretCipher, database.traktStateDao(), offline = demoMode)
+    val traktLibraryLookup = com.streammate.tv.trakt.TraktLibraryLookup(database.metadataDao(), catalogueRepository)
+    val traktVodIdentity = com.streammate.tv.trakt.TraktVodIdentity(database.catalogueDao(), database.metadataDao(), catalogueRepository, metadataRepository)
     val backupManager = StreamMateBackupManager(
         applicationContext,
         secretSettingsStore,

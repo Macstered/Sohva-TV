@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
@@ -30,6 +31,8 @@ import kotlinx.coroutines.CancellationException
 internal fun AddonDetailsScreen(host: AddonHost, profileId: String, installation: InstalledAddon, preview: AddonMedia,
     onBack: () -> Unit, modifier: Modifier, initialVideo: AddonMediaKey? = null) {
     val labels = addonStrings()
+    val traktState by remember(host, profileId) { host.trakt.observeDiscoverState(profileId) }
+        .collectAsStateWithLifecycle(initialValue = emptyMap())
     var details by remember { mutableStateOf(preview) }
     var loading by remember { mutableStateOf(true) }
     var failure by remember { mutableStateOf<AddonFailure?>(null) }
@@ -118,6 +121,9 @@ internal fun AddonDetailsScreen(host: AddonHost, profileId: String, installation
                                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .85f)))))
                                 Text(episodeLabel(item, labels), Modifier.align(Alignment.BottomStart).padding(10.dp), color = colors.content,
                                     fontSize = StreamMateThemeTokens.typography.label.fontSize, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                val trakt = traktState["${preview.key.type}:${preview.key.id}:${item.season}:${item.episode}"]
+                                trakt?.fraction?.let { fraction -> Box(Modifier.align(Alignment.BottomStart).fillMaxWidth(fraction).height(4.dp).background(StreamMateThemeTokens.palette.focus)) }
+                                if (trakt?.watched == true) TraktWatchedBadge(Modifier.align(Alignment.TopEnd).padding(6.dp))
                             }
                         }
                     }
@@ -142,6 +148,10 @@ private fun AddonPlayableDetails(host: AddonHost, profile: String, installation:
     val primaryFocus = remember { FocusRequester() }
     val sourcesFocus = remember { FocusRequester() }
     val identity = video?.let { AddonWatchIdentity(installation.installationId, preview.key, it) }
+    val traktState by remember(host, profile) { host.trakt.observeDiscoverState(profile) }.collectAsStateWithLifecycle(initialValue = emptyMap())
+    val traktResume = traktState[if (episode == null) "movie:${preview.key.id}" else "series:${preview.key.id}:${episode.season}:${episode.episode}"]
+        ?.takeIf { it.fraction != null && (saved == null || saved!!.updatedAtMillis < it.updatedAtMillis) }
+    val canResume = saved?.resumePositionMillis?.let { it > 0 } == true || traktResume != null
     LaunchedEffect(video, playing) {
         if (playing == null && identity != null) {
             host.pendingProgressWrite?.join()
@@ -152,7 +162,7 @@ private fun AddonPlayableDetails(host: AddonHost, profile: String, installation:
     playing?.let { selection ->
         AddonPlayerScreen(host, profile, checkNotNull(identity), if (episode == null) title else "${details.name} · ${episodeLabel(episode, labels)}",
             selection, resume, { playing = null }, modifier,
-            artwork = AddonWatchArtwork.from(details, preview), startupLogo = details.logo ?: preview.logo); return
+            artwork = AddonWatchArtwork.from(details, preview), startupLogo = details.logo ?: preview.logo, episode = episode); return
     }
     BackHandler(onBack = onBack)
     Box(modifier.fillMaxSize().testTag(if (episode == null) "addon-movie-details" else "addon-episode-details")) {
@@ -175,9 +185,9 @@ private fun AddonPlayableDetails(host: AddonHost, profile: String, installation:
                     failure?.let { Text(labels(R.string.addon_ui_full_details_unavailable, labels(it.messageResource()))) }
                     if (video != null) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            TvActionButton(if (saved?.resumePositionMillis?.let { it > 0 } == true) labels(R.string.home_continue_watching) else labels(R.string.addon_find_sources),
+                            TvActionButton(if (canResume) labels(R.string.home_continue_watching) else labels(R.string.addon_find_sources),
                                 { resume = true; playMessage = null
-                                    if (saved?.resumePositionMillis?.let { it > 0 } == true) autoPlayRequested = true
+                                    if (canResume) autoPlayRequested = true
                                     else runCatching { sourcesFocus.requestFocus() }
                                 }, icon = TvIcons.Play, enabled = !autoPlayRequested,
                                 focusRequester = primaryFocus, testTag = "addon-find-sources")

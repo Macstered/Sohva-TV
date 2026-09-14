@@ -48,6 +48,7 @@ class StreamMatePlaybackService : MediaSessionService() {
     @Volatile private var activeSource: PlaybackSource? = null
     @Volatile private var activeVodContentKey: String? = null
     private var progressJob: Job? = null
+    private val traktScrobbler by lazy { com.streammate.tv.trakt.TraktScrobbler(container.trakt, serviceScope) }
 
     private val container: StreamMateContainer
         get() = (application as StreamMateApplication).container
@@ -109,6 +110,7 @@ class StreamMatePlaybackService : MediaSessionService() {
 
     private fun releaseActiveSource() {
         saveVodProgressSnapshot()
+        traktScrobbler.release(vodPercent())
         progressJob?.cancel()
         progressJob = null
         activeVodContentKey = null
@@ -136,11 +138,18 @@ class StreamMatePlaybackService : MediaSessionService() {
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState == Player.STATE_ENDED) saveVodProgressSnapshot()
+                        if (playbackState == Player.STATE_ENDED) {
+                            saveVodProgressSnapshot()
+                            traktScrobbler.ended()
+                        }
                     }
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        if (!isPlaying) saveVodProgressSnapshot()
+                        if (isPlaying) traktScrobbler.playing(vodPercent())
+                        else {
+                            saveVodProgressSnapshot()
+                            traktScrobbler.paused(vodPercent())
+                        }
                     }
                 },
             )
@@ -182,11 +191,30 @@ class StreamMatePlaybackService : MediaSessionService() {
         activeVodContentKey = contentKey
         progressJob?.cancel()
         progressJob = serviceScope.launch {
+            // Trakt needs the title's TMDB id; look it up once, then follow the player.
+            val profile = container.preferencesRepository.preferences.first().activeProfileId
+            val connected = container.trakt.currentAccount(profile) != null
+            val item = if (connected) container.traktVodIdentity.resolve(contentKey) else null
+            com.streammate.tv.core.diagnostics.DiagnosticsLog.i("Trakt", "vod playback: connected=$connected item=${item ?: "none"}")
+            if (activeVodContentKey == contentKey) {
+                traktScrobbler.begin(profile, item)
+                if (player.isPlaying) traktScrobbler.playing(vodPercent())
+            }
             while (isActive && activeVodContentKey == contentKey) {
                 delay(PROGRESS_UPDATE_INTERVAL_MILLIS)
                 container.catalogueRepository.updateProgress(contentKey, player.currentPosition, player.duration)
+                traktScrobbler.progress(vodPercent())
             }
         }
+    }
+
+    /** Position as a percentage of the known duration; null until the duration is known. */
+    private fun vodPercent(): Double? {
+        if (activeVodContentKey == null) return null
+        val duration = player.duration
+        val position = player.currentPosition
+        if (duration <= 0 || position < 0) return null
+        return (100.0 * position / duration).coerceIn(0.0, 100.0)
     }
 
     private fun saveVodProgressSnapshot() {

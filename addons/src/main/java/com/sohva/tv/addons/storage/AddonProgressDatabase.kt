@@ -2,6 +2,8 @@ package com.sohva.tv.addons.storage
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.sohva.tv.addons.AddonProgressPersistence
 import com.sohva.tv.addons.AddonProgressRow
 
@@ -25,11 +27,24 @@ abstract class AddonProgressDao {
 }
 
 /** No migration of existing installation or IPTV databases is required. */
-@Database(entities = [AddonProgressEntity::class], version = 1, exportSchema = true)
+@Database(entities = [AddonProgressEntity::class], version = 4, exportSchema = true)
 abstract class AddonProgressDatabase : RoomDatabase() {
     abstract fun progress(): AddonProgressDao
     companion object {
-        fun open(context: Context) = Room.databaseBuilder(context.applicationContext, AddonProgressDatabase::class.java, "sohva-addon-progress.db").build()
+        /**
+         * Versions 2 and 3 came from the private Trakt trial build (app codes 16-18),
+         * which added two side tables and left `addon_progress` itself untouched.
+         * Version 4 removes them; the progress rows are kept as they are.
+         */
+        private fun dropTrialTables(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS addon_projection_receipts")
+            db.execSQL("DROP TABLE IF EXISTS addon_progress_display")
+        }
+        val MIGRATION_1_4 = object : Migration(1, 4) { override fun migrate(db: SupportSQLiteDatabase) = dropTrialTables(db) }
+        val MIGRATION_2_4 = object : Migration(2, 4) { override fun migrate(db: SupportSQLiteDatabase) = dropTrialTables(db) }
+        val MIGRATION_3_4 = object : Migration(3, 4) { override fun migrate(db: SupportSQLiteDatabase) = dropTrialTables(db) }
+        fun open(context: Context) = Room.databaseBuilder(context.applicationContext, AddonProgressDatabase::class.java, "sohva-addon-progress.db")
+            .addMigrations(MIGRATION_1_4, MIGRATION_2_4, MIGRATION_3_4).build()
     }
 }
 

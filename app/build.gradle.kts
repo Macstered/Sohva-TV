@@ -19,6 +19,14 @@ val releaseSigningProperties = Properties().apply {
     }
 }
 
+val traktCredentialsFile = rootProject.file(".local/trakt/trakt-credentials.properties")
+val traktCredentials = Properties().apply {
+    if (traktCredentialsFile.isFile) traktCredentialsFile.inputStream().use(::load)
+    listOf("TRAKT_CLIENT_ID", "TRAKT_CLIENT_SECRET").forEach { name ->
+        require(getProperty(name, "").all { it.code in 33..126 && it != '"' && it != '\\' }) { "Invalid $name in ${traktCredentialsFile.path}" }
+    }
+}
+
 android {
     // Opt-in Lab instrumentation is separate from the ordinary debug regression suite.
     testBuildType = providers.gradleProperty("sohvaTestBuildType").orElse("debug").get().also {
@@ -41,8 +49,8 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 14
-        versionName = "0.1.0-beta.13"
+        versionCode = 20
+        versionName = "0.1.0-beta.14"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // AGP leaves the instrumentation timeout at a year, so one hung test
@@ -50,6 +58,12 @@ android {
         // than any test here needs and short enough to keep a hang reportable.
         testInstrumentationRunnerArguments["timeout_msec"] = "300000"
         vectorDrawables.useSupportLibrary = true
+
+        // Trakt application credentials live outside the repository. A build
+        // without them still compiles; the Accounts section then reports that
+        // Trakt is not configured. The redirect URI is fixed for device pairing.
+        buildConfigField("String", "TRAKT_CLIENT_ID", "\"${traktCredentials.getProperty("TRAKT_CLIENT_ID", "")}\"")
+        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${traktCredentials.getProperty("TRAKT_CLIENT_SECRET", "")}\"")
     }
 
     signingConfigs {
@@ -112,7 +126,7 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
     }
 
     packaging {
@@ -163,6 +177,7 @@ dependencies {
     implementation(project(":sportmate"))
     // Lazy Discover host owns the independent stores; no startup initializer.
     implementation(project(":addons"))
+    implementation(project(":trakt"))
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
 

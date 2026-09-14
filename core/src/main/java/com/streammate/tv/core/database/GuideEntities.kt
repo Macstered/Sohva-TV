@@ -414,7 +414,7 @@ data class CatalogueMetadataWorkEntity(
     }
 }
 
-@Entity(tableName = "catalogue_metadata_overrides", primaryKeys = ["contentKey"])
+@Entity(tableName = "catalogue_metadata_overrides", primaryKeys = ["contentKey"], indices = [Index(value = ["externalId"])])
 data class CatalogueMetadataOverrideEntity(
     val contentKey: String,
     val providerPosterUrl: String?,
@@ -563,6 +563,8 @@ data class ContinueWatchingRow(
     val year: Int?,
     val posterUrl: String?,
     val seriesName: String?,
+    /** `series:<source>:<id>` for an episode, so one series takes one card; null for a movie. */
+    val seriesKey: String?,
     val seasonNumber: Int?,
     val episodeNumber: Int?,
     val positionMillis: Long,

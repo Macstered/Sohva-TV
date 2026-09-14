@@ -78,13 +78,13 @@ const val SERIES_HISTORY_CARDS_SQL = """
  * episode - group by their own content key and so stand alone.
  */
 const val CONTINUE_WATCHING_SQL = """
-    SELECT contentKey, contentType, title, year, posterUrl, seriesName,
+    SELECT contentKey, contentType, title, year, posterUrl, seriesName, seriesKey,
         seasonNumber, episodeNumber, positionMillis, durationMillis, completed,
         MAX(lastWatchedEpochMillis) AS lastWatchedEpochMillis
     FROM (
         SELECT progress.contentKey AS contentKey, progress.contentType AS contentType,
             movie.name AS title, movie.year AS year, movie.posterUrl AS posterUrl,
-            NULL AS seriesName, NULL AS seasonNumber, NULL AS episodeNumber,
+            NULL AS seriesName, NULL AS seriesKey, NULL AS seasonNumber, NULL AS episodeNumber,
             progress.positionMillis AS positionMillis, progress.durationMillis AS durationMillis,
             progress.completed AS completed, progress.lastWatchedEpochMillis AS lastWatchedEpochMillis,
             progress.workKey AS workKey
@@ -101,7 +101,7 @@ const val CONTINUE_WATCHING_SQL = """
         UNION ALL
         SELECT progress.contentKey AS contentKey, progress.contentType AS contentType,
             episode.name AS title, NULL AS year, item.posterUrl AS posterUrl,
-            item.name AS seriesName, episode.seasonNumber AS seasonNumber,
+            item.name AS seriesName, 'series:' || item.sourceId || ':' || item.seriesId AS seriesKey, episode.seasonNumber AS seasonNumber,
             episode.episodeNumber AS episodeNumber,
             progress.positionMillis AS positionMillis, progress.durationMillis AS durationMillis,
             progress.completed AS completed, progress.lastWatchedEpochMillis AS lastWatchedEpochMillis,

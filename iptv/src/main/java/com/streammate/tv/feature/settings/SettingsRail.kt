@@ -22,6 +22,7 @@ internal enum class SettingsSection {
     PLAYBACK,
     REMOTE,
     METADATA,
+    ACCOUNTS,
     SPORT,
     PARENTAL,
     BACKUP,
@@ -33,13 +34,14 @@ internal fun SettingsSectionRail(
     modifier: Modifier = Modifier,
     selected: SettingsSection,
     onSelected: (SettingsSection) -> Unit,
+    accountsAvailable: Boolean = false,
 ) {
     LazyColumn(
         modifier = modifier.testTag("settings-sections"),
         verticalArrangement = Arrangement.spacedBy(2.dp),
         contentPadding = PaddingValues(vertical = 4.dp),
     ) {
-        items(SettingsSection.entries) { section ->
+        items(SettingsSection.entries.filter { it != SettingsSection.ACCOUNTS || accountsAvailable }) { section ->
             TvListRow(
                 label = section.localizedLabel(),
                 icon = section.icon,
@@ -60,6 +62,7 @@ internal fun SettingsSection.localizedLabel(): String = stringResource(
         SettingsSection.PLAYBACK -> R.string.settings_section_playback
         SettingsSection.REMOTE -> R.string.settings_section_remote
         SettingsSection.METADATA -> R.string.settings_section_metadata
+        SettingsSection.ACCOUNTS -> R.string.settings_section_accounts
         SettingsSection.SPORT -> R.string.settings_section_sport
         SettingsSection.PARENTAL -> R.string.settings_section_parental
         SettingsSection.BACKUP -> R.string.settings_section_backup
@@ -74,6 +77,7 @@ internal val SettingsSection.icon: Int
         SettingsSection.PLAYBACK -> TvIcons.Play
         SettingsSection.REMOTE -> TvIcons.Aspect
         SettingsSection.METADATA -> TvIcons.Info
+        SettingsSection.ACCOUNTS -> TvIcons.Link
         SettingsSection.SPORT -> TvIcons.Target
         SettingsSection.PARENTAL -> TvIcons.Lock
         SettingsSection.BACKUP -> TvIcons.Save

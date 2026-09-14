@@ -4,14 +4,21 @@ import android.text.format.DateFormat
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.core.tween
+import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +39,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -41,8 +48,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -69,6 +79,11 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.bitmapConfig
+import com.sohva.tv.addons.AddonWatchProgress
+import com.streammate.tv.trakt.TraktHomeTitle
+import kotlinx.coroutines.delay
 import com.streammate.tv.R
 import com.streammate.tv.app.AppPreferences
 import com.streammate.tv.app.AppPreferencesRepository
@@ -81,20 +96,64 @@ import com.streammate.tv.feature.common.TvIcons
 import com.streammate.tv.feature.common.SohvaNavigationIcons
 import com.streammate.tv.feature.common.TvSurface
 import com.streammate.tv.feature.common.InheritedFocusScrollBehavior
-import com.streammate.tv.feature.common.KeepFocusedChildVisibleLazyColumn
 import com.streammate.tv.feature.common.requestFocusWhenAttached
-import com.streammate.tv.feature.common.scrollsToTopWhenFocused
 import com.streammate.tv.feature.common.tickerFlow
 import com.streammate.tv.iptv.repository.CatalogueRepository
 import com.streammate.tv.iptv.repository.ContinueWatchingItem
 import com.streammate.tv.iptv.repository.GuideChannel
 import com.streammate.tv.iptv.repository.GuideRepository
+import com.streammate.tv.iptv.metadata.MetadataLookup
+import com.streammate.tv.iptv.metadata.MetadataMediaType
+import com.streammate.tv.iptv.metadata.MetadataRepository
+import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
 
+/**
+ * One part-watched title on Home, whichever ledger holds it: the VOD library
+ * (local or via Trakt) or Discover's own history.
+ */
+sealed interface HomeResumeEntry {
+    val key: String
+    val title: String
+    val subtitle: String?
+    val posterUrl: String?
+    val backdropUrl: String?
+    val fraction: Float
+    val remainingMillis: Long?
+    val updatedAtMillis: Long
+    /** One card per series: the newest episode stands for the rest. */
+    val groupKey: String
+
+    data class Vod(val item: ContinueWatchingItem) : HomeResumeEntry {
+        override val key get() = "vod:" + item.contentKey
+        override val title get() = item.title
+        override val subtitle get() = item.subtitle
+        override val posterUrl get() = item.posterUrl
+        override val backdropUrl get() = item.posterUrl
+        override val fraction get() = item.progress.fraction
+        override val remainingMillis get() = (item.progress.durationMillis - item.progress.positionMillis).takeIf { item.progress.durationMillis > 0L && it > 0L }
+        override val updatedAtMillis get() = item.progress.lastWatchedEpochMillis
+        override val groupKey get() = "vod:" + item.groupKey
+    }
+
+    data class Discover(val progress: AddonWatchProgress) : HomeResumeEntry {
+        override val key get() = "discover:" + progress.identity.metadataInstallationId + ":" + progress.identity.media.id + ":" + progress.identity.video.id
+        override val title get() = progress.artwork?.name ?: progress.title
+        override val subtitle get() = progress.title.takeIf { progress.artwork != null && it != progress.artwork?.name }
+        override val posterUrl get() = progress.artwork?.poster
+        override val backdropUrl get() = progress.artwork?.background ?: progress.artwork?.poster
+        override val fraction get() = if (progress.durationMillis > 0L) (progress.positionMillis.toFloat() / progress.durationMillis).coerceIn(0f, 1f) else 0f
+        override val remainingMillis get() = (progress.durationMillis - progress.positionMillis).takeIf { progress.durationMillis > 0L && it > 0L }
+        override val updatedAtMillis get() = progress.updatedAtMillis
+        override val groupKey get() = "discover:" + progress.identity.metadataInstallationId + ":" + progress.identity.media.type + ":" + progress.identity.media.id
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     guideRepository: GuideRepository,
@@ -113,9 +172,22 @@ fun HomeScreen(
     onDiscover: (() -> Unit)? = null,
     onPlayChannel: (String) -> Unit,
     onPlayVod: (String, Long) -> Unit,
+    /** Opens Sohva Sport on this match's card rather than on the day's list. */
+    onOpenSportEvent: (TodayEvent) -> Unit = { onSportMate() },
+    /** Discover's part-watched titles, read by the host; empty when Discover is unavailable. */
+    discoverHistory: List<AddonWatchProgress> = emptyList(),
+    onOpenDiscoverTitle: (AddonWatchProgress) -> Unit = {},
+    /** The same lookups the details pages use for a synopsis and a backdrop; null leaves the hero to stored text. */
+    metadataRepository: MetadataRepository? = null,
+    /** A Discover title's synopsis from the addon's cached details, when the host has them. */
+    discoverSynopsis: suspend (AddonWatchProgress) -> String? = { null },
+    /** Trakt's next episodes and picks for the profile; empty when Trakt is not connected. */
+    nextUp: List<TraktHomeTitle> = emptyList(),
+    recommendations: List<TraktHomeTitle> = emptyList(),
+    onOpenTraktTitle: (TraktHomeTitle) -> Unit = {},
 ) {
     val spacing = StreamMateThemeTokens.spacing
-    val heroFocus = remember { FocusRequester() }
+    val welcomeFocus = remember { FocusRequester() }
     // The rail sits over the rows rather than beside them, so the way back out
     // of it is stated rather than searched for.
     val contentFocus = remember { FocusRequester() }
@@ -124,9 +196,11 @@ fun HomeScreen(
 
     val preferences by preferencesRepository.preferences
         .collectAsStateWithLifecycle(initialValue = AppPreferences())
-    val continueWatching by remember(catalogueRepository) {
+    // Null until the first read: focus must not be placed while the first row is still on its way.
+    val continueWatchingLoaded by remember(catalogueRepository) {
         catalogueRepository.observeContinueWatching()
-    }.collectAsStateWithLifecycle(initialValue = emptyList())
+    }.collectAsStateWithLifecycle(initialValue = null)
+    val continueWatching = continueWatchingLoaded.orEmpty()
     // Subscribed once on entry rather than against a ticking clock: Home is a
     // launch screen, and re-creating this query every minute is exactly what
     // makes the player and the guide churn.
@@ -144,7 +218,13 @@ fun HomeScreen(
             .sortedBy { positions[it.id] }
             .take(HOME_ROW_LIMIT)
     }
-    val resumeItems = remember(continueWatching) { continueWatching.take(HOME_ROW_LIMIT) }
+    // One row for everything part-watched, newest first, whichever ledger it came from.
+    val resumeEntries = remember(continueWatching, discoverHistory) {
+        (continueWatching.map { HomeResumeEntry.Vod(it) } + discoverHistory.map { HomeResumeEntry.Discover(it) })
+            .sortedByDescending { it.updatedAtMillis }
+            .distinctBy { it.groupKey }
+            .take(HOME_RESUME_ROW_LIMIT)
+    }
     // The Continue watching card whose actions are open, if any.
     var resumeActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
     resumeActions?.let { item ->
@@ -169,131 +249,160 @@ fun HomeScreen(
         }
     }
 
-    val hero = rememberHomeHero(resumeItems, recentChannels, now)
-    val heroPlot = rememberHeroPlot(hero, catalogueRepository)
-
-    // The artwork belongs to the hero, so it goes when the hero does. Left
-    // where it is, the rows would ride up over the bright middle of a picture
-    // that is no longer about anything on screen.
-    val listState = rememberLazyListState()
-    val scrolledPastHero by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 ||
-                listState.firstVisibleItemScrollOffset > HERO_ART_FADE_THRESHOLD_PX
-        }
+    // The hero describes whatever card is focused. Rapid D-pad travel across a
+    // row must not fetch a backdrop per tick, so a focus only becomes the hero
+    // once it has rested for a moment. With nothing focused, the newest
+    // part-watched title stands, then the last channel, then a welcome.
+    val idleHero = rememberIdleHero(resumeEntries, recentChannels, now)
+    var focusedHero by remember { mutableStateOf<HomeHero?>(null) }
+    val hero by produceState(initialValue = idleHero, focusedHero, idleHero) {
+        val focused = focusedHero
+        if (focused == null) value = idleHero
+        else { delay(HERO_FOCUS_SETTLE_MILLIS); value = focused }
     }
-    val backdropAlpha by animateFloatAsState(
-        if (scrolledPastHero) 0f else 1f,
-        label = "hero backdrop",
-    )
+    val heroDetails = rememberHeroDetails(hero, catalogueRepository, guideRepository, metadataRepository, discoverSynopsis)
+    val rowsEmpty = resumeEntries.isEmpty() && recentChannels.isEmpty() && todaysSport.isEmpty() && nextUp.isEmpty() && recommendations.isEmpty()
 
-    LaunchedEffect(Unit) { heroFocus.requestFocusWhenAttached() }
+    // Whatever bring-into-view policy the platform installed for rails is kept
+    // for them; the row container itself pulls the focused row up to its top.
+    val railScrollBehavior = LocalBringIntoViewSpec.current
+    val listState = rememberLazyListState()
+
+    // Placed once the first row has had its chance to appear; otherwise the
+    // row that happened to be ready first, the second, would take the focus.
+    val loaded = continueWatchingLoaded != null
+    LaunchedEffect(loaded, rowsEmpty) {
+        if (!loaded) return@LaunchedEffect
+        if (rowsEmpty) welcomeFocus.requestFocusWhenAttached() else contentFocus.requestFocusWhenAttached()
+    }
 
     StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { contentModifier ->
         Box(modifier = contentModifier) {
-            HomeHeroBackdrop(hero = hero, modifier = Modifier.alpha(backdropAlpha))
-            KeepFocusedChildVisibleLazyColumn(
-                state = listState,
+            HomeHeroBackdrop(hero = hero, artwork = heroDetails.backdropUrl)
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .focusRequester(contentFocus)
-                    // Coming back from the rail returns to the card you left,
-                    // not to the top of the screen. The hero is the first
-                    // focusable here, so a restore that finds nothing to go
-                    // back to lands there anyway.
-                    .focusRestorer()
-                    .focusGroup(),
-                contentPadding = PaddingValues(
-                    start = HOME_RAIL_WIDTH + spacing.lg,
-                    end = spacing.xl,
-                    top = spacing.xl,
-                    bottom = spacing.xl,
-                ),
-                verticalArrangement = Arrangement.spacedBy(HOME_ROW_GAP),
-            ) { inheritedFocusScrollBehavior ->
-                item(key = "hero") {
-                    Column(
-                        modifier = Modifier.scrollsToTopWhenFocused(
-                            offset = { if (listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0) 0 else 1 },
-                            scrollToTop = { listState.scrollToItem(0) },
-                        ),
+                    .padding(start = HOME_RAIL_WIDTH + spacing.lg, end = spacing.xl),
+            ) {
+                // A band of fixed height, whatever the hero says: the rows below
+                // must not shift as focus moves between cards. The text sits on
+                // the band's floor, just above the first row.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(HOME_HERO_FRACTION)
+                        .padding(top = spacing.lg, bottom = spacing.md),
+                ) {
+                    HomeHeader(timeZoneId = preferences.timeZoneId, now = now)
+                    HomeHeroPanel(
+                        hero = hero,
+                        plot = heroDetails.description,
+                        now = now,
+                        welcomeFocus = welcomeFocus,
+                        showWelcomeAction = rowsEmpty,
+                        onLiveTv = onLiveTv,
+                        modifier = Modifier.align(Alignment.BottomStart),
+                    )
+                }
+                CompositionLocalProvider(LocalBringIntoViewSpec provides HomeRowsPivotSpec) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .focusRequester(contentFocus)
+                            // Coming back from the rail returns to the card you left,
+                            // not to the top of the screen.
+                            .focusRestorer()
+                            .focusGroup(),
+                        contentPadding = PaddingValues(top = spacing.md, bottom = HOME_ROWS_BOTTOM_SLACK),
+                        verticalArrangement = Arrangement.spacedBy(HOME_ROW_GAP),
                     ) {
-                        HomeHeader(timeZoneId = preferences.timeZoneId, now = now)
-                        Spacer(Modifier.height(HOME_HEADER_GAP))
-                        HomeHeroPanel(
-                            hero = hero,
-                            plot = heroPlot,
-                            now = now,
-                            favourite = hero.channelId()?.let { it in preferences.favouriteChannelIds },
-                            focusRequester = heroFocus,
-                            onPlayChannel = onPlayChannel,
-                            onPlayVod = onPlayVod,
-                            onLiveTv = onLiveTv,
-                            onToggleFavourite = { channelId, favourite ->
-                                scope.launch {
-                                    preferencesRepository.setFavouriteChannel(channelId, favourite)
+                        if (resumeEntries.isNotEmpty()) {
+                            item(key = "continue-watching") {
+                                HomeRow(
+                                    title = stringResource(R.string.home_continue_watching),
+                                    hint = stringResource(R.string.home_rows_hint),
+                                    focusScrollBehavior = railScrollBehavior,
+                                ) {
+                                    items(resumeEntries, key = HomeResumeEntry::key) { entry ->
+                                        HomeResumeCard(
+                                            entry = entry,
+                                            onClick = {
+                                                when (entry) {
+                                                    is HomeResumeEntry.Vod -> onPlayVod(entry.item.contentKey, entry.item.progress.resumePositionMillis)
+                                                    is HomeResumeEntry.Discover -> onOpenDiscoverTitle(entry.progress)
+                                                }
+                                            },
+                                            onLongClick = { (entry as? HomeResumeEntry.Vod)?.let { resumeActions = it.item } },
+                                            onFocused = { focusedHero = HomeHero.Resume(entry) },
+                                        )
+                                    }
                                 }
-                            },
-                        )
-                    }
-                }
-                if (recentChannels.isNotEmpty()) {
-                    item(key = "recent-channels") {
-                        HomeRow(
-                            title = stringResource(R.string.home_recent_channels),
-                            hint = stringResource(R.string.home_rows_hint),
-                            focusScrollBehavior = inheritedFocusScrollBehavior,
-                        ) {
-                            items(recentChannels, key = GuideChannel::id) { channel ->
-                                HomeChannelCard(
-                                    channel = channel,
-                                    now = now,
-                                    onClick = { onPlayChannel(channel.id) },
-                                )
                             }
                         }
-                    }
-                }
-                if (resumeItems.isNotEmpty()) {
-                    item(key = "continue-watching") {
-                        HomeRow(
-                            title = stringResource(R.string.home_continue_watching),
-                            focusScrollBehavior = inheritedFocusScrollBehavior,
-                        ) {
-                            items(resumeItems, key = ContinueWatchingItem::contentKey) { item ->
-                                HomeResumeCard(
-                                    item = item,
-                                    onClick = {
-                                        onPlayVod(item.contentKey, item.progress.resumePositionMillis)
-                                    },
-                                    onLongClick = { resumeActions = item },
-                                )
+                        if (nextUp.isNotEmpty()) {
+                            item(key = "watch-next") {
+                                HomeRow(title = stringResource(R.string.home_watch_next), focusScrollBehavior = railScrollBehavior) {
+                                    items(nextUp, key = TraktHomeTitle::key) { title ->
+                                        HomeTraktCard(title = title, landscape = true, onClick = { onOpenTraktTitle(title) },
+                                            onFocused = { focusedHero = HomeHero.Trakt(title, next = true) })
+                                    }
+                                }
                             }
                         }
-                    }
-                }
-                if (todaysSport.isNotEmpty()) {
-                    item(key = "todays-sport") {
-                        HomeRow(
-                            title = stringResource(R.string.home_sports_today),
-                            hint = pluralStringResource(
-                                R.plurals.home_sports_count,
-                                sportsEvents.size,
-                                sportsEvents.size,
-                            ),
-                            focusScrollBehavior = inheritedFocusScrollBehavior,
-                        ) {
-                            items(todaysSport, key = TodayEvent::id) { event ->
-                                HomeSportCard(event = event, onClick = onSportMate)
+                        if (todaysSport.isNotEmpty()) {
+                            item(key = "todays-sport") {
+                                HomeRow(
+                                    title = stringResource(R.string.home_sports_today),
+                                    hint = pluralStringResource(
+                                        R.plurals.home_sports_count,
+                                        sportsEvents.size,
+                                        sportsEvents.size,
+                                    ),
+                                    focusScrollBehavior = railScrollBehavior,
+                                ) {
+                                    items(todaysSport, key = TodayEvent::id) { event ->
+                                        HomeSportCard(event = event, onClick = { onOpenSportEvent(event) }, onFocused = { focusedHero = HomeHero.Sport(event) })
+                                    }
+                                }
+                            }
+                        }
+                        if (recommendations.isNotEmpty()) {
+                            item(key = "recommended") {
+                                HomeRow(title = stringResource(R.string.home_recommended), focusScrollBehavior = railScrollBehavior) {
+                                    items(recommendations, key = TraktHomeTitle::key) { title ->
+                                        HomeTraktCard(title = title, landscape = false, onClick = { onOpenTraktTitle(title) },
+                                            onFocused = { focusedHero = HomeHero.Trakt(title, next = false) })
+                                    }
+                                }
+                            }
+                        }
+                        if (recentChannels.isNotEmpty()) {
+                            item(key = "recent-channels") {
+                                HomeRow(
+                                    title = stringResource(R.string.home_recent_channels),
+                                    focusScrollBehavior = railScrollBehavior,
+                                ) {
+                                    items(recentChannels, key = GuideChannel::id) { channel ->
+                                        HomeChannelCard(
+                                            channel = channel,
+                                            now = now,
+                                            onClick = { onPlayChannel(channel.id) },
+                                            onFocused = { focusedHero = HomeHero.Channel(channel, live = channel.isLiveAt(now)) },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-            BackHandler(enabled = railFocused) { contentFocus.requestFocus() }
+            // With no card anywhere, the way out of the rail is the welcome button.
+            val rowsFocus = if (rowsEmpty) welcomeFocus else contentFocus
+            BackHandler(enabled = railFocused) { rowsFocus.requestFocus() }
             HomeRail(
-                contentFocus = contentFocus,
-                onFocusedChange = { railFocused = it },
+                contentFocus = rowsFocus,
+                onFocusedChange = { railFocused = it; if (it) focusedHero = null },
                 onLiveTv = onLiveTv,
                 onSportMate = onSportMate,
                 onMovies = onMovies,
@@ -308,35 +417,45 @@ fun HomeScreen(
     }
 }
 
+/**
+ * The row container's bring-into-view policy: a focused row is pulled up to
+ * the top of the container, so the rows travel under the hero and the focus
+ * stays on one line instead of walking off the bottom of the screen.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private object HomeRowsPivotSpec : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = offset
+}
+
 // ---------------------------------------------------------------- the hero --
 
 /**
- * What the top of the screen is about.
- *
- * In priority order: something part-watched that can be resumed, then whatever
- * is on the channel last watched, and when the library is empty a plain
- * invitation into the guide. Every field of every variant is read off a stored
- * record; nothing here is composed for the look of it.
+ * What the top of the screen is about: the card under focus, or with nothing
+ * focused, the newest part-watched title, then the last channel, and with an
+ * empty library a plain invitation into the guide. Every field of every
+ * variant is read off a stored record; nothing here is composed for the look
+ * of it.
  */
 private sealed interface HomeHero {
-    data class Resume(val item: ContinueWatchingItem) : HomeHero
+    data class Resume(val entry: HomeResumeEntry) : HomeHero
 
     data class Channel(val channel: GuideChannel, val live: Boolean) : HomeHero
+
+    data class Sport(val event: TodayEvent) : HomeHero
+
+    /** A Trakt title: the next episode of a show ([next]) or a recommendation. */
+    data class Trakt(val title: TraktHomeTitle, val next: Boolean) : HomeHero
 
     data object Welcome : HomeHero
 }
 
-private fun HomeHero.channelId(): String? = (this as? HomeHero.Channel)?.channel?.id
-
 @Composable
-private fun rememberHomeHero(
-    resumeItems: List<ContinueWatchingItem>,
+private fun rememberIdleHero(
+    resumeEntries: List<HomeResumeEntry>,
     recentChannels: List<GuideChannel>,
     now: Long,
-): HomeHero = remember(resumeItems, recentChannels, now) {
-    val resumable = resumeItems.firstOrNull {
-        !it.progress.completed && it.progress.resumePositionMillis > 0L
-    }
+): HomeHero = remember(resumeEntries, recentChannels, now) {
+    val resumable = resumeEntries.firstOrNull { it.fraction > 0f }
     val channel = recentChannels.firstOrNull { it.currentProgrammeTitle != null }
         ?: recentChannels.firstOrNull()
     when {
@@ -359,47 +478,135 @@ private fun GuideChannel.progressAt(now: Long): Float? {
     return ((now - start).toFloat() / (stop - start)).coerceIn(0f, 1f)
 }
 
+/** What the hero says and shows about its subject beyond the card's own fields. */
+private data class HeroDetails(val description: String? = null, val backdropUrl: String? = null)
+
 /**
- * The plot of the film in the hero, when the library already holds one.
- *
- * One suspend read of a row Home's own repository can already reach - not a
- * subscription, and not a new source. Series episodes and channels have no
- * equivalent stored text, so they go without a description rather than being
- * handed one.
+ * The synopsis and backdrop for the hero, read the way the details pages read
+ * them: the metadata match first, the provider's own text second. Library
+ * titles that were enriched answer from the cache; a channel's programme is
+ * matched by title the way the guide does it; Discover answers from the
+ * addon's cached details. Nothing is fetched for a hero that has moved on.
  */
 @Composable
-private fun rememberHeroPlot(hero: HomeHero, catalogueRepository: CatalogueRepository): String? {
-    val contentKey = (hero as? HomeHero.Resume)
-        ?.item
-        ?.contentKey
-        ?.takeIf { it.startsWith(MOVIE_CONTENT_KEY_PREFIX) }
-        ?: return null
-    val plot by produceState<String?>(initialValue = null, contentKey, catalogueRepository) {
-        value = catalogueRepository.movie(contentKey)?.plot?.takeIf(String::isNotBlank)
+private fun rememberHeroDetails(
+    hero: HomeHero,
+    catalogueRepository: CatalogueRepository,
+    guideRepository: GuideRepository,
+    metadataRepository: MetadataRepository?,
+    discoverSynopsis: suspend (AddonWatchProgress) -> String?,
+): HeroDetails {
+    val subject: Any? = when (hero) {
+        is HomeHero.Resume -> hero.entry.key
+        is HomeHero.Channel -> hero.channel.id + ":" + hero.channel.currentProgrammeTitle
+        is HomeHero.Trakt -> hero.title.key
+        is HomeHero.Sport, HomeHero.Welcome -> null
     }
-    return plot
+    val details by produceState(initialValue = HeroDetails(), subject) {
+        value = HeroDetails()
+        if (subject == null) return@produceState
+        value = runCatching {
+            when (hero) {
+                is HomeHero.Resume -> when (val entry = hero.entry) {
+                    is HomeResumeEntry.Vod -> vodHeroDetails(entry.item.contentKey, catalogueRepository, metadataRepository)
+                    is HomeResumeEntry.Discover -> HeroDetails(description = discoverSynopsis(entry.progress))
+                }
+                is HomeHero.Channel -> channelHeroDetails(hero.channel, guideRepository, metadataRepository)
+                is HomeHero.Trakt -> traktHeroDetails(hero.title, metadataRepository)
+                else -> HeroDetails()
+            }
+        }.getOrDefault(HeroDetails())
+    }
+    return details
+}
+
+private suspend fun vodHeroDetails(contentKey: String, catalogue: CatalogueRepository, metadata: MetadataRepository?): HeroDetails {
+    val enabled = metadata?.isEnabled() == true
+    if (contentKey.startsWith(MOVIE_CONTENT_KEY_PREFIX)) {
+        val movie = catalogue.movie(contentKey) ?: return HeroDetails()
+        val match = if (enabled) metadata?.enrich(MetadataLookup(MetadataMediaType.MOVIE, movie.name, movie.year)) else null
+        return HeroDetails(
+            description = match?.overview?.takeIf(String::isNotBlank) ?: movie.plot?.takeIf(String::isNotBlank),
+            backdropUrl = match?.backdropUrl?.takeIf(String::isNotBlank),
+        )
+    }
+    val episode = catalogue.episode(contentKey) ?: return HeroDetails()
+    val series = catalogue.seriesForEpisode(contentKey)
+    val seriesMatch = if (enabled && series != null) metadata?.enrich(MetadataLookup(MetadataMediaType.SERIES, series.name, series.year)) else null
+    val episodeMatch = if (enabled && series != null) {
+        metadata?.enrich(MetadataLookup(MetadataMediaType.EPISODE, series.name, series.year, episode.seasonNumber, episode.episodeNumber))
+    } else null
+    return HeroDetails(
+        description = episode.plot?.takeIf(String::isNotBlank)
+            ?: episodeMatch?.overview?.takeIf(String::isNotBlank)
+            ?: seriesMatch?.overview?.takeIf(String::isNotBlank)
+            ?: series?.plot?.takeIf(String::isNotBlank),
+        backdropUrl = seriesMatch?.backdropUrl?.takeIf(String::isNotBlank) ?: series?.backdropUrl?.takeIf(String::isNotBlank),
+    )
+}
+
+/**
+ * Trakt's text is English. The record is asked of TMDB by id in the interface
+ * language first, and Trakt's own synopsis stands in only when TMDB has none,
+ * so the hero never shows English for a moment before the Finnish arrives.
+ */
+private suspend fun traktHeroDetails(title: TraktHomeTitle, metadata: MetadataRepository?): HeroDetails {
+    val fallback = HeroDetails(description = title.overview, backdropUrl = title.fanart ?: title.poster)
+    val tmdb = title.ids.tmdb?.toString() ?: return fallback
+    val mediaType = if (title.kind == "movie") MetadataMediaType.MOVIE else MetadataMediaType.SERIES
+    val details = metadata?.detailsByExternalId(tmdb, mediaType) ?: return fallback
+    return HeroDetails(
+        description = details.overview ?: title.overview,
+        backdropUrl = details.backdropUrl ?: title.fanart ?: title.poster,
+    )
+}
+
+private suspend fun channelHeroDetails(channel: GuideChannel, guide: GuideRepository, metadata: MetadataRepository?): HeroDetails {
+    val title = channel.currentProgrammeTitle ?: return HeroDetails()
+    val now = System.currentTimeMillis()
+    val programme = guide.observeTimelineForChannels(listOf(channel.id), now, now + 1).first()
+        .firstOrNull()?.programmes?.firstOrNull { now in it.startEpochMillis until it.stopEpochMillis }
+    val match = if (metadata?.isEnabled() == true) metadata.enrich(MetadataLookup(MetadataMediaType.PROGRAMME, title)) else null
+    return HeroDetails(
+        description = match?.overview?.takeIf(String::isNotBlank) ?: programme?.description?.takeIf(String::isNotBlank),
+        backdropUrl = match?.backdropUrl?.takeIf(String::isNotBlank) ?: match?.posterUrl?.takeIf(String::isNotBlank),
+    )
 }
 
 /**
  * The artwork behind the hero, buried under scrims on the side the text sits.
  *
- * A resume item brings its own poster. A channel has only a logo, which is not
- * a backdrop and would look wrong stretched across a screen, so it borrows the
- * bundled Live TV artwork the same way the empty state does.
+ * A resume item brings its own artwork. A channel or a match has only logos,
+ * which are not backdrops and would look wrong stretched across a screen, so
+ * they borrow the bundled Live TV artwork the same way the empty state does.
+ * The previous picture stays until the next has arrived: the two are
+ * crossfaded rather than one cleared before the other is loaded.
  */
 @Composable
-private fun HomeHeroBackdrop(hero: HomeHero, modifier: Modifier = Modifier) {
+private fun HomeHeroBackdrop(hero: HomeHero, artwork: String?, modifier: Modifier = Modifier) {
     val palette = StreamMateThemeTokens.palette
-    Box(modifier = modifier.fillMaxWidth().height(HOME_HERO_ART_HEIGHT)) {
-        val poster = (hero as? HomeHero.Resume)?.item?.posterUrl?.takeIf(String::isNotBlank)
+    val context = LocalContext.current
+    // The washes cover the whole screen so they end nowhere visible; only the
+    // picture is confined to the hero's part of it.
+    Box(modifier = modifier.fillMaxSize()) {
+        val artwork = artwork?.takeIf(String::isNotBlank) ?: (hero as? HomeHero.Resume)?.entry?.backdropUrl?.takeIf(String::isNotBlank)
+        // The picture fades out at its bottom and its left edge instead of being
+        // painted over: what shows through is the screen's own ground, so there
+        // is no seam where a flat scrim would meet the grained gradient.
         Box(
             modifier = Modifier
                 .fillMaxWidth(HOME_HERO_ART_FRACTION)
-                .fillMaxHeight()
-                .align(Alignment.CenterEnd),
+                .fillMaxHeight(HOME_HERO_ART_FRACTION_HEIGHT)
+                .align(Alignment.TopEnd)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black), blendMode = BlendMode.DstOut)
+                    drawRect(Brush.horizontalGradient(0f to Color.Black, 0.4f to Color.Transparent), blendMode = BlendMode.DstOut)
+                },
         ) {
             // The bundled artwork is the floor rather than the alternative, so
-            // there is never a bare rectangle here while a poster is still on
+            // there is never a bare rectangle here while a picture is still on
             // its way down, or if it never arrives.
             Image(
                 painter = painterResource(R.drawable.home_backdrop_live_tv),
@@ -407,38 +614,70 @@ private fun HomeHeroBackdrop(hero: HomeHero, modifier: Modifier = Modifier) {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            if (poster != null) {
-                AsyncImage(
-                    model = poster,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
+            // A match has no picture of its own; its two crests, large and quiet
+            // over the bundled art, say what it is without pretending to be a still.
+            (hero as? HomeHero.Sport)?.event?.let { event -> HomeSportBackdrop(event) }
+            Crossfade(targetState = artwork, animationSpec = tween(HERO_CROSSFADE_MILLIS), label = "hero artwork") { url ->
+                if (url != null) {
+                    // Decoded no larger than the screen and in a 16-bit config:
+                    // a full-size poster in ARGB is texture memory this heap
+                    // cannot spare, and the difference is invisible on a TV.
+                    val request = remember(context, url) {
+                        ImageRequest.Builder(context).data(url).size(HERO_ART_MAX_WIDTH_PX, HERO_ART_MAX_HEIGHT_PX)
+                            .bitmapConfig(Bitmap.Config.RGB_565).build()
+                    }
+                    AsyncImage(
+                        model = request,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
         // Two scrims, as in the reference: one across, so the text side is
         // near-black whatever the artwork does, and one down, so the rows
         // below start on clean ground rather than on a cut-off picture.
+        // A light wash over the text side and the top edge; legibility only,
+        // since the picture's own fade already clears the ground below.
         Box(
             Modifier.fillMaxSize().background(
                 Brush.horizontalGradient(
-                    0f to palette.background.copy(alpha = 0.97f),
-                    0.34f to palette.background.copy(alpha = 0.80f),
-                    0.68f to palette.background.copy(alpha = 0.10f),
-                    1f to palette.background.copy(alpha = 0.34f),
+                    0f to palette.background.copy(alpha = 0.85f),
+                    0.4f to palette.background.copy(alpha = 0.55f),
+                    0.7f to palette.background.copy(alpha = 0.05f),
+                    1f to palette.background.copy(alpha = 0.25f),
                 ),
             ),
         )
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to palette.background.copy(alpha = 0.55f),
-                    0.24f to palette.background.copy(alpha = 0f),
-                    0.84f to palette.background.copy(alpha = 0.94f),
-                    1f to palette.background,
+                    0f to palette.background.copy(alpha = 0.5f),
+                    0.3f to palette.background.copy(alpha = 0f),
                 ),
             ),
         )
+    }
+}
+
+@Composable
+private fun HomeSportBackdrop(event: TodayEvent) {
+    val palette = StreamMateThemeTokens.palette
+    Box(Modifier.fillMaxSize().background(palette.background.copy(alpha = 0.6f)))
+    Row(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 48.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for ((index, logo) in listOf(event.homeLogoUrl, event.awayLogoUrl).withIndex()) {
+            if (index == 1) Spacer(Modifier.width(HOME_SPORT_BACKDROP_GAP))
+            Box(Modifier.size(HOME_SPORT_BACKDROP_CREST).alpha(0.55f), contentAlignment = Alignment.Center) {
+                if (!logo.isNullOrBlank()) {
+                    AsyncImage(model = logo, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                }
+            }
+        }
     }
 }
 
@@ -447,47 +686,50 @@ private fun HomeHeroPanel(
     hero: HomeHero,
     plot: String?,
     now: Long,
-    favourite: Boolean?,
-    focusRequester: FocusRequester,
-    onPlayChannel: (String) -> Unit,
-    onPlayVod: (String, Long) -> Unit,
+    welcomeFocus: FocusRequester,
+    showWelcomeAction: Boolean,
     onLiveTv: () -> Unit,
-    onToggleFavourite: (String, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     val spacing = StreamMateThemeTokens.spacing
     val locale = rememberInterfaceLocale()
 
+    val live = when (hero) {
+        is HomeHero.Channel -> hero.live
+        is HomeHero.Sport -> hero.event.status == TodayEventStatus.LIVE
+        else -> false
+    }
     val kicker = when (hero) {
+        is HomeHero.Trakt -> stringResource(if (hero.next) R.string.home_watch_next else R.string.home_recommended)
         is HomeHero.Resume -> stringResource(R.string.home_hero_resume)
-        is HomeHero.Channel -> if (hero.live) {
-            stringResource(R.string.home_hero_live)
-        } else {
-            stringResource(R.string.home_live_tv)
-        }
+        is HomeHero.Channel -> if (hero.live) stringResource(R.string.home_hero_live) else stringResource(R.string.home_live_tv)
+        is HomeHero.Sport -> if (live) stringResource(R.string.home_hero_live) else stringResource(R.string.home_sports_today)
         HomeHero.Welcome -> stringResource(R.string.home_hero_welcome)
     }
     val title = when (hero) {
-        is HomeHero.Resume -> hero.item.title
+        is HomeHero.Resume -> hero.entry.title
         is HomeHero.Channel -> hero.channel.currentProgrammeTitle ?: hero.channel.name
+        is HomeHero.Sport -> hero.event.home + TEAM_SEPARATOR + hero.event.away
+        is HomeHero.Trakt -> hero.title.title
         HomeHero.Welcome -> stringResource(R.string.home_live_tv)
     }
     val metadata = heroMetadata(hero)
     val description = when (hero) {
-        is HomeHero.Resume -> plot
-        is HomeHero.Channel -> null
+        is HomeHero.Resume, is HomeHero.Trakt -> plot
+        is HomeHero.Channel, is HomeHero.Sport -> null
         HomeHero.Welcome -> stringResource(R.string.home_live_tv_description)
     }
     val progress = when (hero) {
-        is HomeHero.Resume -> hero.item.progress.fraction.takeIf { it > 0f }
+        is HomeHero.Resume -> hero.entry.fraction.takeIf { it > 0f }
         is HomeHero.Channel -> hero.channel.progressAt(now)
-        HomeHero.Welcome -> null
+        is HomeHero.Sport, is HomeHero.Trakt, HomeHero.Welcome -> null
     }
 
-    Column(modifier = Modifier.fillMaxWidth(HOME_HERO_TEXT_FRACTION)) {
+    Column(modifier = modifier.fillMaxWidth(HOME_HERO_TEXT_FRACTION)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (hero is HomeHero.Channel && hero.live) {
+            if (live) {
                 Box(
                     Modifier
                         .size(HOME_LIVE_DOT)
@@ -552,49 +794,18 @@ private fun HomeHeroPanel(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(Modifier.height(spacing.xl))
-        Row(horizontalArrangement = Arrangement.spacedBy(spacing.md)) {
+        // The hero describes; the cards act. Only an empty Home, with no card
+        // anywhere to hold focus, gets a button of its own.
+        if (showWelcomeAction) {
+            Spacer(Modifier.height(spacing.xl))
             HomeHeroAction(
-                label = heroPrimaryLabel(hero),
-                icon = TvIcons.Play,
+                label = stringResource(R.string.home_action_guide),
+                icon = TvIcons.Guide,
                 primary = true,
                 testTag = "home-hero-primary",
-                focusRequester = focusRequester,
-                onClick = {
-                    when (hero) {
-                        is HomeHero.Resume -> onPlayVod(
-                            hero.item.contentKey,
-                            hero.item.progress.resumePositionMillis,
-                        )
-                        is HomeHero.Channel -> onPlayChannel(hero.channel.id)
-                        HomeHero.Welcome -> onLiveTv()
-                    }
-                },
+                focusRequester = welcomeFocus,
+                onClick = onLiveTv,
             )
-            if (hero !is HomeHero.Welcome) {
-                HomeHeroAction(
-                    label = stringResource(R.string.home_action_guide),
-                    icon = TvIcons.Guide,
-                    primary = false,
-                    testTag = "home-hero-guide",
-                    onClick = onLiveTv,
-                )
-            }
-            // Only a channel has anywhere for a favourite to be kept, so only a
-            // channel gets the star. Elsewhere it would be a control that looks
-            // like it does something and does not.
-            if (hero is HomeHero.Channel && favourite != null) {
-                HomeHeroAction(
-                    label = null,
-                    icon = if (favourite) TvIcons.Star else TvIcons.StarOutline,
-                    contentDescription = stringResource(
-                        if (favourite) R.string.home_favourite_remove else R.string.home_favourite_add,
-                    ),
-                    primary = false,
-                    testTag = "home-hero-favourite",
-                    onClick = { onToggleFavourite(hero.channel.id, !favourite) },
-                )
-            }
         }
     }
 }
@@ -603,21 +814,29 @@ private fun HomeHeroPanel(
 @Composable
 private fun heroMetadata(hero: HomeHero): List<String> = when (hero) {
     is HomeHero.Resume -> buildList {
-        hero.item.subtitle?.takeIf(String::isNotBlank)?.let(::add)
-        hero.item.remainingLabel()?.let(::add)
+        hero.entry.subtitleLabel()?.takeIf(String::isNotBlank)?.let(::add)
+        hero.entry.remainingLabel()?.let(::add)
     }
     is HomeHero.Channel -> buildList {
         add(hero.channel.name)
         hero.channel.currentProgrammeSubtitle?.takeIf(String::isNotBlank)?.let(::add)
         hero.channel.programmeWindowLabel()?.let(::add)
     }
+    is HomeHero.Trakt -> buildList {
+        hero.title.episodeLabel()?.let(::add)
+        hero.title.year?.let { add(it.toString()) }
+    }
+    is HomeHero.Sport -> buildList {
+        add(hero.event.competition)
+        hero.event.statusLabel.ifBlank { hero.event.startLabel }.takeIf(String::isNotBlank)?.let(::add)
+        hero.event.score?.takeIf(String::isNotBlank)?.let(::add)
+    }
     HomeHero.Welcome -> emptyList()
 }
 
 @Composable
-private fun ContinueWatchingItem.remainingLabel(): String? {
-    val remaining = progress.durationMillis - progress.positionMillis
-    if (progress.durationMillis <= 0L || remaining <= 0L) return null
+private fun HomeResumeEntry.remainingLabel(): String? {
+    val remaining = remainingMillis ?: return null
     val minutes = (remaining / MINUTE_MILLIS).toInt().coerceAtLeast(1)
     return pluralStringResource(R.plurals.home_minutes_left, minutes, minutes)
 }
@@ -633,15 +852,6 @@ private fun GuideChannel.programmeWindowLabel(): String? {
 
 private fun formatClock(epochMillis: Long, zone: ZoneId): String =
     HERO_TIME_FORMATTER.format(Instant.ofEpochMilli(epochMillis).atZone(zone))
-
-@Composable
-private fun heroPrimaryLabel(hero: HomeHero): String = when (hero) {
-    is HomeHero.Resume -> hero.item.remainingLabel()
-        ?.let { stringResource(R.string.home_action_resume_remaining, it) }
-        ?: stringResource(R.string.home_action_resume)
-    is HomeHero.Channel -> stringResource(R.string.home_action_watch)
-    HomeHero.Welcome -> stringResource(R.string.home_action_guide)
-}
 
 /**
  * A hero button. Taller and wider than a row control, and otherwise the same
@@ -985,12 +1195,12 @@ private fun HomeRow(
 
 /** A recently watched channel: what it is, what is on it, and how far in. */
 @Composable
-private fun HomeChannelCard(channel: GuideChannel, now: Long, onClick: () -> Unit) {
+private fun HomeChannelCard(channel: GuideChannel, now: Long, onClick: () -> Unit, onFocused: () -> Unit = {}) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     TvSurface(
         onClick = onClick,
-        modifier = Modifier.width(HOME_CHANNEL_CARD_WIDTH).height(HOME_CHANNEL_CARD_HEIGHT),
+        modifier = Modifier.width(HOME_CHANNEL_CARD_WIDTH).height(HOME_CHANNEL_CARD_HEIGHT).onFocusChanged { if (it.isFocused) onFocused() },
         shape = StreamMateThemeTokens.shapes.medium,
         resting = palette.surfaceSubtle,
         restingContent = palette.textPrimary,
@@ -1057,19 +1267,19 @@ private fun HomeChannelCard(channel: GuideChannel, now: Long, onClick: () -> Uni
  * of it sit underneath rather than inside a second box drawn over the picture.
  */
 @Composable
-private fun HomeResumeCard(item: ContinueWatchingItem, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun HomeResumeCard(entry: HomeResumeEntry, onClick: () -> Unit, onLongClick: () -> Unit, onFocused: () -> Unit = {}) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     TvSurface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = Modifier.width(HOME_CARD_WIDTH),
+        modifier = Modifier.width(HOME_CARD_WIDTH).onFocusChanged { if (it.isFocused) onFocused() },
         shape = StreamMateThemeTokens.shapes.medium,
         resting = Color.Transparent,
         restingContent = palette.textPrimary,
         focusRing = true,
         focusScale = 1f,
-        testTag = "home-resume-" + item.contentKey,
+        testTag = "home-resume-" + entry.key,
         contentPadding = PaddingValues(4.dp),
         contentAlignment = Alignment.TopStart,
     ) { colors ->
@@ -1083,23 +1293,23 @@ private fun HomeResumeCard(item: ContinueWatchingItem, onClick: () -> Unit, onLo
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = item.title.artworkInitials(),
+                    text = entry.title.artworkInitials(),
                     color = palette.textMuted,
                     fontSize = typography.headline.fontSize,
                     fontWeight = FontWeight.Black,
                 )
-                if (!item.posterUrl.isNullOrBlank()) {
+                if (!entry.posterUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model = item.posterUrl,
+                        model = entry.posterUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
-                if (item.progress.fraction > 0f) {
+                if (entry.fraction > 0f) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                         HomeProgressBar(
-                            fraction = item.progress.fraction,
+                            fraction = entry.fraction,
                             track = palette.background.copy(alpha = 0.62f),
                         )
                     }
@@ -1107,7 +1317,7 @@ private fun HomeResumeCard(item: ContinueWatchingItem, onClick: () -> Unit, onLo
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = item.title,
+                text = entry.title,
                 color = colors.content,
                 fontSize = typography.label.fontSize,
                 lineHeight = typography.label.lineHeight,
@@ -1115,15 +1325,90 @@ private fun HomeResumeCard(item: ContinueWatchingItem, onClick: () -> Unit, onLo
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            HomeCardSubtitle(text = item.subtitleWithRemaining())
+            HomeCardSubtitle(text = entry.subtitleWithRemaining())
         }
     }
 }
 
 @Composable
-private fun ContinueWatchingItem.subtitleWithRemaining(): String? {
+private fun TraktHomeTitle.episodeLabel(): String? = episodeLabel(season, number, episodeTitle)
+
+/** `S1 E2 · Title` in the interface language; null when this is not an episode. */
+@Composable
+private fun episodeLabel(season: Int?, number: Int?, episodeTitle: String?): String? {
+    if (season == null || number == null) return null
+    val label = stringResource(IptvR.string.series_episode_label, season, number)
+    return episodeTitle?.takeIf(String::isNotBlank)?.let { "$label · $it" } ?: label
+}
+
+/** What the card says under the title: the episode for a series, the year for a film, Discover's own line otherwise. */
+@Composable
+private fun HomeResumeEntry.subtitleLabel(): String? = when (this) {
+    is HomeResumeEntry.Vod -> episodeLabel(item.seasonNumber, item.episodeNumber, item.episodeTitle) ?: item.subtitle
+    is HomeResumeEntry.Discover -> subtitle
+}
+
+/**
+ * A Trakt title. Next-up cards are landscape, with the show's fanart and the
+ * episode under it; recommendations are posters, as a shelf of new things
+ * usually is. Both carry Trakt's own artwork, so they need no local copy.
+ */
+@Composable
+private fun HomeTraktCard(title: TraktHomeTitle, landscape: Boolean, onClick: () -> Unit, onFocused: () -> Unit = {}) {
+    val palette = StreamMateThemeTokens.palette
+    val typography = StreamMateThemeTokens.typography
+    val width = if (landscape) HOME_CARD_WIDTH else HOME_POSTER_CARD_WIDTH
+    TvSurface(
+        onClick = onClick,
+        modifier = Modifier.width(width).onFocusChanged { if (it.isFocused) onFocused() },
+        shape = StreamMateThemeTokens.shapes.medium,
+        resting = Color.Transparent,
+        restingContent = palette.textPrimary,
+        focusRing = true,
+        focusScale = 1f,
+        testTag = "home-trakt-" + title.key,
+        contentPadding = PaddingValues(4.dp),
+        contentAlignment = Alignment.TopStart,
+    ) { colors ->
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (landscape) HOME_CARD_ART_HEIGHT else HOME_POSTER_CARD_HEIGHT)
+                    .clip(StreamMateThemeTokens.shapes.medium)
+                    .background(palette.surfaceSubtle),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = title.title.artworkInitials(),
+                    color = palette.textMuted,
+                    fontSize = typography.headline.fontSize,
+                    fontWeight = FontWeight.Black,
+                )
+                val art = if (landscape) title.fanart ?: title.poster else title.poster ?: title.fanart
+                if (!art.isNullOrBlank()) {
+                    AsyncImage(model = art, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = title.title,
+                color = colors.content,
+                fontSize = typography.label.fontSize,
+                lineHeight = typography.label.lineHeight,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            HomeCardSubtitle(text = title.episodeLabel() ?: title.year?.toString())
+        }
+    }
+}
+
+@Composable
+private fun HomeResumeEntry.subtitleWithRemaining(): String? {
     val parts = buildList {
-        subtitle?.takeIf(String::isNotBlank)?.let(::add)
+        subtitleLabel()?.takeIf(String::isNotBlank)?.let(::add)
         remainingLabel()?.let(::add)
     }
     return parts.takeIf { it.isNotEmpty() }?.joinToString(METADATA_SEPARATOR)
@@ -1135,13 +1420,13 @@ private fun ContinueWatchingItem.subtitleWithRemaining(): String? {
  * answering it here would mean matching streams on the home screen.
  */
 @Composable
-private fun HomeSportCard(event: TodayEvent, onClick: () -> Unit) {
+private fun HomeSportCard(event: TodayEvent, onClick: () -> Unit, onFocused: () -> Unit = {}) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
     val live = event.status == TodayEventStatus.LIVE
     TvSurface(
         onClick = onClick,
-        modifier = Modifier.width(HOME_SPORT_CARD_WIDTH).height(HOME_SPORT_CARD_HEIGHT),
+        modifier = Modifier.width(HOME_SPORT_CARD_WIDTH).height(HOME_SPORT_CARD_HEIGHT).onFocusChanged { if (it.isFocused) onFocused() },
         shape = StreamMateThemeTokens.shapes.medium,
         resting = palette.surfaceSubtle,
         restingContent = palette.textPrimary,
@@ -1313,6 +1598,13 @@ internal fun String.artworkInitials(): String {
 }
 
 private const val HOME_ROW_LIMIT = 6
+private const val HOME_RESUME_ROW_LIMIT = 12
+private const val HERO_FOCUS_SETTLE_MILLIS = 180L
+private const val HERO_CROSSFADE_MILLIS = 250
+private const val HERO_ART_MAX_WIDTH_PX = 1920
+private const val HERO_ART_MAX_HEIGHT_PX = 1080
+private val HOME_SPORT_BACKDROP_CREST = 150.dp
+private val HOME_SPORT_BACKDROP_GAP = 56.dp
 private const val MOVIE_CONTENT_KEY_PREFIX = "vod:movie:"
 private const val METADATA_SEPARATOR = "  ·  "
 private const val TEAM_SEPARATOR = " – "
@@ -1324,7 +1616,6 @@ private const val CLOCK_SEPARATOR_PATTERN = "' · '"
 private const val MINUTE_MILLIS = 60_000L
 
 /** How far the list has to move before the hero counts as left behind. */
-private const val HERO_ART_FADE_THRESHOLD_PX = 24
 
 private val HERO_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH.mm")
 
@@ -1335,10 +1626,14 @@ private val HOME_RAIL_ITEM_PADDING = 12.dp
 private val HOME_RAIL_ICON_SIZE = 24.dp
 private val HOME_RAIL_LABEL_GAP = 14.dp
 
-private val HOME_HEADER_GAP = 26.dp
 private val HOME_ROW_GAP = 26.dp
-private val HOME_HERO_ART_HEIGHT = 330.dp
+/** The hero's share of the screen; the rows have the rest and scroll under it. */
+private const val HOME_HERO_FRACTION = 0.46f
+/** The artwork reaches a little past the hero so its fade lands on the first row's ground. */
+private const val HOME_HERO_ART_FRACTION_HEIGHT = 0.56f
 private const val HOME_HERO_ART_FRACTION = 0.66f
+/** Room under the last row, so it too can be pulled up to the focus line. */
+private val HOME_ROWS_BOTTOM_SLACK = 260.dp
 private const val HOME_HERO_TEXT_FRACTION = 0.56f
 private val HOME_HERO_PROGRESS_WIDTH = 210.dp
 private val HOME_HERO_BUTTON_HEIGHT = 46.dp
@@ -1349,6 +1644,8 @@ private val HOME_CHANNEL_CARD_HEIGHT = 104.dp
 private val HOME_CHANNEL_LOGO_SIZE = 34.dp
 private val HOME_CARD_WIDTH = 186.dp
 private val HOME_CARD_ART_HEIGHT = 102.dp
+private val HOME_POSTER_CARD_WIDTH = 124.dp
+private val HOME_POSTER_CARD_HEIGHT = 178.dp
 private val HOME_SPORT_CARD_WIDTH = 244.dp
 private val HOME_SPORT_CARD_HEIGHT = 160.dp
 private val HOME_SPORT_LOGO_SIZE = 38.dp

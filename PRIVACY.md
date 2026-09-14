@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Policy packaged: 3 September 2026, updated 11 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.13.
+Policy packaged: 3 September 2026, updated 14 September 2026. Applies to Sohva TV 0.1.0-beta.1 through 0.1.0-beta.14.
 
 Sohva TV plays media sources configured by the user. It contains no channels
 or media and does not provide an IPTV subscription. There is no
@@ -103,6 +103,25 @@ setup screen is open, using an expiring capability link. It uses plain HTTP on
 the local network, not a developer-hosted website. Use a trusted network and
 keep the QR/link private. Imported configuration is received by the TV; after
 confirmation, the TV contacts configured services to validate or use it.
+
+## Trakt (optional)
+
+Trakt is off until you connect an account under Settings > Accounts. Sign-in
+uses Trakt's device code; the TV stores the resulting tokens encrypted with
+device-local keys, per Sohva profile, and never sees your Trakt password.
+
+While connected, Sohva sends Trakt what you play in Movies, Series and Discover:
+the title's TMDB or IMDb identifier, the season and episode number, and the
+playback position as a percentage, when playback starts, pauses and stops.
+Titles are matched by identifier only; nothing is sent for Live TV, catch-up,
+or titles without an identifier. Sohva reads back your Trakt playback list,
+watched history, recommendations and the next episode of shows in progress,
+and keeps a local copy to draw progress bars and watched marks. Trakt's own
+privacy policy governs what Trakt keeps. Disconnecting deletes the tokens and
+the local copy from this TV; it does not change your Trakt history. Restricted
+profiles cannot connect Trakt or see Trakt rows. Synopses for Trakt titles are
+requested from TMDB by identifier, in your interface language, when TMDB is
+enabled under Settings > Library.
 
 ## Discover addons
 

@@ -482,6 +482,32 @@ class MetadataRepository(
         return updated
     }
 
+    /** What the details page shows for a title, in the interface language. */
+    data class TitleDetails(val title: String, val overview: String?, val posterUrl: String?, val backdropUrl: String?, val year: Int?)
+
+    private val detailsById = object : LinkedHashMap<String, TitleDetails>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, TitleDetails>?): Boolean = size > 64
+    }
+
+    /**
+     * A record by its TMDB id, in the chosen language: for a title another
+     * service named by id, so its synopsis reads in the same language as the
+     * library's own pages rather than in that service's English.
+     */
+    suspend fun detailsByExternalId(externalId: String, mediaType: MetadataMediaType): TitleDetails? {
+        val settings = settingsStore.loadMetadataSettings()
+        if (!tmdbProvider.enabled(settings)) return null
+        val language = MetadataLookup(mediaType, "").resolvedLanguage
+        val key = "$mediaType:$externalId:$language"
+        synchronized(memoryCacheLock) { detailsById[key] }?.let { return it }
+        val candidate = runCatching { tmdbProvider.detailsById(externalId, mediaType, language, settings.tmdbReadAccessToken) }.getOrNull()
+            ?: return null
+        val details = TitleDetails(candidate.displayTitle, candidate.overview?.takeIf(String::isNotBlank),
+            candidate.posterUrl.httpsUrlOrNull(), candidate.backdropUrl.httpsUrlOrNull(), candidate.year)
+        synchronized(memoryCacheLock) { detailsById[key] = details }
+        return details
+    }
+
     suspend fun enrich(lookup: MetadataLookup): EnrichedMetadata? {
         val sanitized = sanitize(lookup) ?: return null
         val now = clock()

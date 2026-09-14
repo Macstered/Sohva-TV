@@ -1,6 +1,6 @@
 # Discover: addons, search and Library
 
-For Sohva TV **0.1.0-beta.13**. Discover is optional and starts empty. It is
+For Sohva TV **0.1.0-beta.14**. Discover is optional and starts empty. It is
 separate from your IPTV libraries and is unavailable to restricted profiles.
 Install only services and media sources you trust and are authorized to use.
 

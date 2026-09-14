@@ -14,6 +14,10 @@ import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
 import androidx.annotation.StringRes
 import com.streammate.tv.core.database.CatalogueDao
+import com.streammate.tv.core.database.TraktStateDao
+import com.streammate.tv.core.database.TraktVodStateRow
+import com.streammate.tv.core.database.TraktContinueRow
+import com.streammate.tv.core.database.ContinueWatchingRow
 import com.streammate.tv.core.database.CatalogueCopyRow
 import com.streammate.tv.core.database.CatalogueGenerationRow
 import com.streammate.tv.core.database.CatalogueGroupFacetRow
@@ -44,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -156,6 +161,12 @@ data class WatchingProgress(
     val durationMillis: Long,
     val completed: Boolean,
     val lastWatchedEpochMillis: Long,
+    /**
+     * How far along, when only a percentage is known. Trakt reports positions
+     * that way, and a copy whose runtime the playlist never gave has no
+     * position to resume from; the bar on the card still shows where it stands.
+     */
+    val knownFraction: Float? = null,
 ) {
     val resumePositionMillis: Long get() = if (completed) 0L else positionMillis
 
@@ -163,7 +174,7 @@ data class WatchingProgress(
         get() = if (durationMillis > 0) {
             (positionMillis.toFloat() / durationMillis).coerceIn(0f, 1f)
         } else {
-            0f
+            knownFraction?.coerceIn(0f, 1f) ?: 0f
         }
 }
 
@@ -173,6 +184,12 @@ data class ContinueWatchingItem(
     val subtitle: String?,
     val posterUrl: String?,
     val progress: WatchingProgress,
+    /** What one card stands for: the series for an episode, the copy itself for a movie. */
+    val groupKey: String = contentKey,
+    /** Set for an episode, so the screen can label it in its own language; [title] is then the series. */
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null,
+    val episodeTitle: String? = null,
 )
 
 data class CatalogueCategory(
@@ -232,6 +249,8 @@ class CatalogueRepository(
     val organization: OrganizationRepository? = null,
     /** Whose positions to read and write; every progress flow follows a change of viewer. */
     private val activeProfile: Flow<String> = flowOf(Profiles.DEFAULT_ID),
+    /** Trakt's view of the viewer's titles, laid under the local positions where it is newer. */
+    private val trakt: TraktStateDao? = null,
 ) {
     constructor(dao: CatalogueDao, clock: () -> Long) : this(dao, clock, null)
     private val similarMoviesCache = object : LinkedHashMap<SimilarMovieCacheKey, CachedSimilarMovies>(
@@ -455,30 +474,97 @@ class CatalogueRepository(
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
 
-    fun observeProgress(): Flow<Map<String, WatchingProgress>> = perProfile { dao.observeProgress(it) }
-        .map { progress -> progress.associate { it.contentKey to it.toDomain() } }
+    fun observeProgress(): Flow<Map<String, WatchingProgress>> = perProfile { profile ->
+        val local = dao.observeProgress(profile).map { rows -> rows.associate { it.contentKey to it.toDomain() } }
+        if (trakt == null) local
+        else combine(local, trakt.observeVodMovies(profile), trakt.observeVodEpisodes(profile)) { own, movies, episodes ->
+            mergeTrakt(own, movies + episodes)
+        }
+    }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
+
+    /**
+     * A local position stands when it is the newer of the two; otherwise Trakt's
+     * pause or watched mark takes the card. A pause on Trakt outranks its own
+     * watched mark, since that is what a rewatch in progress looks like.
+     */
+    private fun mergeTrakt(local: Map<String, WatchingProgress>, remote: List<TraktVodStateRow>): Map<String, WatchingProgress> {
+        if (remote.isEmpty()) return local
+        val merged = local.toMutableMap()
+        for (row in remote) {
+            val own = merged[row.contentKey]
+            if (own != null && own.lastWatchedEpochMillis >= row.updatedAtMillis) continue
+            val inProgress = row.progress > 0.0 && row.progress < 100.0
+            if (!inProgress && !row.watched) continue
+            val durationMillis = row.durationSeconds?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
+            merged[row.contentKey] = WatchingProgress(
+                contentKey = row.contentKey,
+                positionMillis = if (inProgress && durationMillis > 0) (durationMillis * row.progress / 100.0).toLong() else 0L,
+                durationMillis = durationMillis,
+                completed = !inProgress,
+                lastWatchedEpochMillis = row.updatedAtMillis,
+                knownFraction = if (inProgress) (row.progress / 100.0).toFloat() else null,
+            )
+        }
+        return merged
+    }
 
     fun observeMovieProgress(): Flow<Map<String, WatchingProgress>> = perProfile { dao.observeMovieProgress(it) }
         .map { progress -> progress.associate { it.contentKey to it.toDomain() } }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
 
-    fun observeContinueWatching(): Flow<List<ContinueWatchingItem>> = perProfile { dao.observeContinueWatching(it) }.map { rows ->
-        rows.map { row ->
+    fun observeContinueWatching(): Flow<List<ContinueWatchingItem>> = perProfile { profile ->
+        val local = dao.observeContinueWatching(profile).map { rows -> rows.map { it.toContinueWatchingItem() } }
+        if (trakt == null) local
+        else combine(local, trakt.observeVodContinueWatching(profile)) { own, remote ->
+            // A title paused on Trakt joins the row unless the same copy has a newer local position.
+            val merged = own.associateBy { it.contentKey }.toMutableMap()
+            for (row in remote) {
+                val existing = merged[row.contentKey]
+                if (existing != null && existing.progress.lastWatchedEpochMillis >= row.updatedAtMillis) continue
+                merged[row.contentKey] = row.toContinueWatchingItem()
+            }
+            merged.values.sortedByDescending { it.progress.lastWatchedEpochMillis }.take(20)
+        }
+    }
+        // Children hopping between episodes would otherwise fill the row with one series.
+        .map { items -> items.distinctBy { it.groupKey } }
+        .distinctUntilChanged()
+        .flowOn(Dispatchers.Default)
+
+    private fun TraktContinueRow.toContinueWatchingItem(): ContinueWatchingItem {
+        val durationMillis = durationSeconds?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
+        return ContinueWatchingItem(
+            contentKey = contentKey,
+            title = MetadataMatcher.searchTitle(seriesName ?: title).ifBlank { seriesName ?: title },
+            subtitle = year?.toString(),
+            posterUrl = posterUrl,
+            groupKey = seriesKey ?: contentKey,
+            seasonNumber = seasonNumber, episodeNumber = episodeNumber, episodeTitle = seriesName?.let { title },
+            progress = WatchingProgress(
+                contentKey = contentKey,
+                positionMillis = if (durationMillis > 0) (durationMillis * progress / 100.0).toLong() else 0L,
+                durationMillis = durationMillis,
+                completed = false,
+                lastWatchedEpochMillis = updatedAtMillis,
+                knownFraction = (progress / 100.0).toFloat(),
+            ),
+        )
+    }
+
+    private fun ContinueWatchingRow.toContinueWatchingItem(): ContinueWatchingItem = let { row ->
             ContinueWatchingItem(
                 contentKey = row.contentKey,
                 // Sanitised here rather than at each call site: the grid already
                 // shows clean titles, so a raw provider filename in a resume row
                 // above it is the same title rendered two different ways.
-                title = MetadataMatcher.searchTitle(row.title).ifBlank { row.title },
-                subtitle = if (row.contentType == VodContentType.MOVIE.wireValue) {
-                    row.year?.toString()
-                } else {
-                    row.seriesName?.let { "$it · K${row.seasonNumber} J${row.episodeNumber}" }
-                },
+                title = MetadataMatcher.searchTitle(row.seriesName ?: row.title).ifBlank { row.seriesName ?: row.title },
+                subtitle = if (row.contentType == VodContentType.MOVIE.wireValue) row.year?.toString() else null,
                 posterUrl = row.posterUrl,
+                groupKey = row.seriesKey ?: row.contentKey,
+                seasonNumber = row.seasonNumber, episodeNumber = row.episodeNumber, episodeTitle = row.seriesName?.let { row.title },
                 progress = WatchingProgress(
                     contentKey = row.contentKey,
                     positionMillis = row.positionMillis,
@@ -487,10 +573,7 @@ class CatalogueRepository(
                     lastWatchedEpochMillis = row.lastWatchedEpochMillis,
                 ),
             )
-        }
     }
-        .distinctUntilChanged()
-        .flowOn(Dispatchers.Default)
 
     suspend fun playable(contentKey: String): PlayableVod? {
         val parts = parseContentKey(contentKey) ?: return null
@@ -511,6 +594,11 @@ class CatalogueRepository(
 
     suspend fun series(sourceId: String, seriesId: String): VodSeries? =
         dao.activeSeries(sourceId, seriesId)?.toDomain()
+
+    suspend fun episode(contentKey: String): VodEpisode? {
+        val parts = parseContentKey(contentKey)?.takeIf { it.type == VodContentType.EPISODE } ?: return null
+        return dao.activeEpisode(parts.sourceId, parts.itemId)?.toDomain()
+    }
 
     suspend fun seriesForEpisode(contentKey: String): VodSeries? {
         val parts = parseContentKey(contentKey)?.takeIf { it.type == VodContentType.EPISODE } ?: return null

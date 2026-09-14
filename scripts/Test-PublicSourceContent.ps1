@@ -21,7 +21,8 @@ $allowedRootDirectories = @(
     'gradle',
     'iptv',
     'scripts',
-    'sportmate'
+    'sportmate',
+    'trakt'
 )
 $allowedRootFiles = @(
     '.editorconfig',

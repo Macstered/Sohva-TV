@@ -32,7 +32,12 @@ internal class AddonPlayback(
     private val identity: AddonWatchIdentity, private val title: String,
     initial: AddonPlaybackSelection,
     private val artwork: AddonWatchArtwork? = null,
+    episode: AddonVideo? = null,
 ) {
+    private val traktItem = com.streammate.tv.trakt.TraktAddonIdentity.resolve(identity, episode)
+    private val trakt = com.streammate.tv.trakt.TraktScrobbler(host.trakt, host.persistenceScope)
+    /** A Trakt pause to pick up from, applied when the stream first reports its duration. */
+    private var pendingResumeFraction: Float? = null
     val player: ExoPlayer = ExoPlayer.Builder(context)
         .setRenderersFactory(DefaultRenderersFactory(context).setEnableDecoderFallback(true))
         .setSeekBackIncrementMs(10_000).setSeekForwardIncrementMs(10_000).build()
@@ -112,11 +117,17 @@ internal class AddonPlayback(
             override fun onPlaybackStateChanged(state: Int) {
                 ready = state == Player.STATE_READY
                 if (ready) everReady = true
-                if (state == Player.STATE_ENDED) snapshot(ended = true)
+                if (ready) pendingResumeFraction?.let { fraction ->
+                    val duration = player.duration
+                    if (duration > 0) { pendingResumeFraction = null; player.seekTo((duration * fraction).toLong().coerceIn(0L, duration)) }
+                }
+                if (state == Player.STATE_ENDED) { snapshot(ended = true); trakt.ended() }
             }
             override fun onPlayerError(error: PlaybackException) { failed = true; snapshot() }
             override fun onRenderedFirstFrame() { firstFrameReady = true }
-            override fun onIsPlayingChanged(isPlaying: Boolean) { if (!isPlaying) snapshot() }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) trakt.playing(percent()) else { snapshot(); trakt.paused(percent()) }
+            }
         })
     }
     suspend fun start(resume: Boolean, playWhenReady: Boolean = true) {
@@ -127,6 +138,7 @@ internal class AddonPlayback(
         host.pendingProgressWrite?.join()
         val previous = host.progress.get(profileId, identity)
         session = host.progress.begin(profileId, identity, title.take(2048), artwork)
+        trakt.begin(profileId, traktItem)
         val preferences = host.preferences.first()
         automaticPreferences = preferences
         preferredLanguages = AddonSubtitlePolicy.preferred(preferences.preferredSubtitleLanguage, preferences.secondarySubtitleLanguage)
@@ -134,7 +146,12 @@ internal class AddonPlayback(
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .setPreferredAudioLanguages(*listOfNotNull(preferences.preferredAudioLanguage, preferences.secondaryAudioLanguage).toTypedArray())
             .setPreferredTextLanguages(*preferredLanguages.toTypedArray()).build()
-        prepare(if (resume) previous?.resumePositionMillis ?: 0 else 0, playWhenReady)
+        // No local position, or an older one: Trakt's pause from another device stands in.
+        pendingResumeFraction = if (!resume) null else traktItem?.let { host.trakt.discoverKey(it) }?.let { key ->
+            host.trakt.discoverState(profileId, key)?.takeIf { it.fraction != null && (previous == null || previous.updatedAtMillis < it.updatedAtMillis) }?.fraction
+        }
+        val position = if (!resume) 0L else if (pendingResumeFraction != null) 0L else previous?.resumePositionMillis ?: 0L
+        prepare(position, playWhenReady)
     }
     private suspend fun prepare(position: Long, play: Boolean = true) {
         host.playbackAccess.check(profileId, selection)
@@ -326,9 +343,17 @@ internal class AddonPlayback(
     }
     fun stopForBackground() { foreground = false; snapshot(); player.stop() }
     fun onForeground() { foreground = true }
+    /** Position as a percentage of the known duration; null until the duration is known. */
+    private fun percent(): Double? {
+        val duration = player.duration
+        val position = player.currentPosition
+        if (duration <= 0 || position < 0) return null
+        return (100.0 * position / duration).coerceIn(0.0, 100.0)
+    }
     fun release() {
         if (released) return
         snapshot()
+        trakt.release(percent())
         released = true
         player.release()
         if (host.activePlayback === this) host.activePlayback = null

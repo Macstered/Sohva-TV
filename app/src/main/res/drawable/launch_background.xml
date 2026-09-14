@@ -1,16 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    What Android paints while the app process starts: the same composition as
+    StreamMateLaunchScreen, at the same places, so the hand-over to Compose
+    changes nothing on screen. The mark is 188dp and the wordmark 56dp tall
+    with 18dp between them; the insets put their centres where the centred
+    column puts them.
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
             <gradient
-                android:angle="0"
-                android:endColor="#101D35"
-                android:startColor="#050812" />
+                android:angle="270"
+                android:startColor="#080C15"
+                android:centerColor="#05070D"
+                android:endColor="#04060A" />
         </shape>
     </item>
     <item
         android:width="188dp"
         android:height="188dp"
+        android:bottom="74dp"
         android:drawable="@drawable/sohva_mark"
+        android:gravity="center" />
+    <item
+        android:width="273dp"
+        android:height="56dp"
+        android:top="206dp"
+        android:drawable="@drawable/sohva_wordmark"
         android:gravity="center" />
 </layer-list>
