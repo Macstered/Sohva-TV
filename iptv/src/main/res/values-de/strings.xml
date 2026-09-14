@@ -258,10 +258,15 @@
     <string name="sports_follow_handball">Handball</string>
     <string name="sports_follow_rugby">Rugby</string>
     <string name="sports_follow_volleyball">Volleyball</string>
+    <string name="sports_follow_nfl">American Football</string>
+    <string name="sports_follow_mma">MMA</string>
+    <string name="sports_follow_formula1">Formel 1</string>
+    <string name="sports_follow_nba">NBA</string>
     <string name="sports_follow_enable_sport">Sportart in Sohva Sport aufnehmen</string>
     <string name="sports_follow_disable_sport">Sportart aus Sohva Sport entfernen</string>
     <string name="sports_competitions_loading">Aktuelle Ligen und Pokale werden geladen…</string>
     <string name="sports_competitions_error">Die Wettbewerbsliste konnte nicht geladen werden. Prüfe API-Schlüssel und Verbindung.</string>
+    <string name="sports_competitions_none">Für diese Sportart gibt es keine Wettbewerbe zur Auswahl; alle Ereignisse des Tages werden angezeigt.</string>
     <string name="sports_competitions_count">%1$d von %2$d Wettbewerben gewählt</string>
     <string name="sports_competitions_search">Liga, Pokal oder Land suchen</string>
     <string name="sports_competitions_results">%1$d Ergebnisse</string>

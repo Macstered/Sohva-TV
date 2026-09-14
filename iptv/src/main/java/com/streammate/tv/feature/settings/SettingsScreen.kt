@@ -102,6 +102,7 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.IptvImportScope
 import com.streammate.tv.core.model.IptvSourceType
 import com.streammate.tv.core.model.SportType
+import com.streammate.tv.core.model.hasCompetitions
 import com.streammate.tv.core.model.SportsCompetition
 import com.streammate.tv.core.security.SecretSettingsStore
 import com.streammate.tv.core.security.MetadataSettings
@@ -1374,6 +1375,12 @@ fun SettingsScreen(
                             testTag = "settings-sports-toggle-sport",
                         )
                         when {
+                            !selectedFollowSport.hasCompetitions -> Text(
+                                text = stringResource(R.string.sports_competitions_none),
+                                color = palette.textMuted,
+                                fontSize = 12.sp,
+                                modifier = Modifier.testTag("settings-sports-competitions-none"),
+                            )
                             competitionsLoading -> Text(
                                 text = stringResource(R.string.sports_competitions_loading),
                                 color = palette.textMuted,

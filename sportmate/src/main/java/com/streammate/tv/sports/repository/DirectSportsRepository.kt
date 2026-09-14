@@ -7,6 +7,7 @@ import com.streammate.tv.core.database.SportsCacheDao
 import com.streammate.tv.core.model.FootballIncident
 import com.streammate.tv.core.model.FootballIncidentKind
 import com.streammate.tv.core.model.SportType
+import com.streammate.tv.core.model.hasCompetitions
 import com.streammate.tv.core.model.SportsCompetition
 import com.streammate.tv.core.model.TodayEvent
 import com.streammate.tv.core.model.TodayEventStatus
@@ -27,6 +28,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
@@ -69,6 +71,8 @@ class DirectSportsRepository(
     ): SportsEventsSnapshot = events(SportType.AUSTRALIAN_FOOTBALL, date, zoneId, selectedCompetitionIds)
 
     override suspend fun competitions(sport: SportType): List<SportsCompetition> {
+        // No leagues endpoint to ask; the day listing is shown unfiltered.
+        if (!sport.hasCompetitions) return emptyList()
         val catalogueScope = if (sport.competitionQuery.isEmpty()) "all" else "current"
         val key = "${sport.providerName}|competitions|$catalogueScope"
         val now = clock.millis()
@@ -182,7 +186,7 @@ class DirectSportsRepository(
         return try {
             val response = fetch(
                 baseUrl = endpointFor(sport),
-                path = if (sport == SportType.FOOTBALL) "fixtures" else "games",
+                path = eventsPath(sport),
                 query = mapOf("date" to date.toString(), "timezone" to zoneId.id),
             )
             val source = sport.sourceName
@@ -236,6 +240,22 @@ class DirectSportsRepository(
         SportType.HANDBALL -> endpoints.handball
         SportType.RUGBY -> endpoints.rugby
         SportType.VOLLEYBALL -> endpoints.volleyball
+        SportType.AMERICAN_FOOTBALL -> endpoints.americanFootball
+        SportType.MMA -> endpoints.mma
+        SportType.FORMULA_1 -> endpoints.formula1
+        SportType.NBA -> endpoints.nba
+    }
+
+    /**
+     * Each API-Sports product names its day listing differently. Football
+     * has fixtures, MMA fight cards, Formula 1 race weekends (every session
+     * of the day, practice through race); the rest call them games.
+     */
+    private fun eventsPath(sport: SportType): String = when (sport) {
+        SportType.FOOTBALL -> "fixtures"
+        SportType.MMA -> "fights"
+        SportType.FORMULA_1 -> "races"
+        else -> "games"
     }
 
     private suspend fun fetch(
@@ -339,9 +359,16 @@ data class ApiSportsEndpoints(
     val handball: String = "https://v1.handball.api-sports.io",
     val rugby: String = "https://v1.rugby.api-sports.io",
     val volleyball: String = "https://v1.volleyball.api-sports.io",
+    val americanFootball: String = "https://v1.american-football.api-sports.io",
+    val mma: String = "https://v1.mma.api-sports.io",
+    val formula1: String = "https://v1.formula-1.api-sports.io",
+    val nba: String = "https://v2.nba.api-sports.io",
 ) {
     init {
-        listOf(football, hockey, afl, basketball, baseball, handball, rugby, volleyball).forEach { endpoint ->
+        listOf(
+            football, hockey, afl, basketball, baseball, handball, rugby, volleyball,
+            americanFootball, mma, formula1, nba,
+        ).forEach { endpoint ->
             val parsed = endpoint.toHttpUrl()
             if (!parsed.isHttps || parsed.encodedPath != "/") {
                 throw LocalizedException(CoreR.string.error_endpoint_must_be_https)
@@ -378,9 +405,13 @@ internal class ApiSportsParser {
                 SportType.HANDBALL,
                 SportType.RUGBY,
                 SportType.VOLLEYBALL,
+                SportType.AMERICAN_FOOTBALL,
                 -> teamSportEvent(sport, item, zoneId)
+                SportType.MMA -> mmaEvent(item, zoneId)
+                SportType.FORMULA_1 -> formulaOneEvent(item, zoneId)
+                SportType.NBA -> nbaEvent(item, zoneId)
             }
-        }.filter { event -> event.competitionId in selectedCompetitionIds }
+        }.filter { event -> !sport.hasCompetitions || event.competitionId in selectedCompetitionIds }
         val events = if (sport == SportType.AUSTRALIAN_FOOTBALL) deduplicateAfl(parsed) else parsed
         return SportsEventsSnapshot(events, cacheState, source, quotaRemaining)
     }
@@ -506,16 +537,22 @@ internal class ApiSportsParser {
     }
 
     private fun teamSportEvent(sport: SportType, item: JsonObject, zoneId: ZoneId): TodayEvent? {
+        // NFL games keep their id, status and date inside a "game" object;
+        // the other team sports put them at the top level.
+        val game = item.obj("game")
         val league = item.obj("league")
         val teams = item.obj("teams")
         val home = teams.obj("home")
         val away = teams.obj("away")
         val scores = item.obj("scores")
-        val status = item.obj("status")
+        val status = item.objOrNull("status") ?: game.obj("status")
         val id = item.int("id")?.takeIf { it > 0 }
-            ?: item.obj("game").int("id")?.takeIf { it > 0 }
+            ?: game.int("id")?.takeIf { it > 0 }
             ?: return null
-        val start = startInstant(item) ?: return null
+        val start = startInstant(item)
+            ?: startInstant(game)
+            ?: startInstant(game.obj("date"))
+            ?: return null
         return event(
             id = "api-sports:${sport.providerName}:$id",
             sport = sport,
@@ -532,6 +569,122 @@ internal class ApiSportsParser {
             elapsed = null,
             homeScore = scores.score("home"),
             awayScore = scores.score("away"),
+            detailsAvailable = false,
+        )
+    }
+
+    /**
+     * An MMA fight: two fighters instead of two teams, a weight class instead
+     * of a league, and no score. The fight card's name, when the provider
+     * gives one, is the competition line; the category is the fallback.
+     */
+    private fun mmaEvent(item: JsonObject, zoneId: ZoneId): TodayEvent? {
+        val fighters = item.obj("fighters")
+        val first = fighters.obj("first")
+        val second = fighters.obj("second")
+        val status = item.obj("status")
+        val id = item.int("id")?.takeIf { it > 0 } ?: return null
+        val start = startInstant(item) ?: return null
+        val category = item.string("category") ?: item.obj("category").string("name")
+        val eventName = item.string("event") ?: item.obj("event").string("name")
+        return event(
+            id = "api-sports:mma:$id",
+            sport = SportType.MMA,
+            competitionId = "",
+            competition = listOfNotNull(eventName, category).ifEmpty { listOf("MMA") }.joinToString(" \u00b7 "),
+            competitionLogo = null,
+            homeName = first.string("name") ?: return null,
+            homeLogo = first.https("logo"),
+            awayName = second.string("name") ?: return null,
+            awayLogo = second.https("logo"),
+            start = start,
+            zoneId = zoneId,
+            statusCode = status.string("short").orEmpty(),
+            elapsed = null,
+            homeScore = null,
+            awayScore = null,
+            detailsAvailable = false,
+        )
+    }
+
+    /**
+     * A Formula 1 session. The Grand Prix takes the home slot and the circuit
+     * the away slot, so the card reads "Monaco Grand Prix / Circuit de
+     * Monaco" and channel matching can find the Grand Prix name in a
+     * programme title. The session type (Race, Qualifying, a practice) rides
+     * on the competition line. A live session shows its lap count as the score.
+     */
+    private fun formulaOneEvent(item: JsonObject, zoneId: ZoneId): TodayEvent? {
+        val competition = item.obj("competition")
+        val circuit = item.obj("circuit")
+        val laps = item.obj("laps")
+        val id = item.int("id")?.takeIf { it > 0 } ?: return null
+        val start = startInstant(item) ?: return null
+        val type = item.string("type")
+        val statusCode = item.string("status") ?: item.obj("status").string("short").orEmpty()
+        val base = event(
+            id = "api-sports:formula-1:$id",
+            sport = SportType.FORMULA_1,
+            competitionId = "",
+            competition = listOfNotNull("Formula 1", type).joinToString(" \u00b7 "),
+            competitionLogo = null,
+            homeName = competition.string("name") ?: return null,
+            homeLogo = circuit.https("image"),
+            awayName = circuit.string("name") ?: competition.obj("location").string("city") ?: "",
+            awayLogo = null,
+            start = start,
+            zoneId = zoneId,
+            statusCode = statusCode,
+            elapsed = null,
+            homeScore = null,
+            awayScore = null,
+            detailsAvailable = false,
+        )
+        val current = laps.int("current")
+        val total = laps.int("total")
+        return if (base.status == TodayEventStatus.LIVE && current != null && total != null && total > 0) {
+            base.copy(score = "$current / $total")
+        } else {
+            base
+        }
+    }
+
+    /**
+     * The NBA's own feed: the visiting team is "visitors", the status is a
+     * number (1 scheduled, 2 live, 3 finished) and the start is date.start.
+     * Only the standard league is kept; the feed also carries summer leagues.
+     */
+    private fun nbaEvent(item: JsonObject, zoneId: ZoneId): TodayEvent? {
+        val id = item.int("id")?.takeIf { it > 0 } ?: return null
+        val league = item.string("league")
+        if (league != null && !league.equals("standard", ignoreCase = true)) return null
+        val date = item.obj("date")
+        val start = date.string("start")?.let { encoded ->
+            runCatching { Instant.parse(encoded) }.getOrNull()
+                ?: runCatching { OffsetDateTime.parse(encoded).toInstant() }.getOrNull()
+        } ?: startInstant(item) ?: return null
+        val teams = item.obj("teams")
+        val home = teams.obj("home")
+        val away = teams.objOrNull("visitors") ?: teams.obj("away")
+        val scores = item.obj("scores")
+        val status = item.obj("status")
+        val statusCode = status.string("short") ?: status.int("short")?.toString().orEmpty()
+        return event(
+            id = "api-sports:nba:$id",
+            sport = SportType.NBA,
+            competitionId = "",
+            competition = "NBA",
+            competitionLogo = null,
+            homeName = home.string("name") ?: return null,
+            homeLogo = home.https("logo"),
+            awayName = away.string("name") ?: return null,
+            awayLogo = away.https("logo"),
+            start = start,
+            zoneId = zoneId,
+            statusCode = statusCode,
+            elapsed = null,
+            homeScore = scores.score("home"),
+            awayScore = if (scores.objOrNull("visitors") != null) scores.score("visitors") else scores.score("away"),
             detailsAvailable = false,
         )
     }
@@ -694,11 +847,30 @@ internal class ApiSportsParser {
                 "SUSP", "INTR", "ABD" -> TodayEventStatus.INTERRUPTED
                 else -> TodayEventStatus.UNKNOWN
             }
+            SportType.FORMULA_1 -> when (value) {
+                "SCHEDULED", "NS", "TBD" -> TodayEventStatus.SCHEDULED
+                "LIVE", "IN PROGRESS", "RUNNING", "STARTED" -> TodayEventStatus.LIVE
+                "COMPLETED", "FINISHED", "FT" -> TodayEventStatus.FINISHED
+                "POSTPONED", "PST", "DELAYED" -> TodayEventStatus.POSTPONED
+                "CANCELLED", "CANCELED", "CANC" -> TodayEventStatus.CANCELLED
+                "SUSPENDED", "ABANDONED", "RED FLAG", "INTERRUPTED" -> TodayEventStatus.INTERRUPTED
+                else -> TodayEventStatus.UNKNOWN
+            }
+            SportType.NBA -> when (value) {
+                "1", "NS", "SCHEDULED" -> TodayEventStatus.SCHEDULED
+                "2", "LIVE", "IN PLAY" -> TodayEventStatus.LIVE
+                "3", "FT", "FINISHED" -> TodayEventStatus.FINISHED
+                "POST", "PST", "POSTPONED" -> TodayEventStatus.POSTPONED
+                "CANC", "CANCELLED" -> TodayEventStatus.CANCELLED
+                else -> TodayEventStatus.UNKNOWN
+            }
             SportType.BASKETBALL,
             SportType.BASEBALL,
             SportType.HANDBALL,
             SportType.RUGBY,
             SportType.VOLLEYBALL,
+            SportType.AMERICAN_FOOTBALL,
+            SportType.MMA,
             -> when {
                 value in setOf("NS", "TBD") -> TodayEventStatus.SCHEDULED
                 value in setOf("FT", "AOT", "AP", "AW") -> TodayEventStatus.FINISHED
@@ -741,9 +913,11 @@ internal class ApiSportsParser {
     private fun JsonObject.obj(name: String): JsonObject = this[name] as? JsonObject ?: JsonObject(emptyMap())
     private fun JsonObject.objOrNull(name: String): JsonObject? = this[name] as? JsonObject
     private fun JsonObject.array(name: String): JsonArray = this[name] as? JsonArray ?: JsonArray(emptyList())
-    private fun JsonObject.string(name: String): String? = this[name]?.jsonPrimitive?.contentOrNull
+    // A field that is an object where a primitive was expected (NFL's "date"
+    // object, the NBA's "status" object) reads as absent, not as a crash.
+    private fun JsonObject.string(name: String): String? = (this[name] as? JsonPrimitive)?.contentOrNull
         ?.trim()?.take(4_000)?.takeIf(String::isNotBlank)
-    private fun JsonObject.int(name: String): Int? = this[name]?.jsonPrimitive?.intOrNull
+    private fun JsonObject.int(name: String): Int? = (this[name] as? JsonPrimitive)?.intOrNull
     private fun JsonObject.score(name: String): Int? {
         val value = this[name] ?: return null
         val scoreObject = value as? JsonObject
@@ -753,7 +927,7 @@ internal class ApiSportsParser {
             runCatching { value.jsonPrimitive.intOrNull }.getOrNull()
         }
     }
-    private fun JsonObject.long(name: String): Long? = this[name]?.jsonPrimitive?.longOrNull
+    private fun JsonObject.long(name: String): Long? = (this[name] as? JsonPrimitive)?.longOrNull
     private fun JsonObject.https(name: String): String? = string(name)?.takeIf {
         it.startsWith("https://", ignoreCase = true) && it.length <= 2_048
     }
@@ -770,6 +944,10 @@ private val SportType.providerName: String
         SportType.HANDBALL -> "handball"
         SportType.RUGBY -> "rugby"
         SportType.VOLLEYBALL -> "volleyball"
+        SportType.AMERICAN_FOOTBALL -> "american-football"
+        SportType.MMA -> "mma"
+        SportType.FORMULA_1 -> "formula-1"
+        SportType.NBA -> "nba"
     }
 
 private val SportType.sourceName: String
@@ -788,5 +966,9 @@ private val SportType.selectedCompetitions: Set<String>
         SportType.HANDBALL,
         SportType.RUGBY,
         SportType.VOLLEYBALL,
+        SportType.AMERICAN_FOOTBALL,
+        SportType.MMA,
+        SportType.FORMULA_1,
+        SportType.NBA,
         -> emptySet()
     }

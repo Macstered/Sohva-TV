@@ -258,10 +258,15 @@
     <string name="sports_follow_handball">Pallamano</string>
     <string name="sports_follow_rugby">Rugby</string>
     <string name="sports_follow_volleyball">Pallavolo</string>
+    <string name="sports_follow_nfl">Football americano</string>
+    <string name="sports_follow_mma">MMA</string>
+    <string name="sports_follow_formula1">Formula 1</string>
+    <string name="sports_follow_nba">NBA</string>
     <string name="sports_follow_enable_sport">Includi lo sport in Sohva Sport</string>
     <string name="sports_follow_disable_sport">Rimuovi lo sport da Sohva Sport</string>
     <string name="sports_competitions_loading">Caricamento dei campionati e delle coppe attuali…</string>
     <string name="sports_competitions_error">Impossibile caricare l\'elenco delle competizioni. Controlla la chiave API e la connessione.</string>
+    <string name="sports_competitions_none">Questo sport non ha competizioni da scegliere; vengono mostrati tutti gli eventi del giorno.</string>
     <string name="sports_competitions_count">Selezionate %1$d competizioni su %2$d</string>
     <string name="sports_competitions_search">Cerca campionato, coppa o paese</string>
     <string name="sports_competitions_results">%1$d risultati</string>

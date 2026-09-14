@@ -143,6 +143,10 @@ private enum class TodayFilter(
     HANDBALL(R.string.today_filter_handball, "handball", sport = SportType.HANDBALL),
     RUGBY(R.string.today_filter_rugby, "rugby", sport = SportType.RUGBY),
     VOLLEYBALL(R.string.today_filter_volleyball, "volleyball", sport = SportType.VOLLEYBALL),
+    NFL(R.string.today_filter_nfl, "nfl", sport = SportType.AMERICAN_FOOTBALL),
+    MMA(R.string.today_filter_mma, "mma", sport = SportType.MMA),
+    FORMULA_1(R.string.today_filter_formula1, "formula1", sport = SportType.FORMULA_1),
+    NBA(R.string.today_filter_nba, "nba", sport = SportType.NBA),
     WATCHABLE(R.string.today_filter_watchable, "watchable", icon = TvIcons.Play),
     FAVOURITES(R.string.today_filter_favourites, "favourites", icon = TvIcons.StarOutline),
 }
@@ -1006,6 +1010,10 @@ private fun SportType.cardAccent(): Color {
         SportType.HANDBALL -> Color(0xFFFFC857)
         SportType.RUGBY -> Color(0xFF56D68B)
         SportType.VOLLEYBALL -> Color(0xFF6C9DFF)
+        SportType.AMERICAN_FOOTBALL -> Color(0xFFB08CFF)
+        SportType.MMA -> Color(0xFFFF7A59)
+        SportType.FORMULA_1 -> Color(0xFFFF4D4D)
+        SportType.NBA -> Color(0xFFFFB347)
     }
 }
 
@@ -2086,6 +2094,10 @@ private val String.quotaLabel: String
         "api-sports-handball" -> "HB"
         "api-sports-rugby" -> "R"
         "api-sports-volleyball" -> "V"
+        "api-sports-american-football" -> "NFL"
+        "api-sports-mma" -> "MMA"
+        "api-sports-formula-1" -> "F1"
+        "api-sports-nba" -> "NBA"
         else -> "API"
     }
 

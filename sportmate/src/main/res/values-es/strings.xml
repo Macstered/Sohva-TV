@@ -9,6 +9,10 @@
     <string name="today_filter_handball">Balonmano</string>
     <string name="today_filter_rugby">Rugby</string>
     <string name="today_filter_volleyball">Voleibol</string>
+    <string name="today_filter_nfl">Fútbol americano</string>
+    <string name="today_filter_mma">MMA</string>
+    <string name="today_filter_formula1">Fórmula 1</string>
+    <string name="today_filter_nba">NBA</string>
     <string name="today_filter_watchable">Visibles</string>
     <string name="today_filter_favourites">Favoritos</string>
     <string name="today_headline">DEPORTES DE HOY</string>

@@ -258,10 +258,15 @@
     <string name="sports_follow_handball">Handboll</string>
     <string name="sports_follow_rugby">Rugby</string>
     <string name="sports_follow_volleyball">Volleyboll</string>
+    <string name="sports_follow_nfl">Amerikansk fotboll</string>
+    <string name="sports_follow_mma">MMA</string>
+    <string name="sports_follow_formula1">Formel 1</string>
+    <string name="sports_follow_nba">NBA</string>
     <string name="sports_follow_enable_sport">Ta med sporten i Sohva Sport</string>
     <string name="sports_follow_disable_sport">Ta bort sporten från Sohva Sport</string>
     <string name="sports_competitions_loading">Läser in aktuella ligor och cuper…</string>
     <string name="sports_competitions_error">Tävlingslistan kunde inte läsas in. Kontrollera API-nyckeln och anslutningen.</string>
+    <string name="sports_competitions_none">Den här sporten har inga tävlingar att välja; alla dagens händelser visas.</string>
     <string name="sports_competitions_count">%1$d av %2$d tävlingar valda</string>
     <string name="sports_competitions_search">Sök liga, cup eller land</string>
     <string name="sports_competitions_results">%1$d resultat</string>

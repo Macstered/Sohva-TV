@@ -60,6 +60,10 @@ interface SportsRepository {
         SportType.HANDBALL,
         SportType.RUGBY,
         SportType.VOLLEYBALL,
+        SportType.AMERICAN_FOOTBALL,
+        SportType.MMA,
+        SportType.FORMULA_1,
+        SportType.NBA,
         -> throw SportsBackendException(CoreR.string.error_sport_unsupported_source)
     }
     suspend fun footballEvents(

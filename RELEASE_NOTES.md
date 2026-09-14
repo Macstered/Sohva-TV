@@ -1,33 +1,24 @@
-# Sohva TV 0.1.0-beta.14
+# Sohva TV 0.1.0-beta.15
 
-Prepared: **14 September 2026**. Android version code: **20**.
+Prepared: **15 September 2026**. Android version code: **22**.
 
-This beta reworks the **Home** screen and adds optional **Trakt** sync.
-Existing Live TV, Movies, Series, Sohva Sport and Discover remain available.
-No addons, subscriptions, channels, credentials or Trakt accounts are included.
+This beta makes every sport that API-Sports offers selectable in **Sohva
+Sport**. Live TV, Movies, Series, Home, Trakt and Discover are as in beta 14.
+No addons, subscriptions, channels, credentials or accounts are included.
 
-## New in beta 14
+## New in beta 15
 
-- **Home rework.** A fixed hero at the top describes whichever card is focused:
-  title, episode, minutes left, synopsis and artwork for movies and episodes;
-  the programme, its image and description for a channel; the fixture, score
-  and club crests for a match. The rows scroll under it on a fixed focus line.
-- **Continue watching in one row.** Movies and episodes from your library,
-  positions paused on Trakt, and Discover history, newest first, one card per
-  series. Series cards open on the episode you were watching.
-- **Trakt sync (optional).** Connect under Settings > Accounts with a code
-  shown on the TV. What you play in Movies, Series and Discover is recorded to
-  Trakt as it happens; Trakt's own progress and watched marks show on library
-  and Discover cards, and a title paused elsewhere resumes here from that
-  position. Matching is by TMDB/IMDb identifier only.
-- **Watch next and Recommended for you rows** from Trakt: the next unwatched
-  episode of the shows you have been watching, and Trakt's picks for you. A
-  card opens the title in your library when you have it, otherwise looks it up
-  in your Discover addons. Synopses come from TMDB in your interface language.
-- **A match card opens its fixture** in Sohva Sport rather than the day's list.
-- **New logo** on the launcher banner, the icon and the launch screen, and a
-  new Home background.
-- Episode labels read S1 E2 in English and K1 J2 in Finnish throughout.
+- **Four more sports.** American football (the NFL feed, with NFL and college
+  competitions), MMA, Formula 1 and the NBA's own feed join football, ice
+  hockey, basketball, baseball, AFL, handball, rugby and volleyball under
+  Settings > Sohva Sport.
+- **Sports without competitions.** MMA, Formula 1 and NBA have no league list
+  at the provider; following one shows every event of the day, and Settings
+  says so instead of listing zero competitions.
+- **Fights, sessions and games on cards.** A fight shows both fighters and the
+  weight class. A Formula 1 session shows the Grand Prix, the circuit and the
+  session type, with the lap count while a race is on. NBA games show the
+  score and skip the summer leagues.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -35,10 +26,9 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 20 uses the existing production signing identity.
-The IPTV database moves from version 26 to 29 and the Discover progress
-database from 1 to 4; both migrate in place and keep every position and
-setting. No data is copied from a separate Lab app. Trakt is off until you
+published. Android build 22 uses the existing production signing identity.
+The IPTV database stays at version 29 and the Discover progress database at
+4; no migration runs. No data is copied from a separate Lab app. Trakt is off until you
 connect an account.
 
 The existing password-protected `.smbak` backup **does not include Discover

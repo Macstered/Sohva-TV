@@ -9,7 +9,23 @@ enum class SportType {
     HANDBALL,
     RUGBY,
     VOLLEYBALL,
+    AMERICAN_FOOTBALL,
+    MMA,
+    FORMULA_1,
+    NBA,
 }
+
+/**
+ * Whether the provider organises this sport into leagues and cups a viewer
+ * can follow one by one. MMA fight cards, Formula 1 weekends and the NBA's
+ * own feed have no such list: every event of the day is shown once the sport
+ * is followed.
+ */
+val SportType.hasCompetitions: Boolean
+    get() = when (this) {
+        SportType.MMA, SportType.FORMULA_1, SportType.NBA -> false
+        else -> true
+    }
 
 enum class TodayEventStatus {
     LIVE,

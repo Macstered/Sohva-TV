@@ -211,6 +211,10 @@ internal val SportType.settingsLabelRes: Int
         SportType.HANDBALL -> R.string.sports_follow_handball
         SportType.RUGBY -> R.string.sports_follow_rugby
         SportType.VOLLEYBALL -> R.string.sports_follow_volleyball
+        SportType.AMERICAN_FOOTBALL -> R.string.sports_follow_nfl
+        SportType.MMA -> R.string.sports_follow_mma
+        SportType.FORMULA_1 -> R.string.sports_follow_formula1
+        SportType.NBA -> R.string.sports_follow_nba
     }
 
 internal fun formatEpgOffset(minutes: Int): String {

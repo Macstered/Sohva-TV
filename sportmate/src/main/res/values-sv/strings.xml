@@ -9,6 +9,10 @@
     <string name="today_filter_handball">Handboll</string>
     <string name="today_filter_rugby">Rugby</string>
     <string name="today_filter_volleyball">Volleyboll</string>
+    <string name="today_filter_nfl">Amerikansk fotboll</string>
+    <string name="today_filter_mma">MMA</string>
+    <string name="today_filter_formula1">Formel 1</string>
+    <string name="today_filter_nba">NBA</string>
     <string name="today_filter_watchable">Går att se</string>
     <string name="today_filter_favourites">Favoriter</string>
     <string name="today_headline">DAGENS SPORT</string>

@@ -258,10 +258,15 @@
     <string name="sports_follow_handball">Käsipallo</string>
     <string name="sports_follow_rugby">Rugby</string>
     <string name="sports_follow_volleyball">Lentopallo</string>
+    <string name="sports_follow_nfl">Amerikkalainen jalkapallo</string>
+    <string name="sports_follow_mma">MMA</string>
+    <string name="sports_follow_formula1">Formula 1</string>
+    <string name="sports_follow_nba">NBA</string>
     <string name="sports_follow_enable_sport">Ota laji mukaan Sohva Sportiin</string>
     <string name="sports_follow_disable_sport">Poista laji Sohva Sportista</string>
     <string name="sports_competitions_loading">Haetaan nykyisiä sarjoja ja cup-kilpailuja…</string>
     <string name="sports_competitions_error">Kilpailulistaa ei voitu hakea. Tarkista API-avain ja verkkoyhteys.</string>
+    <string name="sports_competitions_none">Tällä lajilla ei ole valittavia sarjoja; kaikki päivän tapahtumat näytetään.</string>
     <string name="sports_competitions_count">Valittu %1$d / %2$d kilpailua</string>
     <string name="sports_competitions_search">Hae sarjaa, cupia tai maata</string>
     <string name="sports_competitions_results">%1$d hakutulosta</string>

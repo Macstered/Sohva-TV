@@ -1,7 +1,24 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.14 (20)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.15 (22)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 15: every API-Sports sport
+
+1. Open **Settings > Sohva Sport > Choose followed sports and competitions**.
+   The tab row now ends with **American football**, **MMA**, **Formula 1** and
+   **NBA**. Include one or more and check the Sohva Sport screen gains a tab
+   for each.
+2. American football lists NFL and college leagues as competitions like any
+   other team sport. MMA, Formula 1 and NBA have no competition list; the
+   page says so and every event of the day is shown.
+3. On a day with events, check that a fight shows both fighters and the
+   weight class, that a Formula 1 session shows the Grand Prix, the circuit
+   and the session type (practice, qualifying, race) with the lap count while
+   live, and that an NBA game shows the score. Report a sport that stays
+   empty on a day the provider clearly has events, with the sport and time.
+4. Play a matched channel from one of the new sports' cards and check that
+   Back returns to the card.
 
 ## Beta 14: Home and Trakt first session
 
@@ -203,7 +220,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.14 (20)
+Version: 0.1.0-beta.15 (22)
 Device model:
 Android / Google TV version:
 Fresh install or update:
