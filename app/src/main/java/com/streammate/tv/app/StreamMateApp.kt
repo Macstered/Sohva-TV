@@ -21,6 +21,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -121,22 +125,39 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
     val appPreferences by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
         initialValue = AppPreferences(),
     )
-    // Discover's part-watched titles for Home's Continue Watching row, re-read each time Home comes up.
-    var discoverHistory by remember { mutableStateOf<List<com.sohva.tv.addons.AddonWatchProgress>>(emptyList()) }
-    LaunchedEffect(destination, appPreferences.activeProfileId, addonFeature) {
-        if (destination != Destination.Home) return@LaunchedEffect
-        discoverHistory = if (addonFeature == null || appPreferences.activeRestriction.restricted) emptyList() else runCatching {
-            com.streammate.tv.addons.AddonHost.get(context, container).progress.recent(appPreferences.activeProfileId)
-                .filter { !it.completed && it.resumePositionMillis > 0L }
-        }.getOrDefault(emptyList())
+    val retainedResume by container.homeResume.state.collectAsStateWithLifecycle()
+    val discoverAllowed = container.runtimePolicy.addonsAllowed && !container.demoMode && !appPreferences.activeRestriction.restricted
+    val homeResume = retainedResume.takeIf {
+        it.profileId == appPreferences.activeProfileId && it.discoverAllowed == discoverAllowed
+    } ?: com.streammate.tv.feature.home.HomeResumeSnapshot(appPreferences.activeProfileId, discoverAllowed = discoverAllowed)
+    val initialTraktHistoryPending by key(appPreferences.activeProfileId) {
+        remember(container, appPreferences.activeProfileId) { container.trakt.initialHistoryPending(appPreferences.activeProfileId) }
+            .collectAsStateWithLifecycle(initialValue = false)
     }
-    val traktNextUp by remember(appPreferences.activeProfileId) { container.trakt.nextUp(appPreferences.activeProfileId) }
-        .collectAsStateWithLifecycle(initialValue = emptyList())
-    val traktRecommendations by remember(appPreferences.activeProfileId) { container.trakt.recommendations(appPreferences.activeProfileId) }
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val traktNextUp by key(appPreferences.activeProfileId) {
+        val profile = appPreferences.activeProfileId
+        remember(container, profile) {
+            kotlinx.coroutines.flow.flow {
+                container.homeResume.awaitInitial(profile)
+                emitAll(container.trakt.nextUp(profile))
+            }.flowOn(Dispatchers.IO)
+        }.collectAsStateWithLifecycle(initialValue = emptyList())
+    }
+    val traktRecommendations by key(appPreferences.activeProfileId) {
+        val profile = appPreferences.activeProfileId
+        remember(container, profile) {
+            kotlinx.coroutines.flow.flow {
+                container.homeResume.awaitInitial(profile)
+                emitAll(container.trakt.recommendations(profile))
+            }.flowOn(Dispatchers.IO)
+        }.collectAsStateWithLifecycle(initialValue = emptyList())
+    }
     // Trakt's cached state follows the active profile; a change of viewer restarts the loop for theirs.
     LaunchedEffect(container, profileChosen, appPreferences.activeProfileId) {
-        if (profileChosen) container.trakt.runSync(appPreferences.activeProfileId)
+        if (profileChosen) {
+            container.homeResume.awaitInitial(appPreferences.activeProfileId)
+            container.trakt.runSync(appPreferences.activeProfileId)
+        }
     }
     // Home may shrink the picture to a corner only while a stream is on screen and the viewer allows it.
     LaunchedEffect(destination, appPreferences.pictureInPictureEnabled) {
@@ -416,6 +437,9 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 matchingRepository = container.eventChannelMatchingRepository,
                 preferencesRepository = container.preferencesRepository,
                 automaticRefreshAllowed = container.runtimePolicy.automaticSportsRefreshAllowed,
+                beforeInitialRefresh = {
+                    container.homeResume.awaitInitial()
+                },
             )
         },
     )
@@ -571,7 +595,9 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
                 },
                 onPlayChannel = ::playChannel,
                 onPlayVod = ::playVodFromHome,
-                discoverHistory = discoverHistory,
+                resumeSnapshot = homeResume,
+                onRetryResume = container.homeResume::retry,
+                initialTraktHistoryPending = initialTraktHistoryPending && !appPreferences.activeRestriction.restricted,
                 onOpenDiscoverTitle = { navigateTo(Destination.DiscoverTitle(it)) },
                 metadataRepository = container.metadataRepository,
                 nextUp = if (appPreferences.activeRestriction.restricted) emptyList() else traktNextUp,

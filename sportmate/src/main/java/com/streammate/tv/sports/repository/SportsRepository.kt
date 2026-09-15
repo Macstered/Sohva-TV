@@ -46,6 +46,9 @@ class SportsBackendException(
 ) : LocalizedException(messageResource, messageArguments, logMessage, cause)
 
 interface SportsRepository {
+    /** The persisted feed, when still usable, without waiting for a network refresh. */
+    suspend fun cachedEvents(sport: SportType, date: LocalDate, zoneId: ZoneId, selectedCompetitionIds: Set<String>): SportsEventsSnapshot? = null
+
     suspend fun events(
         sport: SportType,
         date: LocalDate,

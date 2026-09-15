@@ -19,6 +19,8 @@ import com.streammate.tv.sports.repository.SportsEventsSnapshot
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlinx.coroutines.CancellationException
+import com.streammate.tv.core.concurrent.parallelResults
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,6 +66,7 @@ class TodayViewModel(
     initialZoneId: ZoneId = ZoneId.of("Europe/Helsinki"),
     private val clock: Clock = Clock.systemUTC(),
     private val automaticRefreshAllowed: Boolean = true,
+    private val beforeInitialRefresh: suspend () -> Unit = {},
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow(TodayUiState(isLoading = automaticRefreshAllowed))
     val uiState: StateFlow<TodayUiState> = mutableUiState.asStateFlow()
@@ -79,6 +82,7 @@ class TodayViewModel(
 
     init {
         viewModelScope.launch {
+            beforeInitialRefresh()
             preferencesRepository.preferences.collectLatest { preferences ->
                 val nextZone = runCatching { ZoneId.of(preferences.timeZoneId) }.getOrDefault(initialZoneId)
                 val feedChanged = !settingsLoaded ||
@@ -117,11 +121,17 @@ class TodayViewModel(
                     requestedZone = requestedZone,
                     requestedSports = requestedSports,
                     requestedCompetitionKeys = requestedCompetitionKeys,
+                    onPartial = { loaded ->
+                        mutableUiState.update { current -> current.copy(
+                            events = loaded.events.map { it.copy(isFavourite = it.id in favouriteEventIds) },
+                            cacheState = loaded.cacheState, providerQuotas = loaded.providerQuotas,
+                            quotaRemaining = loaded.quotaRemaining,
+                        ) }
+                    },
                 )
             }.onSuccess { loaded ->
-                val matches = runCatching {
-                    matchingRepository.matchesFor(loaded.events)
-                }.getOrElse { loaded.events.associate { it.id to emptyList() } }
+                // Publish the feed before optional channel matching, which may scan a large line-up.
+                val matches = mutableUiState.value.matches.filterKeys { key -> loaded.events.any { it.id == key } }
                 mutableUiState.value = TodayUiState(
                     events = withMatchCounts(loaded.events, matches),
                     isLoading = false,
@@ -138,7 +148,12 @@ class TodayViewModel(
                 )
                 lastLoadedAtEpochMillis = clock.millis()
                 scheduleAutoRefresh(loaded.events)
+                val refreshedMatches = try { matchingRepository.matchesFor(loaded.events) }
+                    catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { matches }
+                mutableUiState.update { it.copy(events = withMatchCounts(loaded.events, refreshedMatches), matches = refreshedMatches) }
             }.onFailure {
+                if (it is CancellationException) throw it
                 mutableUiState.update { current ->
                     current.copy(
                         isLoading = false,
@@ -155,44 +170,37 @@ class TodayViewModel(
         requestedZone: ZoneId,
         requestedSports: Set<SportType>,
         requestedCompetitionKeys: Set<String>,
+        onPartial: (CombinedEventsSnapshot) -> Unit,
     ): CombinedEventsSnapshot {
-        val results = buildList {
-            fun selectedIds(sport: SportType): Set<String> {
-                val prefix = "${sport.name}:"
-                return requestedCompetitionKeys
-                    .asSequence()
-                    .filter { it.startsWith(prefix) }
-                    .map { it.removePrefix(prefix) }
-                    .filter(String::isNotBlank)
-                    .toSet()
-            }
-            requestedSports.forEach { sport ->
-                selectedIds(sport).takeIf { it.isNotEmpty() }?.let { ids ->
-                    add(runCatching { repository.events(sport, date, requestedZone, ids) })
-                }
-            }
+        val feeds = requestedSports.mapNotNull { sport ->
+            val prefix = "${sport.name}:"
+            val ids = requestedCompetitionKeys.filter { it.startsWith(prefix) }.map { it.removePrefix(prefix) }.filter(String::isNotBlank).toSet()
+            ids.takeIf { it.isNotEmpty() }?.let { sport to it }
         }
-        if (results.isEmpty()) {
+        val snapshots = linkedMapOf<SportType, SportsEventsSnapshot>()
+        var failures = 0
+        var failure: Throwable? = null
+        fun combined(): CombinedEventsSnapshot {
+            val values = snapshots.values.toList()
             return CombinedEventsSnapshot(
-                events = emptyList(),
-                cacheState = "hit",
-                quotaRemaining = null,
-                providerQuotas = emptyMap(),
-                isPartial = false,
+                events = feeds.flatMap { snapshots[it.first]?.events.orEmpty() },
+                cacheState = values.map { it.cacheState }.distinct().singleOrNull() ?: if (values.isEmpty()) "hit" else "mixed",
+                quotaRemaining = values.mapNotNull { it.quotaRemaining }.minOrNull(),
+                providerQuotas = values.mapNotNull { snapshot -> snapshot.quotaRemaining?.let { snapshot.source to it } }.toMap(),
+                isPartial = failures > 0,
             )
         }
-        val snapshots = results.mapNotNull { it.getOrNull() }
-        if (snapshots.isEmpty()) throw results.firstNotNullOf { it.exceptionOrNull() }
-        val cacheStates = snapshots.map(SportsEventsSnapshot::cacheState).distinct()
-        return CombinedEventsSnapshot(
-            events = snapshots.flatMap(SportsEventsSnapshot::events),
-            cacheState = cacheStates.singleOrNull() ?: "mixed",
-            quotaRemaining = snapshots.mapNotNull(SportsEventsSnapshot::quotaRemaining).minOrNull(),
-            providerQuotas = snapshots.mapNotNull { snapshot ->
-                snapshot.quotaRemaining?.let { remaining -> snapshot.source to remaining }
-            }.toMap(),
-            isPartial = snapshots.size != results.size,
-        )
+        feeds.parallelResults { (sport, ids) -> repository.cachedEvents(sport, date, requestedZone, ids) }.collect { (feed, result) ->
+            result.getOrNull()?.let { snapshots[feed.first] = it; onPartial(combined()) }
+        }
+        feeds.parallelResults { (sport, ids) -> repository.events(sport, date, requestedZone, ids) }.collect { (feed, result) ->
+            result.fold(
+                onSuccess = { snapshots[feed.first] = it; onPartial(combined()) },
+                onFailure = { failures++; failure = it },
+            )
+        }
+        if (snapshots.isEmpty() && failure != null) throw failure
+        return combined()
     }
 
     private fun scheduleAutoRefresh(events: List<TodayEvent>) {
@@ -323,9 +331,10 @@ class TodayViewModel(
             matchingRepository: EventChannelMatchingRepository,
             preferencesRepository: AppPreferencesRepository,
             automaticRefreshAllowed: Boolean = true,
+            beforeInitialRefresh: suspend () -> Unit = {},
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                TodayViewModel(repository, matchingRepository, preferencesRepository, automaticRefreshAllowed = automaticRefreshAllowed)
+                TodayViewModel(repository, matchingRepository, preferencesRepository, automaticRefreshAllowed = automaticRefreshAllowed, beforeInitialRefresh = beforeInitialRefresh)
             }
         }
     }

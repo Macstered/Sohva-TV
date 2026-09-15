@@ -67,17 +67,10 @@ fun MovieDetailsScreen(
 ) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
-    val progress by repository.observeProgress().collectAsStateWithLifecycle(initialValue = emptyMap())
     val scope = rememberCoroutineScope()
-    // Asked for by film rather than read out of the map by copy. The wall shows
-    // one card for a film carried by two playlists, and this page is reached
-    // through whichever copy stands for it - so the copy in hand may have no
-    // position of its own while the film is forty minutes in. Re-asked whenever
-    // anything is written, which is what keeps the bar right on the way back
-    // from the player.
-    val watchingProgress by produceState<WatchingProgress?>(null, movie.contentKey, progress) {
-        value = repository.progress(movie.contentKey)
-    }
+    val watchingProgress by remember(repository, movie.contentKey) {
+        repository.observeMovieProgress(movie.contentKey)
+    }.collectAsStateWithLifecycle(initialValue = null)
     val metadataLookup = remember(movie.contentKey, movie.name, movie.year) {
         MetadataLookup(
             mediaType = MetadataMediaType.MOVIE,

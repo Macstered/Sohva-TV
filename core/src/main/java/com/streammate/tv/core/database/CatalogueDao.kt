@@ -1069,6 +1069,24 @@ abstract class CatalogueDao {
     )
     abstract fun observeMovieProgress(profileId: String): Flow<List<PlaybackProgressEntity>>
 
+    @Query("""
+        SELECT * FROM playback_progress WHERE profileId = :profileId AND contentKey IN (:keys)
+        UNION
+        SELECT * FROM playback_progress WHERE profileId = :profileId AND workKey IN (:workKeys)
+    """)
+    abstract fun observeSelectedMovieProgress(profileId: String, keys: List<String>, workKeys: List<String>): Flow<List<PlaybackProgressEntity>>
+
+    @Query("""
+        SELECT progress.* FROM vod_episodes episode
+        CROSS JOIN playback_progress progress ON progress.profileId = :profileId
+            AND progress.contentKey = 'vod:episode:' || episode.sourceId || ':' || episode.episodeId
+        WHERE episode.sourceId = :sourceId AND episode.seriesId = :seriesId
+    """)
+    abstract fun observeSeriesProgress(profileId: String, sourceId: String, seriesId: String): Flow<List<PlaybackProgressEntity>>
+
+    @Query("SELECT externalId FROM catalogue_metadata_overrides WHERE contentKey = :contentKey LIMIT 1")
+    abstract fun observeMetadataExternalId(contentKey: String): Flow<String?>
+
     @Query(CONTINUE_WATCHING_SQL)
     abstract fun observeContinueWatching(profileId: String): Flow<List<ContinueWatchingRow>>
 

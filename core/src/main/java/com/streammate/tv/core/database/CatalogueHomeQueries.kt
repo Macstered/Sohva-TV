@@ -77,7 +77,7 @@ const val SERIES_HISTORY_CARDS_SQL = """
  * with no work key - anything watched before that existed, and every
  * episode - group by their own content key and so stand alone.
  */
-const val CONTINUE_WATCHING_SQL = """
+private const val LOCAL_CONTINUE_WATCHING_SQL = """
     SELECT contentKey, contentType, title, year, posterUrl, seriesName, seriesKey,
         seasonNumber, episodeNumber, positionMillis, durationMillis, completed,
         MAX(lastWatchedEpochMillis) AS lastWatchedEpochMillis
@@ -122,4 +122,18 @@ const val CONTINUE_WATCHING_SQL = """
     GROUP BY COALESCE(workKey, contentKey)
     ORDER BY lastWatchedEpochMillis DESC
     LIMIT 20
+"""
+
+/** Enrich only the bounded resume result, using the existing metadata primary key. */
+const val CONTINUE_WATCHING_SQL = """
+    SELECT resume.*, CASE WHEN EXISTS (
+        SELECT 1 FROM metadata_cache cache WHERE cache.provider = 'tmdb'
+            AND cache.mediaType = 'movie' AND cache.externalId = metadata.externalId
+    ) THEN CAST(metadata.externalId AS INTEGER) ELSE NULL END AS tmdbId
+    FROM (
+""" + LOCAL_CONTINUE_WATCHING_SQL + """
+    ) resume
+    LEFT JOIN catalogue_metadata_overrides metadata ON metadata.contentKey = resume.contentKey
+        AND resume.contentType = 'movie'
+    ORDER BY resume.lastWatchedEpochMillis DESC
 """

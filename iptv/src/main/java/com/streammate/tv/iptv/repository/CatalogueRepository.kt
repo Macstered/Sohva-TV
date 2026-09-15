@@ -45,6 +45,8 @@ import com.streammate.tv.iptv.metadata.MetadataMovieReference
 import com.streammate.tv.iptv.xtream.XtreamCatalogueSource
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
@@ -155,6 +157,8 @@ data class VodEpisode(
     val thumbnailUrl: String?,
 )
 
+data class MovieProgressTarget(val contentKey: String, val workKey: String?)
+
 data class WatchingProgress(
     val contentKey: String,
     val positionMillis: Long,
@@ -190,6 +194,11 @@ data class ContinueWatchingItem(
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
     val episodeTitle: String? = null,
+    /** Cached identity only; Home never resolves these over the network. */
+    val tmdbId: Long? = null,
+    val imdbId: String? = null,
+    /** Null for a library copy offered solely because Trakt has a paused position. */
+    val localWatchedAtMillis: Long? = progress.lastWatchedEpochMillis,
 )
 
 data class CatalogueCategory(
@@ -484,6 +493,35 @@ class CatalogueRepository(
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    fun observeMovieProgress(contentKey: String): Flow<WatchingProgress?> =
+        dao.observeMetadataExternalId(contentKey).distinctUntilChanged().flatMapLatest {
+            val target = MovieProgressTarget(contentKey, workKeyFor(contentKey))
+            observeSelectedMovieProgress(listOf(target)).map { it[contentKey] }
+        }.flowOn(Dispatchers.IO)
+
+    fun observeSelectedMovieProgress(targets: List<MovieProgressTarget>): Flow<Map<String, WatchingProgress>> {
+        if (targets.isEmpty()) return flowOf(emptyMap())
+        require(targets.size <= 200) { "Progress reads must be scoped to the visible cards" }
+        val keys = targets.map { it.contentKey }
+        val workKeys = targets.mapNotNull { it.workKey }.distinct()
+        return perProfile { profile ->
+            val local = dao.observeSelectedMovieProgress(profile, keys, workKeys).map { rows ->
+                targets.mapNotNull { target ->
+                    rows.filter { it.contentKey == target.contentKey || (target.workKey != null && it.workKey == target.workKey) }
+                        .maxByOrNull { it.lastWatchedEpochMillis }?.toDomain()?.copy(contentKey = target.contentKey)
+                        ?.let { target.contentKey to it }
+                }.toMap()
+            }
+            if (trakt == null) local else combine(local, trakt.observeSelectedMovies(profile, keys), ::mergeTrakt)
+        }.distinctUntilChanged().flowOn(Dispatchers.Default)
+    }
+
+    fun observeSeriesProgress(sourceId: String, seriesId: String): Flow<Map<String, WatchingProgress>> = perProfile { profile ->
+        val local = dao.observeSeriesProgress(profile, sourceId, seriesId).map { rows -> rows.associate { it.contentKey to it.toDomain() } }
+        if (trakt == null) local else combine(local, trakt.observeSelectedSeries(profile, sourceId, seriesId), ::mergeTrakt)
+    }.distinctUntilChanged().flowOn(Dispatchers.Default)
+
     /**
      * A local position stands when it is the newer of the two; otherwise Trakt's
      * pause or watched mark takes the card. A pause on Trakt outranks its own
@@ -497,7 +535,8 @@ class CatalogueRepository(
             if (own != null && own.lastWatchedEpochMillis >= row.updatedAtMillis) continue
             val inProgress = row.progress > 0.0 && row.progress < 100.0
             if (!inProgress && !row.watched) continue
-            val durationMillis = row.durationSeconds?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
+            val durationMillis = row.durationSeconds?.takeIf { it > 0 }?.let { it * 1000L }
+                ?: own?.durationMillis?.takeIf { it > 0 } ?: 0L
             merged[row.contentKey] = WatchingProgress(
                 contentKey = row.contentKey,
                 positionMillis = if (inProgress && durationMillis > 0) (durationMillis * row.progress / 100.0).toLong() else 0L,
@@ -515,24 +554,32 @@ class CatalogueRepository(
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
 
-    fun observeContinueWatching(): Flow<List<ContinueWatchingItem>> = perProfile { profile ->
+    fun observeContinueWatching(): Flow<List<ContinueWatchingItem>> = perProfile(::observeContinueWatching)
+
+    /** Explicit profile binding for Home's retained, combined VOD/Discover snapshot. */
+    fun observeContinueWatching(profile: String): Flow<List<ContinueWatchingItem>> {
         val local = dao.observeContinueWatching(profile).map { rows -> rows.map { it.toContinueWatchingItem() } }
-        if (trakt == null) local
+        return (if (trakt == null) local
         else combine(local, trakt.observeVodContinueWatching(profile)) { own, remote ->
             // A title paused on Trakt joins the row unless the same copy has a newer local position.
             val merged = own.associateBy { it.contentKey }.toMutableMap()
             for (row in remote) {
                 val existing = merged[row.contentKey]
-                if (existing != null && existing.progress.lastWatchedEpochMillis >= row.updatedAtMillis) continue
-                merged[row.contentKey] = row.toContinueWatchingItem()
+                if (existing != null && existing.progress.lastWatchedEpochMillis >= row.updatedAtMillis) {
+                    merged[row.contentKey] = existing.copy(tmdbId = row.tmdbId, imdbId = row.imdbId)
+                } else {
+                    merged[row.contentKey] = row.toContinueWatchingItem().copy(localWatchedAtMillis = existing?.localWatchedAtMillis)
+                }
             }
-            merged.values.sortedByDescending { it.progress.lastWatchedEpochMillis }.take(20)
+            // Both inputs are bounded to 20. Let Home collapse identities before applying its row limit.
+            merged.values.sortedByDescending { it.progress.lastWatchedEpochMillis }
         }
-    }
+        )
         // Children hopping between episodes would otherwise fill the row with one series.
         .map { items -> items.distinctBy { it.groupKey } }
         .distinctUntilChanged()
         .flowOn(Dispatchers.Default)
+    }
 
     private fun TraktContinueRow.toContinueWatchingItem(): ContinueWatchingItem {
         val durationMillis = durationSeconds?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
@@ -543,6 +590,9 @@ class CatalogueRepository(
             posterUrl = posterUrl,
             groupKey = seriesKey ?: contentKey,
             seasonNumber = seasonNumber, episodeNumber = episodeNumber, episodeTitle = seriesName?.let { title },
+            tmdbId = tmdbId,
+            imdbId = imdbId,
+            localWatchedAtMillis = null,
             progress = WatchingProgress(
                 contentKey = contentKey,
                 positionMillis = if (durationMillis > 0) (durationMillis * progress / 100.0).toLong() else 0L,
@@ -565,6 +615,7 @@ class CatalogueRepository(
                 posterUrl = row.posterUrl,
                 groupKey = row.seriesKey ?: row.contentKey,
                 seasonNumber = row.seasonNumber, episodeNumber = row.episodeNumber, episodeTitle = row.seriesName?.let { row.title },
+                tmdbId = row.tmdbId?.takeIf { it > 0 },
                 progress = WatchingProgress(
                     contentKey = row.contentKey,
                     positionMillis = row.positionMillis,
@@ -759,53 +810,62 @@ class CatalogueRepository(
         )
     }
 
-    suspend fun search(query: String, limitPerType: Int = 40): List<CatalogueSearchResult> {
+    suspend fun search(query: String, limitPerType: Int = 40, type: CatalogueSearchType? = null): List<CatalogueSearchResult> = coroutineScope {
         val normalized = query.trim().take(MAX_SEARCH_QUERY_LENGTH)
-        if (normalized.length < MIN_SEARCH_QUERY_LENGTH) return emptyList()
+        if (normalized.length < MIN_SEARCH_QUERY_LENGTH) return@coroutineScope emptyList()
         val limit = limitPerType.coerceIn(1, MAX_SEARCH_RESULTS_PER_TYPE)
         val restriction = organization?.currentRestriction() ?: ProfileRestriction.NONE
-        val movies = dao.searchMovies(normalized, limit).filter { movie ->
-            restriction.allows(LibraryRoom.MOVIES, movie.organizationGroupKey)
-        }.map { movie ->
-            val domain = movie.toDomain()
-            CatalogueSearchResult(
-                type = CatalogueSearchType.MOVIE,
-                sourceId = movie.sourceId,
-                itemId = movie.movieId,
-                contentKey = contentKey(VodContentType.MOVIE, movie.sourceId, movie.movieId),
-                title = movie.name,
-                subtitle = listOfNotNull(domain.categoryName, domain.year?.toString()).joinToString(" · "),
-                posterUrl = movie.posterUrl,
-                movie = domain,
-            )
+        val movies = async(Dispatchers.Default) {
+            if (type != null && type != CatalogueSearchType.MOVIE) return@async emptyList<CatalogueSearchResult>()
+            dao.searchMovies(normalized, limit).filter { movie ->
+                restriction.allows(LibraryRoom.MOVIES, movie.organizationGroupKey)
+            }.map { movie ->
+                val domain = movie.toDomain()
+                CatalogueSearchResult(
+                    type = CatalogueSearchType.MOVIE,
+                    sourceId = movie.sourceId,
+                    itemId = movie.movieId,
+                    contentKey = contentKey(VodContentType.MOVIE, movie.sourceId, movie.movieId),
+                    title = movie.name,
+                    subtitle = listOfNotNull(domain.categoryName, domain.year?.toString()).joinToString(" · "),
+                    posterUrl = movie.posterUrl,
+                    movie = domain,
+                )
+            }
         }
-        val series = dao.searchSeries(normalized, limit).filter { item ->
-            restriction.allows(LibraryRoom.SERIES, item.organizationGroupKey)
-        }.map { item ->
-            val domain = item.toDomain()
-            CatalogueSearchResult(
-                type = CatalogueSearchType.SERIES,
-                sourceId = item.sourceId,
-                itemId = item.seriesId,
-                contentKey = null,
-                title = item.name,
-                subtitle = listOfNotNull(domain.categoryName, domain.year?.toString()).joinToString(" · "),
-                posterUrl = item.posterUrl,
-                series = domain,
-            )
+        val series = async(Dispatchers.Default) {
+            if (type != null && type != CatalogueSearchType.SERIES) return@async emptyList<CatalogueSearchResult>()
+            dao.searchSeries(normalized, limit).filter { item ->
+                restriction.allows(LibraryRoom.SERIES, item.organizationGroupKey)
+            }.map { item ->
+                val domain = item.toDomain()
+                CatalogueSearchResult(
+                    type = CatalogueSearchType.SERIES,
+                    sourceId = item.sourceId,
+                    itemId = item.seriesId,
+                    contentKey = null,
+                    title = item.name,
+                    subtitle = listOfNotNull(domain.categoryName, domain.year?.toString()).joinToString(" · "),
+                    posterUrl = item.posterUrl,
+                    series = domain,
+                )
+            }
         }
-        val episodes = dao.searchEpisodes(normalized, limit).map { episode ->
-            CatalogueSearchResult(
-                type = CatalogueSearchType.EPISODE,
-                sourceId = episode.sourceId,
-                itemId = episode.episodeId,
-                contentKey = contentKey(VodContentType.EPISODE, episode.sourceId, episode.episodeId),
-                title = episode.episodeName,
-                subtitle = "${episode.seriesName} · K${episode.seasonNumber} J${episode.episodeNumber}",
-                posterUrl = episode.seriesPosterUrl,
-            )
+        val episodes = async(Dispatchers.Default) {
+            if (type != null && type != CatalogueSearchType.EPISODE) return@async emptyList<CatalogueSearchResult>()
+            dao.searchEpisodes(normalized, limit).map { episode ->
+                CatalogueSearchResult(
+                    type = CatalogueSearchType.EPISODE,
+                    sourceId = episode.sourceId,
+                    itemId = episode.episodeId,
+                    contentKey = contentKey(VodContentType.EPISODE, episode.sourceId, episode.episodeId),
+                    title = episode.episodeName,
+                    subtitle = "${episode.seriesName} · K${episode.seasonNumber} J${episode.episodeNumber}",
+                    posterUrl = episode.seriesPosterUrl,
+                )
+            }
         }
-        return movies + series + episodes
+        movies.await() + series.await() + episodes.await()
     }
 
     suspend fun updateProgress(contentKey: String, positionMillis: Long, durationMillis: Long) {

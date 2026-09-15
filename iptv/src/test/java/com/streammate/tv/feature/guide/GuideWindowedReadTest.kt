@@ -44,7 +44,26 @@ class GuideWindowedReadTest {
         assertTrue(merged[0].programmes.isEmpty())
         assertEquals(listOf(programme), merged[1].programmes)
         assertTrue(merged[2].programmes.isEmpty())
-        assertSame(rows, mergeProgrammes(rows, emptyMap()))
+        assertSame(rows[0], mergeProgrammes(rows, emptyMap())[0])
+    }
+
+    @Test fun largeGuideCopiesOnlyRequestedRowsAndBoundsProgrammeRetention() {
+        var reads = 0
+        val channels = object : AbstractList<GuideTimelineChannel>() {
+            override val size = 56_000
+            override fun get(index: Int): GuideTimelineChannel { reads++; return channel("c$index") }
+        }
+        var cache = emptyMap<String, List<GuideTimelineProgramme>>()
+        repeat(100) { window -> cache = retainProgrammeWindow(cache, (window * 10 until window * 10 + 80).map { channel("c$it") }) }
+        assertEquals(240, cache.size)
+        assertTrue("c0" !in cache)
+        assertTrue("c1069" in cache)
+        val started = System.nanoTime()
+        val merged = mergeProgrammes(channels, cache)
+        assertEquals(0, reads)
+        repeat(10) { merged[1000 + it] }
+        assertEquals(10, reads)
+        println("56000-channel guide: overlay plus ten visible rows ${(System.nanoTime() - started) / 1_000_000.0} ms; retained ${cache.size} programme rows")
     }
 
     private fun channel(id: String) = GuideTimelineChannel(

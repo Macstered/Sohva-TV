@@ -63,94 +63,56 @@ data class TraktContinueRow(
     val durationSeconds: Int?,
     val progress: Double,
     val updatedAtMillis: Long,
+    val tmdbId: Long? = null,
+    val imdbId: String? = null,
 )
 
 @Dao
 abstract class TraktStateDao {
-    /**
-     * Paused Trakt titles the library carries, for Home's Continue Watching.
-     * Joined through the base tables rather than the organization views, which
-     * scan the whole catalogue when joined.
-     */
-    @Query(
-        """
-        SELECT metadata.contentKey AS contentKey, 'movie' AS contentType, movie.name AS title, movie.year AS year,
-            movie.posterUrl AS posterUrl, NULL AS seriesName, NULL AS seriesKey, NULL AS seasonNumber, NULL AS episodeNumber,
-            NULL AS durationSeconds, state.progress AS progress, state.updatedAtMillis AS updatedAtMillis
-        FROM trakt_state state
-        INNER JOIN catalogue_metadata_overrides metadata ON metadata.externalId = CAST(state.tmdb AS TEXT)
-        INNER JOIN vod_movies movie ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-        INNER JOIN iptv_source_state source ON source.sourceId = movie.sourceId AND source.enabled = 1
-        INNER JOIN import_state import ON import.sourceId = movie.sourceId AND import.kind = 'catalogue' AND import.activeSnapshotId = movie.snapshotId
-        WHERE state.profileId = :profileId AND state.kind = 'movie' AND state.tmdb IS NOT NULL
-            AND state.progress > 0 AND state.progress < 100
-        UNION ALL
-        SELECT 'vod:episode:' || episode.sourceId || ':' || episode.episodeId AS contentKey, 'episode' AS contentType,
-            episode.name AS title, NULL AS year, item.posterUrl AS posterUrl, item.name AS seriesName, metadata.contentKey AS seriesKey,
-            episode.seasonNumber AS seasonNumber, episode.episodeNumber AS episodeNumber,
-            episode.durationSeconds AS durationSeconds, state.progress AS progress, state.updatedAtMillis AS updatedAtMillis
-        FROM trakt_state state
-        INNER JOIN catalogue_metadata_overrides metadata ON metadata.externalId = CAST(state.tmdb AS TEXT)
-            AND metadata.contentKey LIKE 'series:%'
-        INNER JOIN vod_episodes episode ON metadata.contentKey = 'series:' || episode.sourceId || ':' || episode.seriesId
-            AND episode.seasonNumber = state.season AND episode.episodeNumber = state.number
-        INNER JOIN vod_series item ON item.sourceId = episode.sourceId AND item.seriesId = episode.seriesId
-        INNER JOIN iptv_source_state source ON source.sourceId = item.sourceId AND source.enabled = 1
-        INNER JOIN import_state import ON import.sourceId = item.sourceId AND import.kind = 'catalogue' AND import.activeSnapshotId = item.snapshotId
-        WHERE state.profileId = :profileId AND state.kind = 'episode' AND state.tmdb IS NOT NULL
-            AND state.progress > 0 AND state.progress < 100
-            AND EXISTS (SELECT 1 FROM metadata_cache cache WHERE cache.provider = 'tmdb' AND cache.externalId = metadata.externalId)
-        ORDER BY updatedAtMillis DESC
-        LIMIT 20
-        """,
-    )
+    @Query(TRAKT_CONTINUE_WATCHING_SQL)
     abstract fun observeVodContinueWatching(profileId: String): Flow<List<TraktContinueRow>>
 
     @Query("SELECT * FROM trakt_state WHERE profileId = :profileId")
     abstract fun observe(profileId: String): Flow<List<TraktStateEntity>>
 
-    /**
-     * Trakt movies joined to the library's copies through the TMDB id the
-     * metadata lookup assigned. Movies are only ever matched by TMDB.
-     */
-    @Query(
-        """
-        SELECT metadata.contentKey AS contentKey, NULL AS durationSeconds,
-            state.progress AS progress, state.watched AS watched, state.updatedAtMillis AS updatedAtMillis
-        FROM trakt_state state
-        INNER JOIN catalogue_metadata_overrides metadata ON metadata.externalId = CAST(state.tmdb AS TEXT)
-        INNER JOIN vod_movies movie ON metadata.contentKey = 'vod:movie:' || movie.sourceId || ':' || movie.movieId
-        WHERE state.profileId = :profileId AND state.kind = 'movie' AND state.tmdb IS NOT NULL
-        """,
-    )
+    @Query(TRAKT_MOVIE_OVERLAY_SQL)
     abstract fun observeVodMovies(profileId: String): Flow<List<TraktVodStateRow>>
 
-    /**
-     * Trakt episodes joined to library episodes through the series' TMDB id and
-     * the season and episode numbers. Series can also be matched by TVmaze,
-     * whose numeric ids look the same, so the id must be one TMDB produced.
-     */
-    @Query(
-        """
-        SELECT 'vod:episode:' || episode.sourceId || ':' || episode.episodeId AS contentKey,
-            episode.durationSeconds AS durationSeconds,
-            state.progress AS progress, state.watched AS watched, state.updatedAtMillis AS updatedAtMillis
-        FROM trakt_state state
-        INNER JOIN catalogue_metadata_overrides metadata ON metadata.externalId = CAST(state.tmdb AS TEXT)
-            AND metadata.contentKey LIKE 'series:%'
-        INNER JOIN vod_episodes episode ON metadata.contentKey = 'series:' || episode.sourceId || ':' || episode.seriesId
-            AND episode.seasonNumber = state.season AND episode.episodeNumber = state.number
-        WHERE state.profileId = :profileId AND state.kind = 'episode' AND state.tmdb IS NOT NULL
-            AND EXISTS (SELECT 1 FROM metadata_cache cache WHERE cache.provider = 'tmdb' AND cache.externalId = metadata.externalId)
-        """,
-    )
+    @Query(TRAKT_EPISODE_OVERLAY_SQL)
     abstract fun observeVodEpisodes(profileId: String): Flow<List<TraktVodStateRow>>
+
+    @Query(TRAKT_SELECTED_MOVIES_SQL)
+    abstract fun observeSelectedMovies(profileId: String, contentKeys: List<String>): Flow<List<TraktVodStateRow>>
+
+    @Query(TRAKT_SELECTED_SERIES_SQL)
+    abstract fun observeSelectedSeries(profileId: String, sourceId: String, seriesId: String): Flow<List<TraktVodStateRow>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract suspend fun insertAll(rows: List<TraktStateEntity>)
 
     @Query("DELETE FROM trakt_state WHERE profileId = :profileId")
     abstract suspend fun deleteProfile(profileId: String)
+
+    @Query("SELECT * FROM trakt_state WHERE profileId=:profileId AND `key` IN (:keys)")
+    protected abstract suspend fun rowsForKeys(profileId: String, keys: List<String>): List<TraktStateEntity>
+
+    @Query("DELETE FROM trakt_state WHERE profileId=:profileId AND watched=0")
+    protected abstract suspend fun deleteUnwatched(profileId: String)
+
+    @Query("UPDATE trakt_state SET progress=0 WHERE profileId=:profileId AND progress!=0")
+    protected abstract suspend fun clearPausedPositions(profileId: String)
+
+    /** A complete playback response can refresh the row while the larger watched lists are still loading. */
+    @Transaction
+    open suspend fun replacePlayback(profileId: String, paused: List<TraktStateEntity>) {
+        val previous = paused.map { it.key }.chunked(500).flatMap { rowsForKeys(profileId, it) }.associateBy { it.key }
+        deleteUnwatched(profileId)
+        clearPausedPositions(profileId)
+        val merged = paused.map { row ->
+            previous[row.key]?.let { row.copy(watched = it.watched, plays = it.plays, updatedAtMillis = maxOf(row.updatedAtMillis, it.updatedAtMillis)) } ?: row
+        }
+        merged.chunked(500).forEach { insertAll(it) }
+    }
 
     /** The whole picture for a profile at once, so a card never sees half a sync. */
     @Transaction

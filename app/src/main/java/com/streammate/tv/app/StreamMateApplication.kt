@@ -21,6 +21,8 @@ class StreamMateApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         container = StreamMateContainer(this)
+        // Start the small cached resume read during the profile/startup transition.
+        container.homeResume
         if (!container.demoMode) installCatalogueMetadataLifecycle()
         // An update or a force-stop drops the alarm; the stored reminders
         // put it back on the next start.

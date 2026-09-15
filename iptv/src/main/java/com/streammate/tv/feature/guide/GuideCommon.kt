@@ -200,9 +200,32 @@ internal fun programmeWindowIds(
     return if (start >= end) emptyList() else ids.subList(start, end)
 }
 
-/** [rows] with the programmes read for them so far; rows nothing was read for keep none. */
+/** Stable ordering and its IDs are built together on a worker, independent of programme arrivals. */
+internal class GuideChannelRows(val channels: List<GuideTimelineChannel>) {
+    val ids = channels.map { it.id }
+}
+
+/** At most three prefetched scroll windows, refreshed in recency order. */
+internal fun retainProgrammeWindow(
+    previous: Map<String, List<GuideTimelineProgramme>>,
+    incoming: List<GuideTimelineChannel>,
+    limit: Int = 240,
+): Map<String, List<GuideTimelineProgramme>> = LinkedHashMap(previous).apply {
+    incoming.forEach { row -> remove(row.id); put(row.id, row.programmes) }
+    while (size > limit) remove(keys.first())
+}
+
+/** Copy only the rows requested by the lazy grid, never every channel on each programme emission. */
 internal fun mergeProgrammes(
     rows: List<GuideTimelineChannel>,
     programmes: Map<String, List<GuideTimelineProgramme>>,
-): List<GuideTimelineChannel> =
-    if (programmes.isEmpty()) rows else rows.map { row -> programmes[row.id]?.let { row.copy(programmes = it) } ?: row }
+): List<GuideTimelineChannel> = object : AbstractList<GuideTimelineChannel>() {
+    override val size: Int get() = rows.size
+    override fun get(index: Int): GuideTimelineChannel {
+        val row = rows[index]
+        return programmes[row.id]?.let { row.copy(programmes = it) } ?: row
+    }
+    // Compose keys must not compare all 50k rows merely because a window changed.
+    override fun equals(other: Any?): Boolean = this === other
+    override fun hashCode(): Int = System.identityHashCode(this)
+}

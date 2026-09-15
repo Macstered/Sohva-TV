@@ -129,4 +129,8 @@
         <item quantity="other">%1$d partite</item>
     </plurals>
     <string name="picture_in_picture_close">Chiudi</string>
+    <string name="home_resume_loading">Caricamento di Continua a guardare…</string>
+    <string name="home_resume_unavailable">Continua a guardare non disponibile. Seleziona per riprovare.</string>
+    <string name="home_trakt_first_sync">La cronologia di Trakt attende la prima sincronizzazione</string>
+    <string name="search_failed">Impossibile caricare alcuni risultati di ricerca.</string>
 </resources>

@@ -35,7 +35,8 @@ import com.streammate.tv.sports.repository.DirectSportsRepository
 import com.streammate.tv.sports.repository.SportsRepository
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -60,20 +61,6 @@ class StreamMateContainer(context: Context) {
     private val demoContentProvider = DemoContentProvider.load(applicationContext)
     val demoMode: Boolean = demoContentProvider != null
     val demoPlaybackArtworkUrl: String? = demoContentProvider?.playbackArtworkUrl(applicationContext)
-
-    init {
-        demoContentProvider?.let { provider ->
-            runBlocking(Dispatchers.IO) {
-                provider.seed(
-                    context = applicationContext,
-                    database = database,
-                    secretCipher = secretCipher,
-                    secretSettingsStore = secretSettingsStore,
-                    preferencesRepository = preferencesRepository,
-                )
-            }
-        }
-    }
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -103,11 +90,20 @@ class StreamMateContainer(context: Context) {
         activeProfile = preferencesRepository.preferences.map { it.activeProfileId }.distinctUntilChanged(),
         trakt = database.traktStateDao(),
     )
-    init {
-        // Complete the small, idempotent legacy preference import before any screen reads it.
-        runBlocking(Dispatchers.IO) { organizationRepository.migrateLegacy(preferencesRepository.preferences.first()) }
-        organizationScope.launch { organizationRepository.movieIdentityUpdates().collect() }
+    // Lazy so initialization cannot race construction of the repositories below.
+    private val initialization by lazy {
+        organizationScope.async {
+            val started = android.os.SystemClock.elapsedRealtime()
+            demoContentProvider?.seed(applicationContext, database, secretCipher, secretSettingsStore, preferencesRepository)
+            organizationRepository.migrateLegacy(preferencesRepository.preferences.first())
+            trakt.initialize()
+            DiagnosticsLog.i("startup", "local state ready: ${android.os.SystemClock.elapsedRealtime() - started} ms")
+            organizationScope.launch { organizationRepository.movieIdentityUpdates().collect() }
+        }
     }
+
+    suspend fun awaitReady() { initialization.await() }
+
     val metadataRepository = MetadataRepository(
         dao = database.metadataDao(),
         settingsStore = secretSettingsStore,
@@ -164,6 +160,17 @@ class StreamMateContainer(context: Context) {
     val trakt = com.streammate.tv.trakt.TraktService(applicationContext, secretCipher, database.traktStateDao(), offline = demoMode)
     val traktLibraryLookup = com.streammate.tv.trakt.TraktLibraryLookup(database.metadataDao(), catalogueRepository)
     val traktVodIdentity = com.streammate.tv.trakt.TraktVodIdentity(database.catalogueDao(), database.metadataDao(), catalogueRepository, metadataRepository)
+    internal val homeResume by lazy {
+        com.streammate.tv.feature.home.HomeResumeStore(
+            scope = organizationScope,
+            profiles = preferencesRepository.preferences.onStart { awaitReady() }.map {
+                com.streammate.tv.feature.home.HomeResumeProfile(it.activeProfileId, runtimePolicy.addonsAllowed && !demoMode && !it.activeRestriction.restricted)
+            },
+            vod = catalogueRepository::observeContinueWatching,
+            discover = { profile -> com.streammate.tv.addons.AddonHost.get(applicationContext, this).progress.observeRecent(profile) },
+            onInitialRead = { millis -> DiagnosticsLog.i("home", "cached resume ready: $millis ms") },
+        )
+    }
     val backupManager = StreamMateBackupManager(
         applicationContext,
         secretSettingsStore,

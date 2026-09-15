@@ -129,4 +129,8 @@
         <item quantity="other">%1$d Spiele</item>
     </plurals>
     <string name="picture_in_picture_close">Schließen</string>
+    <string name="home_resume_loading">„Weiterschauen“ wird geladen…</string>
+    <string name="home_resume_unavailable">„Weiterschauen“ ist nicht verfügbar. Zum Wiederholen auswählen.</string>
+    <string name="home_trakt_first_sync">Der Trakt-Verlauf wartet auf die erste Synchronisierung</string>
+    <string name="search_failed">Einige Suchergebnisse konnten nicht geladen werden.</string>
 </resources>

@@ -34,7 +34,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.catch
 
 @OptIn(UnstableApi::class)
 class StreamMatePlaybackService : MediaSessionService() {
@@ -43,6 +44,7 @@ class StreamMatePlaybackService : MediaSessionService() {
     private lateinit var mediaSession: MediaSession
     private lateinit var mediaSourceFactory: DefaultMediaSourceFactory
     private var activeBufferProfile = PlaybackBufferProfile.DEFAULT
+    private val bufferPreferencesReady = CompletableDeferred<Unit>()
     private var pendingBufferProfile: PlaybackBufferProfile? = null
     private var shuttingDown = false
     @Volatile private var activeSource: PlaybackSource? = null
@@ -58,11 +60,6 @@ class StreamMatePlaybackService : MediaSessionService() {
         val upstreamFactory = OkHttpDataSource.Factory(container.playbackHttpClient)
         val resolvingFactory = ResolvingDataSource.Factory(upstreamFactory, ::resolveDataSpec)
         mediaSourceFactory = DefaultMediaSourceFactory(resolvingFactory)
-        activeBufferProfile = runCatching {
-            runBlocking(Dispatchers.IO) {
-                container.preferencesRepository.preferences.first().playbackBufferProfile
-            }
-        }.getOrDefault(PlaybackBufferProfile.DEFAULT)
         player = createPlayer(activeBufferProfile)
         mediaSession = MediaSession.Builder(this, player)
             .setId(SESSION_ID)
@@ -72,7 +69,11 @@ class StreamMatePlaybackService : MediaSessionService() {
             container.preferencesRepository.preferences
                 .map { preferences -> preferences.playbackBufferProfile }
                 .distinctUntilChanged()
-                .collect { profile -> requestBufferProfile(profile) }
+                .catch { emit(PlaybackBufferProfile.DEFAULT) }
+                .collect { profile ->
+                    requestBufferProfile(profile)
+                    bufferPreferencesReady.complete(Unit)
+                }
         }
     }
 
@@ -250,6 +251,9 @@ class StreamMatePlaybackService : MediaSessionService() {
             }
             serviceScope.launch {
                 runCatching {
+                    container.awaitReady()
+                    // MediaSession cannot prepare the first item until this future completes.
+                    bufferPreferencesReady.await()
                     releaseActiveSource()
                     val extras = request.mediaMetadata.extras
                     val catchupStart = extras

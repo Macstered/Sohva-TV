@@ -10,14 +10,14 @@ to access.
 
 ## Download
 
-The prepared tester build is **0.1.0-beta.15 (build 22)**. It is an early beta, not
+The prepared tester build is **0.1.0-beta.16 (build 26)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.15)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.16)
 and verify the published SHA-256 value.
 
 - [Installation and setup](INSTALL.md)
 - [Testing and feedback](TESTING.md)
-- [Prepared beta 13 release notes](RELEASE_NOTES.md)
+- [Beta 16 release notes](RELEASE_NOTES.md)
 - [Discover setup and imports](ADDONS.md)
 - [Privacy policy](PRIVACY.md)
 - [Security reporting](SECURITY.md)
@@ -28,7 +28,7 @@ maintained application source is on `main`; future release tags will point to
 the corresponding source commit.
 
 This source snapshot is not itself an APK download. Use the numbered release
-only after it appears, and keep existing app data when updating from beta 12.
+only after it appears, and keep existing app data when updating from an earlier beta.
 Discover starts empty; the existing `.smbak` backup excludes Discover data.
 
 ## Build from source
@@ -49,13 +49,14 @@ On macOS or Linux, use `./gradlew` with the same tasks. A public clone contains
 no release signing key. Debug APKs are signed with the normal Android debug key;
 `assembleRelease` produces an unsigned verification build.
 
-The source is split into five modules:
+The source is split into six modules:
 
 - `app` — application shell, Home, navigation, scheduling, and packaging
 - `core` — database, models, security, preferences, and shared TV UI
 - `iptv` — source clients, guide, catalogue, metadata, settings, and playback
 - `sportmate` — sports retrieval, normalization, matching, and Sohva Sport UI
 - `addons` — independent addon protocol, catalog/search, Library and progress storage
+- `trakt` — optional Trakt account, progress and history integration
 
 Synthetic addon tests additionally use Node.js (phone-page built-in tests) and
 FFmpeg (generated test media), not bundled services or credentials. See the

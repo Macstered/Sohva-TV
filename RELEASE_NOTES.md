@@ -1,24 +1,27 @@
-# Sohva TV 0.1.0-beta.15
+# Sohva TV 0.1.0-beta.16
 
-Prepared: **15 September 2026**. Android version code: **22**.
+Prepared: **15 September 2026**. Android version code: **26**.
 
-This beta makes every sport that API-Sports offers selectable in **Sohva
-Sport**. Live TV, Movies, Series, Home, Trakt and Discover are as in beta 14.
-No addons, subscriptions, channels, credentials or accounts are included.
+This beta improves Home, startup, catalogue browsing, guide search, background
+loading and subtitle startup. No addons, subscriptions, channels, credentials
+or accounts are included.
 
-## New in beta 15
+## New in beta 16
 
-- **Four more sports.** American football (the NFL feed, with NFL and college
-  competitions), MMA, Formula 1 and the NBA's own feed join football, ice
-  hockey, basketball, baseball, AFL, handball, rugby and volleyball under
-  Settings > Sohva Sport.
-- **Sports without competitions.** MMA, Formula 1 and NBA have no league list
-  at the provider; following one shows every event of the day, and Settings
-  says so instead of listing zero competitions.
-- **Fights, sessions and games on cards.** A fight shows both fighters and the
-  weight class. A Formula 1 session shows the Grand Prix, the circuit and the
-  session type, with the lap count while a race is on. NBA games show the
-  score and skip the summer leagues.
+- **Continue Watching appears sooner.** Saved local, Discover and Trakt progress
+  loads before optional Home refreshes and artwork. Returning to Home reuses
+  the ready row, and later updates preserve your browsing position.
+- **One movie, one Continue Watching card.** Matching Discover and IPTV VOD
+  copies are combined, including copies a provider adds after you started
+  watching. Your resume position and viewing history are kept.
+- **Smoother startup and browsing.** Startup, movie and series progress, guide
+  updates and metadata requests do less work on the interface thread. Guide
+  search uses a faster indexed lookup.
+- **Rows arrive independently.** Ready Trakt sections, sports feeds and search
+  groups appear without waiting for unrelated slower requests.
+- **Less waiting for subtitles.** A matching primary-language subtitle can be
+  selected as soon as it arrives. Automatic selection has a five-second budget
+  before playback uses the existing fallback. Manual selection remains available.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -26,10 +29,10 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 22 uses the existing production signing identity.
+published. Android build 26 uses the existing production signing identity.
 The IPTV database stays at version 29 and the Discover progress database at
-4; no migration runs. No data is copied from a separate Lab app. Trakt is off until you
-connect an account.
+4; no migration runs. No data is copied from a separate Lab app. Existing Trakt connections are retained; on a new installation,
+Trakt is off until you connect an account.
 
 The existing password-protected `.smbak` backup **does not include Discover
 addons, Library, watch history, catalog order or visibility**. Keep your own

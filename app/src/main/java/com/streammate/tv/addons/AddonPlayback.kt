@@ -20,6 +20,7 @@ import com.sohva.tv.addons.*
 import com.streammate.tv.app.StreamMatePlaybackService
 import com.streammate.tv.app.AppPreferences
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
@@ -34,6 +35,16 @@ internal class AddonPlayback(
     private val artwork: AddonWatchArtwork? = null,
     episode: AddonVideo? = null,
 ) {
+    private var startupStartedMillis = android.os.SystemClock.elapsedRealtime()
+    internal val startupMilestones = linkedMapOf<String, Long>()
+    fun beginStartup() { startupStartedMillis = android.os.SystemClock.elapsedRealtime(); startupMilestones.clear() }
+    fun markStartup(name: String) {
+        if (name in startupMilestones) return
+        val elapsed = android.os.SystemClock.elapsedRealtime() - startupStartedMillis
+        startupMilestones[name] = elapsed
+        com.streammate.tv.core.diagnostics.DiagnosticsLog.i("addon-startup", "$name: $elapsed ms")
+    }
+
     private val traktItem = com.streammate.tv.trakt.TraktAddonIdentity.resolve(identity, episode)
     private val trakt = com.streammate.tv.trakt.TraktScrobbler(host.trakt, host.persistenceScope)
     /** A Trakt pause to pick up from, applied when the stream first reports its duration. */
@@ -116,7 +127,7 @@ internal class AddonPlayback(
             }
             override fun onPlaybackStateChanged(state: Int) {
                 ready = state == Player.STATE_READY
-                if (ready) everReady = true
+                if (ready) { everReady = true; markStartup("stream-ready") }
                 if (ready) pendingResumeFraction?.let { fraction ->
                     val duration = player.duration
                     if (duration > 0) { pendingResumeFraction = null; player.seekTo((duration * fraction).toLong().coerceIn(0L, duration)) }
@@ -124,9 +135,9 @@ internal class AddonPlayback(
                 if (state == Player.STATE_ENDED) { snapshot(ended = true); trakt.ended() }
             }
             override fun onPlayerError(error: PlaybackException) { failed = true; snapshot() }
-            override fun onRenderedFirstFrame() { firstFrameReady = true }
+            override fun onRenderedFirstFrame() { firstFrameReady = true; markStartup("first-frame") }
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) trakt.playing(percent()) else { snapshot(); trakt.paused(percent()) }
+                if (isPlaying) { markStartup("playing"); trakt.playing(percent()) } else { snapshot(); trakt.paused(percent()) }
             }
         })
     }
@@ -244,14 +255,17 @@ internal class AddonPlayback(
         // now, with no suspension before applying, so a late download cannot undo a seek/pause.
         prepareMedia(player.currentPosition.coerceAtLeast(0), player.playWhenReady)
     }
-    suspend fun loadSubtitleResults(refresh: Boolean = false) = subtitleMutex.withLock {
+    suspend fun loadSubtitleResults(refresh: Boolean = false, stopWhen: suspend () -> Boolean = { false }) = subtitleMutex.withLock {
         if (subtitleResultsLoaded && !refresh) return@withLock
         subtitleResultsLoading = true; subtitleResultsFailure = null; subtitleResults = emptyList()
         try {
-            host.sources.subtitles(profileId, selection.video, selection.stream.subtitleExtras()).collect { result ->
+            var stoppedEarly = false
+            host.sources.subtitles(profileId, selection.video, selection.stream.subtitleExtras()).takeWhile { result ->
                 subtitleResults = (subtitleResults.filterNot { it.installationId == result.installationId } + result).sortedBy { it.position }
-            }
-            subtitleResultsLoaded = true
+                stoppedEarly = stopWhen()
+                !stoppedEarly
+            }.collect { }
+            subtitleResultsLoaded = !stoppedEarly
         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (error: AddonException) { subtitleResultsFailure = error.failure }
         finally { subtitleResultsLoading = false }
@@ -275,21 +289,33 @@ internal class AddonPlayback(
             textOff = false
             player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).build()
         }
-        if (preferredLanguages.first() in embedded) { enableEmbedded(); return }
-        loadSubtitleResults()
-        if (manualSubtitleChoice || released || !foreground) return
-        for (language in preferredLanguages) {
-            if (language in embedded) { enableEmbedded(); return }
+        val primary = preferredLanguages.first()
+        if (primary in embedded) { enableEmbedded(); return }
+        val attempted = mutableSetOf<String>()
+        val attempts = mutableMapOf<String, Int>()
+        suspend fun tryLanguage(language: String): Boolean {
             val candidates = selection.stream.subtitles.filter { AddonSubtitlePolicy.language(it.language) == language }.map { it to null } +
                 subtitleResults.flatMap { provider -> provider.items.filter { AddonSubtitlePolicy.language(it.language) == language }.map { it to provider } }
-            for ((candidate, provider) in candidates.take(2)) {
-                if (manualSubtitleChoice || released || !foreground) return
+            for ((candidate, provider) in candidates) {
+                if ((attempts[language] ?: 0) >= 2) break
+                if (!attempted.add(addonSubtitleChoiceKey(candidate, provider?.installationId))) continue
+                if (manualSubtitleChoice || released || !foreground) return true
+                attempts[language] = (attempts[language] ?: 0) + 1
                 try {
                     setSubtitle(candidate, automatic = true, providerId = provider?.installationId) { validateSubtitleProvider(provider) }
-                    return
+                    return true
                 } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                catch (_: AddonException) { /* Try the next bounded matching candidate. Never block video playback. */ }
+                catch (_: AddonException) { /* The next bounded matching candidate may still work. */ }
             }
+            return false
+        }
+        // A stream-provided primary subtitle, or the first addon that finds one, need not wait for every provider.
+        if (tryLanguage(primary)) return
+        loadSubtitleResults(stopWhen = { manualSubtitleChoice || released || !foreground || tryLanguage(primary) })
+        if (manualSubtitleChoice || released || !foreground || subtitle != null) return
+        for (language in preferredLanguages) {
+            if (language in embedded) { enableEmbedded(); return }
+            if (tryLanguage(language)) return
         }
         if (!manualSubtitleChoice) {
             textOff = true

@@ -129,4 +129,8 @@
         <item quantity="other">%1$d partidas</item>
     </plurals>
     <string name="picture_in_picture_close">Fechar</string>
+    <string name="home_resume_loading">A carregar Continuar a ver…</string>
+    <string name="home_resume_unavailable">Continuar a ver indisponível. Selecione para tentar novamente.</string>
+    <string name="home_trakt_first_sync">O histórico do Trakt aguarda a primeira sincronização</string>
+    <string name="search_failed">Não foi possível carregar alguns resultados da pesquisa.</string>
 </resources>

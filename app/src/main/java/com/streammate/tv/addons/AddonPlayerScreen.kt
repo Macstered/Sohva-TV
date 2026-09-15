@@ -50,7 +50,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 @OptIn(UnstableApi::class)
 internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: AddonWatchIdentity, title: String,
     selection: AddonPlaybackSelection, resume: Boolean, onBack: () -> Unit, modifier: Modifier, artwork: AddonWatchArtwork? = null, startupLogo: String? = null,
-    subtitleStartupTimeoutMillis: Long = 20_000, episode: AddonVideo? = null) {
+    subtitleStartupTimeoutMillis: Long = AUTOMATIC_SUBTITLE_BUDGET_MILLIS, episode: AddonVideo? = null) {
     val labels = addonStrings()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -92,6 +92,7 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
     }
     LaunchedEffect(attempt, backgroundStopped, accessStopped) {
         if (backgroundStopped || accessStopped) return@LaunchedEffect
+        playback.beginStartup()
         busy = true; failure = null; loadingStage = labels(R.string.addon_ui_preparing_stream)
         try {
             if (attempt == 0) playback.start(resume, playWhenReady = false) else playback.retry(playWhenReady = false)
@@ -106,6 +107,7 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
                 true
             }
             if (subtitlesDone == null) playback.useEmbeddedSubtitleFallback()
+            playback.markStartup("subtitles-ready")
             loadingStage = labels(R.string.addon_ui_starting_playback)
             val frameReady = withTimeoutOrNull(20_000) { snapshotFlow {
                 playback.failed || (playback.ready && (playback.firstFrameReady || player.currentTracks.groups.none { it.type == C.TRACK_TYPE_VIDEO }))
@@ -267,3 +269,6 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
         }
     }
 }
+
+/** Enough for normal subtitle lookups; slow providers fall back without holding a ready stream for 20 seconds. */
+internal const val AUTOMATIC_SUBTITLE_BUDGET_MILLIS = 5_000L

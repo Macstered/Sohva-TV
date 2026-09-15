@@ -27,6 +27,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import com.streammate.tv.iptv.repository.MovieProgressTarget
+import com.streammate.tv.iptv.metadata.catalogueWorkKey
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,13 +132,6 @@ fun CatalogueBrowserV2(
         onDispose { activeSession.snapshot = store.state.value }
     }
     val state by store.state.collectAsStateWithLifecycle()
-    // Only the finished ones, and only for the viewer watching now. The set is
-    // as small as the viewing history, never the size of the catalogue.
-    val watchedContentKeys by remember(repository) {
-        repository.observeProgress().map { progress ->
-            progress.filterValues { it.completed }.keys
-        }
-    }.collectAsStateWithLifecycle(initialValue = emptySet())
     val organizationState by remember(repository) { repository.organization?.state ?: kotlinx.coroutines.flow.flowOf(com.streammate.tv.iptv.repository.OrganizationReadState()) }.collectAsStateWithLifecycle(initialValue = com.streammate.tv.iptv.repository.OrganizationReadState())
     val room = if (mode == CatalogueMode.MOVIES) com.streammate.tv.core.model.LibraryRoom.MOVIES else com.streammate.tv.core.model.LibraryRoom.SERIES
     val historyEnabled = organizationState.organization.shortcutEnabled(room, com.streammate.tv.core.model.ORGANIZATION_HISTORY)
@@ -164,7 +160,7 @@ fun CatalogueBrowserV2(
         hiddenPlaylistGroups = hiddenPlaylistGroups,
         onRefresh = onRefresh,
         onSetPlaylistGroupHidden = onSetPlaylistGroupHidden,
-        watchedContentKeys = watchedContentKeys,
+        progressRepository = repository,
         modifier = modifier,
         session = activeSession,
     )
@@ -198,6 +194,7 @@ fun CatalogueBrowserV2Screen(
     onSetPlaylistGroupHidden: suspend (String, Boolean) -> Unit = { _, _ -> },
     onManageGroups: ((String?) -> Unit)? = null,
     watchedContentKeys: Set<String> = emptySet(),
+    progressRepository: CatalogueRepository? = null,
     modifier: Modifier = Modifier,
     session: CatalogueBrowserSession? = null,
 ) {
@@ -252,6 +249,21 @@ fun CatalogueBrowserV2Screen(
         ?.entries
         ?.size
     val wallEntries = state.wall?.entries.orEmpty()
+    val progressTargets by remember(wallGridState, wallEntries) {
+        derivedStateOf {
+            val visible = wallGridState.layoutInfo.visibleItemsInfo
+            val first = ((visible.firstOrNull()?.index ?: 0) - 12).coerceAtLeast(0)
+            val last = ((visible.lastOrNull()?.index ?: 11) + 12).coerceAtMost(wallEntries.lastIndex)
+            if (first > last) emptyList() else wallEntries.subList(first, last + 1).take(200).map { entry ->
+                MovieProgressTarget(entry.contentKey, catalogueWorkKey(entry.title, entry.year, entry.metadataOverride?.externalId))
+            }
+        }
+    }
+    val observedWatched by remember(progressRepository, state.mode, progressTargets) {
+        if (progressRepository == null || state.mode != CatalogueMode.MOVIES) kotlinx.coroutines.flow.flowOf(emptySet())
+        else progressRepository.observeSelectedMovieProgress(progressTargets).map { it.filterValues { value -> value.completed }.keys }
+    }.collectAsStateWithLifecycle(initialValue = emptySet())
+    val displayedWatched = if (progressRepository == null) watchedContentKeys else observedWatched
     val wallInteractive = state.wallIsCurrent
     var lastPresentedPartition by remember(activeSession) { mutableStateOf(state.selectedPartition) }
     var lastPresentedGrouping by remember(activeSession) { mutableStateOf(state.grouping) }
@@ -589,7 +601,7 @@ fun CatalogueBrowserV2Screen(
                                 CatalogueBrowserV2Card(
                                     entry = entry,
                                     enabled = wallInteractive,
-                                    watched = entry.contentKey in watchedContentKeys,
+                                    watched = entry.contentKey in displayedWatched,
                                     focusRequester = restoredWallFocusRequester.takeIf {
                                         pendingWallFocusKey == entry.contentKey
                                     },

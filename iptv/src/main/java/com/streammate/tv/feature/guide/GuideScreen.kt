@@ -2,6 +2,10 @@ package com.streammate.tv.feature.guide
 
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.map
 import com.streammate.tv.iptv.repository.GuideRailGroup
 import com.streammate.tv.iptv.repository.SourceRefreshHealth
 import com.streammate.tv.iptv.repository.GuideSource
@@ -248,7 +252,7 @@ fun GuideScreen(
     // is read as its rows first and programmes for the rows on screen: the
     // full timeline of a 56,000-channel source was 170,000 rows per emission.
     val expectedCount = if (selectedGroup != null) groupCounts[selectedGroup] ?: 0 else sourceChannelCount
-    val windowedRead = timelineChannelIds == null && selectedSourceId != null && expectedCount > GUIDE_WINDOWED_READ_THRESHOLD
+    val windowedRead = timelineChannelIds == null && selectedSourceId != null && expectedCount > GUIDE_WINDOWED_READ_THRESHOLD && searchQuery.isBlank()
     // The rows of a windowed read do not depend on the time window, so paging
     // time must not re-read them.
     val rowsWindowKey = if (windowedRead) null else windowStart
@@ -283,48 +287,29 @@ fun GuideScreen(
     val timelineStale = loadedTimeline == null && shownTimeline != null
     val baseGuide = loadedTimeline ?: shownTimeline ?: emptyList()
     // The programmes of a windowed read: for the rows the grid shows, kept
-    // for this time window as the list scrolls so rows scrolled past do not
-    // go blank again.
+    // in a bounded cache around the recent scroll windows.
     var programmeWindowIds by remember(selectedSourceId, selectedGroup) { mutableStateOf<List<String>>(emptyList()) }
     var programmeCache by remember(windowStart, selectedSourceId, selectedGroup) {
         mutableStateOf<Map<String, List<GuideTimelineProgramme>>>(emptyMap())
     }
     val windowProgrammes by remember(windowedRead, programmeWindowIds, windowStart) {
         if (!windowedRead || programmeWindowIds.isEmpty()) {
-            kotlinx.coroutines.flow.flowOf(emptyList())
+            flowOf<Pair<Long, List<GuideTimelineChannel>>?>(null)
         } else {
-            guideRepository.observeTimelineForChannels(programmeWindowIds, windowStart, windowEnd)
+            guideRepository.observeTimelineForChannels(programmeWindowIds, windowStart, windowEnd).map { windowStart to it }
         }
-    }.collectAsStateWithLifecycle(initialValue = emptyList())
-    LaunchedEffect(windowProgrammes) {
-        if (windowProgrammes.isNotEmpty()) {
-            programmeCache = programmeCache + windowProgrammes.associate { it.id to it.programmes }
-        }
+    }.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(windowProgrammes, windowStart, programmeWindowIds) {
+        val incoming = windowProgrammes?.takeIf { it.first == windowStart }?.second.orEmpty()
+            .filter { it.id in programmeWindowIds }
+        if (incoming.isNotEmpty()) programmeCache = retainProgrammeWindow(programmeCache, incoming)
     }
-    val guide = remember(baseGuide, programmeCache, windowedRead) {
-        if (windowedRead) mergeProgrammes(baseGuide, programmeCache) else baseGuide
-    }
-    val timelineLoading = loadedTimeline == null && shownTimeline == null
-    val showReadingNotice = timelineStale && readingForLong
-    val guideLoaded = railLoaded && (libraryEmpty || shownTimeline != null)
-    // A stale timeline was read for the previous selection; it is shown as it
-    // is rather than filtered to a selection none of its rows belong to.
-    val sourceChannels = remember(guide, selectedSourceId, timelineStale) {
-        if (timelineStale) guide else guide.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
-    }
-    val categoryChannels = remember(sourceChannels, channelFilter, selectedListId, hiddenLiveCategories) {
-        if (channelFilter != ChannelFilter.ALL || selectedListId != null) {
-            sourceChannels
-        } else {
-            sourceChannels.filterNot { channel ->
-                channel.groupTitle?.let { group ->
-                    hiddenLiveCategories.any { it.equals(group, ignoreCase = true) }
-                } == true
-            }
-        }
-    }
-    val filteredGuide = remember(
-        categoryChannels,
+    // Programme arrivals never enter the stable ordering pipeline. All large-list work runs off Main.
+    val orderedGuide by produceState<GuideChannelRows?>(
+        initialValue = null,
+        baseGuide,
+        selectedSourceId,
+        hiddenLiveCategories,
         selectedGroup,
         selectedListId,
         listMemberships,
@@ -336,71 +321,86 @@ fun GuideScreen(
         recentChannelIds,
         timelineStale,
     ) {
-        categoryChannels
-            .filter { timelineStale || selectedGroup == null || it.groupTitle == selectedGroup }
-            .filter { channel ->
-                selectedListId == null || listMemberships.any {
-                    it.listId == selectedListId && it.channelId == channel.id
-                }
+        value = withContext(Dispatchers.Default) {
+            val sourceChannels = if (timelineStale) baseGuide else baseGuide.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
+            val categoryChannels = if (channelFilter != ChannelFilter.ALL || selectedListId != null) sourceChannels else sourceChannels.filterNot { channel ->
+                channel.groupTitle?.let { group -> hiddenLiveCategories.any { it.equals(group, ignoreCase = true) } } == true
             }
-            .let { channels ->
-                when {
-                    channelFilter == ChannelFilter.RECENT -> channels
-                    selectedListId != null -> {
-                        val positions = listMemberships
-                            .filter { it.listId == selectedListId }
-                            .associate { it.channelId to it.sortOrder }
-                        if (guideRepository.organization == null) channels.sortedWith(compareBy({ positions[it.id] ?: Int.MAX_VALUE }, { it.name.lowercase() }))
-                        else {
-                            val byId = channels.associateBy { it.id }
-                            organization.orderedItems(liveRoom, channels.map { channel ->
-                                com.streammate.tv.core.model.OrganizationItem(channel.id, channel.sourceId, channel.name, channel.groupTitle, channel.organizationGroupKey,
-                                    providerOrder = channel.playlistOrder, legacyPosition = positions[channel.id]?.toLong())
-                            }, viewKey = "@list:$selectedListId").mapNotNull { byId[it.id] }
+            categoryChannels
+                .filter { timelineStale || selectedGroup == null || it.groupTitle == selectedGroup }
+                .filter { channel ->
+                    selectedListId == null || listMemberships.any {
+                        it.listId == selectedListId && it.channelId == channel.id
+                    }
+                }
+                .let { channels ->
+                    when {
+                        channelFilter == ChannelFilter.RECENT -> channels
+                        selectedListId != null -> {
+                            val positions = listMemberships
+                                .filter { it.listId == selectedListId }
+                                .associate { it.channelId to it.sortOrder }
+                            if (guideRepository.organization == null) channels.sortedWith(compareBy({ positions[it.id] ?: Int.MAX_VALUE }, { it.name.lowercase() }))
+                            else {
+                                val byId = channels.associateBy { it.id }
+                                organization.orderedItems(liveRoom, channels.map { channel ->
+                                    com.streammate.tv.core.model.OrganizationItem(channel.id, channel.sourceId, channel.name, channel.groupTitle, channel.organizationGroupKey,
+                                        providerOrder = channel.playlistOrder, legacyPosition = positions[channel.id]?.toLong())
+                                }, viewKey = "@list:$selectedListId").mapNotNull { byId[it.id] }
+                            }
+                        }
+                        sortMode == GuideSortMode.NAME -> channels.sortedBy { it.name.lowercase() }
+                        guideRepository.organization != null -> channels
+                        else -> channels.sortedWith(
+                            compareByDescending<GuideTimelineChannel> { it.sourcePriority }
+                                .thenBy { it.playlistOrder }
+                                .thenBy { it.name.lowercase() },
+                        )
+                    }
+                }
+                .filter { channel ->
+                    searchQuery.isBlank() ||
+                        channel.name.contains(searchQuery, ignoreCase = true) ||
+                        channel.programmes.any { it.title.contains(searchQuery, ignoreCase = true) }
+                }
+                .let { channels ->
+                    when (channelFilter) {
+                        ChannelFilter.ALL -> channels
+                        ChannelFilter.FAVOURITES -> channels.filter { it.id in favouriteChannelIds }
+                        ChannelFilter.RECENT -> {
+                            val positions = recentChannelIds.withIndex().associate { it.value to it.index }
+                            channels.filter { it.id in positions }.sortedBy { positions[it.id] }
                         }
                     }
-                    sortMode == GuideSortMode.NAME -> channels.sortedBy { it.name.lowercase() }
-                    guideRepository.organization != null -> channels
-                    else -> channels.sortedWith(
-                        compareByDescending<GuideTimelineChannel> { it.sourcePriority }
-                            .thenBy { it.playlistOrder }
-                            .thenBy { it.name.lowercase() },
-                    )
                 }
-            }
-            .filter { channel ->
-                searchQuery.isBlank() ||
-                    channel.name.contains(searchQuery, ignoreCase = true) ||
-                    channel.programmes.any { it.title.contains(searchQuery, ignoreCase = true) }
-            }
-            .let { channels ->
-                when (channelFilter) {
-                    ChannelFilter.ALL -> channels
-                    ChannelFilter.FAVOURITES -> channels.filter { it.id in favouriteChannelIds }
-                    ChannelFilter.RECENT -> {
-                        val positions = recentChannelIds.withIndex().associate { it.value to it.index }
-                        channels.filter { it.id in positions }.sortedBy { positions[it.id] }
-                    }
-                }
-            }
+                .let(::GuideChannelRows)
+        }
     }
+    val filteredGuide = remember(orderedGuide, programmeCache, windowedRead) {
+        val channels = orderedGuide?.channels.orEmpty()
+        if (windowedRead) mergeProgrammes(channels, programmeCache) else channels
+    }
+    val filteredChannelIds = orderedGuide?.ids.orEmpty()
+    val timelineLoading = (loadedTimeline == null && shownTimeline == null) || orderedGuide == null
+    val showReadingNotice = timelineStale && readingForLong
+    val guideLoaded = railLoaded && (libraryEmpty || (shownTimeline != null && orderedGuide != null))
     // Which rows' programmes to read: follows the grid's scroll position.
-    LaunchedEffect(windowedRead, filteredGuide.map(GuideTimelineChannel::id)) {
+    LaunchedEffect(windowedRead, filteredChannelIds) {
         if (!windowedRead) return@LaunchedEffect
-        val ids = filteredGuide.map { it.id }
+        val ids = filteredChannelIds
         snapshotFlow { channelListState.firstVisibleItemIndex to channelListState.layoutInfo.visibleItemsInfo.size }
             .distinctUntilChanged()
             .collect { (first, count) -> programmeWindowIds = programmeWindowIds(ids, first, count) }
     }
-    val initialFocusIndex = remember(filteredGuide, initialChannelId) {
-        filteredGuide
-            .indexOfFirst { it.id == initialChannelId }
+    val initialFocusIndex = remember(filteredChannelIds, initialChannelId) {
+        filteredChannelIds
+            .indexOf(initialChannelId)
             .takeIf { it >= 0 }
             ?: 0
     }
     // A dialled number moves the grid's focus; a changed list forgets the jump.
     val focusIndex = jumpIndex ?: initialFocusIndex
-    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id)) { jumpIndex = null }
+    LaunchedEffect(filteredChannelIds) { jumpIndex = null }
     LaunchedEffect(dialBuffer) {
         if (dialBuffer.isEmpty()) return@LaunchedEffect
         delay(ChannelDial.TIMEOUT_MILLIS)
@@ -467,7 +467,7 @@ fun GuideScreen(
     LaunchedEffect(customLists.map { it.id }) {
         if (selectedListId != null && customLists.none { it.id == selectedListId }) selectedListId = null
     }
-    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id), initialChannelId) {
+    LaunchedEffect(filteredChannelIds, initialChannelId) {
         val selectedChannel = selection?.channel
         val restoredChannel = filteredGuide.firstOrNull { it.id == initialChannelId }
         if (restoredChannel != null && selectedChannel?.id != restoredChannel.id) {
@@ -485,7 +485,7 @@ fun GuideScreen(
     }
     // Paging time leaves the selection on a programme that is no longer on
     // screen, and the hero above the grid would go on describing it.
-    LaunchedEffect(windowStart) {
+    LaunchedEffect(windowStart, programmeCache) {
         val channel = selection?.channel ?: return@LaunchedEffect
         val current = filteredGuide.firstOrNull { it.id == channel.id } ?: return@LaunchedEffect
         val stillVisible = selection?.programme?.let { programme ->
@@ -497,7 +497,7 @@ fun GuideScreen(
     }
     // guideLoaded is a key so the empty state, which only appears after the
     // first read, still gets its focus once it is there.
-    LaunchedEffect(filteredGuide.map(GuideTimelineChannel::id), focusIndex, guideLoaded) {
+    LaunchedEffect(filteredChannelIds, focusIndex, guideLoaded) {
         if (optionsVisible || !guideLoaded) return@LaunchedEffect
         if (filteredGuide.isNotEmpty()) {
             channelListState.scrollToItem(focusIndex)

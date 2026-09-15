@@ -130,4 +130,8 @@
         <item quantity="other">%1$d matches</item>
     </plurals>
     <string name="picture_in_picture_close">Close</string>
+    <string name="home_resume_loading">Loading Continue Watching…</string>
+    <string name="home_trakt_first_sync">Trakt history is waiting for its first sync</string>
+    <string name="home_resume_unavailable">Continue Watching unavailable. Select to retry.</string>
+    <string name="search_failed">Some search results could not be loaded.</string>
 </resources>

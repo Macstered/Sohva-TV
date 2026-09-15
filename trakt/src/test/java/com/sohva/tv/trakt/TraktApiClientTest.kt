@@ -1,6 +1,9 @@
 package com.sohva.tv.trakt
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 import kotlinx.serialization.json.*
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -9,6 +12,31 @@ import org.junit.Test
 
 class TraktApiClientTest {
     private val tokens = TraktTokens("access", "refresh", 4_102_444_800_000L)
+
+    @Test fun largeHistoryLeavesTheCallerThreadAvailable(): Unit = runBlocking {
+        val body = (1..40_000).joinToString(",", "[", "]") {
+            """{"plays":1,"last_watched_at":"2026-09-14T10:00:00.000Z","movie":{"ids":{"tmdb":$it}}}"""
+        }
+        MockWebServer().use { server ->
+            val client = TraktApiClient("synthetic", server.url("/"))
+            server.enqueue(MockResponse().setBody(body))
+            Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { ui ->
+                withContext(ui) {
+                    // JVM-only measurement; java.management is absent from Android's compile API.
+                    val bean = Class.forName("java.lang.management.ManagementFactory").getMethod("getThreadMXBean").invoke(null)
+                    val cpuTime = Class.forName("java.lang.management.ThreadMXBean").getMethod("getCurrentThreadCpuTime")
+                    val cpuStart = cpuTime.invoke(bean) as Long
+                    val start = System.nanoTime()
+                    val movies = client.watchedMovies(tokens)
+                    val elapsed = (System.nanoTime() - start) / 1_000_000
+                    val callerCpu = ((cpuTime.invoke(bean) as Long) - cpuStart) / 1_000_000
+                    assertEquals(40_000, movies.size)
+                    assertEquals(40_000L, movies.last().ids.tmdb)
+                    println("Synthetic 40000-title history: ${body.length} bytes, $elapsed ms total, $callerCpu ms caller-thread CPU")
+                }
+            }
+        }
+    }
 
     @Test fun scrobbleSendsMovieAndEpisodeBodiesAndReadsTheResult(): Unit = runBlocking {
         MockWebServer().use { server ->

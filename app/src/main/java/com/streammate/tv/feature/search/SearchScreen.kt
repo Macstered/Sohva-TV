@@ -53,6 +53,9 @@ import com.streammate.tv.iptv.repository.VodMovie
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.streammate.tv.core.concurrent.parallelResults
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -92,6 +95,7 @@ fun SearchScreen(
     val palette = StreamMateThemeTokens.palette
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<SearchResultItem>>(emptyList()) }
+    var searchFailed by remember { mutableStateOf(false) }
     var searching by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val searchFocus = remember { FocusRequester() }
@@ -109,50 +113,66 @@ fun SearchScreen(
             return@LaunchedEffect
         }
         searching = true
+        searchFailed = false
+        results = emptyList()
         delay(SEARCH_DEBOUNCE_MILLIS)
-        val guideResults = guideRepository.search(term).map { item ->
-            SearchResultItem(
-                key = "${item.type}:${item.channelId}:${item.startEpochMillis ?: 0}",
-                type = if (item.type == "channel") SearchResultType.CHANNEL else SearchResultType.PROGRAMME,
-                title = item.title,
-                subtitle = listOfNotNull(
-                    item.subtitle,
-                    item.startEpochMillis?.let(::formatSearchTime),
-                ).joinToString(" · "),
-                imageUrl = item.logoUrl,
-                channelId = item.channelId,
-            )
-        }
-        val catalogueResults = catalogueRepository.search(term).map { item ->
-            SearchResultItem(
-                key = "${item.type}:${item.sourceId}:${item.itemId}",
-                type = when (item.type) {
-                    CatalogueSearchType.MOVIE -> SearchResultType.MOVIE
-                    CatalogueSearchType.SERIES -> SearchResultType.SERIES
-                    CatalogueSearchType.EPISODE -> SearchResultType.EPISODE
-                },
-                title = item.title,
-                subtitle = item.subtitle,
-                imageUrl = item.posterUrl,
-                contentKey = item.contentKey,
-                movie = item.movie,
-                series = item.series,
-            )
-        }
-        val sportsResults = sportsEvents.filter { event ->
-            event.home.contains(term, ignoreCase = true) ||
-                event.away.contains(term, ignoreCase = true) ||
-                event.competition.contains(term, ignoreCase = true)
-        }.map { event ->
-            SearchResultItem(
-                key = "sport:${event.id}",
-                type = SearchResultType.SPORT,
-                title = "${event.home} – ${event.away}",
-                subtitle = "${event.competition} · ${event.startLabel}",
-                imageUrl = event.competitionLogoUrl,
-            )
-        }
-        results = guideResults + catalogueResults + sportsResults
+        val groups = linkedMapOf<SearchResultType, List<SearchResultItem>>()
+        listOf(SearchResultType.SPORT, SearchResultType.CHANNEL, SearchResultType.MOVIE, SearchResultType.SERIES, SearchResultType.EPISODE)
+            .parallelResults { group ->
+                when (group) {
+                    SearchResultType.CHANNEL -> guideRepository.search(term).map { item ->
+                        SearchResultItem(
+                            key = "${item.type}:${item.channelId}:${item.startEpochMillis ?: 0}",
+                            type = if (item.type == "channel") SearchResultType.CHANNEL else SearchResultType.PROGRAMME,
+                            title = item.title,
+                            subtitle = listOfNotNull(
+                                item.subtitle,
+                                item.startEpochMillis?.let(::formatSearchTime),
+                            ).joinToString(" · "),
+                            imageUrl = item.logoUrl,
+                            channelId = item.channelId,
+                        )
+                    }
+                    SearchResultType.SPORT -> sportsEvents.filter { event ->
+                        event.home.contains(term, ignoreCase = true) ||
+                            event.away.contains(term, ignoreCase = true) ||
+                            event.competition.contains(term, ignoreCase = true)
+                    }.map { event ->
+                        SearchResultItem(
+                            key = "sport:${event.id}",
+                            type = SearchResultType.SPORT,
+                            title = "${event.home} – ${event.away}",
+                            subtitle = "${event.competition} · ${event.startLabel}",
+                            imageUrl = event.competitionLogoUrl,
+                        )
+                    }
+                    else -> catalogueRepository.search(term, type = when (group) { SearchResultType.MOVIE -> CatalogueSearchType.MOVIE; SearchResultType.SERIES -> CatalogueSearchType.SERIES; else -> CatalogueSearchType.EPISODE }).map { item ->
+                        SearchResultItem(
+                            key = "${item.type}:${item.sourceId}:${item.itemId}",
+                            type = when (item.type) {
+                                CatalogueSearchType.MOVIE -> SearchResultType.MOVIE
+                                CatalogueSearchType.SERIES -> SearchResultType.SERIES
+                                CatalogueSearchType.EPISODE -> SearchResultType.EPISODE
+                            },
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            imageUrl = item.posterUrl,
+                            contentKey = item.contentKey,
+                            movie = item.movie,
+                            series = item.series,
+                        )
+                    }
+                }
+            }.flowOn(Dispatchers.Default).collect { (group, result) ->
+                result.fold(
+                    onSuccess = { rows ->
+                        // Append completed groups so later results do not move the rows already being browsed.
+                        groups[group] = rows
+                        results = groups.values.flatten()
+                    },
+                    onFailure = { searchFailed = true },
+                )
+            }
         searching = false
     }
 
@@ -189,6 +209,7 @@ fun SearchScreen(
                 text = when {
                     searching -> stringResource(R.string.search_loading)
                     query.trim().length < 2 -> stringResource(R.string.search_scope_hint)
+                    searchFailed -> stringResource(R.string.search_failed)
                     results.isEmpty() -> stringResource(R.string.search_no_results)
                     else -> pluralStringResource(R.plurals.search_result_count, results.size, results.size)
                 },

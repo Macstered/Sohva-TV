@@ -96,9 +96,9 @@ class OrganizationRepository(
 
     /** Idempotent compatibility import. Old values stay intact for portable old backups. */
     suspend fun migrateLegacy(preferences: AppPreferences) {
+        if (dao.legacyMigrationComplete()) return
         val existing = dao.rules().associateBy { it.toRule().key }
         val marker = OrganizationKey(LibraryRoom.LIVE, groupKey = "@legacy-v1")
-        if (marker in existing) return
         val rules = buildList {
             listOf(
                 LibraryRoom.LIVE to preferences.hiddenLiveCategories,

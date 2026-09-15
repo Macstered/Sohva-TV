@@ -5,6 +5,8 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.*
 import okhttp3.*
@@ -212,7 +214,11 @@ class TraktApiClient internal constructor(private val clientId: String, private 
             }
         })
     }
-    private inline fun <T> parse(block: () -> T): T = try { block() } catch (_: Exception) { throw TraktException(TraktFailure.INVALID_RESPONSE) }
+    private suspend fun <T> parse(block: () -> T): T = withContext(Dispatchers.Default) {
+        try { block() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { throw TraktException(TraktFailure.INVALID_RESPONSE) }
+    }
 
     private class ApiResponse(val code: Int, private val body: String, val retryAfter: Long?) {
         fun json(): JsonElement = Json.parseToJsonElement(body)

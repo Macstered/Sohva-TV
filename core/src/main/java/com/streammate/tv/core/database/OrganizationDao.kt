@@ -116,6 +116,9 @@ abstract class OrganizationDao {
     @Query("SELECT * FROM organization_rules")
     abstract suspend fun rules(): List<OrganizationRuleEntity>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM organization_rules WHERE room='LIVE' AND sourceId='' AND groupKey='@legacy-v1' AND itemKey='')")
+    abstract suspend fun legacyMigrationComplete(): Boolean
+
     @Query("SELECT * FROM organization_aliases")
     abstract fun observeAliases(): Flow<List<OrganizationAliasEntity>>
 

@@ -129,4 +129,8 @@
         <item quantity="other">%1$d ottelua</item>
     </plurals>
     <string name="picture_in_picture_close">Sulje</string>
+    <string name="home_resume_loading">Ladataan Jatka katsomista -riviä…</string>
+    <string name="home_resume_unavailable">Jatka katsomista ei ole saatavilla. Yritä uudelleen valitsemalla.</string>
+    <string name="home_trakt_first_sync">Trakt-historia odottaa ensimmäistä synkronointia</string>
+    <string name="search_failed">Kaikkia hakutuloksia ei voitu ladata.</string>
 </resources>

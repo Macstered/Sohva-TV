@@ -36,6 +36,9 @@ android {
         sourceSets.getByName("androidTest").setRoot("src/androidTestLab")
         sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("generated/addonPlaybackFixtures"))
     }
+    if (testBuildType == "debug" && providers.gradleProperty("sohvaPlaybackFixtures").orNull == "true") {
+        sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("generated/addonPlaybackFixtures"))
+    }
     // Explicit opt-in, disposable-emulator-only tests for the exact signed APK.
     // Never mix the ordinary debug suite's data-clearing fixtures into release.
     if (testBuildType == "release") {
@@ -49,8 +52,8 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 22
-        versionName = "0.1.0-beta.15"
+        versionCode = 26
+        versionName = "0.1.0-beta.16"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // AGP leaves the instrumentation timeout at a year, so one hung test
@@ -175,7 +178,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":iptv"))
     implementation(project(":sportmate"))
-    // Lazy Discover host owns the independent stores; no startup initializer.
+    // Discover owns its independent stores; Home observes its cached progress.
     implementation(project(":addons"))
     implementation(project(":trakt"))
     implementation(libs.coil.compose)

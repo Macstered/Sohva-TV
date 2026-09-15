@@ -46,6 +46,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.key
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,47 +117,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-/**
- * One part-watched title on Home, whichever ledger holds it: the VOD library
- * (local or via Trakt) or Discover's own history.
- */
-sealed interface HomeResumeEntry {
-    val key: String
-    val title: String
-    val subtitle: String?
-    val posterUrl: String?
-    val backdropUrl: String?
-    val fraction: Float
-    val remainingMillis: Long?
-    val updatedAtMillis: Long
-    /** One card per series: the newest episode stands for the rest. */
-    val groupKey: String
-
-    data class Vod(val item: ContinueWatchingItem) : HomeResumeEntry {
-        override val key get() = "vod:" + item.contentKey
-        override val title get() = item.title
-        override val subtitle get() = item.subtitle
-        override val posterUrl get() = item.posterUrl
-        override val backdropUrl get() = item.posterUrl
-        override val fraction get() = item.progress.fraction
-        override val remainingMillis get() = (item.progress.durationMillis - item.progress.positionMillis).takeIf { item.progress.durationMillis > 0L && it > 0L }
-        override val updatedAtMillis get() = item.progress.lastWatchedEpochMillis
-        override val groupKey get() = "vod:" + item.groupKey
-    }
-
-    data class Discover(val progress: AddonWatchProgress) : HomeResumeEntry {
-        override val key get() = "discover:" + progress.identity.metadataInstallationId + ":" + progress.identity.media.id + ":" + progress.identity.video.id
-        override val title get() = progress.artwork?.name ?: progress.title
-        override val subtitle get() = progress.title.takeIf { progress.artwork != null && it != progress.artwork?.name }
-        override val posterUrl get() = progress.artwork?.poster
-        override val backdropUrl get() = progress.artwork?.background ?: progress.artwork?.poster
-        override val fraction get() = if (progress.durationMillis > 0L) (progress.positionMillis.toFloat() / progress.durationMillis).coerceIn(0f, 1f) else 0f
-        override val remainingMillis get() = (progress.durationMillis - progress.positionMillis).takeIf { progress.durationMillis > 0L && it > 0L }
-        override val updatedAtMillis get() = progress.updatedAtMillis
-        override val groupKey get() = "discover:" + progress.identity.metadataInstallationId + ":" + progress.identity.media.type + ":" + progress.identity.media.id
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
@@ -176,6 +140,10 @@ fun HomeScreen(
     onOpenSportEvent: (TodayEvent) -> Unit = { onSportMate() },
     /** Discover's part-watched titles, read by the host; empty when Discover is unavailable. */
     discoverHistory: List<AddonWatchProgress> = emptyList(),
+    /** Supplied by the application store; standalone previews can use repository reads. */
+    resumeSnapshot: HomeResumeSnapshot? = null,
+    onRetryResume: () -> Unit = {},
+    initialTraktHistoryPending: Boolean = false,
     onOpenDiscoverTitle: (AddonWatchProgress) -> Unit = {},
     /** The same lookups the details pages use for a synopsis and a backdrop; null leaves the hero to stored text. */
     metadataRepository: MetadataRepository? = null,
@@ -197,10 +165,16 @@ fun HomeScreen(
     val preferences by preferencesRepository.preferences
         .collectAsStateWithLifecycle(initialValue = AppPreferences())
     // Null until the first read: focus must not be placed while the first row is still on its way.
-    val continueWatchingLoaded by remember(catalogueRepository) {
-        catalogueRepository.observeContinueWatching()
-    }.collectAsStateWithLifecycle(initialValue = null)
-    val continueWatching = continueWatchingLoaded.orEmpty()
+    val standaloneResume = if (resumeSnapshot == null) {
+        val local by remember(catalogueRepository) {
+            catalogueRepository.observeContinueWatching()
+        }.collectAsStateWithLifecycle(initialValue = null)
+        HomeResumeSnapshot(preferences.activeProfileId, mergeHomeResume(local.orEmpty(), discoverHistory),
+            if (local == null) HomeResumeStatus.LOADING else if (local!!.isEmpty() && discoverHistory.isEmpty()) HomeResumeStatus.EMPTY else HomeResumeStatus.READY)
+    } else resumeSnapshot
+    val resume = standaloneResume
+    var focusedRow by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf<String?>(null) }
+    val listState = key(resume.profileId, resume.discoverAllowed) { rememberLazyListState() }
     // Subscribed once on entry rather than against a ticking clock: Home is a
     // launch screen, and re-creating this query every minute is exactly what
     // makes the player and the guide churn.
@@ -212,19 +186,26 @@ fun HomeScreen(
     val channels by remember(guideRepository, guideEntryMillis, recentChannelIds) {
         guideRepository.observeGuideChannels(recentChannelIds, guideEntryMillis)
     }.collectAsStateWithLifecycle(initialValue = emptyList())
-    val recentChannels = remember(channels, preferences.recentChannelIds) {
-        val positions = preferences.recentChannelIds.withIndex().associate { it.value to it.index }
-        channels.filter { it.id in positions }
-            .sortedBy { positions[it.id] }
-            .take(HOME_ROW_LIMIT)
-    }
-    // One row for everything part-watched, newest first, whichever ledger it came from.
-    val resumeEntries = remember(continueWatching, discoverHistory) {
-        (continueWatching.map { HomeResumeEntry.Vod(it) } + discoverHistory.map { HomeResumeEntry.Discover(it) })
-            .sortedByDescending { it.updatedAtMillis }
-            .distinctBy { it.groupKey }
-            .take(HOME_RESUME_ROW_LIMIT)
-    }
+    val latestRows = HomeRows(
+        resume = resume.entries,
+        nextUp = nextUp,
+        sports = sportsEvents.take(HOME_ROW_LIMIT),
+        recommendations = recommendations,
+        channels = remember(channels, preferences.recentChannelIds) {
+            val positions = preferences.recentChannelIds.withIndex().associate { it.value to it.index }
+            channels.filter { it.id in positions }.sortedBy { positions[it.id] }.take(HOME_ROW_LIMIT)
+        },
+    )
+    var previousRows by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf(latestRows) }
+    val structureLocked = listState.firstVisibleItemIndex > 0 ||
+        (focusedRow != null && focusedRow != previousRows.firstKey)
+    val displayedRows = previousRows.updated(latestRows, structureLocked)
+    SideEffect { previousRows = displayedRows }
+    val resumeEntries = displayedRows.resume
+    val recentChannels = displayedRows.channels
+    val todaysSport = displayedRows.sports
+    val visibleNextUp = displayedRows.nextUp
+    val visibleRecommendations = displayedRows.recommendations
     // The Continue watching card whose actions are open, if any.
     var resumeActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
     resumeActions?.let { item ->
@@ -237,7 +218,6 @@ fun HomeScreen(
             onDismiss = { resumeActions = null },
         )
     }
-    val todaysSport = remember(sportsEvents) { sportsEvents.take(HOME_ROW_LIMIT) }
 
     // The clock and the live progress bars are the only things here that have
     // to keep moving. One minute-long ticker drives all of them, and nothing
@@ -254,26 +234,34 @@ fun HomeScreen(
     // once it has rested for a moment. With nothing focused, the newest
     // part-watched title stands, then the last channel, then a welcome.
     val idleHero = rememberIdleHero(resumeEntries, recentChannels, now)
-    var focusedHero by remember { mutableStateOf<HomeHero?>(null) }
-    val hero by produceState(initialValue = idleHero, focusedHero, idleHero) {
-        val focused = focusedHero
-        if (focused == null) value = idleHero
-        else { delay(HERO_FOCUS_SETTLE_MILLIS); value = focused }
+    var focusedHero by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf<HomeHero?>(null) }
+    val hero by key(resume.profileId, resume.discoverAllowed) {
+        produceState(initialValue = idleHero, focusedHero, idleHero) {
+            val focused = focusedHero
+            if (focused == null) value = idleHero
+            else { delay(HERO_FOCUS_SETTLE_MILLIS); value = focused }
+        }
     }
-    val heroDetails = rememberHeroDetails(hero, catalogueRepository, guideRepository, metadataRepository, discoverSynopsis)
-    val rowsEmpty = resumeEntries.isEmpty() && recentChannels.isEmpty() && todaysSport.isEmpty() && nextUp.isEmpty() && recommendations.isEmpty()
+    val heroDetails = rememberHeroDetails(hero, catalogueRepository, guideRepository, metadataRepository, discoverSynopsis, enabled = resume.settled)
+    val showResumeStatus = !structureLocked && resumeEntries.isEmpty() && resume.status in setOf(HomeResumeStatus.LOADING, HomeResumeStatus.FAILED)
+    val rowsEmpty = !showResumeStatus && resumeEntries.isEmpty() && recentChannels.isEmpty() && todaysSport.isEmpty() && visibleNextUp.isEmpty() && visibleRecommendations.isEmpty()
 
     // Whatever bring-into-view policy the platform installed for rails is kept
     // for them; the row container itself pulls the focused row up to its top.
     val railScrollBehavior = LocalBringIntoViewSpec.current
-    val listState = rememberLazyListState()
-
-    // Placed once the first row has had its chance to appear; otherwise the
-    // row that happened to be ready first, the second, would take the focus.
-    val loaded = continueWatchingLoaded != null
-    LaunchedEffect(loaded, rowsEmpty) {
-        if (!loaded) return@LaunchedEffect
+    var loadingFocused by remember { mutableStateOf(false) }
+    // Initial focus only. Later refreshes never pull the viewer back from another row or the rail.
+    LaunchedEffect(resume.profileId, resume.discoverAllowed) {
         if (rowsEmpty) welcomeFocus.requestFocusWhenAttached() else contentFocus.requestFocusWhenAttached()
+    }
+    // Capture before removing the focused placeholder: Compose can move focus
+    // to the rail during disposal, which must not erase this pending handoff.
+    val handoffFromLoading = loadingFocused
+    LaunchedEffect(showResumeStatus) {
+        if (!showResumeStatus && handoffFromLoading) {
+            if (rowsEmpty) welcomeFocus.requestFocusWhenAttached() else contentFocus.requestFocusWhenAttached()
+            loadingFocused = false
+        }
     }
 
     StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { contentModifier ->
@@ -294,6 +282,13 @@ fun HomeScreen(
                         .padding(top = spacing.lg, bottom = spacing.md),
                 ) {
                     HomeHeader(timeZoneId = preferences.timeZoneId, now = now)
+                    if (initialTraktHistoryPending && resume.settled) {
+                        Text(
+                            text = stringResource(R.string.home_trakt_first_sync),
+                            style = StreamMateThemeTokens.typography.body,
+                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp),
+                        )
+                    }
                     HomeHeroPanel(
                         hero = hero,
                         plot = heroDetails.description,
@@ -317,7 +312,22 @@ fun HomeScreen(
                         contentPadding = PaddingValues(top = spacing.md, bottom = HOME_ROWS_BOTTOM_SLACK),
                         verticalArrangement = Arrangement.spacedBy(HOME_ROW_GAP),
                     ) {
-                        if (resumeEntries.isNotEmpty()) {
+                        if (showResumeStatus) {
+                            item(key = "continue-watching") {
+                                HomeRow(title = stringResource(R.string.home_continue_watching), focusScrollBehavior = railScrollBehavior) {
+                                    item(key = "resume-status") {
+                                        TvSurface(
+                                            onClick = { if (resume.status == HomeResumeStatus.FAILED) onRetryResume() },
+                                            modifier = Modifier.testTag("home-resume-status")
+                                                .onFocusChanged { if (it.hasFocus) loadingFocused = true }
+                                                .onPreviewKeyEvent { resume.status == HomeResumeStatus.LOADING && it.key == Key.DirectionDown },
+                                        ) {
+                                            Text(stringResource(if (resume.status == HomeResumeStatus.LOADING) R.string.home_resume_loading else R.string.home_resume_unavailable), modifier = Modifier.padding(24.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (resumeEntries.isNotEmpty()) {
                             item(key = "continue-watching") {
                                 HomeRow(
                                     title = stringResource(R.string.home_continue_watching),
@@ -334,18 +344,18 @@ fun HomeScreen(
                                                 }
                                             },
                                             onLongClick = { (entry as? HomeResumeEntry.Vod)?.let { resumeActions = it.item } },
-                                            onFocused = { focusedHero = HomeHero.Resume(entry) },
+                                            onFocused = { loadingFocused = false; focusedRow = "continue-watching"; focusedHero = HomeHero.Resume(entry) },
                                         )
                                     }
                                 }
                             }
                         }
-                        if (nextUp.isNotEmpty()) {
+                        if (visibleNextUp.isNotEmpty()) {
                             item(key = "watch-next") {
                                 HomeRow(title = stringResource(R.string.home_watch_next), focusScrollBehavior = railScrollBehavior) {
-                                    items(nextUp, key = TraktHomeTitle::key) { title ->
+                                    items(visibleNextUp, key = TraktHomeTitle::key) { title ->
                                         HomeTraktCard(title = title, landscape = true, onClick = { onOpenTraktTitle(title) },
-                                            onFocused = { focusedHero = HomeHero.Trakt(title, next = true) })
+                                            onFocused = { loadingFocused = false; focusedRow = "watch-next"; focusedHero = HomeHero.Trakt(title, next = true) })
                                     }
                                 }
                             }
@@ -362,17 +372,17 @@ fun HomeScreen(
                                     focusScrollBehavior = railScrollBehavior,
                                 ) {
                                     items(todaysSport, key = TodayEvent::id) { event ->
-                                        HomeSportCard(event = event, onClick = { onOpenSportEvent(event) }, onFocused = { focusedHero = HomeHero.Sport(event) })
+                                        HomeSportCard(event = event, onClick = { onOpenSportEvent(event) }, onFocused = { loadingFocused = false; focusedRow = "todays-sport"; focusedHero = HomeHero.Sport(event) })
                                     }
                                 }
                             }
                         }
-                        if (recommendations.isNotEmpty()) {
+                        if (visibleRecommendations.isNotEmpty()) {
                             item(key = "recommended") {
                                 HomeRow(title = stringResource(R.string.home_recommended), focusScrollBehavior = railScrollBehavior) {
-                                    items(recommendations, key = TraktHomeTitle::key) { title ->
+                                    items(visibleRecommendations, key = TraktHomeTitle::key) { title ->
                                         HomeTraktCard(title = title, landscape = false, onClick = { onOpenTraktTitle(title) },
-                                            onFocused = { focusedHero = HomeHero.Trakt(title, next = false) })
+                                            onFocused = { loadingFocused = false; focusedRow = "recommended"; focusedHero = HomeHero.Trakt(title, next = false) })
                                     }
                                 }
                             }
@@ -388,7 +398,7 @@ fun HomeScreen(
                                             channel = channel,
                                             now = now,
                                             onClick = { onPlayChannel(channel.id) },
-                                            onFocused = { focusedHero = HomeHero.Channel(channel, live = channel.isLiveAt(now)) },
+                                            onFocused = { loadingFocused = false; focusedRow = "recent-channels"; focusedHero = HomeHero.Channel(channel, live = channel.isLiveAt(now)) },
                                         )
                                     }
                                 }
@@ -402,7 +412,7 @@ fun HomeScreen(
             BackHandler(enabled = railFocused) { rowsFocus.requestFocus() }
             HomeRail(
                 contentFocus = rowsFocus,
-                onFocusedChange = { railFocused = it; if (it) focusedHero = null },
+                onFocusedChange = { railFocused = it; if (it) { loadingFocused = false; focusedHero = null } },
                 onLiveTv = onLiveTv,
                 onSportMate = onSportMate,
                 onMovies = onMovies,
@@ -495,6 +505,7 @@ private fun rememberHeroDetails(
     guideRepository: GuideRepository,
     metadataRepository: MetadataRepository?,
     discoverSynopsis: suspend (AddonWatchProgress) -> String?,
+    enabled: Boolean = true,
 ): HeroDetails {
     val subject: Any? = when (hero) {
         is HomeHero.Resume -> hero.entry.key
@@ -502,9 +513,9 @@ private fun rememberHeroDetails(
         is HomeHero.Trakt -> hero.title.key
         is HomeHero.Sport, HomeHero.Welcome -> null
     }
-    val details by produceState(initialValue = HeroDetails(), subject) {
+    val details by produceState(initialValue = HeroDetails(), subject, enabled) {
         value = HeroDetails()
-        if (subject == null) return@produceState
+        if (!enabled || subject == null) return@produceState
         value = runCatching {
             when (hero) {
                 is HomeHero.Resume -> when (val entry = hero.entry) {
@@ -1598,7 +1609,6 @@ internal fun String.artworkInitials(): String {
 }
 
 private const val HOME_ROW_LIMIT = 6
-private const val HOME_RESUME_ROW_LIMIT = 12
 private const val HERO_FOCUS_SETTLE_MILLIS = 180L
 private const val HERO_CROSSFADE_MILLIS = 250
 private const val HERO_ART_MAX_WIDTH_PX = 1920

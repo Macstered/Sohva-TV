@@ -3,6 +3,8 @@ package com.streammate.tv.iptv.metadata
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
 import java.io.IOException
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -15,6 +17,9 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
 
 internal suspend fun OkHttpClient.getMetadataJson(
     request: Request,
@@ -23,39 +28,9 @@ internal suspend fun OkHttpClient.getMetadataJson(
 ): JsonElement {
     var attempt = 0
     while (true) {
-        val result = withContext(Dispatchers.IO) {
-            newCall(request).execute().use { response ->
-                if (response.code == 429 && retryRateLimit && attempt == 0) {
-                    return@use MetadataHttpResult.RateLimited(
-                        response.header("Retry-After")?.toLongOrNull()?.coerceIn(1, 5) ?: 2,
-                    )
-                }
-                if (!response.isSuccessful) {
-                    throw LocalizedException(
-                        CoreR.string.error_metadata_http,
-                        listOf(providerName, response.code),
-                    )
-                }
-                val body = response.body
-                val declaredLength = body.contentLength()
-                if (declaredLength > MAX_METADATA_RESPONSE_BYTES) {
-                    throw LocalizedException(
-                        CoreR.string.error_metadata_response_too_large,
-                        listOf(providerName),
-                    )
-                }
-                val encoded = body.string()
-                if (encoded.toByteArray(Charsets.UTF_8).size > MAX_METADATA_RESPONSE_BYTES) {
-                    throw LocalizedException(
-                        CoreR.string.error_metadata_response_too_large,
-                        listOf(providerName),
-                    )
-                }
-                MetadataHttpResult.Body(encoded)
-            }
-        }
+        val result = newCall(request).awaitMetadata(providerName, retryRateLimit && attempt == 0)
         when (result) {
-            is MetadataHttpResult.Body -> return JSON.parseToJsonElement(result.value)
+            is MetadataHttpResult.Body -> return withContext(Dispatchers.Default) { JSON.parseToJsonElement(result.value) }
             is MetadataHttpResult.RateLimited -> {
                 attempt += 1
                 delay(result.retryAfterSeconds * 1_000L)
@@ -63,6 +38,36 @@ internal suspend fun OkHttpClient.getMetadataJson(
         }
     }
 }
+
+private suspend fun Call.awaitMetadata(providerName: String, retryRateLimit: Boolean): MetadataHttpResult =
+    suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { cancel() }
+        enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isActive) continuation.resumeWithException(e)
+            }
+            override fun onResponse(call: Call, response: Response) {
+                try {
+                    val result = response.use {
+                        if (it.code == 429 && retryRateLimit) {
+                            MetadataHttpResult.RateLimited(it.header("Retry-After")?.toLongOrNull()?.coerceIn(1, 5) ?: 2)
+                        } else {
+                            if (!it.isSuccessful) throw LocalizedException(CoreR.string.error_metadata_http, listOf(providerName, it.code))
+                            val source = it.body.source()
+                            source.request(MAX_METADATA_RESPONSE_BYTES + 1L)
+                            if (source.buffer.size > MAX_METADATA_RESPONSE_BYTES) {
+                                throw LocalizedException(CoreR.string.error_metadata_response_too_large, listOf(providerName))
+                            }
+                            MetadataHttpResult.Body(source.readUtf8())
+                        }
+                    }
+                    continuation.resume(result) { _, _, _ -> }
+                } catch (error: Exception) {
+                    if (continuation.isActive) continuation.resumeWithException(error)
+                }
+            }
+        })
+    }
 
 internal fun JsonObject.string(name: String): String? = this[name]
     ?.jsonPrimitive

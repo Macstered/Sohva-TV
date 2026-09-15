@@ -571,6 +571,7 @@ data class ContinueWatchingRow(
     val durationMillis: Long,
     val completed: Boolean,
     val lastWatchedEpochMillis: Long,
+    val tmdbId: Long? = null,
 )
 
 data class EditableChannelRow(

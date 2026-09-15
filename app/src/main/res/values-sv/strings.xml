@@ -129,4 +129,8 @@
         <item quantity="other">%1$d matcher</item>
     </plurals>
     <string name="picture_in_picture_close">Stäng</string>
+    <string name="home_resume_loading">Läser in Fortsätt titta…</string>
+    <string name="home_resume_unavailable">Fortsätt titta är inte tillgängligt. Välj för att försöka igen.</string>
+    <string name="home_trakt_first_sync">Trakt-historiken väntar på den första synkroniseringen</string>
+    <string name="search_failed">Vissa sökresultat kunde inte hämtas.</string>
 </resources>

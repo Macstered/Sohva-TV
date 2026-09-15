@@ -11,6 +11,8 @@ import com.streammate.tv.core.security.SecretSettingsStore
 import java.security.MessageDigest
 import java.util.LinkedHashMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import com.streammate.tv.core.model.CatalogueGenre
@@ -43,7 +45,7 @@ class MetadataRepository(
      * current language. The lookup cache stays: its keys carry the language.
      */
     suspend fun resetCatalogueEnrichment() {
-        synchronized(memoryCacheLock) { memoryCache.clear() }
+        synchronized(memoryCacheLock) { memoryCache.clear(); detailsById.clear() }
         dao.clearCatalogueMetadataOverrides()
         dao.clearCatalogueMetadataWork()
     }
@@ -57,6 +59,8 @@ class MetadataRepository(
         val expiresAtEpochMillis: Long,
     )
 
+    private val enrichmentRequests = MetadataRequests<EnrichedMetadata?>()
+    private val detailRequests = MetadataRequests<TitleDetails?>()
     private val tmdbProvider = TmdbMetadataProvider(httpClient)
     private val providers: List<MetadataProvider> = listOf(
         tmdbProvider,
@@ -494,21 +498,32 @@ class MetadataRepository(
      * service named by id, so its synopsis reads in the same language as the
      * library's own pages rather than in that service's English.
      */
-    suspend fun detailsByExternalId(externalId: String, mediaType: MetadataMediaType): TitleDetails? {
+    suspend fun detailsByExternalId(externalId: String, mediaType: MetadataMediaType): TitleDetails? = withContext(Dispatchers.IO) {
         val settings = settingsStore.loadMetadataSettings()
-        if (!tmdbProvider.enabled(settings)) return null
+        if (!tmdbProvider.enabled(settings)) return@withContext null
         val language = MetadataLookup(mediaType, "").resolvedLanguage
-        val key = "$mediaType:$externalId:$language"
-        synchronized(memoryCacheLock) { detailsById[key] }?.let { return it }
-        val candidate = runCatching { tmdbProvider.detailsById(externalId, mediaType, language, settings.tmdbReadAccessToken) }.getOrNull()
-            ?: return null
-        val details = TitleDetails(candidate.displayTitle, candidate.overview?.takeIf(String::isNotBlank),
-            candidate.posterUrl.httpsUrlOrNull(), candidate.backdropUrl.httpsUrlOrNull(), candidate.year)
-        synchronized(memoryCacheLock) { detailsById[key] = details }
-        return details
+        val key = "by-id:$mediaType:$externalId:$language"
+        detailRequests.read(key) {
+            synchronized(memoryCacheLock) { detailsById[key] }?.let { return@read it }
+            val cached = dao.cached(key, tmdbProvider.id)?.takeIf { it.status == CACHE_STATUS_POSITIVE && it.expiresAtEpochMillis > clock() }
+            val entry = cached ?: try {
+                val candidate = tmdbProvider.detailsById(externalId, mediaType, language, settings.tmdbReadAccessToken) ?: return@read null
+                positiveCacheEntry(key, tmdbProvider, MetadataMatch(candidate, 1.0), clock()).also { dao.upsert(it) }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { return@read null }
+            val details = TitleDetails(entry.displayTitle ?: entry.matchedTitle ?: return@read null,
+                entry.overview?.takeIf(String::isNotBlank), entry.posterUrl.httpsUrlOrNull(), entry.backdropUrl.httpsUrlOrNull(), entry.year)
+            synchronized(memoryCacheLock) { detailsById[key] = details }
+            details
+        }
     }
 
     suspend fun enrich(lookup: MetadataLookup): EnrichedMetadata? {
+        val sanitized = sanitize(lookup) ?: return null
+        return enrichmentRequests.read("lookup:" + lookupKey(sanitized)) { enrichUnshared(sanitized) }
+    }
+
+    private suspend fun enrichUnshared(lookup: MetadataLookup): EnrichedMetadata? {
         val sanitized = sanitize(lookup) ?: return null
         val now = clock()
         val lookupKey = lookupKey(sanitized)
@@ -569,6 +584,11 @@ class MetadataRepository(
     }
 
     suspend fun enrichMovieDetails(lookup: MetadataLookup): EnrichedMetadata? {
+        val sanitized = sanitize(lookup) ?: return null
+        return enrichmentRequests.read("details:" + lookupKey(sanitized)) { enrichMovieDetailsUnshared(sanitized) }
+    }
+
+    private suspend fun enrichMovieDetailsUnshared(lookup: MetadataLookup): EnrichedMetadata? {
         val sanitized = sanitize(lookup) ?: return null
         if (sanitized.mediaType != MetadataMediaType.MOVIE) return enrich(sanitized)
         val base = enrich(sanitized) ?: return null
@@ -635,7 +655,7 @@ class MetadataRepository(
     }
 
     suspend fun clearCache() {
-        synchronized(memoryCacheLock) { memoryCache.clear() }
+        synchronized(memoryCacheLock) { memoryCache.clear(); detailsById.clear() }
         dao.clearAllMetadata()
     }
 

@@ -20,6 +20,8 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,6 +40,9 @@ import kotlinx.serialization.json.longOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Response
 
 class DirectSportsRepository(
     httpClient: OkHttpClient,
@@ -70,18 +75,18 @@ class DirectSportsRepository(
         selectedCompetitionIds: Set<String>,
     ): SportsEventsSnapshot = events(SportType.AUSTRALIAN_FOOTBALL, date, zoneId, selectedCompetitionIds)
 
-    override suspend fun competitions(sport: SportType): List<SportsCompetition> {
+    override suspend fun competitions(sport: SportType): List<SportsCompetition> = withContext(Dispatchers.Default) {
         // No leagues endpoint to ask; the day listing is shown unfiltered.
-        if (!sport.hasCompetitions) return emptyList()
+        if (!sport.hasCompetitions) return@withContext emptyList()
         val catalogueScope = if (sport.competitionQuery.isEmpty()) "all" else "current"
         val key = "${sport.providerName}|competitions|$catalogueScope"
         val now = clock.millis()
         cacheDao.deleteExpired(now)
         val cached = cacheDao.cached(key)
         if (cached != null && now < cached.expiresAtEpochMillis) {
-            return parser.competitions(sport, cached.payload)
+            return@withContext parser.competitions(sport, cached.payload)
         }
-        return try {
+        return@withContext try {
             val response = fetch(
                 baseUrl = endpointFor(sport),
                 path = "leagues",
@@ -112,7 +117,7 @@ class DirectSportsRepository(
         }
     }
 
-    override suspend fun footballIncidents(eventId: String): FootballIncidentsSnapshot {
+    override suspend fun footballIncidents(eventId: String): FootballIncidentsSnapshot = withContext(Dispatchers.Default) {
         val fixtureId = FOOTBALL_EVENT_ID.matchEntire(eventId)?.groupValues?.get(1)
             ?: throw SportsBackendException(CoreR.string.error_football_event_id_invalid)
         val key = "football|incidents|$fixtureId"
@@ -120,9 +125,9 @@ class DirectSportsRepository(
         cacheDao.deleteExpired(now)
         val cached = cacheDao.cached(key)
         if (cached != null && now < cached.expiresAtEpochMillis) {
-            return parser.footballIncidents(cached.payload, eventId, "hit", cached.source, cached.quotaRemaining)
+            return@withContext parser.footballIncidents(cached.payload, eventId, "hit", cached.source, cached.quotaRemaining)
         }
-        return try {
+        return@withContext try {
             val response = fetch(
                 baseUrl = endpoints.football,
                 path = "fixtures/events",
@@ -161,19 +166,25 @@ class DirectSportsRepository(
 
     suspend fun clearCache() = cacheDao.clear()
 
+    override suspend fun cachedEvents(sport: SportType, date: LocalDate, zoneId: ZoneId, selectedCompetitionIds: Set<String>): SportsEventsSnapshot? = withContext(Dispatchers.Default) {
+        val now = clock.millis()
+        val cached = cacheDao.cached("${sport.providerName}|events|$date|${zoneId.id}")?.takeIf { now < it.staleUntilEpochMillis } ?: return@withContext null
+        parser.events(sport, cached.payload, zoneId, if (now < cached.expiresAtEpochMillis) "hit" else "stale", cached.source, cached.quotaRemaining, selectedCompetitionIds)
+    }
+
     override suspend fun events(
         sport: SportType,
         date: LocalDate,
         zoneId: ZoneId,
         selectedCompetitionIds: Set<String>,
-    ): SportsEventsSnapshot {
+    ): SportsEventsSnapshot = withContext(Dispatchers.Default) {
         val sportName = sport.providerName
         val key = "$sportName|events|$date|${zoneId.id}"
         val now = clock.millis()
         cacheDao.deleteExpired(now)
         val cached = cacheDao.cached(key)
         if (cached != null && now < cached.expiresAtEpochMillis) {
-            return parser.events(
+            return@withContext parser.events(
                 sport,
                 cached.payload,
                 zoneId,
@@ -183,7 +194,7 @@ class DirectSportsRepository(
                 selectedCompetitionIds,
             )
         }
-        return try {
+        return@withContext try {
             val response = fetch(
                 baseUrl = endpointFor(sport),
                 path = eventsPath(sport),
@@ -273,24 +284,28 @@ class DirectSportsRepository(
             .header("Accept", "application/json")
             .header("User-Agent", USER_AGENT)
             .build()
-        return withContext(Dispatchers.IO) {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    throw SportsBackendException(CoreR.string.error_api_sports_http, listOf(response.code))
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isActive) continuation.resumeWithException(e)
                 }
-                val body = response.body
-                if (body.contentLength() > MAX_RESPONSE_BYTES) {
-                    throw SportsBackendException(CoreR.string.error_api_sports_response_too_large)
+                override fun onResponse(call: Call, response: Response) {
+                    try {
+                        val result = response.use {
+                            if (!it.isSuccessful) throw SportsBackendException(CoreR.string.error_api_sports_http, listOf(it.code))
+                            val source = it.body.source()
+                            source.request(MAX_RESPONSE_BYTES + 1L)
+                            if (source.buffer.size > MAX_RESPONSE_BYTES) throw SportsBackendException(CoreR.string.error_api_sports_response_too_large)
+                            ApiSportsHttpResponse(source.readUtf8(), it.header("x-ratelimit-requests-remaining")?.toIntOrNull())
+                        }
+                        continuation.resume(result) { _, _, _ -> }
+                    } catch (error: Exception) {
+                        if (continuation.isActive) continuation.resumeWithException(error)
+                    }
                 }
-                val payload = body.string()
-                if (payload.toByteArray(Charsets.UTF_8).size > MAX_RESPONSE_BYTES) {
-                    throw SportsBackendException(CoreR.string.error_api_sports_response_too_large)
-                }
-                ApiSportsHttpResponse(
-                    payload = payload,
-                    quotaRemaining = response.header("x-ratelimit-requests-remaining")?.toIntOrNull(),
-                )
-            }
+            })
         }
     }
 

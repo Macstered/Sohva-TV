@@ -19,7 +19,7 @@ import com.streammate.tv.core.security.EnvelopeSecretCipher
 import com.streammate.tv.core.security.WrappedKeyStore
 import kotlinx.coroutines.flow.first
 
-/** Application-lifetime connection, created only on explicit Discover entry. */
+/** Application-lifetime connection, shared by Discover and Home's cached progress read. */
 internal class AddonHost(context: Context, container: StreamMateContainer) {
     private val database = AddonDatabase.open(context)
     val client = AddonClient()

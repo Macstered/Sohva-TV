@@ -3,6 +3,9 @@ package com.sohva.tv.addons
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -40,6 +43,7 @@ class AddonProgressRow(val key: String, val profileId: String, val encryptedPayl
 interface AddonProgressPersistence {
     suspend fun get(profileId: String, key: String): AddonProgressRow?
     suspend fun recent(profileId: String): List<AddonProgressRow>
+    fun observeRecent(profileId: String): Flow<List<AddonProgressRow>> = flow { emit(recent(profileId)) }
     /** Atomic upsert/prune to 200 rows per profile. */
     suspend fun put(row: AddonProgressRow)
     suspend fun remove(profileId: String, key: String)
@@ -68,6 +72,8 @@ class AddonProgressRepository(
     suspend fun recent(profileId: String): List<AddonWatchProgress> = operation(profileId) {
         persistence.recent(profileId).map { decode(it, profileId) }
     }
+    fun observeRecent(profileId: String): Flow<List<AddonWatchProgress>> =
+        persistence.observeRecent(profileId).map { rows -> operation(profileId) { rows.map { decode(it, profileId) } } }
     suspend fun save(session: AddonProgressSession, sequence: Long, positionMillis: Long, durationMillis: Long, ended: Boolean = false) = operation(session.profileId) {
         val key = session.identity.key(session.profileId)
         val active = sessions[key]

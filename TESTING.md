@@ -1,7 +1,22 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.15 (22)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.16 (26)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 16: performance and Continue Watching
+
+1. Open Home with saved progress. Continue Watching should be available before
+   optional remote rows; press Down normally and check that later updates do
+   not move your browsing position. Return from playback and check the row again.
+2. If the same movie exists in Discover and several IPTV VOD sources, check
+   that it has one Continue Watching card and the expected resume position.
+3. Browse a large guide, search for a programme, then open movie and series
+   details. Report noticeable pauses with the screen and action involved.
+4. With several sports or Trakt sections enabled, check that available results
+   appear while slower sections are still loading.
+5. Start Discover playback with your usual subtitle preferences. A slow subtitle
+   provider should no longer hold automatic selection for twenty seconds. Check
+   the selected language and that manual selection still works.
 
 ## Beta 15: every API-Sports sport
 
@@ -220,7 +235,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.15 (22)
+Version: 0.1.0-beta.16 (26)
 Device model:
 Android / Google TV version:
 Fresh install or update:

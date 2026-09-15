@@ -88,7 +88,9 @@ fun SeriesDetailsScreen(
             .map<List<VodEpisode>, List<VodEpisode>?> { it }
     }.collectAsStateWithLifecycle(initialValue = null)
     val episodes = episodesState.orEmpty()
-    val progress by repository.observeProgress().collectAsStateWithLifecycle(initialValue = emptyMap())
+    val progress by remember(repository, series.sourceId, series.seriesId) {
+        repository.observeSeriesProgress(series.sourceId, series.seriesId)
+    }.collectAsStateWithLifecycle(initialValue = emptyMap())
     // True from the first frame: the episode list is unknown until the
     // database answers, and a first open then fetches it from the provider.
     var loading by remember(series.sourceId, series.seriesId) { mutableStateOf(true) }

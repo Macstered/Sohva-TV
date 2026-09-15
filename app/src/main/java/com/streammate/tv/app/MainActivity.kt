@@ -12,9 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,9 +85,9 @@ class MainActivity : ComponentActivity() {
         val container = (application as StreamMateApplication).container
         container.openRequests.offer(OpenRequest.fromIntent(intent))
         setContent {
-            var showLaunchSplash by rememberSaveable { mutableStateOf(true) }
+            var showLaunchSplash by remember(container) { mutableStateOf(true) }
             LaunchedEffect(Unit) {
-                delay(LAUNCH_SPLASH_DURATION_MILLIS)
+                container.awaitReady()
                 showLaunchSplash = false
             }
             // The whole app is laid out at the chosen interface size: one
@@ -108,8 +106,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-private const val LAUNCH_SPLASH_DURATION_MILLIS = 2_000L
 
 /** A reminder tapped while the app is already up arrives here, not in onCreate. */
 private fun MainActivity.acceptOpenRequest(intent: Intent?) {
