@@ -410,10 +410,21 @@ class GuideScreenTest {
                 })
                 dao.activatePlaylistSnapshot("test", "playlist", 2 + GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST, now)
             }
+            // The ordinary fixture is relative to the current minute. Late in
+            // a half hour its bulletins overlap the first destination page,
+            // so restoring focus to one of them is correct. Give this paging
+            // test its own two programmes relative to the page boundary.
+            val initialWindowStart = GuideTimeWindow.nowStart(System.currentTimeMillis())
+            dao.deleteProgrammeSnapshot("test", "epg")
             dao.upsertProgrammes(listOf(TvProgrammeEntity(
+                sourceId = "test", snapshotId = "epg", programmeId = "bulletin-4", xmltvChannelId = "one.fi",
+                startEpochMillis = initialWindowStart + 60 * 60_000L,
+                stopEpochMillis = initialWindowStart + 70 * 60_000L,
+                title = "Last initial-page programme", subtitle = null, description = null, categories = "News",
+            ), TvProgrammeEntity(
                 sourceId = "test", snapshotId = "epg", programmeId = "next-page", xmltvChannelId = "one.fi",
-                startEpochMillis = GuideTimeWindow.nowStart(now) + 3 * 3_600_000L,
-                stopEpochMillis = GuideTimeWindow.nowStart(now) + 3 * 3_600_000L + 10 * 60_000L,
+                startEpochMillis = initialWindowStart + 3 * 3_600_000L,
+                stopEpochMillis = initialWindowStart + 3 * 3_600_000L + 10 * 60_000L,
                 title = "Next page", subtitle = null, description = null, categories = "News",
             )))
         }

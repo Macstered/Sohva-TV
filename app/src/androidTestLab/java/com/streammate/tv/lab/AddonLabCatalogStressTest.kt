@@ -88,6 +88,11 @@ class AddonLabCatalogStressTest {
                 assertTrue("Only visited and nearby rows should load", requested.size in 33..36)
                 if (delayLastPrefetch) compose.waitUntil(10_000) { finalPrefetchArrived.count == 0L }
                 releaseFinalPrefetch.countDown()
+                // Advance Compose while the final row's look-ahead effects are
+                // queued. A runBlocking cache poll alone does not run them on
+                // the v2 test dispatcher, even though row 32 already has focus.
+                val expectedRows = (0..34).toSet()
+                compose.waitUntil(10_000) { requested.keys.containsAll(expectedRows) }
                 // Row 32 has two look-ahead requests. Focus readiness does not
                 // prove those have reached the server or the encrypted cache.
                 // Finish that known work before measuring return-navigation I/O.
@@ -98,7 +103,7 @@ class AddonLabCatalogStressTest {
                     }
                 }
                 assertEquals("Only visited rows and the two look-ahead rows should load",
-                    (0..34).toSet(), requested.keys.toSet())
+                    expectedRows, requested.keys.toSet())
                 val requestsBeforeReturn = requested.values.sumOf { it.get() }
                 // Cross the 24-shelf retention bound, then return: old rows should use encrypted cache.
                 for (row in 31 downTo 0) {
