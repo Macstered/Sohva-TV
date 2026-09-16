@@ -603,7 +603,7 @@ private fun HomeHeroBackdrop(hero: HomeHero, artwork: String?, modifier: Modifie
         val artwork = artwork?.takeIf(String::isNotBlank) ?: (hero as? HomeHero.Resume)?.entry?.backdropUrl?.takeIf(String::isNotBlank)
         // The picture fades out at its bottom and its left edge instead of being
         // painted over: what shows through is the screen's own ground, so there
-        // is no seam where a flat scrim would meet the grained gradient.
+        // is no seam where a flat scrim would meet the background gradient.
         Box(
             modifier = Modifier
                 .fillMaxWidth(HOME_HERO_ART_FRACTION)

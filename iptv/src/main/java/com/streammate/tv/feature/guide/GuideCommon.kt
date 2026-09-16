@@ -201,7 +201,11 @@ internal fun programmeWindowIds(
 }
 
 /** Stable ordering and its IDs are built together on a worker, independent of programme arrivals. */
-internal class GuideChannelRows(val channels: List<GuideTimelineChannel>) {
+internal class GuideChannelRows(
+    val channels: List<GuideTimelineChannel>,
+    /** The time window whose programmes have finished loading and ordering. */
+    val windowStart: Long? = null,
+) {
     val ids = channels.map { it.id }
 }
 

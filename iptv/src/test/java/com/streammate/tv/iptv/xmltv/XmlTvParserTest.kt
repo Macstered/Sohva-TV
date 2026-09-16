@@ -41,6 +41,44 @@ class XmlTvParserTest {
     }
 
     @Test
+    fun `reads a UTF-8 byte order mark before the XML declaration`() {
+        val expected = XmlTvParser().records(xml.stream()).toList()
+        val records = XmlTvParser().records(("\uFEFF" + xml).stream()).toList()
+
+        assertEquals(expected, records)
+    }
+
+    @Test
+    fun `reads a gzipped feed with a UTF-8 byte order mark`() {
+        val output = ByteArrayOutputStream()
+        GZIPOutputStream(output).use { it.write(("\uFEFF" + xml).toByteArray(Charsets.UTF_8)) }
+
+        val records = CompressionAwareInputStream.wrap(output.toByteArray().inputStream()).use {
+            XmlTvParser().records(it).toList()
+        }
+
+        assertEquals(XmlTvParser().records(xml.stream()).toList(), records)
+    }
+
+    @Test
+    fun `honours the declared encoding for accented programme text`() {
+        val document = xml.replace("UTF-8", "ISO-8859-1").replace("Tappara - Ilves", "Météo à Tampère")
+        val records = XmlTvParser().records(document.toByteArray(Charsets.ISO_8859_1).inputStream()).toList()
+
+        assertEquals("Météo à Tampère", (records[1] as XmlTvRecord.Programme).title)
+    }
+
+    @Test
+    fun `detects UTF-16 byte order marks`() {
+        val document = xml.replace("UTF-8", "UTF-16").replace("Liiga HD", "Jääkiekko")
+        for (encoding in listOf(Charsets.UTF_16LE, Charsets.UTF_16BE)) {
+            val records = XmlTvParser().records(("\uFEFF" + document).toByteArray(encoding).inputStream()).toList()
+            assertEquals("Jääkiekko", (records[0] as XmlTvRecord.Channel).displayName)
+            assertEquals(2, records.size)
+        }
+    }
+
+    @Test
     fun `detects and reads a gzip XMLTV stream`() {
         val output = ByteArrayOutputStream()
         GZIPOutputStream(output).use { it.write(xml.toByteArray(Charsets.UTF_8)) }

@@ -33,6 +33,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -137,12 +138,6 @@ fun GuideScreen(
     val pagedFocus = remember { FocusRequester() }
     var pendingPageDirection by remember { mutableStateOf(0) }
 
-    fun moveWindow(byMillis: Long) {
-        val moved = GuideTimeWindow.shifted(windowStart, byMillis, now)
-        if (moved == windowStart) return
-        pendingPageDirection = if (byMillis > 0) 1 else -1
-        pinnedWindowStart = moved.takeUnless { GuideTimeWindow.isAtNow(it, now) }
-    }
     // The rail is the cheap read: every source and group with a count, from
     // the channel table alone. The timeline below is read for one group, one
     // list or a handful of ids at a time, never for the whole library.
@@ -167,6 +162,8 @@ fun GuideScreen(
     val guideReturnFocus = remember { FocusRequester() }
     val optionsFocus = remember { FocusRequester() }
     val channelListState = rememberLazyListState()
+    // The drawer leaves composition when closed; keep its viewport with the screen.
+    val groupListState = rememberLazyListState()
     var channelFilter by remember { mutableStateOf(ChannelFilter.ALL) }
     // Digits on the remote: the number being typed, the answer when no channel
     // shows it, and the row a completed number moved focus to.
@@ -196,6 +193,17 @@ fun GuideScreen(
     var groupRailFocusRequest by remember { mutableIntStateOf(0) }
     var restoreGuideFocus by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
+
+    fun moveWindow(byMillis: Long) {
+        if (pendingPageDirection != 0) return
+        val moved = GuideTimeWindow.shifted(windowStart, byMillis, now)
+        if (moved == windowStart) return
+        // The channel cell survives programme replacement. Park focus there
+        // until the destination page has actually arrived, even on a slow read.
+        runCatching { guideReturnFocus.requestFocus() }
+        pendingPageDirection = if (byMillis > 0) 1 else -1
+        pinnedWindowStart = moved.takeUnless { GuideTimeWindow.isAtNow(it, now) }
+    }
 
     // This pipeline sorts and filters every channel the user owns. Un-remembered
     // it ran on every recomposition, which on this screen means every D-pad
@@ -256,16 +264,18 @@ fun GuideScreen(
     // The rows of a windowed read do not depend on the time window, so paging
     // time must not re-read them.
     val rowsWindowKey = if (windowedRead) null else windowStart
-    val loadedTimeline by remember(rowsWindowKey, selectedSourceId, selectedGroup, timelineChannelIds, windowedRead) {
-        val ids = timelineChannelIds
-        val sourceId = selectedSourceId
-        when {
-            ids != null -> guideRepository.observeTimelineForChannels(ids, windowStart, windowEnd)
-            sourceId != null && windowedRead -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
-            sourceId != null -> guideRepository.observeTimeline(windowStart, windowEnd, sourceId, selectedGroup)
-            else -> kotlinx.coroutines.flow.flowOf<List<GuideTimelineChannel>?>(null)
-        }
-    }.collectAsStateWithLifecycle(initialValue = null)
+    val loadedTimeline by key(rowsWindowKey, selectedSourceId, selectedGroup, timelineChannelIds, windowedRead) {
+        remember {
+            val ids = timelineChannelIds
+            val sourceId = selectedSourceId
+            when {
+                ids != null -> guideRepository.observeTimelineForChannels(ids, windowStart, windowEnd)
+                sourceId != null && windowedRead -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
+                sourceId != null -> guideRepository.observeTimeline(windowStart, windowEnd, sourceId, selectedGroup)
+                else -> kotlinx.coroutines.flow.flowOf<List<GuideTimelineChannel>?>(null)
+            }
+        }.collectAsStateWithLifecycle(initialValue = null)
+    }
     // The last timeline stays on screen, its own rows and all, while the next
     // one is read: the rows, the info box above them and the rail keep their
     // places, and the new group's rows replace them when they arrive, normally
@@ -308,6 +318,8 @@ fun GuideScreen(
     val orderedGuide by produceState<GuideChannelRows?>(
         initialValue = null,
         baseGuide,
+        rowsWindowKey,
+        loadedTimeline,
         selectedSourceId,
         hiddenLiveCategories,
         selectedGroup,
@@ -373,7 +385,7 @@ fun GuideScreen(
                         }
                     }
                 }
-                .let(::GuideChannelRows)
+                .let { GuideChannelRows(it, rowsWindowKey.takeIf { loadedTimeline != null }) }
         }
     }
     val filteredGuide = remember(orderedGuide, programmeCache, windowedRead) {
@@ -476,12 +488,16 @@ fun GuideScreen(
             selection = filteredGuide.firstOrNull()?.let { GuideSelection(it, it.preferredProgramme(now)) }
         }
     }
-    LaunchedEffect(windowStart, filteredGuide) {
-        if (pendingPageDirection == 0 || filteredGuide.isEmpty()) return@LaunchedEffect
+    val pageProgrammesReady = if (windowedRead) {
+        selection?.channel?.id in programmeCache
+    } else {
+        loadedTimeline != null && orderedGuide?.windowStart == windowStart
+    }
+    LaunchedEffect(windowStart, filteredGuide, pageProgrammesReady, pendingPageDirection) {
+        if (pendingPageDirection == 0 || filteredGuide.isEmpty() || !pageProgrammesReady) return@LaunchedEffect
         // Adjacent to where focus was: the earliest programme of the new window
         // when moving forward, the latest when moving back.
-        pagedFocus.requestFocusWhenAttached()
-        pendingPageDirection = 0
+        if (pagedFocus.requestFocusWhenAttached()) pendingPageDirection = 0
     }
     // Paging time leaves the selection on a programme that is no longer on
     // screen, and the hero above the grid would go on describing it.
@@ -643,6 +659,7 @@ fun GuideScreen(
                 ) {
                     if (groupRailVisible) GuideGroupRail(
                         modifier = Modifier.width(GUIDE_RAIL_WIDTH).fillMaxHeight(),
+                        listState = groupListState,
                         channelFilter = channelFilter,
                         selectedGroup = selectedGroup,
                         selectedListId = selectedListId,

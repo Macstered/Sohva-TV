@@ -170,6 +170,28 @@ abstract class OrganizationDao {
     @Transaction
     open suspend fun snapshot() = OrganizationSnapshot(rules(), aliases())
 
+    /**
+     * A portable backup needs film identities only where a saved item rule
+     * depends on them. The rest is a regenerable catalogue index, which can
+     * contain hundreds of thousands of rows and exhaust a TV's heap when
+     * expanded into JSON. Select the complete alias family for each referenced
+     * identity, including older rules that name an alias directly.
+     */
+    @Query("""
+        SELECT * FROM organization_aliases WHERE identity IN (
+            SELECT itemKey FROM organization_rules WHERE room='MOVIES' AND itemKey!=''
+            UNION
+            SELECT a.identity FROM organization_aliases a
+            INNER JOIN organization_rules r ON r.itemKey=a.alias
+            WHERE r.room='MOVIES' AND r.itemKey!=''
+        )
+        ORDER BY alias
+    """)
+    protected abstract suspend fun customizedFilmAliases(): List<OrganizationAliasEntity>
+
+    @Transaction
+    open suspend fun backupSnapshot() = OrganizationSnapshot(rules(), customizedFilmAliases())
+
     @Transaction
     open suspend fun restore(snapshot: OrganizationSnapshot) {
         validateOrganizationSnapshot(snapshot)

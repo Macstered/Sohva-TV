@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -18,6 +19,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -66,10 +68,10 @@ internal fun GuideGroupRail(
     selectedItemFocusRequester: FocusRequester,
     onExitToGuide: () -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val palette = StreamMateThemeTokens.palette
     val typography = StreamMateThemeTokens.typography
-    val listState = rememberLazyListState()
     val allChannelsSelected = channelFilter == ChannelFilter.ALL &&
         selectedGroup == null &&
         selectedListId == null
@@ -89,8 +91,12 @@ internal fun GuideGroupRail(
         else -> null
     }
     val selectedIndex = railKeys.indexOf(selectedKey).takeIf { it >= 0 }
-    LaunchedEffect(selectedIndex) {
-        selectedIndex?.let { listState.scrollToItem(it) }
+    LaunchedEffect(selectedIndex, categoryEditMode) {
+        if (!categoryEditMode && selectedIndex != null &&
+            listState.layoutInfo.visibleItemsInfo.none { it.index == selectedIndex }
+        ) {
+            listState.scrollToItem(selectedIndex)
+        }
     }
     Column(
         modifier = modifier.onPreviewKeyEvent { event ->
@@ -140,7 +146,7 @@ internal fun GuideGroupRail(
             )
         }
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
+            modifier = Modifier.fillMaxWidth().weight(1f).testTag("guide-group-list"),
             state = listState,
             verticalArrangement = Arrangement.spacedBy(2.dp),
             contentPadding = PaddingValues(bottom = 10.dp),

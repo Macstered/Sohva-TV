@@ -20,6 +20,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performKeyInput
@@ -49,11 +50,17 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExternalResource
 import org.junit.rules.RuleChain
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class GuideScreenTest {
     private val composeRule = createComposeRule()
 
     private lateinit var database: StreamMateDatabase
+    private val queryExecutor = Executors.newSingleThreadExecutor()
+    @Volatile private var queryGate: CountDownLatch? = null
+    @Volatile private var queryStarted: CountDownLatch? = null
 
     // Compose must dispose its Room collectors before their database is closed.
     // JUnit @After runs inside the Compose rule, which raced teardown on CI.
@@ -61,6 +68,7 @@ class GuideScreenTest {
     val rules: RuleChain = RuleChain.outerRule(object : ExternalResource() {
         override fun after() {
             if (::database.isInitialized) database.close()
+            queryExecutor.shutdownNow()
         }
     }).around(composeRule)
 
@@ -69,7 +77,17 @@ class GuideScreenTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.getSharedPreferences("streammate_secure_sources", android.content.Context.MODE_PRIVATE)
             .edit().clear().commit()
-        database = Room.inMemoryDatabaseBuilder(context, StreamMateDatabase::class.java).build()
+        database = Room.inMemoryDatabaseBuilder(context, StreamMateDatabase::class.java)
+            .setQueryExecutor { query ->
+                queryExecutor.execute {
+                    queryGate?.let { gate ->
+                        queryStarted?.countDown()
+                        check(gate.await(10, TimeUnit.SECONDS)) { "Test did not release the guide query" }
+                    }
+                    query.run()
+                }
+            }
+            .build()
         val now = System.currentTimeMillis()
         val dao = database.guideDao()
         dao.upsertSourceState(
@@ -365,6 +383,110 @@ class GuideScreenTest {
             focused != null &&
                 (focused.startsWith("guide-programme") || focused.startsWith("guide-channel")),
         )
+    }
+
+    @Test
+    fun pagingWaitsForTheDestinationProgrammesBeforeRestoringFocus() {
+        assertPagingWaitsForProgrammes(windowed = false)
+    }
+
+    @Test
+    fun pagingALargeSourceWaitsForTheDestinationProgrammesBeforeRestoringFocus() {
+        assertPagingWaitsForProgrammes(windowed = true)
+    }
+
+    private fun assertPagingWaitsForProgrammes(windowed: Boolean) {
+        runBlocking {
+            val now = System.currentTimeMillis()
+            val dao = database.guideDao()
+            if (windowed) {
+                dao.upsertChannels((1..GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST).map { index ->
+                    IptvChannelEntity(
+                        sourceId = "test", snapshotId = "playlist", channelId = "test:extra-$index",
+                        tvgId = "extra$index", name = "Extra $index", normalizedName = "extra $index",
+                        groupTitle = "Extra", logoUrl = null, encryptedStreamUrl = "encrypted",
+                        userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = 100 + index,
+                    )
+                })
+                dao.activatePlaylistSnapshot("test", "playlist", 2 + GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST, now)
+            }
+            dao.upsertProgrammes(listOf(TvProgrammeEntity(
+                sourceId = "test", snapshotId = "epg", programmeId = "next-page", xmltvChannelId = "one.fi",
+                startEpochMillis = GuideTimeWindow.nowStart(now) + 3 * 3_600_000L,
+                stopEpochMillis = GuideTimeWindow.nowStart(now) + 3 * 3_600_000L + 10 * 60_000L,
+                title = "Next page", subtitle = null, description = null, categories = "News",
+            )))
+        }
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.awaitUntil(timeoutMillis = 10_000) {
+            composeRule.onAllNodesWithTag("guide-programme-bulletin-4").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("guide-programme-bulletin-4")
+            .performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+
+        fun page(key: Key, destination: String) {
+            val gate = CountDownLatch(1)
+            val started = CountDownLatch(1)
+            queryStarted = started
+            queryGate = gate
+            try {
+                composeRule.onAllNodes(isFocused()).onFirst().performKeyInput { pressKey(key) }
+                assertTrue("The destination query never started", started.await(5, TimeUnit.SECONDS))
+                // Longer than the old thirty-frame retry budget. Room is held
+                // here while Compose lays out the destination's placeholder.
+                composeRule.mainClock.advanceTimeBy(1_000)
+                composeRule.onNodeWithTag("guide-channel-test:one").assertIsFocused()
+            } finally {
+                queryGate = null
+                queryStarted = null
+                gate.countDown()
+            }
+            composeRule.awaitFocused(destination)
+        }
+        page(Key.DirectionRight, "guide-programme-next-page")
+        // Pages overlap by ninety minutes, so this short programme remains
+        // visible in the following page and is absent from the one after it.
+        page(Key.DirectionRight, "guide-programme-next-page")
+        page(Key.DirectionRight, "guide-programme-test:one-none")
+        page(Key.DirectionLeft, "guide-programme-next-page")
+    }
+
+    @Test
+    fun reopeningTheCategoryDrawerKeepsItsViewport() {
+        runBlocking {
+            val now = System.currentTimeMillis()
+            val dao = database.guideDao()
+            dao.upsertChannels((1..30).map { index ->
+                IptvChannelEntity(
+                    sourceId = "test", snapshotId = "playlist", channelId = "test:group-$index",
+                    tvgId = "group$index", name = "Group channel $index", normalizedName = "group channel $index",
+                    groupTitle = "Group %02d".format(index), logoUrl = null, encryptedStreamUrl = "encrypted",
+                    userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = 100 + index,
+                )
+            })
+            dao.activatePlaylistSnapshot("test", "playlist", 32, now)
+        }
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.awaitFocused("guide-filter-all")
+        val groupTag = "guide-group-${"Group 20".hashCode()}"
+        composeRule.onNodeWithTag("guide-group-list").performScrollToIndex(18)
+        composeRule.onNodeWithTag(groupTag)
+            .performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        composeRule.awaitFocused(groupTag)
+        val before = composeRule.onNodeWithTag(groupTag).fetchSemanticsNode().boundsInRoot.top
+        composeRule.onNodeWithTag(groupTag).performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitFocused("guide-channel-test:group-20")
+        repeat(2) {
+            composeRule.onNodeWithTag("guide-channel-test:group-20").performKeyInput { pressKey(Key.DirectionLeft) }
+            composeRule.awaitFocused(groupTag)
+            val reopened = composeRule.onNodeWithTag(groupTag).fetchSemanticsNode().boundsInRoot.top
+            assertEquals("Reopening the drawer moved the selected category", before, reopened, 1f)
+            composeRule.onNodeWithTag(groupTag).performKeyInput { pressKey(Key.DirectionRight) }
+            composeRule.awaitFocused("guide-channel-test:group-20")
+        }
     }
 
     @Test

@@ -242,6 +242,7 @@ class OrganizationRepository(
             }.minOrNull()) }
         }.flowOn(Dispatchers.Default)
     suspend fun snapshot(): OrganizationSnapshot = dao.snapshot()
+    suspend fun backupSnapshot(): OrganizationSnapshot = dao.backupSnapshot()
     suspend fun restore(snapshot: OrganizationSnapshot) = dao.restore(snapshot)
 
     suspend fun resetGroup(room: LibraryRoom, source: String, key: String) = dao.resetGroup(room.name, source, key)

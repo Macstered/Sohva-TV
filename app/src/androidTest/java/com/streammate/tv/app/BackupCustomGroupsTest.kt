@@ -123,12 +123,62 @@ class BackupCustomGroupsTest {
             enabled = false, changeEnabled = true, position = 3, changePosition = true,
         )))
         val snapshot = dao.snapshot()
+        // Imported identities with no user rule are rebuilt from the catalogue.
+        // They must not turn a settings backup into a full catalogue export.
+        dao.registerFilmAliases(listOf(listOf("vod:movie:source:unmodified", "work:unmodified")))
+        preferences.setMovieIdentityMark("old-catalogue-already-indexed")
         manager.write(Uri.fromFile(file), PASSPHRASE)
         dao.restore(com.streammate.tv.core.database.OrganizationSnapshot())
         manager.restore(Uri.fromFile(file), PASSPHRASE)
         val restored = dao.snapshot()
         assertTrue(restored.rules.containsAll(snapshot.rules))
-        assertEquals(snapshot.aliases, restored.aliases)
+        assertEquals(snapshot.aliases.toSet(), restored.aliases.toSet())
+        assertEquals(null, preferences.movieIdentityMark())
+    }
+
+    @Test
+    fun largeCatalogueBackupKeepsOnlyCustomizedFilmIdentities() = runBlocking {
+        val dao = database.organizationDao()
+        // More index entries than fit as a JSON object tree on a small TV heap.
+        // Seed in batches so the test itself never materializes the full index.
+        repeat(150) { batch ->
+            dao.upsertAliases(List(1_000) { offset ->
+                val index = batch * 1_000 + offset
+                com.streammate.tv.core.database.OrganizationAliasEntity(
+                    "vod:movie:large-provider:$index", "film:catalogue:$index",
+                )
+            })
+        }
+        val keptAliases = listOf(
+            com.streammate.tv.core.database.OrganizationAliasEntity("vod:movie:one:kept", "film:kept"),
+            com.streammate.tv.core.database.OrganizationAliasEntity("vod:movie:two:kept", "film:kept"),
+            com.streammate.tv.core.database.OrganizationAliasEntity("work:kept", "film:kept"),
+            com.streammate.tv.core.database.OrganizationAliasEntity("vod:movie:one:legacy", "film:legacy"),
+            com.streammate.tv.core.database.OrganizationAliasEntity("vod:movie:two:legacy", "film:legacy"),
+        )
+        dao.upsertAliases(keptAliases)
+        val keptRules = listOf(
+            com.streammate.tv.core.database.OrganizationRuleEntity("MOVIES", "", "", "film:kept", false, null, null),
+            com.streammate.tv.core.database.OrganizationRuleEntity("MOVIES", "two", "id:7", "film:kept", null, null, 4),
+            com.streammate.tv.core.database.OrganizationRuleEntity("MOVIES", "one", "id:8", "vod:movie:one:legacy", false, null, 9),
+            com.streammate.tv.core.database.OrganizationRuleEntity("MOVIES", "", "name:hidden", "", false, "TITLE_ASC", null),
+            com.streammate.tv.core.database.OrganizationRuleEntity("LIVE", "", "name:news", "channel:1", false, null, 2),
+        )
+        dao.upsertRules(keptRules)
+        manager.write(Uri.fromFile(file), PASSPHRASE)
+        assertTrue("Backup should contain settings, not the catalogue index", file.length() in 1..65_536)
+        assertEquals(150_005L, dao.observeAliasCount().first())
+
+        dao.restore(com.streammate.tv.core.database.OrganizationSnapshot())
+        manager.restore(Uri.fromFile(file), PASSPHRASE)
+        val restored = dao.snapshot()
+        assertTrue(restored.rules.containsAll(keptRules))
+        assertEquals(keptAliases.toSet(), restored.aliases.toSet())
+        // A playlist refresh may re-register an unmodified movie without
+        // changing the identities/rules which were restored from the backup.
+        dao.registerFilmAliases(listOf(listOf("vod:movie:one:kept", "work:kept")))
+        assertTrue(dao.rules().containsAll(keptRules))
+        assertEquals("film:kept", dao.identities(listOf("vod:movie:two:kept"))["vod:movie:two:kept"])
     }
 
     @Test

@@ -276,7 +276,10 @@ private fun GuideChannelRow(
         )
         Spacer(Modifier.width(GRID_GAP))
         Box(modifier = Modifier.width(timelineWidth).fillMaxHeight()) {
-            if (channel.programmes.isEmpty()) {
+            val visible = channel.programmes.filter { programme ->
+                programme.stopEpochMillis > windowStart && programme.startEpochMillis < windowEnd
+            }
+            if (visible.isEmpty()) {
                 ProgrammeCell(
                     title = stringResource(R.string.guide_no_epg),
                     subtitle = stringResource(R.string.guide_watch_channel),
@@ -300,9 +303,6 @@ private fun GuideChannelRow(
                     testTag = "guide-programme-${channel.id}-none",
                 )
             } else {
-                val visible = channel.programmes.filter { programme ->
-                    programme.stopEpochMillis > windowStart && programme.startEpochMillis < windowEnd
-                }
                 visible.forEachIndexed { index, programme ->
                     val clippedStart = max(programme.startEpochMillis, windowStart)
                     // A few providers publish a corrected entry before the old

@@ -584,7 +584,7 @@ class GuideRepository(
             preferences = dao.channelPreferences(),
             lists = dao.customChannelLists(),
             members = dao.customChannelListMembers(),
-            organization = organization?.snapshot() ?: com.streammate.tv.core.database.OrganizationSnapshot(),
+            organization = organization?.backupSnapshot() ?: com.streammate.tv.core.database.OrganizationSnapshot(),
         )
 
     suspend fun restoreChannelCustomization(snapshot: ChannelCustomizationSnapshot) {

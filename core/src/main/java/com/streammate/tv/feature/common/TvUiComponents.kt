@@ -1,6 +1,5 @@
 package com.streammate.tv.feature.common
 
-import android.graphics.Bitmap
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.ColorFilter
@@ -40,11 +39,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
-import java.util.Random
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -102,7 +96,6 @@ fun StreamMateScreenBackground(
         horizontal = spacing.safeHorizontal,
         vertical = spacing.safeVertical,
     )
-    val grain = rememberGrainBrush()
     Box(modifier = modifier.fillMaxSize().background(palette.background)) {
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width
@@ -140,36 +133,10 @@ fun StreamMateScreenBackground(
                     radius = w * 0.50f,
                 ),
             )
-
-            // Dither. Eight-bit gradients this large band visibly on a 4K panel;
-            // a tiled noise tile at a few percent alpha breaks the steps up.
-            drawRect(brush = grain)
         }
         content(Modifier.fillMaxSize().padding(padding))
     }
 }
-
-/**
- * A small tiled noise texture used purely to dither the background gradient.
- * Generated once and repeated, so it costs one 96x96 bitmap per process.
- */
-@Composable
-private fun rememberGrainBrush(): Brush {
-    val shader = remember {
-        val size = 96
-        val pixels = IntArray(size * size)
-        val random = Random(20260829L)
-        for (index in pixels.indices) {
-            val alpha = random.nextInt(GRAIN_MAX_ALPHA)
-            pixels[index] = (alpha shl 24) or 0x00FFFFFF
-        }
-        val bitmap = Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
-        ImageShader(bitmap.asImageBitmap(), TileMode.Repeated, TileMode.Repeated)
-    }
-    return remember(shader) { ShaderBrush(shader) }
-}
-
-private const val GRAIN_MAX_ALPHA = 16
 
 @Composable
 fun SohvaTvBrand(

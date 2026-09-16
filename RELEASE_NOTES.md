@@ -1,27 +1,24 @@
-# Sohva TV 0.1.0-beta.16
+# Sohva TV 0.1.0-beta.17
 
-Prepared: **15 September 2026**. Android version code: **26**.
+Prepared: **16 September 2026**. Android version code: **29**.
 
-This beta improves Home, startup, catalogue browsing, guide search, background
-loading and subtitle startup. No addons, subscriptions, channels, credentials
+This hotfix improves EPG import, guide navigation, the background and backup
+export. No addons, subscriptions, channels, credentials
 or accounts are included.
 
-## New in beta 16
+## New in beta 17
 
-- **Continue Watching appears sooner.** Saved local, Discover and Trakt progress
-  loads before optional Home refreshes and artwork. Returning to Home reuses
-  the ready row, and later updates preserve your browsing position.
-- **One movie, one Continue Watching card.** Matching Discover and IPTV VOD
-  copies are combined, including copies a provider adds after you started
-  watching. Your resume position and viewing history are kept.
-- **Smoother startup and browsing.** Startup, movie and series progress, guide
-  updates and metadata requests do less work on the interface thread. Guide
-  search uses a faster indexed lookup.
-- **Rows arrive independently.** Ready Trakt sections, sports feeds and search
-  groups appear without waiting for unrelated slower requests.
-- **Less waiting for subtitles.** A matching primary-language subtitle can be
-  selected as soon as it arrives. Automatic selection has a five-second budget
-  before playback uses the existing fallback. Manual selection remains available.
+- **EPG import compatibility.** Fixes the `PI must not start with xml` error
+  with XMLTV feeds that begin with a byte-order mark, including compressed
+  feeds. The parser also respects the feed's declared text encoding.
+- **Guide focus stays in the grid.** Paging right or left waits for the new
+  programmes before restoring focus, including on large playlists and empty
+  guide pages.
+- **Category position is remembered.** Reopening the category drawer preserves
+  its scroll position.
+- **Smooth background.** Removes the grain texture from the app background.
+- **Backup export uses less memory.** Large catalogue indexes no longer
+  exhaust memory during settings export. Customized library rules are retained.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -29,7 +26,7 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 26 uses the existing production signing identity.
+published. Android build 29 uses the existing production signing identity.
 The IPTV database stays at version 29 and the Discover progress database at
 4; no migration runs. No data is copied from a separate Lab app. Existing Trakt connections are retained; on a new installation,
 Trakt is off until you connect an account.

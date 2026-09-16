@@ -1,9 +1,9 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.16 (26)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.17 (29)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
-## Beta 16: performance and Continue Watching
+## Beta 17: performance and Continue Watching
 
 1. Open Home with saved progress. Continue Watching should be available before
    optional remote rows; press Down normally and check that later updates do
@@ -235,7 +235,7 @@ that file rather than logs of your own. If a public issue tracker is
 enabled later, you can use the same template there for non-sensitive reports.
 
 ```text
-Version: 0.1.0-beta.16 (26)
+Version: 0.1.0-beta.17 (29)
 Device model:
 Android / Google TV version:
 Fresh install or update:

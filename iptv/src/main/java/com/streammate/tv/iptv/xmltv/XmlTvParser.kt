@@ -28,7 +28,10 @@ class XmlTvParser {
     fun records(input: InputStream): Sequence<XmlTvRecord> = sequence {
         val parser = KXmlParser().apply {
             setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
-            setInput(input.reader(Charsets.UTF_8))
+            // Let the XML parser consume the byte-order mark and detect the
+            // declared encoding. A UTF-8 Reader exposes the BOM as text before
+            // <?xml, which KXml rejects as "PI must not start with xml".
+            setInput(input, null)
         }
 
         while (parser.eventType != XmlPullParser.END_DOCUMENT) {
