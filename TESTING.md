@@ -3,7 +3,21 @@
 Build: **0.1.0-beta.17 (29)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
-## Beta 17: performance and Continue Watching
+## Beta 17: EPG and navigation hotfix
+
+1. Refresh the EPG that previously failed with `PI must not start with xml`.
+   Check that programme listings load, including accented programme names.
+2. In Live TV, move right past the last programme on screen. Focus should stay
+   in the guide while the next time window loads. Repeat with a large playlist,
+   then move left again and try a time window without listings.
+3. Scroll down the category drawer, choose a category, then reopen the drawer
+   from the channel column. Its selected category should keep its position.
+4. Check the smooth background on Home, Live TV and Settings.
+5. If you use settings backups with a large catalogue, export a password-protected
+   backup and confirm it completes. Keep the file private; Discover data is
+   still excluded.
+
+## Beta 16: performance and Continue Watching
 
 1. Open Home with saved progress. Continue Watching should be available before
    optional remote rows; press Down normally and check that later updates do
