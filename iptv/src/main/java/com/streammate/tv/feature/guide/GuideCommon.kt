@@ -2,6 +2,7 @@ package com.streammate.tv.feature.guide
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.streammate.tv.app.StreamMateGenreColors
 import com.streammate.tv.iptv.repository.GuideTimelineChannel
 import com.streammate.tv.iptv.repository.GuideTimelineProgramme
 import java.time.Instant
@@ -123,17 +124,12 @@ internal fun formatTime(epochMillis: Long, timeZoneId: String?): String {
  * accent rather than an arbitrary colour, so the bar means something wherever
  * it appears instead of turning the grid into confetti.
  */
-internal fun genreAccent(categories: List<String>): Color? = categories
+internal fun genreAccent(categories: List<String>, colors: StreamMateGenreColors): Color? = categories
     .asSequence()
     .map { it.lowercase() }
     .firstNotNullOfOrNull { category ->
-        GENRE_ACCENTS.entries.firstOrNull { (keyword, _) -> category.contains(keyword) }?.value
+        GENRE_ACCENTS.entries.firstOrNull { (keyword, _) -> category.contains(keyword) }?.value?.invoke(colors)
     }
-
-private val GENRE_FILM = Color(0xFF8E7BFF)
-private val GENRE_SPORT = Color(0xFFFF8A4C)
-private val GENRE_NEWS = Color(0xFF4CC2FF)
-private val GENRE_KIDS = Color(0xFF57D9A3)
 
 /**
  * Keyword to accent, in match order.
@@ -142,28 +138,28 @@ private val GENRE_KIDS = Color(0xFF57D9A3)
  * the provider writes, and a Finnish feed labelling a match "urheilu" should
  * light the same colour as an English one labelling it "sport".
  */
-private val GENRE_ACCENTS: Map<String, Color> = linkedMapOf(
-    "sport" to GENRE_SPORT,
-    "urheilu" to GENRE_SPORT,
-    "football" to GENRE_SPORT,
-    "jalkapallo" to GENRE_SPORT,
-    "hockey" to GENRE_SPORT,
-    "news" to GENRE_NEWS,
-    "uutis" to GENRE_NEWS,
-    "current affairs" to GENRE_NEWS,
-    "ajankohtais" to GENRE_NEWS,
-    "weather" to GENRE_NEWS,
-    "children" to GENRE_KIDS,
-    "kids" to GENRE_KIDS,
-    "lapset" to GENRE_KIDS,
-    "lasten" to GENRE_KIDS,
-    "animation" to GENRE_KIDS,
-    "movie" to GENRE_FILM,
-    "film" to GENRE_FILM,
-    "elokuva" to GENRE_FILM,
-    "cinema" to GENRE_FILM,
-    "drama" to GENRE_FILM,
-    "draama" to GENRE_FILM,
+private val GENRE_ACCENTS: Map<String, (StreamMateGenreColors) -> Color> = linkedMapOf(
+    "sport" to StreamMateGenreColors::sport,
+    "urheilu" to StreamMateGenreColors::sport,
+    "football" to StreamMateGenreColors::sport,
+    "jalkapallo" to StreamMateGenreColors::sport,
+    "hockey" to StreamMateGenreColors::sport,
+    "news" to StreamMateGenreColors::news,
+    "uutis" to StreamMateGenreColors::news,
+    "current affairs" to StreamMateGenreColors::news,
+    "ajankohtais" to StreamMateGenreColors::news,
+    "weather" to StreamMateGenreColors::news,
+    "children" to StreamMateGenreColors::children,
+    "kids" to StreamMateGenreColors::children,
+    "lapset" to StreamMateGenreColors::children,
+    "lasten" to StreamMateGenreColors::children,
+    "animation" to StreamMateGenreColors::children,
+    "movie" to StreamMateGenreColors::film,
+    "film" to StreamMateGenreColors::film,
+    "elokuva" to StreamMateGenreColors::film,
+    "cinema" to StreamMateGenreColors::film,
+    "drama" to StreamMateGenreColors::film,
+    "draama" to StreamMateGenreColors::film,
 )
 
 

@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.guide
 
+import com.streammate.tv.app.StreamMateGenreColors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -13,6 +14,9 @@ import org.junit.Test
  * lights the same colour as one writing them in English.
  */
 class GuideGenreAccentTest {
+
+    private fun genreAccent(categories: List<String>) =
+        genreAccent(categories, StreamMateGenreColors())
 
     @Test
     fun aRecognisedCategoryAlwaysGivesTheSameAccent() {

@@ -995,8 +995,8 @@ private fun EventCard(
 }
 
 /**
- * A sport's own colour, kept local to this screen: it separates one card from
- * the next in a mixed list and means nothing anywhere else in the app.
+ * A sport's own colour separates cards in a mixed list. The theme owns the
+ * colours while this screen owns the mapping from sports to those roles.
  */
 @Composable
 private fun SportType.cardAccent(): Color {
@@ -1004,16 +1004,16 @@ private fun SportType.cardAccent(): Color {
     return when (this) {
         SportType.ICE_HOCKEY -> palette.focus
         SportType.FOOTBALL -> palette.focus
-        SportType.AUSTRALIAN_FOOTBALL -> Color(0xFFE959FF)
-        SportType.BASKETBALL -> Color(0xFFFF9A3C)
-        SportType.BASEBALL -> Color(0xFFFF647C)
-        SportType.HANDBALL -> Color(0xFFFFC857)
-        SportType.RUGBY -> Color(0xFF56D68B)
-        SportType.VOLLEYBALL -> Color(0xFF6C9DFF)
-        SportType.AMERICAN_FOOTBALL -> Color(0xFFB08CFF)
-        SportType.MMA -> Color(0xFFFF7A59)
-        SportType.FORMULA_1 -> Color(0xFFFF4D4D)
-        SportType.NBA -> Color(0xFFFFB347)
+        SportType.AUSTRALIAN_FOOTBALL -> palette.sports.australianFootball
+        SportType.BASKETBALL -> palette.sports.basketball
+        SportType.BASEBALL -> palette.sports.baseball
+        SportType.HANDBALL -> palette.sports.handball
+        SportType.RUGBY -> palette.sports.rugby
+        SportType.VOLLEYBALL -> palette.sports.volleyball
+        SportType.AMERICAN_FOOTBALL -> palette.sports.americanFootball
+        SportType.MMA -> palette.sports.mma
+        SportType.FORMULA_1 -> palette.sports.formulaOne
+        SportType.NBA -> palette.sports.nba
     }
 }
 
@@ -1480,8 +1480,8 @@ private fun FootballIncidentKind.accent(): Color {
     return when (this) {
         FootballIncidentKind.GOAL -> palette.focus
         FootballIncidentKind.CARD -> palette.accent
-        FootballIncidentKind.SUBSTITUTION -> Color(0xFF8EA7FF)
-        FootballIncidentKind.VAR -> Color(0xFFE959FF)
+        FootballIncidentKind.SUBSTITUTION -> palette.sports.substitution
+        FootballIncidentKind.VAR -> palette.sports.videoReview
         FootballIncidentKind.OTHER -> palette.textMuted
     }
 }

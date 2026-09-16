@@ -248,6 +248,7 @@ class StreamMateBackupManager(
         put("remoteMappings", remoteMappings.encode().sorted().toJsonArray())
         put("metadataLanguage", metadataLanguage)
         put("interfaceScale", interfaceScale.name)
+        put("colorTheme", colorTheme.storedValue)
         put("followedSports", followedSports.map { it.name }.toSet().toJsonArray())
         put("followedCompetitionKeys", followedCompetitionKeys.toJsonArray())
         put("playlistEpgRefreshInterval", playlistEpgRefreshInterval.name)
@@ -325,6 +326,7 @@ class StreamMateBackupManager(
         metadataLanguage = optionalString("metadataLanguage")?.takeIf(MetadataLanguages::isSupported)
             ?: MetadataLanguages.defaultFor(AppLocale.stored(applicationContext)),
         interfaceScale = InterfaceScale.fromStored(optionalString("interfaceScale")),
+        colorTheme = ColorTheme.fromStored(optionalString("colorTheme")),
         remoteMappings = optionalStringList("remoteMappings")?.toSet()?.let(RemoteMappings::decode)
             ?: RemoteMappings.migrated(
                 RemoteChannelKeyMode.entries.first { it.name == requiredString("remoteChannelKeyMode") },

@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="color_theme_title">Tema colori</string>
+    <string name="color_theme_help">Cambia subito i colori dell’interfaccia.</string>
+    <string name="color_theme_original">Originale</string>
+    <string name="color_theme_original_description">Blu notte e ciano. L’aspetto predefinito di Sohva.</string>
+    <string name="color_theme_nordic_slate_description">Superfici grigio antracite con accenti blu freddi.</string>
+    <string name="color_theme_cozy_hearth_description">Superfici marrone espresso con accenti ambra caldi.</string>
+    <string name="color_theme_cyber_plum_description">Superfici viola scuro con accenti viola delicati.</string>
     <string name="action_back">Indietro</string>
     <string name="catalogue_movies">Film</string>
     <string name="catalogue_series">Serie</string>

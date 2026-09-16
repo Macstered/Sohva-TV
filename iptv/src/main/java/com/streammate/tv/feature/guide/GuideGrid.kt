@@ -263,6 +263,7 @@ private fun GuideChannelRow(
     onPageForward: () -> Unit,
     onPageBack: (() -> Unit)?,
 ) {
+    val palette = StreamMateThemeTokens.palette
     Row(modifier = Modifier.fillMaxWidth().height(GUIDE_ROW_HEIGHT)) {
         GuideChannelCell(
             number = number,
@@ -334,7 +335,7 @@ private fun GuideChannelRow(
                         airing = programme.isLive(now),
                         past = programme.stopEpochMillis <= now,
                         progress = programme.progressAt(now),
-                        accent = genreAccent(programme.categories),
+                        accent = genreAccent(programme.categories, palette.genres),
                         onFocus = { onSelection(programme) },
                         // A programme still ahead has nothing to play yet, so
                         // OK offers what can be done with it instead.

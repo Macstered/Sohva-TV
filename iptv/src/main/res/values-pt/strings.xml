@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="color_theme_title">Tema de cores</string>
+    <string name="color_theme_help">Altera as cores da interface imediatamente.</string>
+    <string name="color_theme_original">Original</string>
+    <string name="color_theme_original_description">Azul meia-noite e ciano. O visual padrão do Sohva.</string>
+    <string name="color_theme_nordic_slate_description">Superfícies cinza-carvão com detalhes em azul frio.</string>
+    <string name="color_theme_cozy_hearth_description">Superfícies marrom espresso com detalhes em âmbar quente.</string>
+    <string name="color_theme_cyber_plum_description">Superfícies violeta-escuro com detalhes em roxo suave.</string>
     <string name="action_back">Voltar</string>
     <string name="catalogue_movies">Filmes</string>
     <string name="catalogue_series">Séries</string>

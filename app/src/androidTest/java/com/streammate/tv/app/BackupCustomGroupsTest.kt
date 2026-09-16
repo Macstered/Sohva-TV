@@ -251,6 +251,32 @@ class BackupCustomGroupsTest {
     private suspend fun storedGroups(): List<CatalogueCustomGroup> =
         preferences.preferences.first().customCatalogueGroups
 
+    @Test
+    fun colorThemeSurvivesBackupAndOlderBackupsUseTheDefault() = runBlocking {
+        val original = preferences.preferences.first().colorTheme
+        try {
+            preferences.setColorTheme(ColorTheme.COZY_HEARTH)
+            manager.write(Uri.fromFile(file), PASSPHRASE)
+            preferences.setColorTheme(ColorTheme.NORDIC_SLATE)
+            manager.restore(Uri.fromFile(file), PASSPHRASE)
+            assertEquals(ColorTheme.COZY_HEARTH, preferences.preferences.first().colorTheme)
+
+            val cipher = com.streammate.tv.core.security.PortableBackupCipher
+            val root = kotlinx.serialization.json.Json.parseToJsonElement(
+                cipher.decrypt(file.readBytes(), PASSPHRASE.toCharArray()).toString(Charsets.UTF_8),
+            ) as kotlinx.serialization.json.JsonObject
+            val savedPreferences = root["preferences"] as kotlinx.serialization.json.JsonObject
+            val legacy = kotlinx.serialization.json.JsonObject(root.toMutableMap().apply {
+                this["preferences"] = kotlinx.serialization.json.JsonObject(savedPreferences.toMutableMap().apply { remove("colorTheme") })
+            })
+            file.writeBytes(cipher.encrypt(legacy.toString().toByteArray(), PASSPHRASE.toCharArray()))
+            manager.restore(Uri.fromFile(file), PASSPHRASE)
+            assertEquals(ColorTheme.DEFAULT, preferences.preferences.first().colorTheme)
+        } finally {
+            preferences.setColorTheme(original)
+        }
+    }
+
     private object TestCipher : SecretCipher {
         override fun encrypt(plainText: String): String = "test:$plainText"
         override fun decrypt(encoded: String): String = encoded.removePrefix("test:")

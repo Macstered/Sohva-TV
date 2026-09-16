@@ -1,7 +1,18 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.17 (29)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.18 (31)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 18: color themes
+
+1. Open **Settings > General > Color theme** and try Nordic Slate, Cozy Hearth
+   and Cyber Plum. Colors should change immediately; Original remains available.
+2. Browse Home, Live TV, Movies, Series, Discover and Sohva Sport. Check text,
+   selected items, dialogs and player controls for readability on your TV.
+3. Use the D-pad in the theme picker. Choosing a theme or pressing Back should
+   return focus to the Color theme row. Back should leave the theme unchanged.
+4. Restart the app and confirm your selected theme remains. If you use settings
+   backups, confirm a backup restores its theme; an older backup uses Original.
 
 ## Beta 17: EPG and navigation hotfix
 

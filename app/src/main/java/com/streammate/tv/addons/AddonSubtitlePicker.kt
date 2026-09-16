@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -76,7 +75,7 @@ internal fun AddonSubtitlePicker(host: AddonHost, playback: AddonPlayback, onBac
             finally { busy = false }
         }
     }
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .88f))) {
+    Box(Modifier.fillMaxSize().background(palette.scrim.copy(alpha = .88f))) {
         Column(Modifier.fillMaxSize().padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

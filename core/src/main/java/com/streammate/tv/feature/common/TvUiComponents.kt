@@ -487,7 +487,7 @@ fun TvUrlField(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.72f)),
+                    .background(palette.scrim.copy(alpha = 0.72f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Column(

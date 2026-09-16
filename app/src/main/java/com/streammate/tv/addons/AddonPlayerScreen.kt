@@ -31,6 +31,7 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.tv.material3.Text
 import com.sohva.tv.addons.*
+import com.streammate.tv.app.StreamMateThemeTokens
 import com.streammate.tv.feature.common.TvActionButton
 import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.feature.player.SubtitleAppearance
@@ -52,6 +53,7 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
     selection: AddonPlaybackSelection, resume: Boolean, onBack: () -> Unit, modifier: Modifier, artwork: AddonWatchArtwork? = null, startupLogo: String? = null,
     subtitleStartupTimeoutMillis: Long = AUTOMATIC_SUBTITLE_BUDGET_MILLIS, episode: AddonVideo? = null) {
     val labels = addonStrings()
+    val palette = StreamMateThemeTokens.palette
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val playback = remember { AddonPlayback(context, host, profileId, identity, title, selection, artwork, episode) }
@@ -201,6 +203,7 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
         }
     }
     val currentKeyHandler by rememberUpdatedState(::handleKey)
+    // The video viewport stays black, including letterboxing and first-frame transitions.
     Box(modifier.fillMaxSize().background(Color.Black).testTag("addon-player").onPreviewKeyEvent { handleKey(it.nativeKeyEvent) }) {
         AndroidView(factory = { ctx -> PlayerView(ctx).apply {
             this.player = player; keepScreenOn = true; useController = false
@@ -215,17 +218,17 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
             modifier = Modifier.fillMaxSize(), onRelease = { it.player = null; it.keepScreenOn = false; playerView = null })
         if (!busy && playback.ready && failure == null) Box(Modifier.size(1.dp).testTag("addon-player-ready"))
         if (!busy && !subtitleSync && (controlsVisible || failure != null || playback.failed || backgroundStopped)) Box(Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, Color.Black.copy(alpha = .95f)))))
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent, palette.scrim.copy(alpha = .95f)))))
         // Keep controls composed through both subtitle dialogs. Recreating them
         // replays old dismiss/focus requests and desynchronizes Back visibility.
         if (!busy) Column(Modifier.alpha(if (subtitles || subtitleSync) 0f else 1f).align(Alignment.BottomStart).fillMaxWidth().padding(start = 40.dp, end = 40.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (playback.failed || backgroundStopped || failure != null) {
-                Text(if (backgroundStopped) labels(R.string.addon_ui_playback_stopped_while_the_app_was_in_the_background) else labels(R.string.addon_ui_playback_stopped_retry_or_choose_another_source), color = Color.White)
+                Text(if (backgroundStopped) labels(R.string.addon_ui_playback_stopped_while_the_app_was_in_the_background) else labels(R.string.addon_ui_playback_stopped_retry_or_choose_another_source), color = palette.onScrim)
                 TvActionButton(labels(R.string.addon_ui_retry_with_fresh_source), {
                     playback.onForeground(); backgroundStopped = false; accessStopped = false; attempt++
                 }, enabled = !busy, compact = true, testTag = "addon-player-retry")
             }
-            if (playback.progressFailure) Text(labels(R.string.addon_ui_watch_progress_could_not_be_saved), color = Color.White)
+            if (playback.progressFailure) Text(labels(R.string.addon_ui_watch_progress_could_not_be_saved), color = palette.onScrim)
             CompositionLocalProvider(LocalPlayerSeekStep provides step) {
                 BottomTransportControls(title, playing, position, duration, chromeVersion, focusVersion,
                     holdVisible = subtitles || subtitleSync || audio || busy || !playing || backgroundStopped || playback.failed,

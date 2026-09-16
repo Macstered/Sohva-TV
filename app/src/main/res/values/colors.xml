@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Static launch/window fallback before the Compose theme is available. -->
     <color name="sportmate_background">#05070D</color>
+    <color name="sportmate_background_top">#080C15</color>
+    <color name="sportmate_background_bottom">#04060A</color>
+    <color name="sportmate_focus">#2DE2E6</color>
 </resources>

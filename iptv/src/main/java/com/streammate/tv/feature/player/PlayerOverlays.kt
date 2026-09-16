@@ -164,7 +164,7 @@ fun LiveProgrammeInfoOverlay(
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
-                        0.42f to Color(0xFF252A31).copy(alpha = 0.16f),
+                        0.42f to palette.playerInfoSurface.copy(alpha = 0.16f),
                         1f to palette.backgroundBottom.copy(alpha = 0.52f),
                     ),
                 )
@@ -508,7 +508,7 @@ fun TrackSelectionOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xA6000000))
+            .background(palette.scrim.copy(alpha = 166f / 255f))
             .testTag("player-track-picker"),
         contentAlignment = Alignment.Center,
     ) {
@@ -1190,7 +1190,7 @@ internal fun PlayerQuickActionsOverlay(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xA6000000))
+            .background(palette.scrim.copy(alpha = 166f / 255f))
             .testTag("player-quick-actions"),
         contentAlignment = Alignment.Center,
     ) {

@@ -1,6 +1,7 @@
 package com.streammate.tv.testing
 
 import com.streammate.tv.app.InterfaceScale
+import com.streammate.tv.app.ColorTheme
 import com.streammate.tv.app.Profiles
 import com.streammate.tv.core.model.LibraryRoom
 import kotlinx.coroutines.flow.first
@@ -45,6 +46,7 @@ class ClearAppStateRule : TestWatcher() {
             // the who-is-watching screen in front of every test that follows.
             val preferences = application.container.preferencesRepository
             val current = preferences.preferences.first()
+            if (current.colorTheme != ColorTheme.DEFAULT) preferences.setColorTheme(ColorTheme.DEFAULT)
             current.profiles.forEach { preferences.removeProfile(it.id) }
             if (current.activeProfileId != Profiles.DEFAULT_ID) preferences.setActiveProfile(Profiles.DEFAULT_ID)
             // A restriction left on the default profile would empty every later guide.

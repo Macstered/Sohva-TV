@@ -75,7 +75,6 @@ import com.streammate.tv.iptv.R
 import kotlinx.coroutines.flow.first
 import com.streammate.tv.feature.common.ChannelDialOverlay
 import com.streammate.tv.feature.common.ChannelDial
-import com.streammate.tv.app.StreamMateBackground
 import com.streammate.tv.app.RemoteAction
 import com.streammate.tv.app.RemoteButton
 import com.streammate.tv.app.RemoteGesture
@@ -1022,6 +1021,7 @@ private fun ActivePlayer(
         }
     }
 
+    // Video and letterboxing stay black independently of the interface theme.
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AndroidView(
             factory = { viewContext ->
@@ -1288,14 +1288,14 @@ private fun ActivePlayer(
         seekFeedbackMillis?.let { skipped ->
             Text(
                 text = seekStepLabel(skipped),
-                color = Color.White,
+                color = StreamMateThemeTokens.palette.onScrim,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 120.dp)
                     .clip(StreamMateThemeTokens.shapes.medium)
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(StreamMateThemeTokens.palette.scrim.copy(alpha = 0.6f))
                     .padding(horizontal = 18.dp, vertical = 8.dp)
                     .testTag("player-seek-feedback"),
             )
@@ -1469,7 +1469,7 @@ private fun ActivePlayer(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .background(Color(0xCC7A1624))
+                    .background(StreamMateThemeTokens.palette.dangerSurface.copy(alpha = 0.8f))
                     .padding(horizontal = 20.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -1486,7 +1486,7 @@ private fun ActivePlayer(
                     } else {
                         stringResource(R.string.player_reconnect_stopped, error)
                     },
-                    color = Color.White,
+                    color = StreamMateThemeTokens.palette.onDangerSurface,
                 )
                 TvActionButton(
                     label = stringResource(R.string.player_reconnect),
@@ -1543,7 +1543,7 @@ fun PlayerChromeOverlay(
                 onClick = onBack,
                 testTag = "player-back",
             )
-            Text(text = channelName, modifier = Modifier.padding(start = 16.dp), color = Color.White)
+            Text(text = channelName, modifier = Modifier.padding(start = 16.dp), color = StreamMateThemeTokens.palette.onScrim)
             if (aspectModeLabel != null && onCycleAspectMode != null) {
                 TvActionButton(
                     label = stringResource(R.string.player_picture_mode, aspectModeLabel),
@@ -1804,10 +1804,10 @@ private fun Configuration.primaryLocale(): Locale = if (Build.VERSION.SDK_INT >=
 private fun PlayerMessage(message: String, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     Box(
-        modifier = Modifier.fillMaxSize().background(StreamMateBackground),
+        modifier = Modifier.fillMaxSize().background(StreamMateThemeTokens.palette.background),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = message, color = Color.White)
+        Text(text = message, color = StreamMateThemeTokens.palette.textPrimary)
         TvActionButton(
             label = stringResource(R.string.action_back),
             onClick = onBack,

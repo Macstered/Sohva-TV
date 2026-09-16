@@ -11,9 +11,9 @@
         <shape android:shape="rectangle">
             <gradient
                 android:angle="270"
-                android:startColor="#080C15"
-                android:centerColor="#05070D"
-                android:endColor="#04060A" />
+                android:startColor="@color/sportmate_background_top"
+                android:centerColor="@color/sportmate_background"
+                android:endColor="@color/sportmate_background_bottom" />
         </shape>
     </item>
     <item

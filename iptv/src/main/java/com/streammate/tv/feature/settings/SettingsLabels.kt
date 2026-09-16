@@ -18,6 +18,7 @@ import com.streammate.tv.app.CataloguePreferredCopy
 import com.streammate.tv.app.PlaybackBufferProfile
 import com.streammate.tv.app.PlaybackReconnectPolicy
 import com.streammate.tv.app.InterfaceScale
+import com.streammate.tv.app.ColorTheme
 import com.streammate.tv.app.PreferredLanguageSlot
 import com.streammate.tv.app.StartupScreen
 import com.streammate.tv.core.model.IptvSourceConfiguration
@@ -33,6 +34,7 @@ import java.util.UUID
 internal sealed class SettingsPickerTarget(val key: String) {
     object InterfaceLanguage : SettingsPickerTarget("interface-language")
     object InterfaceScale : SettingsPickerTarget("interface-scale")
+    object ColorThemeChoice : SettingsPickerTarget("color-theme")
     object Startup : SettingsPickerTarget("startup")
     object RefreshInterval : SettingsPickerTarget("refresh-interval")
     object Buffer : SettingsPickerTarget("buffer")
@@ -92,6 +94,33 @@ internal fun interfaceLanguageOptions(): List<Pair<String?, String>> = listOf(
     "sv" to stringResource(R.string.interface_language_sv),
     "it" to stringResource(R.string.interface_language_it),
 )
+
+@Composable
+internal fun ColorTheme.localizedLabel(): String = stringResource(
+    when (this) {
+        ColorTheme.ORIGINAL -> R.string.color_theme_original
+        ColorTheme.NORDIC_SLATE -> R.string.color_theme_nordic_slate
+        ColorTheme.COZY_HEARTH -> R.string.color_theme_cozy_hearth
+        ColorTheme.CYBER_PLUM -> R.string.color_theme_cyber_plum
+    },
+)
+
+@Composable
+internal fun colorThemeOptions(): List<SettingsPickerOption<ColorTheme>> = ColorTheme.entries.map { theme ->
+    SettingsPickerOption(
+        value = theme,
+        label = theme.localizedLabel(),
+        description = stringResource(
+            when (theme) {
+                ColorTheme.ORIGINAL -> R.string.color_theme_original_description
+                ColorTheme.NORDIC_SLATE -> R.string.color_theme_nordic_slate_description
+                ColorTheme.COZY_HEARTH -> R.string.color_theme_cozy_hearth_description
+                ColorTheme.CYBER_PLUM -> R.string.color_theme_cyber_plum_description
+            },
+        ),
+        testTag = "settings-color-theme-${theme.storedValue}",
+    )
+}
 
 internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this

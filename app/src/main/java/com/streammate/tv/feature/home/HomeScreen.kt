@@ -612,6 +612,7 @@ private fun HomeHeroBackdrop(hero: HomeHero, artwork: String?, modifier: Modifie
                 .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .drawWithContent {
                     drawContent()
+                    // DstOut uses only alpha; black here is an erasing mask, not a UI colour.
                     drawRect(Brush.verticalGradient(0.45f to Color.Transparent, 1f to Color.Black), blendMode = BlendMode.DstOut)
                     drawRect(Brush.horizontalGradient(0f to Color.Black, 0.4f to Color.Transparent), blendMode = BlendMode.DstOut)
                 },

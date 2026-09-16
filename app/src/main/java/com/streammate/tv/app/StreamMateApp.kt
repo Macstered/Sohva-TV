@@ -95,7 +95,11 @@ internal fun shouldReturnPlaybackToGuide(
 ): Boolean = launchedForGuide && catchupStartEpochMillis == null && catchupStopEpochMillis == null
 
 @Composable
-fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPictureState = PictureInPictureState()) {
+fun StreamMateApp(
+    container: StreamMateContainer,
+    pictureInPicture: PictureInPictureState = PictureInPictureState(),
+    initialPreferences: AppPreferences = AppPreferences(),
+) {
     val addonFeature = remember(container) { AddonFeature.load(container.runtimePolicy) }
     var backStack by remember { mutableStateOf(listOf<Destination>(Destination.Home)) }
     // Screens leave the composition while the player is up. The sport screen
@@ -123,7 +127,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
     }
     val destination = backStack.last()
     val appPreferences by container.preferencesRepository.preferences.collectAsStateWithLifecycle(
-        initialValue = AppPreferences(),
+        initialValue = initialPreferences,
     )
     val retainedResume by container.homeResume.state.collectAsStateWithLifecycle()
     val discoverAllowed = container.runtimePolicy.addonsAllowed && !container.demoMode && !appPreferences.activeRestriction.restricted
@@ -502,7 +506,7 @@ fun StreamMateApp(container: StreamMateContainer, pictureInPicture: PictureInPic
         }
     }
     BackHandler(enabled = backStack.size > 1, onBack = ::handleBack)
-    StreamMateTheme {
+    StreamMateTheme(palette = appPreferences.colorTheme.palette) {
         val palette = StreamMateThemeTokens.palette
         if (reminderOverlayPrompt) {
             ReminderOverlayPromptDialog(

@@ -29,11 +29,6 @@ import com.streammate.tv.feature.common.TvSurface
 import com.streammate.tv.feature.common.requestFocusWhenAttached
 import com.streammate.tv.iptv.R as IptvR
 
-/** The six profile colours, by a profile's colour index. */
-val PROFILE_COLORS: List<Color> = listOf(
-    Color(0xFF2EC4B6), Color(0xFFFF9F1C), Color(0xFFE71D36), Color(0xFF7B61FF), Color(0xFF4CAF50), Color(0xFFF06292),
-)
-
 /**
  * Who is watching, asked at start once a household has more than one
  * profile: a row of large tiles, the active profile focused first.
@@ -94,12 +89,12 @@ private fun ProfileTile(profile: Profile, name: String, onClick: () -> Unit, foc
                 modifier = Modifier
                     .size(110.dp)
                     .clip(CircleShape)
-                    .background(PROFILE_COLORS[profile.colorIndex.coerceIn(0, PROFILE_COLORS.lastIndex)]),
+                    .background(palette.profiles.atIndex(profile.colorIndex)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = name.take(1).uppercase(),
-                    color = Color.White,
+                    color = palette.profiles.onAvatar,
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Black,
                 )

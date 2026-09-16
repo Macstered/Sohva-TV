@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="fi">
+    <string name="color_theme_title">Väriteema</string>
+    <string name="color_theme_help">Vaihtaa käyttöliittymän värit heti.</string>
+    <string name="color_theme_original">Alkuperäinen</string>
+    <string name="color_theme_original_description">Yönsininen ja syaani. Sohvan oletusulkoasu.</string>
+    <string name="color_theme_nordic_slate_description">Hiilenharmaat pinnat ja viileänsiniset korostukset.</string>
+    <string name="color_theme_cozy_hearth_description">Espressonruskeat pinnat ja lämpimät meripihkan sävyiset korostukset.</string>
+    <string name="color_theme_cyber_plum_description">Tummanvioletit pinnat ja pehmeät violetit korostukset.</string>
     <string name="action_back">Takaisin</string>
     <string name="catalogue_movies">Elokuvat</string>
     <string name="catalogue_series">Sarjat</string>

@@ -400,6 +400,13 @@ fun SettingsScreen(
                 onSelect = { scale -> closePicker(target); scope.launch { preferencesRepository.setInterfaceScale(scale) } },
                 onDismiss = { closePicker(target) },
             )
+            SettingsPickerTarget.ColorThemeChoice -> SettingsPickerDialog(
+                title = stringResource(R.string.color_theme_title),
+                options = colorThemeOptions(),
+                selected = appPreferences.colorTheme,
+                onSelect = { theme -> closePicker(target); scope.launch { preferencesRepository.setColorTheme(theme) } },
+                onDismiss = { closePicker(target) },
+            )
             SettingsPickerTarget.Startup -> SettingsPickerDialog(
                 title = stringResource(R.string.startup_title),
                 options = StartupScreen.entries.map { screen ->
@@ -874,6 +881,15 @@ fun SettingsScreen(
                         onClick = { openPicker = SettingsPickerTarget.InterfaceScale },
                         focusRequester = rowFocus(SettingsPickerTarget.InterfaceScale.key),
                         testTag = "settings-interface-scale",
+                    )
+                    SettingsValueRow(
+                        title = stringResource(R.string.color_theme_title),
+                        subtitle = stringResource(R.string.color_theme_help),
+                        value = appPreferences.colorTheme.localizedLabel(),
+                        icon = TvIcons.StarOutline,
+                        onClick = { openPicker = SettingsPickerTarget.ColorThemeChoice },
+                        focusRequester = rowFocus(SettingsPickerTarget.ColorThemeChoice.key),
+                        testTag = "settings-color-theme",
                     )
                     SettingsSwitchRow(
                         title = stringResource(R.string.channel_numbers_title),

@@ -60,6 +60,19 @@ data class StreamMatePalette(
     val textDim: Color,
     /** Content of a control that cannot be focused. */
     val textDisabled: Color,
+    /** Wash over artwork or video. Opacity is chosen by the overlay. */
+    val scrim: Color,
+    /** Text over a scrim, independent of the app's ordinary surfaces. */
+    val onScrim: Color,
+    /** Error banner over playback, with its own contrasting foreground. */
+    val dangerSurface: Color,
+    val onDangerSurface: Color,
+    /** Middle stop of the live-player information wash. */
+    val playerInfoSurface: Color,
+    /** Content identities are separate from the app's primary accent. */
+    val genres: StreamMateGenreColors = StreamMateGenreColors(),
+    val sports: StreamMateSportColors = StreamMateSportColors(),
+    val profiles: StreamMateProfileColors = StreamMateProfileColors(),
 )
 
 val StreamMateDefaultPalette = StreamMatePalette(
@@ -84,6 +97,11 @@ val StreamMateDefaultPalette = StreamMatePalette(
     textMuted = Color(0xFF93A1B5),
     textDim = Color(0xFF5B6981),
     textDisabled = Color(0xFF5B6981),
+    scrim = Color.Black,
+    onScrim = Color.White,
+    dangerSurface = Color(0xFF7A1624),
+    onDangerSurface = Color.White,
+    playerInfoSurface = Color(0xFF252A31),
 )
 
 // Legacy aliases retained for source compatibility. Theme-aware UI should read StreamMateThemeTokens.

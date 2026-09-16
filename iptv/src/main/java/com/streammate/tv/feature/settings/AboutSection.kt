@@ -202,6 +202,7 @@ internal fun PhoneSetupDialog(
                             contentDescription = stringResource(R.string.phone_setup_qr_description),
                             modifier = Modifier
                                 .size(PHONE_QR_SIZE)
+                                // Keep the QR quiet zone white regardless of the interface theme.
                                 .background(Color.White)
                                 .padding(8.dp)
                                 .testTag("phone-setup-qr"),

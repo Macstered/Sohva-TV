@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="color_theme_title">Farbthema</string>
+    <string name="color_theme_help">Ändert die Farben der Oberfläche sofort.</string>
+    <string name="color_theme_original">Original</string>
+    <string name="color_theme_original_description">Mitternachtsblau und Cyan. Das Standarddesign von Sohva.</string>
+    <string name="color_theme_nordic_slate_description">Anthrazitfarbene Flächen mit kühlen blauen Akzenten.</string>
+    <string name="color_theme_cozy_hearth_description">Espressobraune Flächen mit warmen bernsteinfarbenen Akzenten.</string>
+    <string name="color_theme_cyber_plum_description">Dunkelviolette Flächen mit sanften violetten Akzenten.</string>
     <string name="action_back">Zurück</string>
     <string name="catalogue_movies">Filme</string>
     <string name="catalogue_series">Serien</string>

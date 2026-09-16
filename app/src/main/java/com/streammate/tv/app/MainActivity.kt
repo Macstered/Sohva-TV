@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.unit.Density
@@ -85,10 +86,11 @@ class MainActivity : ComponentActivity() {
         val container = (application as StreamMateApplication).container
         container.openRequests.offer(OpenRequest.fromIntent(intent))
         setContent {
-            var showLaunchSplash by remember(container) { mutableStateOf(true) }
+            var initialPreferences by remember(container) { mutableStateOf<AppPreferences?>(null) }
             LaunchedEffect(Unit) {
                 container.awaitReady()
-                showLaunchSplash = false
+                // The first app frame uses the saved theme instead of flashing the default.
+                initialPreferences = container.preferencesRepository.preferences.first()
             }
             // The whole app is laid out at the chosen interface size: one
             // density for every screen, so layouts and text shrink together.
@@ -98,10 +100,11 @@ class MainActivity : ComponentActivity() {
             val interfaceScale by interfaceScaleFlow.collectAsStateWithLifecycle(initialValue = InterfaceScale.DEFAULT)
             // The launch picture stays at device density, like the window
             // background before it; scaled with the interface it would jump.
-            if (showLaunchSplash) {
+            val readyPreferences = initialPreferences
+            if (readyPreferences == null) {
                 StreamMateTheme { StreamMateLaunchScreen() }
             } else {
-                InterfaceScaled(interfaceScale) { StreamMateApp(container, pictureInPicture) }
+                InterfaceScaled(interfaceScale) { StreamMateApp(container, pictureInPicture, readyPreferences) }
             }
         }
     }

@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="color_theme_title">Color theme</string>
+    <string name="color_theme_help">Changes the interface colors. Applies immediately.</string>
+    <string name="color_theme_original">Original</string>
+    <string name="color_theme_nordic_slate" translatable="false">Nordic Slate</string>
+    <string name="color_theme_cozy_hearth" translatable="false">Cozy Hearth</string>
+    <string name="color_theme_cyber_plum" translatable="false">Cyber Plum</string>
+    <string name="color_theme_original_description">Midnight blue and cyan. The default Sohva look.</string>
+    <string name="color_theme_nordic_slate_description">Charcoal surfaces with cool blue highlights.</string>
+    <string name="color_theme_cozy_hearth_description">Espresso surfaces with warm amber highlights.</string>
+    <string name="color_theme_cyber_plum_description">Deep violet surfaces with soft purple highlights.</string>
     <string name="update_disabled_development" translatable="false">Public updates are disabled in development builds. Install a new development APK manually.</string>
     <string name="action_back">Back</string>
     <string name="catalogue_movies">Movies</string>

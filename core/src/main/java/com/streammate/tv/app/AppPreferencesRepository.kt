@@ -48,6 +48,8 @@ data class AppPreferences(
     val metadataLanguage: String = "en-US",
     /** How large the whole interface is drawn; see [InterfaceScale]. */
     val interfaceScale: InterfaceScale = InterfaceScale.DEFAULT,
+    /** Shared by the household, like interface size and language. */
+    val colorTheme: ColorTheme = ColorTheme.DEFAULT,
     val autoFrameRateEnabled: Boolean = true,
     val autoPlayNextEpisodeEnabled: Boolean = true,
     /** Home while watching shrinks the picture to a corner over the launcher instead of stopping it. */
@@ -254,6 +256,7 @@ class AppPreferencesRepository(
             metadataLanguage = values[METADATA_LANGUAGE]?.takeIf(MetadataLanguages::isSupported)
                 ?: MetadataLanguages.defaultFor(AppLocale.stored(context)),
             interfaceScale = InterfaceScale.fromStored(values[INTERFACE_SCALE]),
+            colorTheme = ColorTheme.fromStored(values[COLOR_THEME]),
             autoFrameRateEnabled = values[AUTO_FRAME_RATE] ?: true,
             autoPlayNextEpisodeEnabled = values[AUTO_PLAY_NEXT_EPISODE] ?: true,
             pictureInPictureEnabled = values[PICTURE_IN_PICTURE] ?: false,
@@ -525,6 +528,10 @@ class AppPreferencesRepository(
         context.sportMatePreferences.edit { values -> values[INTERFACE_SCALE] = scale.name }
     }
 
+    suspend fun setColorTheme(theme: ColorTheme) {
+        context.sportMatePreferences.edit { values -> values[COLOR_THEME] = theme.storedValue }
+    }
+
     suspend fun resetRemoteMappings() {
         context.sportMatePreferences.edit { values -> values[REMOTE_MAPPINGS] = RemoteMappings.DEFAULTS.encode() }
     }
@@ -689,6 +696,7 @@ class AppPreferencesRepository(
             values[REMOTE_MAPPINGS] = restored.remoteMappings.encode()
             values[METADATA_LANGUAGE] = restored.metadataLanguage
             values[INTERFACE_SCALE] = restored.interfaceScale.name
+            values[COLOR_THEME] = restored.colorTheme.storedValue
             values[AUTO_FRAME_RATE] = restored.autoFrameRateEnabled
             values[AUTO_PLAY_NEXT_EPISODE] = restored.autoPlayNextEpisodeEnabled
             values[PICTURE_IN_PICTURE] = restored.pictureInPictureEnabled
@@ -743,6 +751,7 @@ class AppPreferencesRepository(
         val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
         val METADATA_LANGUAGE = stringPreferencesKey("metadata_language")
         val INTERFACE_SCALE = stringPreferencesKey("interface_scale")
+        val COLOR_THEME = stringPreferencesKey("color_theme")
         val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         val AUTO_PLAY_NEXT_EPISODE = booleanPreferencesKey("auto_play_next_episode")
         val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")

@@ -118,7 +118,7 @@ internal fun AddonDetailsScreen(host: AddonHost, profileId: String, installation
                         Column {
                             Box(Modifier.fillMaxWidth().height(130.dp)) {
                                 AsyncImage(item.thumbnail ?: details.background, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .85f)))))
+                                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, StreamMateThemeTokens.palette.scrim.copy(alpha = .85f)))))
                                 Text(episodeLabel(item, labels), Modifier.align(Alignment.BottomStart).padding(10.dp), color = colors.content,
                                     fontSize = StreamMateThemeTokens.typography.label.fontSize, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 val trakt = traktState["${preview.key.type}:${preview.key.id}:${item.season}:${item.episode}"]
