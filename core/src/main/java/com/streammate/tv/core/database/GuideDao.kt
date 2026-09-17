@@ -8,6 +8,15 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
+private const val SPORTS_MATCH_GENERATION_QUERY = """
+    SELECT 'source:' || quote(sourceId) || ',' || enabled || ',' || epgOffsetMinutes AS generation FROM iptv_source_state
+    UNION ALL SELECT 'snapshot:' || quote(sourceId) || ',' || quote(kind) || ',' || quote(activeSnapshotId) FROM import_state WHERE kind IN ('playlist', 'epg')
+    UNION ALL SELECT 'channel:' || quote(channelId) || ',' || quote(customName) || ',' || hidden || ',' || quote(manualXmltvChannelId) || ',' || quote(customOrganizationGroupKey) FROM channel_preferences
+    UNION ALL SELECT 'rule:' || quote(sourceId) || ',' || quote(groupKey) || ',' || quote(itemKey) || ',' || quote(enabled) FROM organization_rules WHERE room = 'LIVE'
+    UNION ALL SELECT 'alias:' || quote(sport) || ',' || quote(normalizedCanonicalName) || ',' || quote(normalizedAlias) FROM team_aliases
+    ORDER BY generation
+"""
+
 @Dao
 abstract class GuideDao {
     @Upsert
@@ -606,6 +615,13 @@ abstract class GuideDao {
         """,
     )
     abstract suspend fun channelNameCandidates(): List<ChannelNameCandidateRow>
+
+    /** Small configuration/snapshot rows, without scanning programme or channel payloads. */
+    @Query(SPORTS_MATCH_GENERATION_QUERY)
+    abstract suspend fun sportsMatchGeneration(): List<String>
+
+    @Query(SPORTS_MATCH_GENERATION_QUERY)
+    abstract fun observeSportsMatchGeneration(): Flow<List<String>>
 
     @Query(
         """

@@ -297,6 +297,53 @@ class MatchHubTest {
         .fetchSemanticsNodes()
         .firstNotNullOfOrNull { it.config.getOrNull(SemanticsProperties.TestTag) }
 
+    @Test
+    fun remoteCanConfirmRejectAndRestoreBelowAvailableRowsWithoutLosingItsPlace() {
+        var streams by mutableStateOf(List(3) { index -> MATCHES.first().copy(channelId = "available-$index") } + POSSIBLE_MATCH)
+        composeRule.activity.setContent {
+            StreamMateTheme {
+                TodayScreen(
+                    uiState = TodayUiState(events = listOf(EVENT), matches = mapOf(EVENT.id to streams), followedSports = setOf(SportType.FOOTBALL)),
+                    onRefresh = {}, onLoadDetails = {}, onRefreshDetails = {}, onGuide = {}, onSettings = {}, onPlay = {},
+                    onMatchDecision = { _, channel, decision ->
+                        streams = com.streammate.tv.matching.EventChannelOrdering.sort(streams.map { if (it.channelId == channel) it.withDecision(decision) else it }, emptyList())
+                    },
+                )
+            }
+        }
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("event-${EVENT.id}").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("event-${EVENT.id}").performClick()
+        composeRule.awaitUntil { focusedTagOrNull() == "match-watch-available-0" }
+        fun press(key: Key) {
+            composeRule.onAllNodes(isFocused()).onFirst().performKeyInput { pressKey(key) }
+            composeRule.waitForIdle()
+        }
+        repeat(3) { press(Key.DirectionDown) }
+        assertEquals("match-confirm-channel-2", focusedTagOrNull())
+        press(Key.DirectionCenter)
+        composeRule.awaitUntil { focusedTagOrNull() == "match-watch-channel-2" }
+        press(Key.DirectionRight)
+        assertEquals("match-restore-channel-2", focusedTagOrNull())
+        press(Key.DirectionCenter)
+        composeRule.awaitUntil { focusedTagOrNull() == "match-confirm-channel-2" }
+        press(Key.DirectionRight)
+        assertEquals("match-reject-channel-2", focusedTagOrNull())
+        press(Key.DirectionCenter)
+        composeRule.awaitUntil { focusedTagOrNull() == "match-restore-channel-2" }
+        press(Key.DirectionCenter)
+        composeRule.awaitUntil { focusedTagOrNull() == "match-confirm-channel-2" }
+
+        val before = composeRule.onNodeWithTag("match-row-channel-2").fetchSemanticsNode().positionInRoot.y
+        // A refresh chooses an EPG candidate and a different sort order for the same channel.
+        composeRule.runOnIdle { streams = streams.reversed().map { it.copy(programmeId = "new-${it.channelId}") } }
+        composeRule.waitForIdle()
+        assertEquals("match-confirm-channel-2", focusedTagOrNull())
+        assertEquals(before, composeRule.onNodeWithTag("match-row-channel-2").fetchSemanticsNode().positionInRoot.y, 0.5f)
+        composeRule.mainClock.advanceTimeBy(3_000)
+        composeRule.waitForIdle()
+        assertEquals(before, composeRule.onNodeWithTag("match-row-channel-2").fetchSemanticsNode().positionInRoot.y, 0.5f)
+    }
+
     private companion object {
         val FocusedKey = androidx.compose.ui.semantics.SemanticsProperties.Focused
 

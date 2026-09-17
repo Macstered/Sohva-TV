@@ -124,4 +124,5 @@
     <string name="today_refresh_description">Päivitä urheilutiedot</string>
     <string name="today_guide_description">Avaa kanavaopas</string>
     <string name="today_settings_description">Avaa asetukset</string>
+    <string name="match_confirmed_by_you">Vahvistamasi</string>
 </resources>

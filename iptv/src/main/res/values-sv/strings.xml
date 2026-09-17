@@ -841,4 +841,9 @@
     <string name="phone_setup_page_logo_saved">Logotypen för %1$s är sparad på TV:n. Du kan stänga den här sidan.</string>
     <string name="phone_setup_page_logo_invalid">Den filen är ingen bild som den här telefonen kan läsa.</string>
     <string name="guide_loading">Läser in guiden…</string>
+    <string name="sports_channel_priority_title">Prioritet för land / språk</string>
+    <string name="sports_channel_priority_help">Ange lands- eller språkkoder i ordning, åtskilda med kommatecken (till exempel SE, EN, UK). Upp till 8 kända koder sparas. Lämna tomt för standardordning. Använder taggar i kanalnamnet; tillgängliga kanaler visas före möjliga träffar.</string>
+    <string name="sports_channel_priority_codes">Koder, till exempel SE, EN, UK</string>
+    <string name="sports_channel_priority_save">Spara ordning</string>
+    <string name="sports_channel_priority_saved">Kanalordning sparad</string>
 </resources>

@@ -1,7 +1,26 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.18 (31)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.19 (34)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 19: sports matches and navigation
+
+1. Open a match with Available and Possible streams. Use the remote to reach
+   a Possible stream below the visible rows, then Confirm, Reject and Restore.
+   Each action should update promptly and retain focus in the same row.
+2. Compare channels naming the same teams and kickoff with different country
+   prefixes. Check any explicit timezone in the name. A saved manual decision
+   belongs to that stream and is labelled separately from automatic matches.
+3. Restart the app and return to Sohva Sport. Valid saved channel counts should
+   appear without waiting for a full scan. Playlist or EPG changes can require
+   recalculation; manual decisions should remain saved.
+4. Leave the hub open during a refresh. Its channel order and browsing position
+   should stay stable without touching the remote.
+5. Start on Home and check that focus remains on content. Also try deliberately
+   opening the side menu while Home loads; it should stay open.
+6. Set country/language priority in **Settings > Sohva Sport**, reopen a match,
+   and check the order within Available and Possible groups. Clear and save to
+   restore the default. Codes reflect channel-name tags, not verified audio.
 
 ## Beta 18: color themes
 

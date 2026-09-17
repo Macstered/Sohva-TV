@@ -10,18 +10,18 @@ to access.
 
 ## Download
 
-The prepared tester build is **0.1.0-beta.18 (build 31)**. It is an early beta, not
+The prepared tester build is **0.1.0-beta.19 (build 34)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.18)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.19)
 and verify the published SHA-256 value.
 
-Beta 18 adds Nordic Slate, Cozy Hearth and Cyber Plum in **Settings > General >
-Color theme**. Original remains the default; themes apply immediately and are
-saved across restarts and in settings backups.
+Beta 19 fixes sports stream confirmation, timezone matching, saved channel
+matches, list movement and Home startup focus. Country/language priority is
+available in **Settings > Sohva Sport**.
 
 - [Installation and setup](INSTALL.md)
 - [Testing and feedback](TESTING.md)
-- [Beta 18 release notes](RELEASE_NOTES.md)
+- [Beta 19 release notes](RELEASE_NOTES.md)
 - [Discover setup and imports](ADDONS.md)
 - [Privacy policy](PRIVACY.md)
 - [Security reporting](SECURITY.md)

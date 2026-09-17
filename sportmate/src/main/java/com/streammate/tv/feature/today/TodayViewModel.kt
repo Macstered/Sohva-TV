@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import com.streammate.tv.matching.EventChannelOrdering
 import kotlinx.coroutines.launch
 
 enum class TodayUiError {
@@ -79,6 +81,8 @@ class TodayViewModel(
     private var settingsLoaded = false
     private var autoRefreshEnabled = false
     private var lastLoadedAtEpochMillis: Long? = null
+    private var channelPriority: List<String> = emptyList()
+    private val savedDecisions = mutableMapOf<Pair<String, String>, ManualMatchDecision?>()
 
     init {
         viewModelScope.launch {
@@ -93,6 +97,7 @@ class TodayViewModel(
                 zoneId = nextZone
                 followedSports = preferences.followedSports
                 followedCompetitionKeys = preferences.followedCompetitionKeys
+                channelPriority = preferences.sportsChannelPriority
                 settingsLoaded = true
                 mutableUiState.update { current ->
                     current.copy(
@@ -101,9 +106,26 @@ class TodayViewModel(
                         },
                         followedSports = followedSports,
                         timeZoneId = zoneId.id,
+                        matches = presentMatches(current.matches),
                     )
                 }
                 if (feedChanged && automaticRefreshAllowed) refresh()
+            }
+        }
+        viewModelScope.launch {
+            matchingRepository.observeInputChanges().distinctUntilChanged().collectLatest {
+                // Imports update several small tables together. Match once after they settle.
+                delay(250)
+                val events = mutableUiState.value.events
+                if (events.isNotEmpty()) {
+                    try {
+                        val matches = matchingRepository.matchesFor(events)
+                        if (mutableUiState.value.events.map { it.id to it.startEpochMillis } == events.map { it.id to it.startEpochMillis }) {
+                            publishMatches(matches)
+                        }
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { /* Keep the last successful matches during an import. */ }
+                }
             }
         }
     }
@@ -122,8 +144,14 @@ class TodayViewModel(
                     requestedSports = requestedSports,
                     requestedCompetitionKeys = requestedCompetitionKeys,
                     onPartial = { loaded ->
-                        mutableUiState.update { current -> current.copy(
-                            events = loaded.events.map { it.copy(isFavourite = it.id in favouriteEventIds) },
+                        val cached = try { matchingRepository.cachedMatchesFor(loaded.events) }
+                            catch (cancelled: CancellationException) { throw cancelled }
+                            catch (_: Exception) { emptyMap() }
+                        mutableUiState.update { current ->
+                            val matches = presentMatches(current.matches + cached)
+                            current.copy(
+                            events = withMatchCounts(loaded.events, matches),
+                            matches = matches,
                             cacheState = loaded.cacheState, providerQuotas = loaded.providerQuotas,
                             quotaRemaining = loaded.quotaRemaining,
                         ) }
@@ -151,7 +179,7 @@ class TodayViewModel(
                 val refreshedMatches = try { matchingRepository.matchesFor(loaded.events) }
                     catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { matches }
-                mutableUiState.update { it.copy(events = withMatchCounts(loaded.events, refreshedMatches), matches = refreshedMatches) }
+                publishMatches(refreshedMatches)
             }.onFailure {
                 if (it is CancellationException) throw it
                 mutableUiState.update { current ->
@@ -170,7 +198,7 @@ class TodayViewModel(
         requestedZone: ZoneId,
         requestedSports: Set<SportType>,
         requestedCompetitionKeys: Set<String>,
-        onPartial: (CombinedEventsSnapshot) -> Unit,
+        onPartial: suspend (CombinedEventsSnapshot) -> Unit,
     ): CombinedEventsSnapshot {
         val feeds = requestedSports.mapNotNull { sport ->
             val prefix = "${sport.name}:"
@@ -290,9 +318,10 @@ class TodayViewModel(
         viewModelScope.launch {
             runCatching {
                 matchingRepository.setDecision(eventId, channelId, decision)
-                matchingRepository.matchesFor(mutableUiState.value.events)
-            }.onSuccess { matches ->
+            }.onSuccess {
+                savedDecisions[eventId to channelId] = decision
                 mutableUiState.update { current ->
+                    val matches = presentMatches(current.matches)
                     current.copy(
                         events = withMatchCounts(current.events, matches),
                         matches = matches,
@@ -300,10 +329,25 @@ class TodayViewModel(
                     )
                 }
             }.onFailure {
+                if (it is CancellationException) throw it
                 mutableUiState.update { current ->
                     current.copy(error = TodayUiError.MATCH_DECISION_SAVE)
                 }
             }
+        }
+    }
+
+    private fun presentMatches(matches: Map<String, List<EventChannelMatch>>) = matches.mapValues { (_, values) ->
+        EventChannelOrdering.sort(values.map { match ->
+            val key = match.eventId to match.channelId
+            if (key in savedDecisions) match.withDecision(savedDecisions[key]) else match
+        }, channelPriority)
+    }
+
+    private fun publishMatches(matches: Map<String, List<EventChannelMatch>>) {
+        mutableUiState.update { current ->
+            val presented = presentMatches(matches).filterKeys { id -> current.events.any { it.id == id } }
+            current.copy(events = withMatchCounts(current.events, presented), matches = presented)
         }
     }
 

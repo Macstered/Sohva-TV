@@ -841,4 +841,9 @@
     <string name="phone_setup_page_logo_saved">Logo für %1$s auf dem Fernseher gespeichert. Diese Seite kann geschlossen werden.</string>
     <string name="phone_setup_page_logo_invalid">Diese Datei ist kein Bild, das dieses Handy lesen kann.</string>
     <string name="guide_loading">Programm wird gelesen…</string>
+    <string name="sports_channel_priority_title">Land- / Sprachpriorität</string>
+    <string name="sports_channel_priority_help">Länder- oder Sprachcodes in Reihenfolge eingeben, durch Kommas getrennt (z. B. DE, EN, UK). Bis zu 8 erkannte Codes werden gespeichert. Leer lassen für die Standardreihenfolge. Verwendet Tags im Sendernamen; verfügbare Sender stehen vor möglichen Treffern.</string>
+    <string name="sports_channel_priority_codes">Codes, z. B. DE, EN, UK</string>
+    <string name="sports_channel_priority_save">Reihenfolge speichern</string>
+    <string name="sports_channel_priority_saved">Senderreihenfolge gespeichert</string>
 </resources>

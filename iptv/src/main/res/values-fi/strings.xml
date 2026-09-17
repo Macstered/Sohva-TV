@@ -851,4 +851,9 @@
     <string name="phone_setup_page_logo_saved">Logo tallennettu televisioon kanavalle %1$s. Voit sulkea tämän sivun.</string>
     <string name="phone_setup_page_logo_invalid">Tiedosto ei ole kuva, jonka puhelin osaa lukea.</string>
     <string name="guide_loading">Luetaan opasta…</string>
+    <string name="sports_channel_priority_title">Kanavien maa- ja kielijärjestys</string>
+    <string name="sports_channel_priority_help">Kirjoita maa- tai kielikoodit järjestyksessä pilkuilla erotettuina (esimerkiksi FI, EN, SE). Enintään 8 tunnistettua koodia tallennetaan. Tyhjä palauttaa oletusjärjestyksen. Perustuu kanavanimien tunnisteisiin; saatavilla olevat kanavat ovat ennen mahdollisia osumia.</string>
+    <string name="sports_channel_priority_codes">Koodit, esimerkiksi FI, EN, SE</string>
+    <string name="sports_channel_priority_save">Tallenna järjestys</string>
+    <string name="sports_channel_priority_saved">Kanavien järjestys tallennettu</string>
 </resources>

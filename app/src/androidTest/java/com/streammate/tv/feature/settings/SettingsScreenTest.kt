@@ -377,6 +377,22 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun sportsChannelPriorityPersistsTheEnteredOrder() {
+        composeRule.openSettingsFromTheEmptyGuide()
+        composeRule.onNodeWithTag("settings-section-sport").performClick()
+        composeRule.onNodeWithTag("settings-sports-channel-priority").performClick().performTextInput("ES, ALB, EN")
+        composeRule.onNodeWithTag("settings-sports-channel-priority").performImeAction()
+        composeRule.onNodeWithTag("settings-sports-channel-priority-save").performClick()
+        val preferences = com.streammate.tv.app.AppPreferencesRepository(InstrumentationRegistry.getInstrumentation().targetContext)
+        composeRule.awaitUntil {
+            kotlinx.coroutines.runBlocking { preferences.preferences.first().sportsChannelPriority == listOf("ES", "AL", "EN") }
+        }
+        composeRule.onNodeWithTag("settings-section-general").performClick()
+        composeRule.onNodeWithTag("settings-section-sport").performClick()
+        composeRule.onNodeWithTag("settings-sports-channel-priority").performClick().assertTextContains("ES, AL, EN")
+    }
+
+    @Test
     fun selectingSettingsSectionMovesFocusIntoItsFirstUsefulControl() {
         composeRule.openSettingsFromTheEmptyGuide()
 
@@ -387,7 +403,7 @@ class SettingsScreenTest {
         composeRule.onNodeWithTag("settings-metadata-tmdb-enabled").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-sport").performClick()
-        composeRule.onNodeWithTag("settings-sports-api-save").assertIsFocused()
+        composeRule.onNodeWithTag("settings-sports-channel-priority-save").assertIsFocused()
 
         composeRule.onNodeWithTag("settings-section-general").performClick()
         composeRule.onNodeWithTag("settings-interface-language").assertIsFocused()

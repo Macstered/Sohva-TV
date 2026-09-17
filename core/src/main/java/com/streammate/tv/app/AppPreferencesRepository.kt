@@ -13,6 +13,7 @@ import com.streammate.tv.core.model.CatalogueCustomGroup
 import com.streammate.tv.core.model.CatalogueGenre
 import com.streammate.tv.core.model.SportType
 import com.streammate.tv.core.model.SportsFollowDefaults
+import com.streammate.tv.core.model.ChannelStreamTags
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
@@ -60,6 +61,7 @@ data class AppPreferences(
     val showChannelNumbers: Boolean = true,
     val followedSports: Set<SportType> = SportsFollowDefaults.sports,
     val followedCompetitionKeys: Set<String> = SportsFollowDefaults.competitionKeys,
+    val sportsChannelPriority: List<String> = emptyList(),
     val playlistEpgRefreshInterval: PlaylistEpgRefreshInterval = PlaylistEpgRefreshInterval.DEFAULT,
     val playbackBufferProfile: PlaybackBufferProfile = PlaybackBufferProfile.DEFAULT,
     val playbackSeekStep: PlaybackSeekStep = PlaybackSeekStep.DEFAULT,
@@ -266,6 +268,7 @@ class AppPreferencesRepository(
                 ?.mapNotNull { stored -> SportType.entries.firstOrNull { it.name == stored } }
                 ?.toSet()
                 ?: SportsFollowDefaults.sports,
+            sportsChannelPriority = ChannelStreamTags.normalizePriority(values[SPORTS_CHANNEL_PRIORITY].orEmpty().split(',')),
             followedCompetitionKeys = values[FOLLOWED_COMPETITIONS]?.toSet()
                 ?: SportsFollowDefaults.competitionKeys,
             playlistEpgRefreshInterval = PlaylistEpgRefreshInterval.fromStoredValue(
@@ -556,6 +559,12 @@ class AppPreferencesRepository(
         context.sportMatePreferences.edit { values -> values[SHOW_CHANNEL_NUMBERS] = show }
     }
 
+    suspend fun setSportsChannelPriority(codes: List<String>) {
+        context.sportMatePreferences.edit { values ->
+            values[SPORTS_CHANNEL_PRIORITY] = ChannelStreamTags.normalizePriority(codes).joinToString(",")
+        }
+    }
+
     suspend fun setFollowedSport(sport: SportType, followed: Boolean) {
         context.sportMatePreferences.edit { values ->
             val updated = values[FOLLOWED_SPORTS]
@@ -704,6 +713,7 @@ class AppPreferencesRepository(
             values[SHOW_CHANNEL_NUMBERS] = restored.showChannelNumbers
             values[FOLLOWED_SPORTS] = restored.followedSports.mapTo(mutableSetOf()) { it.name }
             values[FOLLOWED_COMPETITIONS] = restored.followedCompetitionKeys
+            values[SPORTS_CHANNEL_PRIORITY] = ChannelStreamTags.normalizePriority(restored.sportsChannelPriority).joinToString(",")
             values[PLAYLIST_EPG_REFRESH_INTERVAL] = restored.playlistEpgRefreshInterval.name
             values[PLAYBACK_BUFFER_PROFILE] = restored.playbackBufferProfile.name
             values[PLAYBACK_SEEK_STEP] = restored.playbackSeekStep.name
@@ -759,6 +769,7 @@ class AppPreferencesRepository(
         val SHOW_CHANNEL_NUMBERS = booleanPreferencesKey("show_channel_numbers")
         val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")
         val FOLLOWED_COMPETITIONS = stringSetPreferencesKey("followed_competitions")
+        val SPORTS_CHANNEL_PRIORITY = stringPreferencesKey("sports_channel_priority")
         val PLAYLIST_EPG_REFRESH_INTERVAL = stringPreferencesKey("playlist_epg_refresh_interval")
         val PLAYBACK_BUFFER_PROFILE = stringPreferencesKey("playback_buffer_profile")
         val PLAYBACK_SEEK_STEP = stringPreferencesKey("playback_seek_step")

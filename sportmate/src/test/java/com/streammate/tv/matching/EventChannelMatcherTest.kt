@@ -159,6 +159,36 @@ class EventChannelMatcherTest {
         assertEquals(ChannelMatchConfidence.POSSIBLE, matches[1].confidence)
     }
 
+    @Test
+    fun `country variants use the explicit channel timezone instead of the display timezone`() {
+        val fixture = event.copy(home = "Real Betis", away = "Getafe", startEpochMillis = Instant.parse("2026-09-16T17:00:00Z").toEpochMilli(), startMinuteOfDay = 19 * 60)
+        val channels = listOf("AR", "ES", "ALB").map { country ->
+            candidate("$country - REAL BETIS VS GETAFE 18:00 CET", 0, country, MatchCandidateSource.M3U_CHANNEL_NAME)
+        }
+        val matches = matcher.match(listOf(fixture), channels, emptyMap(), emptyMap()).getValue(fixture.id)
+        assertEquals(3, matches.size)
+        assertTrue(matches.all { it.confidence == ChannelMatchConfidence.AVAILABLE && it.startOffsetMinutes == 0L })
+        val differentDisplayZone = matcher.match(listOf(fixture.copy(startMinuteOfDay = 12 * 60)), channels, emptyMap(), emptyMap()).getValue(fixture.id)
+        assertEquals(matches, differentDisplayZone)
+    }
+
+    @Test
+    fun `explicit UTC offsets and summer time work across midnight`() {
+        val fixture = event.copy(startEpochMillis = Instant.parse("2026-09-16T22:30:00Z").toEpochMilli())
+        for (time in listOf("22:30 UTC", "00:30 CEST", "00:30 EET", "01:30 EEST", "04:00 UTC+05:30", "19:30 GMT-3")) {
+            val matches = matcher.match(listOf(fixture), listOf(candidate("Manchester United v Liverpool $time", 0, source = MatchCandidateSource.M3U_CHANNEL_NAME)), emptyMap(), emptyMap()).getValue(fixture.id)
+            assertEquals(time, 0L, matches.single().startOffsetMinutes)
+        }
+    }
+
+    @Test
+    fun `restoring a confirmed or rejected row uses its original confidence`() {
+        val possible = matcher.match(listOf(event), listOf(candidate("Manchester United live", kickoff)), emptyMap(), emptyMap()).getValue(event.id).single()
+        assertEquals(ChannelMatchConfidence.AVAILABLE, possible.withDecision(ManualMatchDecision.CONFIRMED).confidence)
+        assertEquals(possible, possible.withDecision(ManualMatchDecision.CONFIRMED).withDecision(null))
+        assertEquals(possible, possible.withDecision(ManualMatchDecision.REJECTED).withDecision(null))
+    }
+
     private fun candidate(
         title: String,
         startEpochMillis: Long,

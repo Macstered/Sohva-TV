@@ -323,6 +323,9 @@ fun SettingsScreen(
         initialValue = com.streammate.tv.app.AppPreferences(),
     )
     val scope = rememberCoroutineScope()
+    var sportsChannelPriority by remember(appPreferences.sportsChannelPriority) {
+        mutableStateOf(appPreferences.sportsChannelPriority.joinToString(", "))
+    }
     var editedGroup by remember { mutableStateOf<CatalogueCustomGroup?>(null) }
     val libraryGenres by remember(metadataRepository) {
         metadataRepository.observeCatalogueGenres()
@@ -1270,6 +1273,34 @@ fun SettingsScreen(
             if (selectedSection == SettingsSection.SPORT) {
             item {
                 SettingsGroup {
+                    SettingsGroupHeading(stringResource(R.string.sports_channel_priority_title))
+                    Text(stringResource(R.string.sports_channel_priority_help), color = palette.textMuted, fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        TvUrlField(
+                            value = sportsChannelPriority,
+                            onValueChange = { sportsChannelPriority = it.take(80) },
+                            label = stringResource(R.string.sports_channel_priority_codes),
+                            modifier = Modifier.weight(1f),
+                            testTag = "settings-sports-channel-priority",
+                            keyboardType = KeyboardType.Text,
+                            editOnClickOnly = true, compact = true,
+                        )
+                        TvActionButton(
+                            label = stringResource(R.string.sports_channel_priority_save), compact = true,
+                            focusRequester = sectionFocusRequesters.getValue(SettingsSection.SPORT),
+                            testTag = "settings-sports-channel-priority-save",
+                            onClick = { scope.launch {
+                                val codes = com.streammate.tv.core.model.ChannelStreamTags.normalizePriority(sportsChannelPriority.split(','))
+                                preferencesRepository.setSportsChannelPriority(codes)
+                                sportsChannelPriority = codes.joinToString(", ")
+                                status = resources.getString(R.string.sports_channel_priority_saved)
+                            } },
+                        )
+                    }
+                }
+            }
+            item {
+                SettingsGroup {
                     SettingsGroupHeading(stringResource(R.string.sports_settings_title))
                     Text(
                         text = stringResource(R.string.sports_settings_description),
@@ -1307,7 +1338,6 @@ fun SettingsScreen(
                             icon = TvIcons.Save,
                             enabled = !busy,
                             compact = true,
-                            focusRequester = sectionFocusRequesters.getValue(SettingsSection.SPORT),
                             onClick = {
                                 status = runCatching {
                                     secretSettingsStore.saveSportsApiSettings(

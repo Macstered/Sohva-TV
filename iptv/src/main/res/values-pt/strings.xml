@@ -841,4 +841,9 @@
     <string name="phone_setup_page_logo_saved">Logo salvo na TV para %1$s. Você pode fechar esta página.</string>
     <string name="phone_setup_page_logo_invalid">Esse arquivo não é uma imagem que este telefone consiga ler.</string>
     <string name="guide_loading">Lendo o guia…</string>
+    <string name="sports_channel_priority_title">Prioridade de país / idioma</string>
+    <string name="sports_channel_priority_help">Introduz os códigos de país ou idioma por ordem, separados por vírgulas (por exemplo PT, EN, UK). São guardados até 8 códigos reconhecidos. Deixa vazio para a ordem predefinida. Usa as etiquetas no nome do canal; os canais disponíveis aparecem antes dos possíveis.</string>
+    <string name="sports_channel_priority_codes">Códigos, por exemplo PT, EN, UK</string>
+    <string name="sports_channel_priority_save">Guardar ordem</string>
+    <string name="sports_channel_priority_saved">Ordem dos canais guardada</string>
 </resources>

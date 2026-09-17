@@ -101,6 +101,18 @@ class HomeResumeNavigationTest {
         compose.onNodeWithTag("home-resume-status").assertDoesNotExist()
     }
 
+    @Test fun openingTheMenuWhileLoadingKeepsItOpenWhenDataArrives() {
+        show()
+        press(Key.DirectionLeft)
+        val menuItem = compose.onAllNodes(isFocused()).onFirst().fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.TestTag]
+        org.junit.Assert.assertTrue(menuItem in setOf("home-live", "home-sportmate", "home-movies", "home-series", "home-discover", "home-search", "home-settings"))
+        compose.runOnIdle { snapshot.value = ready("one") }
+        compose.waitForIdle()
+        compose.onNodeWithTag(menuItem).assertIsFocused()
+        press(Key.DirectionRight)
+        compose.onNodeWithTag(tag("one")).assertIsFocused()
+    }
+
     private fun press(key: Key) {
         compose.onAllNodes(isFocused()).onFirst().performKeyInput { pressKey(key) }
         compose.waitForIdle()

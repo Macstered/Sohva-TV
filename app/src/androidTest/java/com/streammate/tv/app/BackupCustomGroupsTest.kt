@@ -76,6 +76,18 @@ class BackupCustomGroupsTest {
     }
 
     @Test
+    fun sportsCountryPriorityKeepsItsOrderAcrossBackupRestore() = runBlocking {
+        val previous = preferences.preferences.first().sportsChannelPriority
+        try {
+            preferences.setSportsChannelPriority(listOf("ES", "ALB", "EN"))
+            manager.write(Uri.fromFile(file), PASSPHRASE)
+            preferences.setSportsChannelPriority(emptyList())
+            manager.restore(Uri.fromFile(file), PASSPHRASE)
+            assertEquals(listOf("ES", "AL", "EN"), preferences.preferences.first().sportsChannelPriority)
+        } finally { preferences.setSportsChannelPriority(previous) }
+    }
+
+    @Test
     fun aChannelsOwnLogoAndNumberComeBackFromTheBackup() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val secrets = SecretSettingsStore(context, TestCipher)

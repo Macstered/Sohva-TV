@@ -251,6 +251,7 @@ class StreamMateBackupManager(
         put("colorTheme", colorTheme.storedValue)
         put("followedSports", followedSports.map { it.name }.toSet().toJsonArray())
         put("followedCompetitionKeys", followedCompetitionKeys.toJsonArray())
+        put("sportsChannelPriority", JsonArray(sportsChannelPriority.map(::JsonPrimitive)))
         put("playlistEpgRefreshInterval", playlistEpgRefreshInterval.name)
         put("playbackBufferProfile", playbackBufferProfile.name)
         put("playbackSeekStep", playbackSeekStep.name)
@@ -340,6 +341,7 @@ class StreamMateBackupManager(
             ?: SportsFollowDefaults.sports,
         followedCompetitionKeys = optionalStringList("followedCompetitionKeys")?.toSet()
             ?: SportsFollowDefaults.competitionKeys,
+        sportsChannelPriority = com.streammate.tv.core.model.ChannelStreamTags.normalizePriority(optionalStringList("sportsChannelPriority").orEmpty()),
         playlistEpgRefreshInterval = optionalString("playlistEpgRefreshInterval")
             ?.let { stored ->
                 PlaylistEpgRefreshInterval.entries.firstOrNull { it.name == stored }

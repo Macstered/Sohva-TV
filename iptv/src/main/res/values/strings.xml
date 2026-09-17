@@ -857,4 +857,9 @@
     <string name="phone_setup_page_logo_saved">Logo saved on the TV for %1$s. You can close this page.</string>
     <string name="phone_setup_page_logo_invalid">That file is not a picture this phone can read.</string>
     <string name="guide_loading">Reading the guide…</string>
+    <string name="sports_channel_priority_title">Channel country / language priority</string>
+    <string name="sports_channel_priority_help">Enter country or language codes in order, separated by commas (for example ES, EN, UK). Up to 8 recognized codes are saved. Leave empty for the default order. Uses channel name tags; available channels stay ahead of possible matches.</string>
+    <string name="sports_channel_priority_codes">Codes, for example ES, EN, UK</string>
+    <string name="sports_channel_priority_save">Save order</string>
+    <string name="sports_channel_priority_saved">Channel order saved</string>
 </resources>

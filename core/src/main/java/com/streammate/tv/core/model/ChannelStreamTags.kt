@@ -1,5 +1,7 @@
 package com.streammate.tv.core.model
 
+import java.util.Locale
+
 /** What a [StreamTag] says about a stream, so a screen can order or style them. */
 enum class StreamTagKind {
     RESOLUTION,
@@ -25,7 +27,7 @@ data class StreamTag(val kind: StreamTagKind, val label: String)
 object ChannelStreamTags {
 
     fun read(channelName: String): List<StreamTag> {
-        val tokens = channelName.uppercase().split(*SEPARATORS).filter(String::isNotBlank)
+        val tokens = channelName.uppercase(Locale.ROOT).split(*SEPARATORS).filter(String::isNotBlank)
         val resolution = tokens.firstNotNullOfOrNull(RESOLUTIONS::get)
         val dynamicRange = tokens.firstNotNullOfOrNull(DYNAMIC_RANGES::get)
         val frameRate = tokens.firstNotNullOfOrNull { token ->
@@ -42,6 +44,10 @@ object ChannelStreamTags {
             language?.let { StreamTag(StreamTagKind.LANGUAGE, it) },
         )
     }
+
+    /** Ordered country/language markers, shared by settings, backup and matching. */
+    fun normalizePriority(values: Iterable<String>): List<String> = values
+        .mapNotNull { LANGUAGES[it.trim().uppercase(Locale.ROOT)] }.distinct().take(8)
 
     private val SEPARATORS = charArrayOf(' ', '|', ':', '-', '_', '/', '(', ')', '[', ']', ',', '.')
 
@@ -68,6 +74,14 @@ object ChannelStreamTags {
         "DE" to "DE", "GER" to "DE",
         "EE" to "EE", "EST" to "EE",
         "RU" to "RU", "RUS" to "RU",
-        "FR" to "FR", "ES" to "ES", "IT" to "IT", "NL" to "NL", "PL" to "PL",
+        "FR" to "FR", "FRA" to "FR", "ES" to "ES", "ESP" to "ES", "SPA" to "ES",
+        "IT" to "IT", "ITA" to "IT", "NL" to "NL", "NLD" to "NL", "PL" to "PL", "POL" to "PL",
+        "AR" to "AR", "ARG" to "AR", "AL" to "AL", "ALB" to "AL", "SQ" to "AL",
+        "PT" to "PT", "POR" to "PT", "BR" to "BR", "BRA" to "BR",
+        "GB" to "UK", "GBR" to "UK", "USA" to "US", "DEU" to "DE",
+        "TR" to "TR", "TUR" to "TR", "GR" to "GR", "GRE" to "GR",
+        "RO" to "RO", "RON" to "RO", "CZ" to "CZ", "CZE" to "CZ",
+        "HR" to "HR", "HRV" to "HR", "RS" to "RS", "SRB" to "RS",
+        "CA" to "CA", "CAN" to "CA", "AU" to "AU", "AUS" to "AU",
     )
 }

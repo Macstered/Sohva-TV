@@ -124,4 +124,5 @@
     <string name="today_refresh_description">Refresh sports data</string>
     <string name="today_guide_description">Open the TV guide</string>
     <string name="today_settings_description">Open settings</string>
+    <string name="match_confirmed_by_you">Confirmed by you</string>
 </resources>

@@ -76,6 +76,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1090,6 +1094,13 @@ private fun MatchHub(
 ) {
     val palette = StreamMateThemeTokens.palette
     val availableStreamCount = matches.count { it.confidence == ChannelMatchConfidence.AVAILABLE }
+    // Keep the viewer's place while scores, guide candidates or decisions change.
+    // A newly opened hub uses the latest preference order again.
+    var channelOrder by remember(event.id) { mutableStateOf(matches.map { it.channelId }) }
+    val byChannel = matches.associateBy { it.channelId }
+    val nextOrder = channelOrder.filter { it in byChannel } + matches.map { it.channelId }.filter { it !in channelOrder }
+    SideEffect { channelOrder = nextOrder }
+    val visibleMatches = nextOrder.mapNotNull(byChannel::get)
     val availableStreamLabel = pluralStringResource(
         R.plurals.today_available_streams,
         availableStreamCount,
@@ -1139,7 +1150,7 @@ private fun MatchHub(
                         modifier = Modifier.weight(1.12f).fillMaxHeight(),
                     )
                     GuideMatchesPanel(
-                        matches = matches,
+                        matches = visibleMatches,
                         onPlay = onPlay,
                         onDecision = onDecision,
                         focusRequester = focusRequester,
@@ -1579,6 +1590,7 @@ private fun IncidentRow(incident: FootballIncident) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun GuideMatchesPanel(
     matches: List<EventChannelMatch>,
@@ -1639,13 +1651,14 @@ private fun GuideMatchesPanel(
                     stringResource(R.string.streams_empty),
                 )
             } else {
+                CompositionLocalProvider(LocalBringIntoViewSpec provides StreamListBringIntoViewSpec) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().testTag("streams-list"),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     itemsIndexed(
                         matches,
-                        key = { _, match -> "${match.channelId}:${match.programmeId}" },
+                        key = { _, match -> match.channelId },
                     ) { index, match ->
                         MatchOptionRow(
                             match = match,
@@ -1657,8 +1670,20 @@ private fun GuideMatchesPanel(
                         )
                     }
                 }
+                }
             }
         }
+    }
+}
+
+/** Keep fully visible controls still; the TV pivot otherwise repeatedly recentres them. */
+@OptIn(ExperimentalFoundationApi::class)
+private object StreamListBringIntoViewSpec : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
+        size > containerSize -> 0f // Let the smaller focused control determine visibility.
+        offset < 0f -> offset
+        offset + size > containerSize -> offset + size - containerSize
+        else -> 0f
     }
 }
 
@@ -1713,13 +1738,17 @@ private fun MatchOptionRow(
     // top - the part worth reading. Ask for the whole row instead.
     val bringRowIntoView = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
+    var rowHasFocus by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .bringIntoViewRequester(bringRowIntoView)
             .onFocusChanged { state ->
-                if (state.hasFocus) scope.launch { bringRowIntoView.bringIntoView() }
+                if (state.hasFocus && !rowHasFocus) scope.launch { bringRowIntoView.bringIntoView() }
+                rowHasFocus = state.hasFocus
             }
+            .focusGroup()
+            .testTag("match-row-${match.channelId}")
             .clip(RoundedCornerShape(10.dp))
             .background(
                 when (match.confidence) {
@@ -1740,7 +1769,8 @@ private fun MatchOptionRow(
             Box(Modifier.size(6.dp).background(statusColor, CircleShape))
             Spacer(Modifier.width(7.dp))
             Text(
-                text = match.confidence.localizedLabel().uppercase(),
+                text = (if (match.manualDecision == ManualMatchDecision.CONFIRMED) stringResource(R.string.match_confirmed_by_you)
+                    else match.confidence.localizedLabel()).uppercase(),
                 color = statusColor,
                 fontWeight = FontWeight.Black,
                 fontSize = 12.sp,

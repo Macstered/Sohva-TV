@@ -9,6 +9,8 @@ import com.streammate.tv.core.model.SportType
 import com.streammate.tv.core.model.TodayEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 class TeamAliasRepository(private val dao: GuideDao) {
     suspend fun aliasesFor(sport: SportType): Map<String, Set<String>> {
@@ -78,10 +80,28 @@ class EventChannelMatchingRepository(
     private val aliasRepository: TeamAliasRepository = TeamAliasRepository(dao),
     private val decisionRepository: EventChannelDecisionRepository = EventChannelDecisionRepository(dao),
     private val matcher: EventChannelMatcher = EventChannelMatcher(),
+    private val cache: EventChannelMatchCache = EventChannelMatchCache(),
 ) {
-    suspend fun matchesFor(events: List<TodayEvent>): Map<String, List<EventChannelMatch>> {
-        val matchableEvents = events.filter { it.startEpochMillis > 0 }
-        if (matchableEvents.isEmpty()) return events.associate { it.id to emptyList() }
+    private val matchingMutex = Mutex()
+    fun observeInputChanges() = dao.observeSportsMatchGeneration()
+
+    suspend fun cachedMatchesFor(events: List<TodayEvent>): Map<String, List<EventChannelMatch>> =
+        applyDecisions(cache.read(events, inputGeneration()), events)
+
+    private suspend fun inputGeneration() = EventChannelMatchCache.fingerprint(dao.sportsMatchGeneration())
+
+    private suspend fun applyDecisions(matches: Map<String, List<EventChannelMatch>>, events: List<TodayEvent>): Map<String, List<EventChannelMatch>> {
+        val decisions = decisionRepository.decisionsFor(events.map { it.id })
+        return matches.mapValues { (_, values) -> values.map { it.withDecision(decisions[it.eventId to it.channelId]) } }
+    }
+
+    suspend fun matchesFor(events: List<TodayEvent>): Map<String, List<EventChannelMatch>> = matchingMutex.withLock {
+        val generation = inputGeneration()
+        val cached = cache.read(events, generation)
+        if (events.all { it.id in cached }) return@withLock applyDecisions(cached, events)
+        val missing = events.filter { it.id !in cached }
+        val matchableEvents = missing.filter { it.startEpochMillis > 0 }
+        if (matchableEvents.isEmpty()) return@withLock applyDecisions(cached + missing.associate { it.id to emptyList() }, events)
         val margin = EventChannelMatcher.MAX_START_DELTA_MINUTES * MILLIS_PER_MINUTE
         val programmeCandidates = dao.programmeCandidates(
             fromEpochMillis = matchableEvents.minOf { it.startEpochMillis } - margin,
@@ -95,14 +115,16 @@ class EventChannelMatchingRepository(
             }
         }
         val decisions = decisionRepository.decisionsFor(events.map(TodayEvent::id))
-        return withContext(Dispatchers.Default) {
+        val matches = withContext(Dispatchers.Default) {
             matcher.match(
-                events = events,
+                events = missing,
                 candidates = programmeCandidates + channelNameCandidates,
                 aliases = aliases,
                 decisions = decisions,
             )
         }
+        if (generation == inputGeneration()) cache.write(missing, generation, matches)
+        applyDecisions(cached + matches, events)
     }
 
     suspend fun setDecision(eventId: String, channelId: String, decision: ManualMatchDecision?) {

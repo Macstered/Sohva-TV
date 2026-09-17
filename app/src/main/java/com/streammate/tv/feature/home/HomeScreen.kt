@@ -250,9 +250,13 @@ fun HomeScreen(
     // for them; the row container itself pulls the focused row up to its top.
     val railScrollBehavior = LocalBringIntoViewSpec.current
     var loadingFocused by remember { mutableStateOf(false) }
+    var initialFocusPending by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf(true) }
     // Initial focus only. Later refreshes never pull the viewer back from another row or the rail.
-    LaunchedEffect(resume.profileId, resume.discoverAllowed) {
-        if (rowsEmpty) welcomeFocus.requestFocusWhenAttached() else contentFocus.requestFocusWhenAttached()
+    LaunchedEffect(resume.profileId, resume.discoverAllowed, showResumeStatus, rowsEmpty) {
+        if (initialFocusPending) {
+            val focused = if (rowsEmpty) welcomeFocus.requestFocusWhenAttached() else contentFocus.requestFocusWhenAttached()
+            if (focused) initialFocusPending = false
+        }
     }
     // Capture before removing the focused placeholder: Compose can move focus
     // to the rail during disposal, which must not erase this pending handoff.
@@ -270,6 +274,11 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onPreviewKeyEvent {
+                        // An intentional visit to the menu cancels the loading handoff.
+                        if (it.key == Key.DirectionLeft) { loadingFocused = false; initialFocusPending = false }
+                        false
+                    }
                     .padding(start = HOME_RAIL_WIDTH + spacing.lg, end = spacing.xl),
             ) {
                 // A band of fixed height, whatever the hero says: the rows below
@@ -412,7 +421,7 @@ fun HomeScreen(
             BackHandler(enabled = railFocused) { rowsFocus.requestFocus() }
             HomeRail(
                 contentFocus = rowsFocus,
-                onFocusedChange = { railFocused = it; if (it) { loadingFocused = false; focusedHero = null } },
+                onFocusedChange = { railFocused = it; if (it) focusedHero = null },
                 onLiveTv = onLiveTv,
                 onSportMate = onSportMate,
                 onMovies = onMovies,

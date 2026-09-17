@@ -5,6 +5,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChannelStreamTagsTest {
+    @Test fun `country codes from the report and preference aliases normalize consistently`() {
+        assertEquals(listOf("ES", "AL", "AR", "UK"), ChannelStreamTags.normalizePriority(listOf(" es ", "ALB", "ARG", "GB", "ESP", "unknown")))
+        assertEquals("AL", ChannelStreamTags.read("ALB - REAL BETIS VS GETAFE 18:00 CET").single().label)
+        assertEquals("AR", ChannelStreamTags.read("AR - REAL BETIS VS GETAFE 18:00 CET").single().label)
+    }
 
     private fun labels(name: String) = ChannelStreamTags.read(name).map(StreamTag::label)
 

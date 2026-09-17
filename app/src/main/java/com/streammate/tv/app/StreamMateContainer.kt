@@ -229,7 +229,9 @@ class StreamMateContainer(context: Context) {
         )
     }
     val eventChannelMatchingRepository: EventChannelMatchingRepository by lazy {
-        EventChannelMatchingRepository(database.guideDao())
+        EventChannelMatchingRepository(database.guideDao(), cache = com.streammate.tv.matching.EventChannelMatchCache(
+            java.io.File(applicationContext.cacheDir, "sports-channel-matches.bin"),
+        ))
     }
 
     suspend fun refreshDemoContent(): Boolean {
