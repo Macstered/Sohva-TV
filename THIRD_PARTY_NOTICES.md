@@ -1,6 +1,6 @@
 # Sohva TV third-party notices
 
-For the **0.1.0-beta.13** tester package and accompanying public source. Sohva
+For the **0.1.0-beta.20** tester package and accompanying public source. Sohva
 TV's original source is licensed separately under `GPL-3.0-only`. This document
 does not relicense third-party material; third-party copyrights, licences,
 service terms, logos, and trademarks remain in force.
@@ -29,6 +29,16 @@ The complete Apache License 2.0 text is distributed as
 notice as [`LICENSE-KXML2.txt`](LICENSE-KXML2.txt). The APK also retains its
 embedded upstream licence files. This summary is not a grant of rights to
 upstream content.
+
+## Color palettes
+
+Nord, Everforest and Kanagawa adapt upstream palettes for TV viewing. Attribution
+and the full MIT licence terms are bundled in the APK's `theme-licenses.txt` and
+in the source at `core/src/main/assets/theme-licenses.txt`.
+
+- [Nord](https://github.com/nordtheme/nord), copyright 2016-present Sven Greb.
+- [Everforest](https://github.com/sainnhe/everforest), copyright 2019 sainnhe.
+- [Kanagawa](https://github.com/rebelot/kanagawa.nvim), copyright 2021 Tommaso Laurenzi.
 
 ## Optional data providers
 

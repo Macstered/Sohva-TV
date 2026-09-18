@@ -10,18 +10,18 @@ to access.
 
 ## Download
 
-The prepared tester build is **0.1.0-beta.19 (build 34)**. It is an early beta, not
+The prepared tester build is **0.1.0-beta.20 (build 40)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.19)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.20)
 and verify the published SHA-256 value.
 
-Beta 19 fixes sports stream confirmation, timezone matching, saved channel
-matches, list movement and Home startup focus. Country/language priority is
-available in **Settings > Sohva Sport**.
+Beta 20 improves sports matching across provider timezones and date formats,
+fixes Home focus after reopening and removes the brief startup text flash.
+Nord, Everforest and Kanagawa join the existing color themes in Settings.
 
 - [Installation and setup](INSTALL.md)
 - [Testing and feedback](TESTING.md)
-- [Beta 19 release notes](RELEASE_NOTES.md)
+- [Beta 20 release notes](RELEASE_NOTES.md)
 - [Discover setup and imports](ADDONS.md)
 - [Privacy policy](PRIVACY.md)
 - [Security reporting](SECURITY.md)

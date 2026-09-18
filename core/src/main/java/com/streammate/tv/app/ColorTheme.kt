@@ -9,6 +9,9 @@ enum class ColorTheme(val storedValue: String) {
     NORDIC_SLATE("nordic_slate"),
     COZY_HEARTH("cozy_hearth"),
     CYBER_PLUM("cyber_plum"),
+    NORD("nord"),
+    EVERFOREST("everforest"),
+    KANAGAWA("kanagawa"),
     ;
 
     val palette: StreamMatePalette
@@ -17,6 +20,9 @@ enum class ColorTheme(val storedValue: String) {
             NORDIC_SLATE -> NordicSlatePalette
             COZY_HEARTH -> CozyHearthPalette
             CYBER_PLUM -> CyberPlumPalette
+            NORD -> NordPalette
+            EVERFOREST -> EverforestPalette
+            KANAGAWA -> KanagawaPalette
         }
 
     companion object {
@@ -56,6 +62,39 @@ private val CyberPlumPalette = darkPalette(
     // The brighter violet remains readable in small labels on raised surfaces.
     focus = Color(0xFFC084FC),
     secondaryGlow = Color(0xFF653498),
+)
+
+// Adapted from Nord, Everforest Dark Hard and Kanagawa Wave. Surfaces are
+// darkened and secondary text lifted for TV viewing; upstream accents remain.
+// Attribution and MIT terms are bundled in assets/theme-licenses.txt.
+private val NordPalette = darkPalette(
+    background = Color(0xFF151A21),
+    surface = Color(0xFF222A35),
+    textPrimary = Color(0xFFECEFF4),
+    textMuted = Color(0xFFA5B1C2),
+    textDim = Color(0xFF98A5B8),
+    focus = Color(0xFF88C0D0),
+    secondaryGlow = Color(0xFF5E81AC),
+)
+
+private val EverforestPalette = darkPalette(
+    background = Color(0xFF151B18),
+    surface = Color(0xFF202B25),
+    textPrimary = Color(0xFFE8E3D5),
+    textMuted = Color(0xFFA6B3A5),
+    textDim = Color(0xFF98A794),
+    focus = Color(0xFFA7C080),
+    secondaryGlow = Color(0xFF536D59),
+)
+
+private val KanagawaPalette = darkPalette(
+    background = Color(0xFF16161D),
+    surface = Color(0xFF232330),
+    textPrimary = Color(0xFFDCD7BA),
+    textMuted = Color(0xFFAAA6BD),
+    textDim = Color(0xFF9C99AF),
+    focus = Color(0xFF7E9CD8),
+    secondaryGlow = Color(0xFF4C628A),
 )
 
 /**

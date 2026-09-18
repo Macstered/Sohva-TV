@@ -6,10 +6,16 @@
     <string name="color_theme_nordic_slate" translatable="false">Nordic Slate</string>
     <string name="color_theme_cozy_hearth" translatable="false">Cozy Hearth</string>
     <string name="color_theme_cyber_plum" translatable="false">Cyber Plum</string>
+    <string name="color_theme_nord" translatable="false">Nord</string>
+    <string name="color_theme_everforest" translatable="false">Everforest</string>
+    <string name="color_theme_kanagawa" translatable="false">Kanagawa</string>
     <string name="color_theme_original_description">Midnight blue and cyan. The default Sohva look.</string>
     <string name="color_theme_nordic_slate_description">Charcoal surfaces with cool blue highlights.</string>
     <string name="color_theme_cozy_hearth_description">Espresso surfaces with warm amber highlights.</string>
     <string name="color_theme_cyber_plum_description">Deep violet surfaces with soft purple highlights.</string>
+    <string name="color_theme_nord_description">Blue-grey surfaces with soft ice-blue highlights.</string>
+    <string name="color_theme_everforest_description">Forest-grey surfaces with sage-green highlights and warm cream text.</string>
+    <string name="color_theme_kanagawa_description">Deep ink surfaces with dusty blue highlights and parchment text.</string>
     <string name="update_disabled_development" translatable="false">Public updates are disabled in development builds. Install a new development APK manually.</string>
     <string name="action_back">Back</string>
     <string name="catalogue_movies">Movies</string>

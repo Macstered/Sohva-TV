@@ -102,6 +102,9 @@ internal fun ColorTheme.localizedLabel(): String = stringResource(
         ColorTheme.NORDIC_SLATE -> R.string.color_theme_nordic_slate
         ColorTheme.COZY_HEARTH -> R.string.color_theme_cozy_hearth
         ColorTheme.CYBER_PLUM -> R.string.color_theme_cyber_plum
+        ColorTheme.NORD -> R.string.color_theme_nord
+        ColorTheme.EVERFOREST -> R.string.color_theme_everforest
+        ColorTheme.KANAGAWA -> R.string.color_theme_kanagawa
     },
 )
 
@@ -116,6 +119,9 @@ internal fun colorThemeOptions(): List<SettingsPickerOption<ColorTheme>> = Color
                 ColorTheme.NORDIC_SLATE -> R.string.color_theme_nordic_slate_description
                 ColorTheme.COZY_HEARTH -> R.string.color_theme_cozy_hearth_description
                 ColorTheme.CYBER_PLUM -> R.string.color_theme_cyber_plum_description
+                ColorTheme.NORD -> R.string.color_theme_nord_description
+                ColorTheme.EVERFOREST -> R.string.color_theme_everforest_description
+                ColorTheme.KANAGAWA -> R.string.color_theme_kanagawa_description
             },
         ),
         testTag = "settings-color-theme-${theme.storedValue}",

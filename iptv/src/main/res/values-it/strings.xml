@@ -7,6 +7,9 @@
     <string name="color_theme_nordic_slate_description">Superfici grigio antracite con accenti blu freddi.</string>
     <string name="color_theme_cozy_hearth_description">Superfici marrone espresso con accenti ambra caldi.</string>
     <string name="color_theme_cyber_plum_description">Superfici viola scuro con accenti viola delicati.</string>
+    <string name="color_theme_nord_description">Superfici grigio-blu con delicati accenti blu ghiaccio.</string>
+    <string name="color_theme_everforest_description">Superfici grigio-verdi con accenti verde salvia e testo color crema caldo.</string>
+    <string name="color_theme_kanagawa_description">Superfici blu inchiostro scuro con accenti blu tenui e testo color pergamena.</string>
     <string name="action_back">Indietro</string>
     <string name="catalogue_movies">Film</string>
     <string name="catalogue_series">Serie</string>

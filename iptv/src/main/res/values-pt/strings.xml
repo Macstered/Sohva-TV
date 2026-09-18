@@ -7,6 +7,9 @@
     <string name="color_theme_nordic_slate_description">Superfícies cinza-carvão com detalhes em azul frio.</string>
     <string name="color_theme_cozy_hearth_description">Superfícies marrom espresso com detalhes em âmbar quente.</string>
     <string name="color_theme_cyber_plum_description">Superfícies violeta-escuro com detalhes em roxo suave.</string>
+    <string name="color_theme_nord_description">Superfícies cinza-azuladas com detalhes suaves em azul-gelo.</string>
+    <string name="color_theme_everforest_description">Superfícies cinza-esverdeadas com detalhes verde-sálvia e texto creme quente.</string>
+    <string name="color_theme_kanagawa_description">Superfícies azul-tinta escuro com detalhes em azul suave e texto cor de pergaminho.</string>
     <string name="action_back">Voltar</string>
     <string name="catalogue_movies">Filmes</string>
     <string name="catalogue_series">Séries</string>

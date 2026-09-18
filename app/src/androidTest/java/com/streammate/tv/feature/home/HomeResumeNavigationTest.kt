@@ -113,6 +113,34 @@ class HomeResumeNavigationTest {
         compose.onNodeWithTag(tag("one")).assertIsFocused()
     }
 
+    @Test fun lateRowsReplaceTheWelcomeActionWithoutOpeningTheMenu() {
+        show(withRecommendation = false)
+        compose.runOnIdle { snapshot.value = HomeResumeSnapshot("fixture", status = HomeResumeStatus.EMPTY) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("home-hero-primary").assertIsFocused()
+
+        // The history query can finish before sports, recent channels or Trakt rows.
+        compose.runOnIdle { next.value = listOf(nextTitle) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("home-hero-primary").assertDoesNotExist()
+        compose.onNodeWithTag("home-trakt-${nextTitle.key}").assertIsFocused()
+    }
+
+    @Test fun openingTheMenuFromWelcomeKeepsItOpenWhenRowsArrive() {
+        snapshot.value = HomeResumeSnapshot("fixture", status = HomeResumeStatus.EMPTY)
+        show(withRecommendation = false)
+        compose.onNodeWithTag("home-hero-primary").assertIsFocused()
+        press(Key.DirectionLeft)
+        val menuItem = compose.onAllNodes(isFocused()).onFirst().fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.TestTag]
+        org.junit.Assert.assertTrue(menuItem in setOf("home-live", "home-sportmate", "home-movies", "home-series", "home-search", "home-settings"))
+
+        compose.runOnIdle { next.value = listOf(nextTitle) }
+        compose.waitForIdle()
+        compose.onNodeWithTag(menuItem).assertIsFocused()
+        press(Key.DirectionRight)
+        compose.onNodeWithTag("home-trakt-${nextTitle.key}").assertIsFocused()
+    }
+
     private fun press(key: Key) {
         compose.onAllNodes(isFocused()).onFirst().performKeyInput { pressKey(key) }
         compose.waitForIdle()

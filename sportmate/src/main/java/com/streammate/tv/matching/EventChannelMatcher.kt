@@ -3,10 +3,6 @@ package com.streammate.tv.matching
 import com.streammate.tv.core.model.TodayEvent
 import java.text.Normalizer
 import java.util.Locale
-import java.time.Instant
-import java.time.LocalTime
-import java.time.ZoneId
-import java.time.ZoneOffset
 import kotlin.math.abs
 
 enum class ChannelMatchConfidence {
@@ -54,6 +50,7 @@ data class EventChannelMatch(
     val score: Int,
     val manualDecision: ManualMatchDecision?,
     val source: MatchCandidateSource,
+    /** A time usable for kickoff comparison; an unzoned provider clock cannot supply an offset. */
     val hasExplicitStartTime: Boolean,
     val automaticConfidence: ChannelMatchConfidence = confidence,
 ) {
@@ -113,17 +110,13 @@ class EventChannelMatcher {
     ): EventChannelMatch? {
         val candidate = prepared.candidate
         if (event.startEpochMillis <= 0) return null
+        val channelStartOffset = prepared.schedule?.startOffsetMinutes(event)
         val hasExplicitStartTime = candidate.source == MatchCandidateSource.XMLTV_PROGRAMME ||
-            prepared.channelStartMinute != null
+            channelStartOffset != null
         val offsetMinutes = when (candidate.source) {
             MatchCandidateSource.XMLTV_PROGRAMME ->
                 (candidate.startEpochMillis - event.startEpochMillis) / MILLIS_PER_MINUTE
-            MatchCandidateSource.M3U_CHANNEL_NAME -> prepared.channelStartMinute
-                ?.let { minute ->
-                    prepared.channelZone?.let { zone -> zonedMinuteOffset(event, minute, zone) }
-                        ?: closestMinuteOffset(event.startMinuteOfDay, minute)
-                }
-                ?: 0L
+            MatchCandidateSource.M3U_CHANNEL_NAME -> channelStartOffset ?: 0L
         }
         val absoluteOffset = abs(offsetMinutes)
         if (
@@ -163,7 +156,8 @@ class EventChannelMatcher {
             else -> 0
         }
         val automaticConfidence = if (
-            bothTeams && (!hasExplicitStartTime || absoluteOffset <= AUTO_MATCH_DELTA_MINUTES)
+            bothTeams && prepared.schedule?.dateSupportsMatch(event, channelStartOffset) != false &&
+            (!hasExplicitStartTime || absoluteOffset <= AUTO_MATCH_DELTA_MINUTES)
         ) {
             ChannelMatchConfidence.AVAILABLE
         } else {
@@ -194,45 +188,10 @@ class EventChannelMatcher {
         corpus = MatchTextNormalizer.normalize(
             listOfNotNull(candidate.title, candidate.subtitle, candidate.description).joinToString(" "),
         ),
-        channelStartMinute = if (candidate.source == MatchCandidateSource.M3U_CHANNEL_NAME) {
-            channelTimePattern.find(candidate.channelName)?.let { match ->
-                match.groupValues[1].toInt() * 60 + match.groupValues[2].toInt()
-            }
-        } else {
-            null
-        },
-        channelZone = if (candidate.source == MatchCandidateSource.M3U_CHANNEL_NAME) {
-            channelTimePattern.find(candidate.channelName)?.groupValues?.get(3)?.uppercase(Locale.ROOT)?.let(::channelZone)
+        schedule = if (candidate.source == MatchCandidateSource.M3U_CHANNEL_NAME) {
+            ChannelNameSchedule.parse(candidate.channelName)
         } else null,
     )
-
-    private fun zonedMinuteOffset(event: TodayEvent, minute: Int, zone: ZoneId): Long {
-        val date = Instant.ofEpochMilli(event.startEpochMillis).atZone(zone).toLocalDate()
-        return (-1L..1L).map { day ->
-            val start = date.plusDays(day).atTime(LocalTime.of(minute / 60, minute % 60)).atZone(zone).toInstant().toEpochMilli()
-            (start - event.startEpochMillis) / MILLIS_PER_MINUTE
-        }.minBy(::abs)
-    }
-
-    private fun channelZone(value: String): ZoneId? = when (value) {
-        "CET" -> ZoneOffset.ofHours(1)
-        "EET" -> ZoneOffset.ofHours(2)
-        "CEST" -> ZoneOffset.ofHours(2)
-        "EEST" -> ZoneOffset.ofHours(3)
-        "UTC", "GMT" -> ZoneOffset.UTC
-        else -> if (value.startsWith("UTC") || value.startsWith("GMT")) {
-            runCatching { ZoneOffset.of(value.substring(3)) }.getOrNull()
-        } else null
-    }
-
-    private fun closestMinuteOffset(eventMinute: Int, candidateMinute: Int): Long {
-        val raw = candidateMinute - eventMinute
-        return when {
-            raw > MINUTES_PER_HALF_DAY -> (raw - MINUTES_PER_DAY).toLong()
-            raw < -MINUTES_PER_HALF_DAY -> (raw + MINUTES_PER_DAY).toLong()
-            else -> raw.toLong()
-        }
-    }
 
     private fun List<EventChannelMatch>.bestCandidate(): EventChannelMatch? = sortedWith(
         compareByDescending<EventChannelMatch> { it.score }
@@ -261,16 +220,12 @@ class EventChannelMatcher {
         private const val AUTO_MATCH_DELTA_MINUTES = 30L
         private const val MILLIS_PER_MINUTE = 60_000L
         private const val MIN_TERM_LENGTH = 3
-        private const val MINUTES_PER_DAY = 24 * 60
-        private const val MINUTES_PER_HALF_DAY = MINUTES_PER_DAY / 2
-        private val channelTimePattern = Regex("""(?<!\d)([01]?\d|2[0-3])[:.]([0-5]\d)(?!\d)\s*((?:UTC|GMT)(?:[+-]\d{1,2}(?::?\d{2})?)?|CEST|CET|EEST|EET)?\b""", RegexOption.IGNORE_CASE)
     }
 
     private data class PreparedCandidate(
         val candidate: ProgrammeCandidate,
         val corpus: String,
-        val channelStartMinute: Int?,
-        val channelZone: ZoneId?,
+        val schedule: ChannelNameSchedule?,
     )
 }
 

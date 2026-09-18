@@ -95,7 +95,8 @@ class EventChannelMatchCache(private val file: File? = null, private val clock: 
     }
     private fun eventKey(event: TodayEvent) = fingerprint(listOf(event.id, event.sport.name, event.home, event.away, event.startEpochMillis.toString(), event.startMinuteOfDay.toString()))
     companion object {
-        private const val VERSION = 1
+        // Recompute results after numeric date support and removal of unzoned clock comparisons.
+        private const val VERSION = 3
         private const val MAX_AGE = 24 * 60 * 60_000L
         private const val MAX_BYTES = 16 * 1024 * 1024L
         fun fingerprint(values: List<String>): String {

@@ -36,10 +36,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.media3.session.SessionToken
-import androidx.tv.material3.Text
 import com.streammate.tv.R
 import com.streammate.tv.feature.guide.GuideScreen
 import com.streammate.tv.feature.home.HomeScreen
@@ -539,12 +537,11 @@ fun StreamMateApp(
             }
         }
         if (!startupApplied) {
+            // Keep the chosen background while startup routing resolves. A plain
+            // app-name label here flashes between the launch artwork and Home.
             Box(
                 modifier = Modifier.fillMaxSize().background(palette.backgroundBottom),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(text = stringResource(R.string.app_name))
-            }
+            )
         } else if (!profileChosen) {
             val gated = pendingProfile
             if (gated != null) {

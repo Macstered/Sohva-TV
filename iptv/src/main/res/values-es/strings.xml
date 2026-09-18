@@ -7,6 +7,9 @@
     <string name="color_theme_nordic_slate_description">Superficies gris carbón con detalles en azul frío.</string>
     <string name="color_theme_cozy_hearth_description">Superficies marrón espresso con detalles en ámbar cálido.</string>
     <string name="color_theme_cyber_plum_description">Superficies violeta oscuro con detalles en morado suave.</string>
+    <string name="color_theme_nord_description">Superficies gris azulado con suaves detalles en azul hielo.</string>
+    <string name="color_theme_everforest_description">Superficies gris verdoso con detalles verde salvia y texto crema cálido.</string>
+    <string name="color_theme_kanagawa_description">Superficies azul tinta oscuro con detalles en azul apagado y texto color pergamino.</string>
     <string name="action_back">Atrás</string>
     <string name="catalogue_movies">Películas</string>
     <string name="catalogue_series">Series</string>

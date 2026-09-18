@@ -250,6 +250,7 @@ fun HomeScreen(
     // for them; the row container itself pulls the focused row up to its top.
     val railScrollBehavior = LocalBringIntoViewSpec.current
     var loadingFocused by remember { mutableStateOf(false) }
+    var welcomeFocused by remember { mutableStateOf(false) }
     var initialFocusPending by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf(true) }
     // Initial focus only. Later refreshes never pull the viewer back from another row or the rail.
     LaunchedEffect(resume.profileId, resume.discoverAllowed, showResumeStatus, rowsEmpty) {
@@ -267,6 +268,15 @@ fun HomeScreen(
             loadingFocused = false
         }
     }
+    // History can settle empty before another Home row arrives. Removing its
+    // focused welcome button needs the same handoff as removing the loader.
+    val handoffFromWelcome = welcomeFocused
+    LaunchedEffect(rowsEmpty) {
+        if (!rowsEmpty && handoffFromWelcome) {
+            contentFocus.requestFocusWhenAttached()
+            welcomeFocused = false
+        }
+    }
 
     StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { contentModifier ->
         Box(modifier = contentModifier) {
@@ -275,8 +285,12 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .onPreviewKeyEvent {
-                        // An intentional visit to the menu cancels the loading handoff.
-                        if (it.key == Key.DirectionLeft) { loadingFocused = false; initialFocusPending = false }
+                        // An intentional visit to the menu cancels pending content handoffs.
+                        if (it.key == Key.DirectionLeft) {
+                            loadingFocused = false
+                            welcomeFocused = false
+                            initialFocusPending = false
+                        }
                         false
                     }
                     .padding(start = HOME_RAIL_WIDTH + spacing.lg, end = spacing.xl),
@@ -303,6 +317,7 @@ fun HomeScreen(
                         plot = heroDetails.description,
                         now = now,
                         welcomeFocus = welcomeFocus,
+                        onWelcomeFocused = { welcomeFocused = true },
                         showWelcomeAction = rowsEmpty,
                         onLiveTv = onLiveTv,
                         modifier = Modifier.align(Alignment.BottomStart),
@@ -708,6 +723,7 @@ private fun HomeHeroPanel(
     plot: String?,
     now: Long,
     welcomeFocus: FocusRequester,
+    onWelcomeFocused: () -> Unit,
     showWelcomeAction: Boolean,
     onLiveTv: () -> Unit,
     modifier: Modifier = Modifier,
@@ -825,6 +841,7 @@ private fun HomeHeroPanel(
                 primary = true,
                 testTag = "home-hero-primary",
                 focusRequester = welcomeFocus,
+                onFocused = onWelcomeFocused,
                 onClick = onLiveTv,
             )
         }
@@ -885,6 +902,7 @@ private fun HomeHeroAction(
     primary: Boolean,
     testTag: String,
     onClick: () -> Unit,
+    onFocused: () -> Unit,
     contentDescription: String? = null,
     focusRequester: FocusRequester? = null,
 ) {
@@ -895,7 +913,8 @@ private fun HomeHeroAction(
     } ?: Modifier
     TvSurface(
         onClick = onClick,
-        modifier = Modifier.height(HOME_HERO_BUTTON_HEIGHT).then(semanticsModifier),
+        modifier = Modifier.height(HOME_HERO_BUTTON_HEIGHT).then(semanticsModifier)
+            .onFocusChanged { if (it.isFocused) onFocused() },
         shape = StreamMateThemeTokens.shapes.medium,
         // Primary sits a step higher on the ladder rather than being filled
         // white at rest: white is what focus means here, and a button already

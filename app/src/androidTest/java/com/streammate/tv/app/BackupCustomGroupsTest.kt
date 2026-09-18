@@ -267,11 +267,13 @@ class BackupCustomGroupsTest {
     fun colorThemeSurvivesBackupAndOlderBackupsUseTheDefault() = runBlocking {
         val original = preferences.preferences.first().colorTheme
         try {
-            preferences.setColorTheme(ColorTheme.COZY_HEARTH)
-            manager.write(Uri.fromFile(file), PASSPHRASE)
-            preferences.setColorTheme(ColorTheme.NORDIC_SLATE)
-            manager.restore(Uri.fromFile(file), PASSPHRASE)
-            assertEquals(ColorTheme.COZY_HEARTH, preferences.preferences.first().colorTheme)
+            ColorTheme.entries.filter { it != ColorTheme.DEFAULT }.forEach { theme ->
+                preferences.setColorTheme(theme)
+                manager.write(Uri.fromFile(file), PASSPHRASE)
+                preferences.setColorTheme(ColorTheme.DEFAULT)
+                manager.restore(Uri.fromFile(file), PASSPHRASE)
+                assertEquals(theme, preferences.preferences.first().colorTheme)
+            }
 
             val cipher = com.streammate.tv.core.security.PortableBackupCipher
             val root = kotlinx.serialization.json.Json.parseToJsonElement(

@@ -7,6 +7,9 @@
     <string name="color_theme_nordic_slate_description">Kolgrå ytor med svala blå accenter.</string>
     <string name="color_theme_cozy_hearth_description">Espressobruna ytor med varma bärnstensfärgade accenter.</string>
     <string name="color_theme_cyber_plum_description">Mörkvioletta ytor med mjuka lila accenter.</string>
+    <string name="color_theme_nord_description">Blågrå ytor med mjuka isblå accenter.</string>
+    <string name="color_theme_everforest_description">Grågröna ytor med salviagröna accenter och varm gräddfärgad text.</string>
+    <string name="color_theme_kanagawa_description">Mörka bläckblå ytor med dämpade blå accenter och pergamentfärgad text.</string>
     <string name="action_back">Tillbaka</string>
     <string name="catalogue_movies">Filmer</string>
     <string name="catalogue_series">Serier</string>

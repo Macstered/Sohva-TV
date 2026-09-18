@@ -47,4 +47,13 @@ class EventChannelMatchCacheTest {
         assertEquals(listOf("available", "spanish", "argentina"), EventChannelOrdering.sort(listOf(ar, es, available), listOf("ES", "AR")).map { it.channelId })
         assertEquals(listOf("available", "argentina", "spanish"), EventChannelOrdering.sort(listOf(ar, es, available), emptyList()).map { it.channelId })
     }
+
+    @Test fun `results from the old clock matcher are recomputed after upgrade`() = runTest {
+        for (oldVersion in listOf(1, 2)) {
+            val file = temporary.newFile()
+            EventChannelMatchCache(file).write(listOf(event), "same", mapOf(event.id to listOf(possible)))
+            java.io.RandomAccessFile(file, "rw").use { it.writeInt(oldVersion) }
+            assertTrue(EventChannelMatchCache(file).read(listOf(event), "same").isEmpty())
+        }
+    }
 }

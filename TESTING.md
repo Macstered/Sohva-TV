@@ -1,7 +1,21 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.19 (34)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.20 (40)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 20: provider times, startup and more themes
+
+1. Compare streams naming both teams with different provider clocks. A time
+   without a timezone should not weaken a clear match. Check named dates,
+   numeric dates such as `18/9`, AM/PM, and explicit timezones. Stale or ambiguous
+   dates should remain Possible. Saved manual decisions still take precedence.
+2. Allow matches to recalculate once after this update, then restart and verify
+   the refreshed results persist.
+3. Close the app with Back and reopen it several times. Home focus should land
+   on content without opening the side menu or briefly showing plain app-name
+   text. Deliberately opening the menu should still work.
+4. Try Nord, Everforest and Kanagawa in **Settings > General > Color theme**.
+   Check readability, remote focus, persistence after restart and backup restore.
 
 ## Beta 19: sports matches and navigation
 

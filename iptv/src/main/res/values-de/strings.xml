@@ -7,6 +7,9 @@
     <string name="color_theme_nordic_slate_description">Anthrazitfarbene Flächen mit kühlen blauen Akzenten.</string>
     <string name="color_theme_cozy_hearth_description">Espressobraune Flächen mit warmen bernsteinfarbenen Akzenten.</string>
     <string name="color_theme_cyber_plum_description">Dunkelviolette Flächen mit sanften violetten Akzenten.</string>
+    <string name="color_theme_nord_description">Blaugraue Flächen mit sanften eisblauen Akzenten.</string>
+    <string name="color_theme_everforest_description">Graugrüne Flächen mit salbeigrünen Akzenten und warmem cremefarbenem Text.</string>
+    <string name="color_theme_kanagawa_description">Dunkle tintenblaue Flächen mit gedeckten blauen Akzenten und pergamentfarbenem Text.</string>
     <string name="action_back">Zurück</string>
     <string name="catalogue_movies">Filme</string>
     <string name="catalogue_series">Serien</string>

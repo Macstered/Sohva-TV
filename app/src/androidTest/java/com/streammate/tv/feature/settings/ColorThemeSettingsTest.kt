@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -34,9 +35,17 @@ class ColorThemeSettingsTest {
     @Test
     fun selectingThemesRecolorsTheAppReturnsFocusAndSurvivesRecreation() {
         openGeneral()
-        ColorTheme.entries.filter { it != ColorTheme.ORIGINAL }.forEach { theme ->
+        ColorTheme.entries.zipWithNext().forEach { (previous, theme) ->
             compose.onNodeWithTag("settings-color-theme").performClick()
-            compose.onNodeWithTag("settings-color-theme-${theme.storedValue}").performClick()
+            compose.awaitUntil {
+                compose.onAllNodes(hasTestTag("settings-color-theme-${previous.storedValue}") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+            }
+            // Remote navigation must reach the new options below the fold.
+            compose.onNodeWithTag("settings-color-theme-${previous.storedValue}").performKeyInput { pressKey(Key.DirectionDown) }
+            compose.awaitUntil {
+                compose.onAllNodes(hasTestTag("settings-color-theme-${theme.storedValue}") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithTag("settings-color-theme-${theme.storedValue}").performKeyInput { pressKey(Key.DirectionCenter) }
             compose.awaitUntil {
                 runBlocking { preferences.preferences.first().colorTheme == theme } &&
                     compose.onAllNodes(hasTestTag("settings-color-theme") and isFocused()).fetchSemanticsNodes().isNotEmpty()
@@ -45,11 +54,20 @@ class ColorThemeSettingsTest {
         }
         compose.activityRule.scenario.recreate()
         openGeneral()
-        assertScreenColor(ColorTheme.CYBER_PLUM)
+        val lastTheme = ColorTheme.entries.last()
+        assertScreenColor(lastTheme)
         compose.onNodeWithTag("settings-color-theme").performClick()
-        compose.onNodeWithTag("settings-color-theme-cyber_plum").assertIsFocused()
+        compose.awaitUntil {
+            compose.onAllNodes(hasTestTag("settings-color-theme-${lastTheme.storedValue}") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+        }
         saveReviewImage(compose.onNodeWithTag("settings-picker").captureToImage(), "picker")
-        compose.onNodeWithTag("settings-color-theme-original").performClick()
+        ColorTheme.entries.reversed().zipWithNext().forEach { (current, previous) ->
+            compose.onNodeWithTag("settings-color-theme-${current.storedValue}").performKeyInput { pressKey(Key.DirectionUp) }
+            compose.awaitUntil {
+                compose.onAllNodes(hasTestTag("settings-color-theme-${previous.storedValue}") and isFocused()).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        compose.onNodeWithTag("settings-color-theme-original").performKeyInput { pressKey(Key.DirectionCenter) }
         compose.awaitUntil { runBlocking { preferences.preferences.first().colorTheme == ColorTheme.DEFAULT } }
     }
 
