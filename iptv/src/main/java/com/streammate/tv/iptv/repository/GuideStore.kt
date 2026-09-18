@@ -19,6 +19,7 @@ import com.streammate.tv.app.ProfileRestriction
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -463,7 +464,7 @@ class GuideRepository(
 
     /**
      * The channels of one source, or one of its groups, with no programmes:
-     * the rows of a very large selection, whose programmes the screen reads
+     * the first read for every selection, whose programmes the screen reads
      * for the rows in view with [observeTimelineForChannels].
      */
     fun observeChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineChannel>> =
@@ -472,6 +473,34 @@ class GuideRepository(
             .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
+
+    /** Named rows without EPG; batches stay below older Android SQLite's bind limit. */
+    fun observeChannelsForIds(channelIds: List<String>): Flow<List<GuideTimelineChannel>> =
+        if (channelIds.isEmpty()) {
+            kotlinx.coroutines.flow.flowOf(emptyList())
+        } else {
+            combine(channelIds.distinct().chunked(500).map(dao::observeGuideChannelsForIds)) { batches ->
+                timelineChannels(batches.flatMap { it })
+            }
+                .let { organization?.organize(it, LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Default)
+        }
+
+    /** Used only by the explicit guide search, including programmes on rows not yet scrolled to. */
+    fun observeProgrammeMatches(
+        sourceId: String,
+        groupTitle: String?,
+        query: String,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): Flow<Set<String>> {
+        val pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        return dao.observeGuideProgrammeMatches(sourceId, groupTitle, pattern, fromEpochMillis, toEpochMillis)
+            .map { it.toSet() }
+            .distinctUntilChanged()
+            .flowOn(Dispatchers.Default)
+    }
 
     /** Named channels only; empty ids give an empty timeline without a query. */
     fun observeTimelineForChannels(

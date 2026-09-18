@@ -345,6 +345,18 @@ abstract class GuideDao {
     @Query(GUIDE_CHANNELS_FOR_SOURCE_SQL)
     abstract fun observeGuideChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineRow>>
 
+    @Query(GUIDE_CHANNELS_FOR_IDS_SQL)
+    abstract fun observeGuideChannelsForIds(channelIds: List<String>): Flow<List<GuideTimelineRow>>
+
+    @Query(GUIDE_PROGRAMME_MATCHES_SQL)
+    abstract fun observeGuideProgrammeMatches(
+        sourceId: String,
+        groupTitle: String?,
+        pattern: String,
+        fromEpochMillis: Long,
+        toEpochMillis: Long,
+    ): Flow<List<String>>
+
     /**
      * [observeGuideTimeline] for one source, and one of its groups when [groupTitle]
      * is given. The organisation view runs its rule lookups per channel, so the
@@ -453,8 +465,8 @@ abstract class GuideDao {
             ON p.sourceId = c.sourceId
             AND p.snapshotId = epg_state.activeSnapshotId
             AND p.xmltvChannelId = COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
-            AND p.startEpochMillis + source_state.epgOffsetMinutes * 60000 < :toEpochMillis
-            AND p.stopEpochMillis + source_state.epgOffsetMinutes * 60000 > :fromEpochMillis
+            AND p.startEpochMillis < :toEpochMillis - source_state.epgOffsetMinutes * 60000
+            AND p.stopEpochMillis > :fromEpochMillis - source_state.epgOffsetMinutes * 60000
         WHERE c.channelId IN (:channelIds)
         ORDER BY source_state.priority DESC, source_state.name,
             COALESCE(preference.sortOrder, 2147483647),

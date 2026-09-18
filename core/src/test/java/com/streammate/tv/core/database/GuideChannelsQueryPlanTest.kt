@@ -71,6 +71,46 @@ class GuideChannelsQueryPlanTest {
         assertEquals(CHANNELS / GROUPS, rowCount(groupSql("Group 07")))
     }
 
+    @Test
+    fun namedChannelsAlsoLoadWithoutReadingProgrammes() {
+        val sql = GUIDE_CHANNELS_FOR_IDS_SQL.replace(":channelIds", "'$SOURCE:1', '$SOURCE:40001'")
+        assertEquals(2, rowCount(sql))
+        connection.createStatement().use { statement ->
+            statement.executeQuery("EXPLAIN QUERY PLAN $sql").use { rows ->
+                while (rows.next()) assertFalse(rows.getString("detail").contains("tv_programmes"))
+            }
+        }
+    }
+
+    @Test
+    fun programmeSearchUsesTheTimeIndexAndReturnsOnlyMatchingChannels() {
+        connection.createStatement().use { statement ->
+            statement.execute("UPDATE iptv_source_state SET epgOffsetMinutes = 60")
+            statement.execute("INSERT INTO import_state VALUES ('$SOURCE', 'epg', 'epg', 1, 3)")
+            statement.execute("""
+                INSERT INTO tv_programmes VALUES
+                ('$SOURCE', 'epg', 'current', 'ch1.example', 1000, 2000, 'News', NULL, NULL, ''),
+                ('$SOURCE', 'epg', 'future', 'ch2.example', 3000, 4000, 'News', NULL, NULL, ''),
+                ('$SOURCE', 'old', 'stale', 'ch3.example', 1000, 2000, 'News', NULL, NULL, '')
+            """.trimIndent())
+        }
+        val sql = GUIDE_PROGRAMME_MATCHES_SQL
+            .replace(":sourceId", "'$SOURCE'").replace(":groupTitle", "NULL")
+            .replace(":pattern", "'%News%'")
+            .replace(":fromEpochMillis", "3601500").replace(":toEpochMillis", "3602500")
+        connection.createStatement().use { statement ->
+            statement.executeQuery(sql).use { rows ->
+                assertTrue(rows.next())
+                assertEquals("$SOURCE:1", rows.getString(1))
+                assertFalse(rows.next())
+            }
+            statement.executeQuery("EXPLAIN QUERY PLAN $sql").use { rows ->
+                val plan = generateSequence { if (rows.next()) rows.getString("detail") else null }.toList()
+                assertTrue(plan.toString(), plan.any { "startEpochMillis<?" in it })
+            }
+        }
+    }
+
     private fun wholeSourceSql(): String = GUIDE_CHANNELS_FOR_SOURCE_SQL
         .replace(":sourceId", "'$SOURCE'")
         .replace(":groupTitle", "NULL")

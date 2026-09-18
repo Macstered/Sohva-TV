@@ -1,7 +1,19 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.20 (40)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.21 (43)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 21: progressive guide loading and startup focus
+
+1. Open Live TV with your usual playlists. Channels should become usable before
+   programme information finishes loading. Compare first and repeated openings.
+2. Browse categories, favourites, recent channels and custom lists. Scroll well
+   down the channel list, page forwards/backwards through time, and search for
+   a programme on a channel you have not scrolled to yet.
+3. Check that programme arrivals preserve your focus. Open the category drawer
+   while a time page is loading and confirm focus stays in the drawer.
+4. Exit with Back and reopen several times. Home should focus its content when
+   loading finishes. Deliberately opening the side menu should still work.
 
 ## Beta 20: provider times, startup and more themes
 

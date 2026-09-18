@@ -1,6 +1,6 @@
 # Install and set up Sohva TV
 
-For **0.1.0-beta.20**, Android build **40**.
+For **0.1.0-beta.21**, Android build **43**.
 
 ## Before you start
 
@@ -20,7 +20,7 @@ For **0.1.0-beta.20**, Android build **40**.
 
 ## Install using your TV
 
-1. Download `sohva-tv-0.1.0-beta.20.apk` from the developer's supplied package
+1. Download `sohva-tv-0.1.0-beta.21.apk` from the developer's supplied package
    or the approved release page. Do not use an APK from an unknown mirror.
 2. Transfer that file to the TV using a USB drive or your existing trusted
    file-transfer method, then open it with a file manager on the TV.
@@ -32,7 +32,7 @@ For **0.1.0-beta.20**, Android build **40**.
 5. Open **Sohva TV** from the TV's app list. You may turn off the file manager's
    install permission afterwards.
 6. Check **Settings > About > About, privacy and licences**. The version must
-   be **0.1.0-beta.20**.
+   be **0.1.0-beta.21**.
 
 If your TV does not offer APK installation, record the TV model, Android
 version and exact message and contact the developer. Device installation

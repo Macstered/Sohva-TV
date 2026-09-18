@@ -76,6 +76,7 @@ import kotlin.math.max
 @Composable
 internal fun GuideGrid(
     channels: List<GuideTimelineChannel>,
+    programmeChannelIds: Set<String>,
     /** Whether the channel column carries a number: the channel's own, or its place in the list. */
     showNumbers: Boolean = true,
     windowStart: Long,
@@ -118,6 +119,7 @@ internal fun GuideGrid(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
+                    .testTag("guide-channel-list")
                     // Previewed on the container so the media keys are caught
                     // wherever focus sits in the grid, without touching the
                     // arrow keys that move between programmes.
@@ -136,6 +138,7 @@ internal fun GuideGrid(
                     GuideChannelRow(
                         number = if (showNumbers) channel.channelNumber ?: (index + 1) else null,
                         channel = channel,
+                        programmesLoaded = channel.id in programmeChannelIds,
                         windowStart = windowStart,
                         windowEnd = windowEnd,
                         now = now,
@@ -246,6 +249,7 @@ private fun GuideTimelineHeader(
 private fun GuideChannelRow(
     number: Int?,
     channel: GuideTimelineChannel,
+    programmesLoaded: Boolean,
     windowStart: Long,
     windowEnd: Long,
     now: Long,
@@ -268,6 +272,7 @@ private fun GuideChannelRow(
         GuideChannelCell(
             number = number,
             channel = channel,
+            programmesLoaded = programmesLoaded,
             selected = selection?.channel?.id == channel.id,
             onFocus = { onSelection(channel.preferredProgramme(now)) },
             onClick = { onPlay(null) },
@@ -282,8 +287,9 @@ private fun GuideChannelRow(
             }
             if (visible.isEmpty()) {
                 ProgrammeCell(
-                    title = stringResource(R.string.guide_no_epg),
-                    subtitle = stringResource(R.string.guide_watch_channel),
+                    title = if (programmesLoaded) stringResource(R.string.guide_no_epg) else "",
+                    subtitle = if (programmesLoaded) stringResource(R.string.guide_watch_channel) else "",
+                    enabled = programmesLoaded,
                     x = 0.dp,
                     width = timelineWidth,
                     selected = selection?.channel?.id == channel.id && selection.programme == null,
@@ -301,7 +307,7 @@ private fun GuideChannelRow(
                     pagedFocusRequester = pagedFocusRequester,
                     onPageForward = onPageForward,
                     onPageBack = onPageBack,
-                    testTag = "guide-programme-${channel.id}-none",
+                    testTag = "guide-programme-${channel.id}-${if (programmesLoaded) "none" else "loading"}",
                 )
             } else {
                 visible.forEachIndexed { index, programme ->
@@ -359,6 +365,7 @@ private fun GuideChannelRow(
 private fun GuideChannelCell(
     number: Int?,
     channel: GuideTimelineChannel,
+    programmesLoaded: Boolean,
     selected: Boolean,
     onFocus: () -> Unit,
     onClick: () -> Unit,
@@ -386,9 +393,7 @@ private fun GuideChannelCell(
                 if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
                     onOpenGroupRail()
                     true
-                } else {
-                    false
-                }
+                } else event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && !programmesLoaded
             }
             .onFocusChanged {
                 focused = it.isFocused
@@ -503,6 +508,7 @@ private fun ProgrammeCell(
     onFocus: () -> Unit,
     onClick: () -> Unit,
     testTag: String,
+    enabled: Boolean = true,
     onPageForward: (() -> Unit)? = null,
     onPageBack: (() -> Unit)? = null,
     pagedFocusRequester: FocusRequester? = null,
@@ -580,8 +586,8 @@ private fun ProgrammeCell(
                 }
             }
             .onFocusChanged { if (it.isFocused) onFocus() }
-            .clickable(onClick = onClick)
-            .focusable()
+            .clickable(enabled = enabled, onClick = onClick)
+            .focusable(enabled = enabled)
             .testTag(testTag),
     ) {
         accent?.takeIf { !selected }?.let { colour ->

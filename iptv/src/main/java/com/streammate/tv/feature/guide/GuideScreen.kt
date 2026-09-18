@@ -5,7 +5,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.map
 import com.streammate.tv.iptv.repository.GuideRailGroup
 import com.streammate.tv.iptv.repository.SourceRefreshHealth
 import com.streammate.tv.iptv.repository.GuideSource
@@ -54,6 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.Text
 import com.streammate.tv.app.AppPreferences
 import com.streammate.tv.app.AppPreferencesRepository
@@ -119,6 +121,7 @@ fun GuideScreen(
     onToggleReminder: ((GuideTimelineChannel, GuideTimelineProgramme) -> Unit)? = null,
 ) {
     val palette = StreamMateThemeTokens.palette
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -256,22 +259,15 @@ fun GuideScreen(
             else -> null
         }
     }
-    // A big selection, a whole large source or a group past the threshold,
-    // is read as its rows first and programmes for the rows on screen: the
-    // full timeline of a 56,000-channel source was 170,000 rows per emission.
-    val expectedCount = if (selectedGroup != null) groupCounts[selectedGroup] ?: 0 else sourceChannelCount
-    val windowedRead = timelineChannelIds == null && selectedSourceId != null && expectedCount > GUIDE_WINDOWED_READ_THRESHOLD && searchQuery.isBlank()
-    // The rows of a windowed read do not depend on the time window, so paging
-    // time must not re-read them.
-    val rowsWindowKey = if (windowedRead) null else windowStart
-    val loadedTimeline by key(rowsWindowKey, selectedSourceId, selectedGroup, timelineChannelIds, windowedRead) {
+    // Every view shows channel rows first, without an EPG join. Paging time
+    // and receiving programmes must never reload or reorder these rows.
+    val loadedTimeline by key(guideRepository, selectedSourceId, selectedGroup, timelineChannelIds) {
         remember {
             val ids = timelineChannelIds
             val sourceId = selectedSourceId
             when {
-                ids != null -> guideRepository.observeTimelineForChannels(ids, windowStart, windowEnd)
-                sourceId != null && windowedRead -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
-                sourceId != null -> guideRepository.observeTimeline(windowStart, windowEnd, sourceId, selectedGroup)
+                ids != null -> guideRepository.observeChannelsForIds(ids)
+                sourceId != null -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
                 else -> kotlinx.coroutines.flow.flowOf<List<GuideTimelineChannel>?>(null)
             }
         }.collectAsStateWithLifecycle(initialValue = null)
@@ -296,29 +292,32 @@ fun GuideScreen(
     }
     val timelineStale = loadedTimeline == null && shownTimeline != null
     val baseGuide = loadedTimeline ?: shownTimeline ?: emptyList()
-    // The programmes of a windowed read: for the rows the grid shows, kept
-    // in a bounded cache around the recent scroll windows.
-    var programmeWindowIds by remember(selectedSourceId, selectedGroup) { mutableStateOf<List<String>>(emptyList()) }
-    var programmeCache by remember(windowStart, selectedSourceId, selectedGroup) {
-        mutableStateOf<Map<String, List<GuideTimelineProgramme>>>(emptyMap())
-    }
-    val windowProgrammes by remember(windowedRead, programmeWindowIds, windowStart) {
-        if (!windowedRead || programmeWindowIds.isEmpty()) {
-            flowOf<Pair<Long, List<GuideTimelineChannel>>?>(null)
-        } else {
-            guideRepository.observeTimelineForChannels(programmeWindowIds, windowStart, windowEnd).map { windowStart to it }
+    // Search keeps its channel-name results available while a separate lookup
+    // finds programme matches, including channels outside the viewport.
+    val programmeMatches by key(guideRepository, lifecycle, selectedSourceId, selectedGroup, searchQuery, windowStart, loadedTimeline != null) {
+        produceState<Set<String>>(emptySet()) {
+            val sourceId = selectedSourceId
+            if (sourceId != null && searchQuery.isNotBlank() && loadedTimeline != null) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    delay(250)
+                    guideRepository.observeProgrammeMatches(sourceId, selectedGroup, searchQuery, windowStart, windowEnd)
+                        .collect { value = it }
+                }
+            }
         }
-    }.collectAsStateWithLifecycle(initialValue = null)
-    LaunchedEffect(windowProgrammes, windowStart, programmeWindowIds) {
-        val incoming = windowProgrammes?.takeIf { it.first == windowStart }?.second.orEmpty()
-            .filter { it.id in programmeWindowIds }
-        if (incoming.isNotEmpty()) programmeCache = retainProgrammeWindow(programmeCache, incoming)
+    }
+    // Programmes are bounded by both rows and time. Changing a request cancels
+    // its collector, so a slow old page cannot overwrite the current one.
+    var programmeWindowIds by remember(selectedSourceId, selectedGroup, timelineChannelIds, searchQuery) {
+        mutableStateOf<List<String>>(emptyList())
+    }
+    var programmeCache by remember(windowStart, selectedSourceId, selectedGroup, timelineChannelIds, restriction) {
+        mutableStateOf<Map<String, List<GuideTimelineProgramme>>>(emptyMap())
     }
     // Programme arrivals never enter the stable ordering pipeline. All large-list work runs off Main.
     val orderedGuide by produceState<GuideChannelRows?>(
         initialValue = null,
         baseGuide,
-        rowsWindowKey,
         loadedTimeline,
         selectedSourceId,
         hiddenLiveCategories,
@@ -329,6 +328,7 @@ fun GuideScreen(
         sortMode,
         organizationState,
         searchQuery,
+        programmeMatches,
         favouriteChannelIds,
         recentChannelIds,
         timelineStale,
@@ -373,7 +373,7 @@ fun GuideScreen(
                 .filter { channel ->
                     searchQuery.isBlank() ||
                         channel.name.contains(searchQuery, ignoreCase = true) ||
-                        channel.programmes.any { it.title.contains(searchQuery, ignoreCase = true) }
+                        channel.id in programmeMatches
                 }
                 .let { channels ->
                     when (channelFilter) {
@@ -385,24 +385,37 @@ fun GuideScreen(
                         }
                     }
                 }
-                .let { GuideChannelRows(it, rowsWindowKey.takeIf { loadedTimeline != null }) }
+                .let(::GuideChannelRows)
         }
     }
-    val filteredGuide = remember(orderedGuide, programmeCache, windowedRead) {
-        val channels = orderedGuide?.channels.orEmpty()
-        if (windowedRead) mergeProgrammes(channels, programmeCache) else channels
+    val filteredGuide = remember(orderedGuide, programmeCache) {
+        mergeProgrammes(orderedGuide?.channels.orEmpty(), programmeCache)
     }
     val filteredChannelIds = orderedGuide?.ids.orEmpty()
     val timelineLoading = (loadedTimeline == null && shownTimeline == null) || orderedGuide == null
     val showReadingNotice = timelineStale && readingForLong
     val guideLoaded = railLoaded && (libraryEmpty || (shownTimeline != null && orderedGuide != null))
-    // Which rows' programmes to read: follows the grid's scroll position.
-    LaunchedEffect(windowedRead, filteredChannelIds) {
-        if (!windowedRead) return@LaunchedEffect
+    // Wait for actual laid-out channel rows before starting EPG. The lazy list
+    // can briefly report the previous group's layout; verify its keys too.
+    LaunchedEffect(filteredChannelIds, timelineStale, selectedSourceId, selectedGroup, timelineChannelIds, searchQuery) {
+        programmeWindowIds = emptyList()
+        if (timelineStale) return@LaunchedEffect
         val ids = filteredChannelIds
-        snapshotFlow { channelListState.firstVisibleItemIndex to channelListState.layoutInfo.visibleItemsInfo.size }
+        snapshotFlow {
+            val visible = channelListState.layoutInfo.visibleItemsInfo
+                .filter { ids.getOrNull(it.index) == it.key }
+            programmeWindowIds(ids, visible.firstOrNull()?.index ?: 0, visible.size)
+        }
             .distinctUntilChanged()
-            .collect { (first, count) -> programmeWindowIds = programmeWindowIds(ids, first, count) }
+            .collect { programmeWindowIds = it }
+    }
+    LaunchedEffect(guideRepository, lifecycle, programmeWindowIds, windowStart, selectedSourceId, selectedGroup, timelineChannelIds, restriction) {
+        if (programmeWindowIds.isEmpty()) return@LaunchedEffect
+        val range = programmeReadWindow(windowStart)
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            guideRepository.observeTimelineForChannels(programmeWindowIds, range.first, range.last + 1)
+                .collect { incoming -> programmeCache = retainProgrammeWindow(programmeCache, incoming) }
+        }
     }
     val initialFocusIndex = remember(filteredChannelIds, initialChannelId) {
         filteredChannelIds
@@ -488,11 +501,7 @@ fun GuideScreen(
             selection = filteredGuide.firstOrNull()?.let { GuideSelection(it, it.preferredProgramme(now)) }
         }
     }
-    val pageProgrammesReady = if (windowedRead) {
-        selection?.channel?.id in programmeCache
-    } else {
-        loadedTimeline != null && orderedGuide?.windowStart == windowStart
-    }
+    val pageProgrammesReady = selection?.channel?.id in programmeCache
     LaunchedEffect(windowStart, filteredGuide, pageProgrammesReady, pendingPageDirection) {
         if (pendingPageDirection == 0 || filteredGuide.isEmpty() || !pageProgrammesReady) return@LaunchedEffect
         // Adjacent to where focus was: the earliest programme of the new window
@@ -501,15 +510,17 @@ fun GuideScreen(
     }
     // Paging time leaves the selection on a programme that is no longer on
     // screen, and the hero above the grid would go on describing it.
-    LaunchedEffect(windowStart, programmeCache) {
+    LaunchedEffect(windowStart, programmeCache, selection?.channel?.id) {
         val channel = selection?.channel ?: return@LaunchedEffect
         val current = filteredGuide.firstOrNull { it.id == channel.id } ?: return@LaunchedEffect
         val stillVisible = selection?.programme?.let { programme ->
             programme.stopEpochMillis > windowStart && programme.startEpochMillis < windowEnd
         } ?: false
-        if (!stillVisible) {
-            selection = GuideSelection(current, current.programmeAt(windowStart, windowEnd))
-        }
+        val programme = selection?.programme?.takeIf { stillVisible }
+            ?.let { previous -> current.programmes.firstOrNull { it.id == previous.id } }
+            ?: current.preferredProgramme(now)?.takeIf { it.stopEpochMillis > windowStart && it.startEpochMillis < windowEnd }
+            ?: current.programmeAt(windowStart, windowEnd)
+        selection = GuideSelection(current, programme)
     }
     // guideLoaded is a key so the empty state, which only appears after the
     // first read, still gets its focus once it is there.
@@ -765,6 +776,7 @@ fun GuideScreen(
                             GuideGrid(
                                 modifier = Modifier.fillMaxWidth().weight(1f),
                                 channels = filteredGuide,
+                                programmeChannelIds = programmeCache.keys,
                                 showNumbers = preferences.showChannelNumbers,
                                 windowStart = windowStart,
                                 windowEnd = windowEnd,
@@ -776,6 +788,7 @@ fun GuideScreen(
                                 firstFocusRequester = firstFocus,
                                 returnFocusRequester = guideReturnFocus,
                                 onOpenGroupRail = {
+                                    pendingPageDirection = 0
                                     restoreGuideFocus = false
                                     groupRailVisible = true
                                     // Left must move into the rail even if a
@@ -790,6 +803,7 @@ fun GuideScreen(
                                 },
                                 pagedFocusAtEnd = pendingPageDirection < 0,
                                 onSelection = { channel, programme ->
+                                    if (selection?.channel?.id != channel.id) pendingPageDirection = 0
                                     // Focus is back in the EPG. The rail is a
                                     // temporary drawer, so remove it regardless
                                     // of whether focus arrived via Right or via

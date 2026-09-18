@@ -1,27 +1,24 @@
-# Sohva TV 0.1.0-beta.20
+# Sohva TV 0.1.0-beta.21
 
-Prepared: **18 September 2026**. Android version code: **40**.
+Prepared: **18 September 2026**. Android version code: **43**.
 
-This beta improves sports matching and startup behavior, and adds three themes.
+This beta improves Live TV guide loading and fixes the remaining startup-menu issue.
 No addons, subscriptions, channels, credentials
 or accounts are included.
 
-## New in beta 20
+## New in beta 21
 
-- **Clear team matches across provider timezones.** A channel naming both teams
-  is no longer downgraded because a clock without a timezone differs from the
-  viewer's local kickoff. Explicit timezones and EPG timestamps still support
-  kickoff checks; country and language tags do not imply a timezone.
-- **More date and clock formats.** Channel names support AM/PM, named and ISO
-  dates, and unambiguous numeric dates such as `18/9`. Stale, invalid or
-  ambiguous dates remain Possible. Saved manual decisions are retained.
-- **Reliable Home focus on reopening.** Fixed a loading transition that could
-  open the side menu after leaving with Back and relaunching the app.
-- **Smoother startup.** Removed the brief plain-text app-name flash.
-- **Three additional themes.** Nord, Everforest and Kanagawa are available in
-  **Settings > General > Color theme**, with persistence and backup support.
+- **Channels first.** Live TV channels become available before programme
+  information finishes loading, including groups, favourites and recent lists.
+- **Smaller EPG reads.** Programme information loads in four-hour windows for
+  visible and nearby channels. Browsing requests further batches while the
+  channel list remains available. Provider XMLTV imports are unchanged.
+- **Stable guide focus.** Programme arrivals keep focus in place. Opening the
+  category drawer during a time-page read no longer pulls focus back to the grid.
+- **Reliable Home focus after reopening.** Fixed the remaining case where the
+  side menu could open as Home finished loading after exiting with Back.
 
-Sports matches recalculate once after upgrading, then use the refreshed cache.
+These fixes were confirmed by the reporter and on the owner's Shield preview.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -29,7 +26,7 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 40 uses the existing production signing identity.
+published. Android build 43 uses the existing production signing identity.
 The IPTV database stays at version 29 and the Discover progress database at
 4; no migration runs. No data is copied from a separate Lab app. Existing Trakt connections are retained; on a new installation,
 Trakt is off until you connect an account.

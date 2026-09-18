@@ -59,6 +59,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -252,6 +253,11 @@ fun HomeScreen(
     var loadingFocused by remember { mutableStateOf(false) }
     var welcomeFocused by remember { mutableStateOf(false) }
     var initialFocusPending by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf(true) }
+    var entryFocusPending by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf(false) }
+    val homeContentFocus = if (rowsEmpty) welcomeFocus else contentFocus
+    LaunchedEffect(entryFocusPending, rowsEmpty, showResumeStatus) {
+        if (entryFocusPending && homeContentFocus.requestFocusWhenAttached()) entryFocusPending = false
+    }
     // Initial focus only. Later refreshes never pull the viewer back from another row or the rail.
     LaunchedEffect(resume.profileId, resume.discoverAllowed, showResumeStatus, rowsEmpty) {
         if (initialFocusPending) {
@@ -279,7 +285,21 @@ fun HomeScreen(
     }
 
     StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { contentModifier ->
-        Box(modifier = contentModifier) {
+        Box(modifier = contentModifier
+            .focusProperties {
+                // Android can re-enter focus after loading/window changes or
+                // removal of a cached card, after initial focus already ran.
+                // Its geometric search otherwise chooses the upper-left rail.
+                // Defer until layout so a replacement first row is attached;
+                // our explicit content request then enters with Enter.
+                onEnter = {
+                    if (requestedFocusDirection != FocusDirection.Enter) {
+                        entryFocusPending = true
+                        cancelFocusChange()
+                    }
+                }
+            }
+            .focusGroup()) {
             HomeHeroBackdrop(hero = hero, artwork = heroDetails.backdropUrl)
             Column(
                 modifier = Modifier
@@ -290,6 +310,7 @@ fun HomeScreen(
                             loadingFocused = false
                             welcomeFocused = false
                             initialFocusPending = false
+                            entryFocusPending = false
                         }
                         false
                     }

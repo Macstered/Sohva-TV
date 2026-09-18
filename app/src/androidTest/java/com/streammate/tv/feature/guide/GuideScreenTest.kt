@@ -53,6 +53,7 @@ import org.junit.rules.RuleChain
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentLinkedQueue
 
 class GuideScreenTest {
     private val composeRule = createComposeRule()
@@ -61,6 +62,9 @@ class GuideScreenTest {
     private val queryExecutor = Executors.newSingleThreadExecutor()
     @Volatile private var queryGate: CountDownLatch? = null
     @Volatile private var queryStarted: CountDownLatch? = null
+    @Volatile private var epgGate: CountDownLatch? = null
+    @Volatile private var epgStarted: CountDownLatch? = null
+    private val timelineReads = ConcurrentLinkedQueue<List<Any?>>()
 
     // Compose must dispose its Room collectors before their database is closed.
     // JUnit @After runs inside the Compose rule, which raced teardown on CI.
@@ -78,6 +82,15 @@ class GuideScreenTest {
         context.getSharedPreferences("streammate_secure_sources", android.content.Context.MODE_PRIVATE)
             .edit().clear().commit()
         database = Room.inMemoryDatabaseBuilder(context, StreamMateDatabase::class.java)
+            .setQueryCallback({ sql, arguments ->
+                if (sql.contains("p.programmeId AS programmeId")) {
+                    timelineReads.add(arguments.toList())
+                    epgGate?.let { gate ->
+                        epgStarted?.countDown()
+                        check(gate.await(10, TimeUnit.SECONDS)) { "Test did not release the EPG query" }
+                    }
+                }
+            }, { it.run() })
             .setQueryExecutor { query ->
                 queryExecutor.execute {
                     queryGate?.let { gate ->
@@ -597,7 +610,10 @@ class GuideScreenTest {
         }
     }
 
-    private fun showGuide(organization: com.streammate.tv.iptv.repository.OrganizationRepository? = null) {
+    private fun showGuide(
+        organization: com.streammate.tv.iptv.repository.OrganizationRepository? = null,
+        onPlay: (String) -> Unit = {},
+    ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.setContent {
             StreamMateTheme {
@@ -612,11 +628,181 @@ class GuideScreenTest {
                     onBack = {},
                     onSettings = {},
                     onChannels = {},
-                    onPlay = {},
+                    onPlay = onPlay,
                     onPlayCatchup = { _, _, _ -> },
                 )
             }
         }
+    }
+
+    @Test
+    fun smallGuideChannelsAreUsableBeforeEpgAndArrivalsKeepFocus() {
+        val gate = CountDownLatch(1)
+        val started = CountDownLatch(1)
+        epgGate = gate
+        epgStarted = started
+        var played: String? = null
+        try {
+            showGuide(onPlay = { played = it })
+            composeRule.awaitFocused("guide-channel-test:one")
+            assertTrue("No background EPG request", started.await(5, TimeUnit.SECONDS))
+            composeRule.onNodeWithTag("guide-programme-test:one-loading").assertIsDisplayed()
+            composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionRight) }
+            composeRule.onNodeWithTag("guide-channel-test:one").assertIsFocused()
+            composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionDown) }
+            composeRule.onNodeWithTag("guide-channel-test:two").assertIsFocused().performClick()
+            composeRule.runOnIdle { assertEquals("test:two", played) }
+        } finally {
+            epgGate = null
+            epgStarted = null
+            gate.countDown()
+        }
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-current-two").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("guide-channel-test:two").assertIsFocused()
+        composeRule.onNodeWithTag("guide-preview-watch").assertIsDisplayed()
+    }
+
+    @Test
+    fun favouritesAlsoShowChannelsWhileTheirEpgIsBlocked() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val preferences = AppPreferencesRepository(context)
+        runBlocking { preferences.setFavouriteChannel("test:two", true) }
+        showGuide()
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-current").fetchSemanticsNodes().isNotEmpty()
+        }
+        val gate = CountDownLatch(1)
+        val started = CountDownLatch(1)
+        epgGate = gate
+        epgStarted = started
+        try {
+            composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+            composeRule.onNodeWithTag("guide-filter-favourites").performClick()
+            composeRule.awaitFocused("guide-channel-test:two")
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            composeRule.onNodeWithTag("guide-programme-test:two-loading").assertIsDisplayed()
+            composeRule.onAllNodesWithTag("guide-channel-test:one").assertCountEquals(0)
+        } finally {
+            epgGate = null
+            epgStarted = null
+            gate.countDown()
+            runBlocking { preferences.setFavouriteChannel("test:two", false) }
+        }
+    }
+
+    @Test
+    fun scrollingALargeGuideReadsOnlyNearbyChannelsAndFourHours() {
+        seedExtraChannels(600)
+        showGuide()
+        composeRule.awaitUntil { timelineReads.isNotEmpty() }
+        val first = timelineReads.first()
+        assertTrue(first.size.toString(), first.size <= 82)
+        assertEquals(4 * 3_600_000L, (first[0] as Number).toLong() - (first[1] as Number).toLong())
+        assertTrue(first.drop(2).contains("test:one"))
+        assertTrue(!first.drop(2).contains("test:extra-500"))
+        composeRule.onNodeWithTag("guide-channel-list").performScrollToIndex(501)
+        composeRule.awaitUntil { timelineReads.any { "test:extra-500" in it } }
+        timelineReads.forEach { read ->
+            assertTrue("Unbounded channel read: ${read.size}", read.size <= 82)
+            assertEquals(4 * 3_600_000L, (read[0] as Number).toLong() - (read[1] as Number).toLong())
+        }
+    }
+
+    @Test
+    fun guideSearchFindsAnOffscreenProgrammeWithoutLoadingEveryTimeline() {
+        seedExtraChannels(600)
+        runBlocking {
+            val now = System.currentTimeMillis()
+            database.guideDao().upsertProgrammes(listOf(TvProgrammeEntity(
+                "test", "epg", "offscreen", "extra500", now - 60_000, now + 60_000,
+                "Offscreen show", null, null, "",
+            )))
+        }
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.onNodeWithTag("guide-search-toggle").performClick()
+        composeRule.onNodeWithTag("guide-search-field").performTextInput("Offscreen show")
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-offscreen").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("guide-channel-test:extra-500").assertIsDisplayed()
+        assertTrue(timelineReads.all { it.size <= 82 })
+    }
+
+    private fun seedExtraChannels(count: Int) = runBlocking {
+        val now = System.currentTimeMillis()
+        database.guideDao().upsertChannels((1..count).map { index ->
+            IptvChannelEntity(
+                sourceId = "test", snapshotId = "playlist", channelId = "test:extra-$index",
+                tvgId = "extra$index", name = "Extra $index", normalizedName = "extra $index",
+                groupTitle = "Extra", logoUrl = null, encryptedStreamUrl = "encrypted",
+                userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = 100 + index,
+            )
+        })
+        database.guideDao().activatePlaylistSnapshot("test", "playlist", 2 + count, now)
+    }
+
+    @Test
+    fun namedChannelListsLargerThanSqlitesBindLimitDoNotReadEpg() = runBlocking {
+        seedExtraChannels(1_100)
+        val channels = GuideRepository(database.guideDao()).observeChannelsForIds(
+            (1..1_100).map { "test:extra-$it" },
+        ).first()
+        assertEquals(1_100, channels.size)
+        assertTrue(channels.all { it.programmes.isEmpty() })
+        assertTrue(timelineReads.isEmpty())
+    }
+
+    @Test
+    fun aSearchThatKeepsTheSameChannelsStillReceivesEpgUpdates() {
+        showGuide()
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-current").fetchSemanticsNodes().isNotEmpty()
+        }
+        val readsBeforeSearch = timelineReads.size
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.onNodeWithTag("guide-search-toggle").performClick()
+        composeRule.onNodeWithTag("guide-search-field").performTextInput("Channel")
+        composeRule.awaitUntil { timelineReads.size > readsBeforeSearch }
+        runBlocking {
+            val now = System.currentTimeMillis()
+            database.guideDao().upsertProgrammes(listOf(TvProgrammeEntity(
+                "test", "epg", "current", "one.fi", now - 60_000, now + 60_000,
+                "Updated after search", null, null, "",
+            )))
+        }
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithText("Updated after search", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun loadingTheNextPageDoesNotPullFocusOutOfTheCategoryDrawer() {
+        showGuide()
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-current").fetchSemanticsNodes().isNotEmpty()
+        }
+        val gate = CountDownLatch(1)
+        val started = CountDownLatch(1)
+        epgGate = gate
+        epgStarted = started
+        try {
+            composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.MediaNext) }
+            assertTrue(started.await(5, TimeUnit.SECONDS))
+            composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+            composeRule.onNodeWithTag("guide-filter-all").assertIsFocused()
+        } finally {
+            epgGate = null
+            epgStarted = null
+            gate.countDown()
+        }
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-test:one-none").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("guide-filter-all").assertIsFocused()
     }
 
     @Test

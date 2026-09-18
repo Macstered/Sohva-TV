@@ -166,11 +166,9 @@ private val GENRE_ACCENTS: Map<String, (StreamMateGenreColors) -> Color> = linke
 internal val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH.mm")
 internal val WINDOW_DAY_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d.M.")
 
-/**
- * Past this many channels a selection is read as rows first and programmes
- * for the rows on screen; below it one timeline read is cheaper and steadier.
- */
-internal const val GUIDE_WINDOWED_READ_THRESHOLD = 400
+/** Four hours: the visible three-hour grid and half an hour of padding on each side. */
+internal fun programmeReadWindow(windowStart: Long): LongRange =
+    (windowStart - 30 * MINUTE_MILLIS) until (windowStart + TIMELINE_WINDOW_MILLIS + 30 * MINUTE_MILLIS)
 
 /** Rows above and below the visible ones whose programmes are read along with them. */
 internal const val GUIDE_PROGRAMME_WINDOW_MARGIN = 30
@@ -190,7 +188,7 @@ internal fun programmeWindowIds(
     margin: Int = GUIDE_PROGRAMME_WINDOW_MARGIN,
     step: Int = GUIDE_PROGRAMME_WINDOW_STEP,
 ): List<String> {
-    if (ids.isEmpty()) return emptyList()
+    if (ids.isEmpty() || visibleCount <= 0) return emptyList()
     val start = ((firstVisible - margin).coerceAtLeast(0) / step) * step
     val end = (((firstVisible + visibleCount + margin) / step) * step + step).coerceAtMost(ids.size)
     return if (start >= end) emptyList() else ids.subList(start, end)
@@ -199,8 +197,6 @@ internal fun programmeWindowIds(
 /** Stable ordering and its IDs are built together on a worker, independent of programme arrivals. */
 internal class GuideChannelRows(
     val channels: List<GuideTimelineChannel>,
-    /** The time window whose programmes have finished loading and ordering. */
-    val windowStart: Long? = null,
 ) {
     val ids = channels.map { it.id }
 }

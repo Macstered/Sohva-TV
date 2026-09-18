@@ -11,6 +11,23 @@ class GuideWindowedReadTest {
     private val ids = (0 until 1_000).map { "c$it" }
 
     @Test
+    fun `no EPG query is requested before channel rows are laid out`() {
+        assertTrue(programmeWindowIds(ids, firstVisible = 0, visibleCount = 0).isEmpty())
+    }
+
+    @Test
+    fun `every time page reads four hours including the entire visible grid`() {
+        val now = 1_800_000_000_000L
+        val start = GuideTimeWindow.nowStart(now)
+        listOf(start, start - GuideTimeWindow.PAGE_MILLIS, start + GuideTimeWindow.DAY_MILLIS).forEach { page ->
+            val range = programmeReadWindow(page)
+            assertEquals(4 * 3_600_000L, range.last + 1 - range.first)
+            assertTrue(page in range)
+            assertTrue(page + TIMELINE_WINDOW_MILLIS - 1 in range)
+        }
+    }
+
+    @Test
     fun `the window covers the visible rows and a margin, snapped to the step`() {
         val window = programmeWindowIds(ids, firstVisible = 205, visibleCount = 12, margin = 30, step = 10)
         assertEquals("c170", window.first())

@@ -1,6 +1,11 @@
 package com.streammate.tv.feature.home
 
+import android.view.View
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,6 +26,7 @@ import org.junit.Test
 class HomeResumeNavigationTest {
     @get:Rule val compose = createComposeRule()
     private lateinit var database: StreamMateDatabase
+    private lateinit var hostView: View
     private val snapshot = mutableStateOf(HomeResumeSnapshot("fixture"))
     private val next = mutableStateOf<List<TraktHomeTitle>>(emptyList())
     private val visible = mutableStateOf(true)
@@ -40,6 +46,8 @@ class HomeResumeNavigationTest {
         val guide = GuideRepository(database.guideDao())
         val preferences = AppPreferencesRepository(context)
         compose.setContent {
+            val view = LocalView.current
+            SideEffect { hostView = view }
             StreamMateTheme {
                 if (visible.value) HomeScreen(
                     guideRepository = guide, catalogueRepository = catalogue, preferencesRepository = preferences,
@@ -140,6 +148,68 @@ class HomeResumeNavigationTest {
         press(Key.DirectionRight)
         compose.onNodeWithTag("home-trakt-${nextTitle.key}").assertIsFocused()
     }
+
+    @Test fun replacingTheFocusedCachedCardKeepsFocusOnHomeContent() {
+        snapshot.value = ready("cached")
+        show()
+        compose.onNodeWithTag(tag("cached")).assertIsFocused()
+        // A warm launch can show cached progress before the initial refresh
+        // removes a completed or unavailable title.
+        compose.runOnIdle { snapshot.value = ready("refreshed") }
+        compose.waitForIdle()
+        compose.onNodeWithTag(tag("cached")).assertDoesNotExist()
+        org.junit.Assert.assertEquals(listOf(tag("refreshed")), focusedTags())
+    }
+
+    @Test fun removingTheLastCachedCardHandsFocusToTheWelcomeAction() {
+        snapshot.value = ready("cached")
+        show(withRecommendation = false)
+        compose.onNodeWithTag(tag("cached")).assertIsFocused()
+        compose.runOnIdle { snapshot.value = HomeResumeSnapshot("fixture", status = HomeResumeStatus.EMPTY) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("home-hero-primary").assertIsDisplayed()
+        org.junit.Assert.assertEquals(listOf("home-hero-primary"), focusedTags())
+    }
+
+    @Test fun platformFocusReentryLandsOnContentInsteadOfTheRail() {
+        snapshot.value = ready("cached")
+        show()
+        compose.onNodeWithTag(tag("cached")).assertIsFocused()
+        compose.runOnUiThread {
+            // Android can re-enter the Compose hierarchy after launcher/window
+            // focus changes, after Home's one-time focus effect has completed.
+            hostView.clearFocus()
+            // Entry may be deferred until the next layout; assert the eventual
+            // focused control below, not the synchronous platform return value.
+            hostView.requestFocus(View.FOCUS_DOWN)
+        }
+        compose.waitForIdle()
+        org.junit.Assert.assertEquals(listOf(tag("cached")), focusedTags())
+    }
+
+    @Test fun removingCachedContentDoesNotCloseAnIntentionallyOpenedMenu() {
+        snapshot.value = ready("cached")
+        show()
+        press(Key.DirectionLeft)
+        val menu = focusedTags()
+        org.junit.Assert.assertTrue(menu.single() in setOf("home-live", "home-sportmate", "home-movies", "home-series", "home-discover", "home-search", "home-settings"))
+        compose.runOnIdle { snapshot.value = ready("refreshed") }
+        compose.waitForIdle()
+        org.junit.Assert.assertEquals(menu, focusedTags())
+    }
+
+    @Test fun removingAnotherCardKeepsTheCurrentCardFocused() {
+        snapshot.value = ready("old", "kept")
+        show()
+        press(Key.DirectionRight)
+        compose.onNodeWithTag(tag("kept")).assertIsFocused()
+        compose.runOnIdle { snapshot.value = ready("kept") }
+        compose.waitForIdle()
+        compose.onNodeWithTag(tag("kept")).assertIsFocused()
+    }
+
+    private fun focusedTags() = compose.onAllNodes(isFocused()).fetchSemanticsNodes()
+        .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
 
     private fun press(key: Key) {
         compose.onAllNodes(isFocused()).onFirst().performKeyInput { pressKey(key) }
