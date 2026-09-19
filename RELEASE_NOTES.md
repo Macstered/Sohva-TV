@@ -1,6 +1,6 @@
 # Sohva TV 0.1.0-beta.22
 
-Prepared: **19 September 2026**. Android version code: **50**.
+Prepared: **19 September 2026**. Android version code: **51**.
 
 This beta improves large-playlist guide loading, remote navigation and memory use during playback.
 No addons, subscriptions, channels, credentials
@@ -33,7 +33,7 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 50 uses the existing production signing identity.
+published. Android build 51 uses the existing production signing identity.
 The IPTV database stays at version 29 and the Discover progress database at
 4; no migration runs. No data is copied from a separate Lab app. Existing Trakt connections are retained; on a new installation,
 Trakt is off until you connect an account.

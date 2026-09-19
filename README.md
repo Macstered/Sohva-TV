@@ -10,7 +10,7 @@ to access.
 
 ## Download
 
-The prepared tester build is **0.1.0-beta.22 (build 50)**. It is an early beta, not
+The prepared tester build is **0.1.0-beta.22 (build 51)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
 [GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.22)
 and verify the published SHA-256 value.

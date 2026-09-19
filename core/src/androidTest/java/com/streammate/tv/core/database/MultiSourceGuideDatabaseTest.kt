@@ -183,7 +183,15 @@ class MultiSourceGuideDatabaseTest {
         assertEquals(2 * hour, searchResult.startEpochMillis)
         assertEquals(3 * hour, searchResult.stopEpochMillis)
 
-        val candidates = dao.programmeCandidates(2 * hour, 2 * hour).single()
+        val channels = dao.channelNameCandidatesPage(Long.MIN_VALUE, 10)
+        val candidates = dao.programmeCandidatesPage(
+            channelRowIds = channels.map { it.channelRowId },
+            fromEpochMillis = 2 * hour,
+            toEpochMillis = 2 * hour,
+            afterProgrammeRowId = Long.MIN_VALUE,
+            afterChannelRowId = Long.MIN_VALUE,
+            limit = 10,
+        ).single()
         assertEquals("Shifted show", candidates.programmeTitle)
         assertEquals(2 * hour, candidates.programmeStartEpochMillis)
 

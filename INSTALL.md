@@ -1,6 +1,6 @@
 # Install and set up Sohva TV
 
-For **0.1.0-beta.22**, Android build **50**.
+For **0.1.0-beta.22**, Android build **51**.
 
 ## Before you start
 

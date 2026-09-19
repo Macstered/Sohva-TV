@@ -1,6 +1,6 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.22 (50)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.22 (51)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
 
 ## Beta 22: large playlists, guide paging and memory

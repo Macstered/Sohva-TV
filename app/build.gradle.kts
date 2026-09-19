@@ -52,7 +52,7 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 50
+        versionCode = 51
         versionName = "0.1.0-beta.22"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
