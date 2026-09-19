@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import android.os.Trace
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,7 @@ internal fun GuideHero(
     val spacing = StreamMateThemeTokens.spacing
     val programme = selection.programme
     val live = programme?.isLive(now) == true
+    Trace.beginSection("Guide:Hero")
     Row(modifier = modifier.fillMaxWidth().height(GUIDE_HERO_HEIGHT)) {
         GuideHeroStill(
             selection = selection,
@@ -97,6 +99,7 @@ internal fun GuideHero(
             modifier = Modifier.weight(1f),
         )
     }
+    Trace.endSection()
 }
 
 /**

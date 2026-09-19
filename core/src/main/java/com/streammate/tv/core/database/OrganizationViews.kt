@@ -159,5 +159,47 @@ AND COALESCE((SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' A
     (SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE' AND r.sourceId = '' AND r.groupKey = COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey) AND r.itemKey = c.channelId), 1) = 1
 """
 
+private const val LIVE_RULE = "SELECT r.enabled FROM organization_rules r WHERE r.room = 'LIVE'"
+private const val LIVE_RULE_THAT_DECIDES = "SELECT 1 FROM organization_rules r WHERE r.room = 'LIVE' AND r.enabled IS NOT NULL"
+private const val LIVE_GROUP_KEY = "COALESCE(preference.customOrganizationGroupKey, c.organizationGroupKey)"
+private const val LIVE_NAME_KEY = "COALESCE(preference.customOrganizationGroupKey, c.organizationNameKey)"
+
+/**
+ * [ORGANIZATION_VISIBLE_LIVE_PREDICATE] for a read of every channel of a
+ * source, where its sixteen lookups a channel were two thirds of the read: on
+ * fifty thousand channels, 360 ms with them and 130 without on a desk, and
+ * about ten times both on the Shield. The same answer from fewer lookups:
+ *
+ * - a channel's identity is its id, so six of the sixteen repeat the lookup
+ *   before them, and `COALESCE(a, a, b)` is `COALESCE(a, b)`;
+ * - the lookups about the channel itself, and about the channel within a
+ *   group, can only find a rule that names a channel and says shown or hidden.
+ *   Most viewers hide groups and no channels, so whether any such rule exists
+ *   is asked once a statement, and when none does the lookups are not made and
+ *   the COALESCE is its last term. A rule with no opinion, one that only sorts
+ *   or places, is one COALESCE passes over, so it does not count. A channel
+ *   with no id could match a rule that names none, and takes every lookup.
+ *
+ * The group lookups stay as they are: a marker row every migrated install has
+ * would answer for them. A unit test holds this to the predicate it shortens
+ * over rules of every shape.
+ */
+const val ORGANIZATION_VISIBLE_LIVE_SOURCE_PREDICATE = """
+CASE WHEN c.channelId = '' OR EXISTS ($LIVE_RULE_THAT_DECIDES AND r.groupKey = '' AND r.itemKey <> '')
+    THEN COALESCE(($LIVE_RULE AND r.sourceId = c.sourceId AND r.groupKey = '' AND r.itemKey = c.channelId),
+        ($LIVE_RULE AND r.sourceId = '' AND r.groupKey = '' AND r.itemKey = c.channelId), 1 - COALESCE(preference.hidden, 0))
+    ELSE 1 - COALESCE(preference.hidden, 0) END = 1
+AND COALESCE(($LIVE_RULE AND r.sourceId = c.sourceId AND r.groupKey = $LIVE_GROUP_KEY AND r.itemKey = ''),
+    ($LIVE_RULE AND r.sourceId = c.sourceId AND r.groupKey = $LIVE_NAME_KEY AND r.itemKey = ''),
+    ($LIVE_RULE AND r.sourceId = '' AND r.groupKey = $LIVE_GROUP_KEY AND r.itemKey = ''),
+    ($LIVE_RULE AND r.sourceId = '' AND r.groupKey = $LIVE_NAME_KEY AND r.itemKey = ''), 1) = 1
+AND CASE WHEN c.channelId = '' OR EXISTS ($LIVE_RULE_THAT_DECIDES AND r.itemKey <> '')
+    THEN COALESCE(($LIVE_RULE AND r.sourceId = c.sourceId AND r.groupKey = $LIVE_GROUP_KEY AND r.itemKey = c.channelId),
+        ($LIVE_RULE AND r.sourceId = c.sourceId AND r.groupKey = $LIVE_NAME_KEY AND r.itemKey = c.channelId),
+        ($LIVE_RULE AND r.sourceId = '' AND r.groupKey = $LIVE_GROUP_KEY AND r.itemKey = c.channelId),
+        ($LIVE_RULE AND r.sourceId = '' AND r.groupKey = $LIVE_NAME_KEY AND r.itemKey = c.channelId), 1)
+    ELSE 1 END = 1
+"""
+
 @DatabaseView(value = ORGANIZATION_VISIBLE_LIVE_SQL, viewName = "organization_visible_channels")
 data class OrganizationVisibleChannel(@androidx.room.Embedded val item: IptvChannelEntity)

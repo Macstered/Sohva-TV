@@ -8,7 +8,10 @@ import com.streammate.tv.core.database.TeamAliasEntity
 import com.streammate.tv.core.model.SportType
 import com.streammate.tv.core.model.TodayEvent
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -95,36 +98,69 @@ class EventChannelMatchingRepository(
         return matches.mapValues { (_, values) -> values.map { it.withDecision(decisions[it.eventId to it.channelId]) } }
     }
 
-    suspend fun matchesFor(events: List<TodayEvent>): Map<String, List<EventChannelMatch>> = matchingMutex.withLock {
-        val generation = inputGeneration()
-        val cached = cache.read(events, generation)
-        if (events.all { it.id in cached }) return@withLock applyDecisions(cached, events)
-        val missing = events.filter { it.id !in cached }
-        val matchableEvents = missing.filter { it.startEpochMillis > 0 }
-        if (matchableEvents.isEmpty()) return@withLock applyDecisions(cached + missing.associate { it.id to emptyList() }, events)
-        val margin = EventChannelMatcher.MAX_START_DELTA_MINUTES * MILLIS_PER_MINUTE
-        val programmeCandidates = dao.programmeCandidates(
-            fromEpochMillis = matchableEvents.minOf { it.startEpochMillis } - margin,
-            toEpochMillis = matchableEvents.maxOf { it.startEpochMillis } + margin,
-        ).map { it.toDomain() }
-        val channelNameCandidates = dao.channelNameCandidates().map { it.toDomain() }
-        val aliases = mutableMapOf<String, MutableSet<String>>()
-        for (sport in matchableEvents.map(TodayEvent::sport).distinct()) {
-            aliasRepository.aliasesFor(sport).forEach { (team, variants) ->
-                aliases.getOrPut(team, ::mutableSetOf).addAll(variants)
+    suspend fun matchesFor(events: List<TodayEvent>): Map<String, List<EventChannelMatch>> = withContext(Dispatchers.Default) {
+        matchingMutex.withLock {
+            val generation = inputGeneration()
+            val cached = cache.read(events, generation)
+            if (events.all { it.id in cached }) return@withLock applyDecisions(cached, events)
+            val missing = events.filter { it.id !in cached }
+            val matchableEvents = missing.filter { it.startEpochMillis > 0 }
+            if (matchableEvents.isEmpty()) return@withLock applyDecisions(cached + missing.associate { it.id to emptyList() }, events)
+            val margin = EventChannelMatcher.MAX_START_DELTA_MINUTES * MILLIS_PER_MINUTE
+            val from = matchableEvents.minOf { it.startEpochMillis } - margin
+            val to = matchableEvents.maxOf { it.startEpochMillis } + margin
+            val aliases = mutableMapOf<String, MutableSet<String>>()
+            for (sport in matchableEvents.map(TodayEvent::sport).distinct()) {
+                aliasRepository.aliasesFor(sport).forEach { (team, variants) ->
+                    aliases.getOrPut(team, ::mutableSetOf).addAll(variants)
+                }
             }
+            val decisions = decisionRepository.decisionsFor(events.map(TodayEvent::id))
+            val accumulator = matcher.accumulator(missing, aliases, decisions)
+            var afterChannel = Long.MIN_VALUE
+            while (true) {
+                yield()
+                val channels = dao.channelNameCandidatesPage(afterChannel, CHANNEL_PAGE_SIZE)
+                if (channels.isEmpty()) break
+                for (channel in channels) {
+                    currentCoroutineContext().ensureActive()
+                    accumulator.add(channel.toDomain())
+                }
+                addProgrammePages(accumulator, channels.map { it.channelRowId }, from, to)
+                afterChannel = channels.last().channelRowId
+                if (channels.size < CHANNEL_PAGE_SIZE) break
+            }
+            currentCoroutineContext().ensureActive()
+            // Do not publish/cache a mixture of snapshots if an import or visibility
+            // edit raced the scan. The input observer schedules the current generation.
+            if (generation != inputGeneration()) return@withLock cachedMatchesFor(events)
+            val matches = accumulator.finish()
+            cache.write(missing, generation, matches)
+            applyDecisions(cached + matches, events)
         }
-        val decisions = decisionRepository.decisionsFor(events.map(TodayEvent::id))
-        val matches = withContext(Dispatchers.Default) {
-            matcher.match(
-                events = missing,
-                candidates = programmeCandidates + channelNameCandidates,
-                aliases = aliases,
-                decisions = decisions,
+    }
+
+    private suspend fun addProgrammePages(
+        accumulator: EventChannelMatcher.Accumulator,
+        channelRowIds: List<Long>,
+        from: Long,
+        to: Long,
+    ) {
+        var afterProgramme = Long.MIN_VALUE
+        var afterChannel = Long.MIN_VALUE
+        while (true) {
+            yield()
+            val programmes = dao.programmeCandidatesPage(
+                channelRowIds, from, to, afterProgramme, afterChannel, PROGRAMME_PAGE_SIZE,
             )
+            for (programme in programmes) {
+                currentCoroutineContext().ensureActive()
+                accumulator.add(programme.toDomain())
+            }
+            if (programmes.size < PROGRAMME_PAGE_SIZE) break
+            afterProgramme = programmes.last().programmeRowId
+            afterChannel = programmes.last().channelRowId
         }
-        if (generation == inputGeneration()) cache.write(missing, generation, matches)
-        applyDecisions(cached + matches, events)
     }
 
     suspend fun setDecision(eventId: String, channelId: String, decision: ManualMatchDecision?) {
@@ -156,5 +192,7 @@ class EventChannelMatchingRepository(
 
     private companion object {
         const val MILLIS_PER_MINUTE = 60_000L
+        const val CHANNEL_PAGE_SIZE = 256
+        const val PROGRAMME_PAGE_SIZE = 64
     }
 }

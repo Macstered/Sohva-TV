@@ -2,10 +2,13 @@ package com.streammate.tv.core.database
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.RawQuery
 import androidx.room.Transaction
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Upsert
+import androidx.sqlite.db.SimpleSQLiteQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 private const val SPORTS_MATCH_GENERATION_QUERY = """
@@ -341,9 +344,40 @@ abstract class GuideDao {
         toEpochMillis: Long,
     ): Flow<List<GuideTimelineRow>>
 
-    /** The channels of a source or group alone; see [GUIDE_CHANNELS_FOR_SOURCE_SQL]. */
-    @Query(GUIDE_CHANNELS_FOR_SOURCE_SQL)
-    abstract fun observeGuideChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineRow>>
+    /**
+     * One page of the channels of a source or group alone, by channel id from
+     * [afterChannelId] on; an empty id starts at the first. See
+     * [GUIDE_CHANNEL_PAGE_SQL] for why this is not one observed query.
+     */
+    @Query(GUIDE_CHANNEL_PAGE_SQL)
+    abstract suspend fun guideChannelPage(
+        sourceId: String,
+        groupTitle: String?,
+        afterChannelId: String,
+        limit: Int,
+    ): List<GuideRosterRow>
+
+    /** The playlist snapshot a source's channels are being read from, to tell when it moved mid-read. */
+    @Query("SELECT activeSnapshotId FROM import_state WHERE sourceId = :sourceId AND kind = 'playlist'")
+    abstract suspend fun activePlaylistSnapshotId(sourceId: String): String?
+
+    /**
+     * A signal rather than a read: emits at once, and again after a write to
+     * any table [guideChannelPage] reads, which Room cannot watch for a
+     * suspend query read a page at a time.
+     */
+    fun observeGuideChannelTables(): Flow<Int> = observeTables(SimpleSQLiteQuery("SELECT 0"))
+
+    @RawQuery(
+        observedEntities = [
+            IptvChannelEntity::class,
+            IptvSourceStateEntity::class,
+            ImportStateEntity::class,
+            ChannelPreferenceEntity::class,
+            OrganizationRuleEntity::class,
+        ],
+    )
+    protected abstract fun observeTables(query: SupportSQLiteQuery): Flow<Int>
 
     @Query(GUIDE_CHANNELS_FOR_IDS_SQL)
     abstract fun observeGuideChannelsForIds(channelIds: List<String>): Flow<List<GuideTimelineRow>>
@@ -566,67 +600,18 @@ abstract class GuideDao {
     )
     abstract suspend fun stagedEpgMatch(sourceId: String, snapshotId: String): StagedEpgMatchRow
 
-    @Query(
-        """
-        SELECT
-            c.sourceId AS sourceId,
-            c.channelId AS channelId,
-            COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName,
-            p.programmeId AS programmeId,
-            p.title AS programmeTitle,
-            p.subtitle AS programmeSubtitle,
-            p.description AS programmeDescription,
-            (p.startEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStartEpochMillis,
-            (p.stopEpochMillis + source_state.epgOffsetMinutes * 60000) AS programmeStopEpochMillis
-        FROM organization_visible_channels c
-        INNER JOIN iptv_source_state source_state
-            ON source_state.sourceId = c.sourceId
-            AND source_state.enabled = 1
-        INNER JOIN import_state playlist_state
-            ON playlist_state.sourceId = c.sourceId
-            AND playlist_state.kind = 'playlist'
-            AND playlist_state.activeSnapshotId = c.snapshotId
-        LEFT JOIN channel_preferences preference
-            ON preference.channelId = c.channelId
-        INNER JOIN import_state epg_state
-            ON epg_state.sourceId = c.sourceId
-            AND epg_state.kind = 'epg'
-        INNER JOIN tv_programmes p
-            ON p.sourceId = c.sourceId
-            AND p.snapshotId = epg_state.activeSnapshotId
-            AND p.xmltvChannelId = COALESCE(NULLIF(preference.manualXmltvChannelId, ''), c.tvgId)
-        WHERE p.startEpochMillis + source_state.epgOffsetMinutes * 60000
-            BETWEEN :fromEpochMillis AND :toEpochMillis
-            AND 1 = 1
-        ORDER BY p.startEpochMillis + source_state.epgOffsetMinutes * 60000,
-            COALESCE(NULLIF(preference.customName, ''), c.name)
-        """,
-    )
-    abstract suspend fun programmeCandidates(
+    @Query(SPORTS_PROGRAMME_CANDIDATES_PAGE_SQL)
+    abstract suspend fun programmeCandidatesPage(
+        channelRowIds: List<Long>,
         fromEpochMillis: Long,
         toEpochMillis: Long,
+        afterProgrammeRowId: Long,
+        afterChannelRowId: Long,
+        limit: Int,
     ): List<ProgrammeCandidateRow>
 
-    @Query(
-        """
-        SELECT c.sourceId AS sourceId, c.channelId AS channelId,
-            COALESCE(NULLIF(preference.customName, ''), c.name) AS channelName
-        FROM organization_visible_channels c
-        INNER JOIN iptv_source_state source_state
-            ON source_state.sourceId = c.sourceId
-            AND source_state.enabled = 1
-        INNER JOIN import_state state
-            ON state.sourceId = c.sourceId
-            AND state.kind = 'playlist'
-            AND c.snapshotId = state.activeSnapshotId
-        LEFT JOIN channel_preferences preference
-            ON preference.channelId = c.channelId
-        WHERE 1 = 1
-        ORDER BY COALESCE(preference.sortOrder, 2147483647),
-            COALESCE(NULLIF(preference.customName, ''), c.name)
-        """,
-    )
-    abstract suspend fun channelNameCandidates(): List<ChannelNameCandidateRow>
+    @Query(SPORTS_CHANNEL_CANDIDATES_PAGE_SQL)
+    abstract suspend fun channelNameCandidatesPage(afterRowId: Long, limit: Int): List<ChannelNameCandidateRow>
 
     /** Small configuration/snapshot rows, without scanning programme or channel payloads. */
     @Query(SPORTS_MATCH_GENERATION_QUERY)
@@ -709,6 +694,9 @@ abstract class GuideDao {
 
     @Query("SELECT * FROM channel_list_members ORDER BY listId, sortOrder")
     abstract fun observeCustomChannelListMembers(): Flow<List<CustomChannelListMemberEntity>>
+
+    @Query("SELECT * FROM channel_list_members WHERE listId = :listId ORDER BY sortOrder")
+    abstract fun observeCustomChannelListMembers(listId: String): Flow<List<CustomChannelListMemberEntity>>
 
     @Query("SELECT * FROM channel_list_members ORDER BY listId, sortOrder")
     abstract suspend fun customChannelListMembers(): List<CustomChannelListMemberEntity>

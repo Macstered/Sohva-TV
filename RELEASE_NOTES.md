@@ -1,24 +1,31 @@
-# Sohva TV 0.1.0-beta.21
+# Sohva TV 0.1.0-beta.22
 
-Prepared: **18 September 2026**. Android version code: **43**.
+Prepared: **19 September 2026**. Android version code: **50**.
 
-This beta improves Live TV guide loading and fixes the remaining startup-menu issue.
+This beta improves large-playlist guide loading, remote navigation and memory use during playback.
 No addons, subscriptions, channels, credentials
 or accounts are included.
 
-## New in beta 21
+## New in beta 22
 
-- **Channels first.** Live TV channels become available before programme
-  information finishes loading, including groups, favourites and recent lists.
-- **Smaller EPG reads.** Programme information loads in four-hour windows for
-  visible and nearby channels. Browsing requests further batches while the
-  channel list remains available. Provider XMLTV imports are unchanged.
-- **Stable guide focus.** Programme arrivals keep focus in place. Opening the
-  category drawer during a time-page read no longer pulls focus back to the grid.
-- **Reliable Home focus after reopening.** Fixed the remaining case where the
-  side menu could open as Home finished loading after exiting with Back.
+- **Faster large-playlist loading.** Channel lists load in small pages, and
+  leaving a list cancels its remaining reads. Large lists also use less
+  temporary memory while being ordered.
+- **Lower memory use during playback.** Fixed a memory-exhaustion path in
+  background sports-channel matching that could make playback stutter or
+  crash with large EPGs. Matching now reads small batches and retains only
+  the best results, preserving saved decisions and channel visibility.
+- **Reliable held-button paging.** Holding Left or Right through guide time
+  pages keeps navigation on the current channel while new listings load.
+- **Smoother guide navigation.** Focus changes and programme arrivals update
+  less of the screen. Guide accessibility descriptions are simpler, reducing
+  work when screen readers or button-remapping services are enabled.
+- **Better diagnostics.** Large or slow channel reads are recorded as counts
+  and timings without playlist contents.
 
-These fixes were confirmed by the reporter and on the owner's Shield preview.
+Tested on Shield with a large playlist and sustained playback, plus Android
+emulator regression and memory stress tests. Please report results from other
+devices, especially lower-memory TV sticks.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -26,7 +33,7 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 43 uses the existing production signing identity.
+published. Android build 50 uses the existing production signing identity.
 The IPTV database stays at version 29 and the Discover progress database at
 4; no migration runs. No data is copied from a separate Lab app. Existing Trakt connections are retained; on a new installation,
 Trakt is off until you connect an account.

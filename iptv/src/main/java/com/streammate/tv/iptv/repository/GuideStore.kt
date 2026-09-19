@@ -2,6 +2,7 @@ package com.streammate.tv.iptv.repository
 
 import com.streammate.tv.core.database.GuideChannelRow
 import com.streammate.tv.core.database.GuideDao
+import com.streammate.tv.core.database.GuideRosterRow
 import com.streammate.tv.core.database.GuideTimelineRow
 import com.streammate.tv.core.database.ChannelPreferenceEntity
 import com.streammate.tv.core.database.CustomChannelListEntity
@@ -13,6 +14,7 @@ import com.streammate.tv.core.database.SourceRefreshStateEntity
 import com.streammate.tv.core.database.TvProgrammeEntity
 import com.streammate.tv.core.database.XmlTvChannelEntity
 import com.streammate.tv.core.database.XmlTvChannelOptionRow
+import com.streammate.tv.core.diagnostics.DiagnosticsLog
 import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.LibraryRoom
 import com.streammate.tv.app.ProfileRestriction
@@ -20,6 +22,7 @@ import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -466,13 +469,71 @@ class GuideRepository(
      * The channels of one source, or one of its groups, with no programmes:
      * the first read for every selection, whose programmes the screen reads
      * for the rows in view with [observeTimelineForChannels].
+     *
+     * Read a page at a time, and again after a write to a table behind it.
+     * A collector that has gone, because the viewer chose another group, ends
+     * the read at its next page instead of leaving it to run for nobody, and
+     * conflate folds a burst of import writes into one re-read after the read
+     * in hand rather than abandoning that read for each of them.
      */
     fun observeChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineChannel>> =
-        dao.observeGuideChannelsForSource(sourceId, groupTitle)
-            .map(::timelineChannels)
+        dao.observeGuideChannelTables()
+            .conflate()
+            .map { readChannels(sourceId, groupTitle) }
             .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
+
+    private suspend fun readChannels(sourceId: String, groupTitle: String?): List<GuideTimelineChannel> {
+        val started = System.nanoTime()
+        var attempts = 0
+        var read: ChannelPages
+        do {
+            attempts++
+            read = readChannelPages(sourceId, groupTitle, stopWhenSpliced = attempts < CHANNEL_READ_ATTEMPTS)
+        } while (read.spliced && attempts < CHANNEL_READ_ATTEMPTS)
+        val channels = read.rows.sortedWith(GuideRosterRow.DISPLAY_ORDER).map { it.toTimelineChannel() }
+        val elapsedMillis = (System.nanoTime() - started) / 1_000_000
+        // Counts and timings only: what a capture needs to tell a slow read
+        // from a slow screen, with nothing of the playlist in it.
+        if (channels.size >= CHANNEL_PAGE_SIZE || elapsedMillis >= SLOW_CHANNEL_READ_MILLIS) {
+            DiagnosticsLog.i(
+                "Guide",
+                "channel rows: ${channels.size} of a ${if (groupTitle == null) "source" else "group"} in ${read.pages} pages, " +
+                    "$elapsedMillis ms" + if (attempts > 1) ", $attempts attempts" else "",
+            )
+        }
+        return channels
+    }
+
+    private class ChannelPages(val rows: List<GuideRosterRow>, val pages: Int, val spliced: Boolean)
+
+    /**
+     * Every page of the selection. Each page is its own statement, so a
+     * playlist activated between two of them would splice the old snapshot's
+     * first channels onto the new one's last, or end the old one early; the
+     * caller reads again, and only a last attempt is read through regardless,
+     * since the activation's own write brings a fresh read straight after.
+     */
+    private suspend fun readChannelPages(sourceId: String, groupTitle: String?, stopWhenSpliced: Boolean): ChannelPages {
+        val rows = ArrayList<GuideRosterRow>()
+        val pool = HashMap<String, String>()
+        var after = ""
+        var pages = 0
+        while (true) {
+            val page = dao.guideChannelPage(sourceId, groupTitle, after, CHANNEL_PAGE_SIZE)
+            pages++
+            val spliced = page.isNotEmpty() && rows.isNotEmpty() && page.first().snapshotId != rows.first().snapshotId
+            if (spliced && stopWhenSpliced) return ChannelPages(rows, pages, spliced = true)
+            page.mapTo(rows) { it.sharing(pool) }
+            if (page.size < CHANNEL_PAGE_SIZE) break
+            after = page.last().channelId
+        }
+        // One page is one statement and cannot straddle an activation. After
+        // several, the snapshot that was read has to be the one still active.
+        val moved = pages > 1 && dao.activePlaylistSnapshotId(sourceId) != rows.first().snapshotId
+        return ChannelPages(rows, pages, spliced = moved)
+    }
 
     /** Named rows without EPG; batches stay below older Android SQLite's bind limit. */
     fun observeChannelsForIds(channelIds: List<String>): Flow<List<GuideTimelineChannel>> =
@@ -480,7 +541,7 @@ class GuideRepository(
             kotlinx.coroutines.flow.flowOf(emptyList())
         } else {
             combine(channelIds.distinct().chunked(500).map(dao::observeGuideChannelsForIds)) { batches ->
-                timelineChannels(batches.flatMap { it })
+                batches.flatMap { rows -> rows.map { it.toTimelineChannel() } }
             }
                 .let { organization?.organize(it, LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
                 .distinctUntilChanged()
@@ -538,12 +599,18 @@ class GuideRepository(
     fun observeCustomChannelLists(): Flow<List<CustomChannelList>> =
         dao.observeCustomChannelLists().map { lists ->
             lists.map { CustomChannelList(it.listId, it.name, it.sortOrder) }
-        }
+        }.distinctUntilChanged().flowOn(Dispatchers.Default)
 
     fun observeChannelListMemberships(): Flow<List<ChannelListMembership>> =
         dao.observeCustomChannelListMembers().map { members ->
             members.map { ChannelListMembership(it.listId, it.channelId, it.sortOrder) }
-        }
+        }.distinctUntilChanged().flowOn(Dispatchers.Default)
+
+    /** The guide needs members only for the list currently selected. */
+    fun observeChannelListMemberships(listId: String): Flow<List<ChannelListMembership>> =
+        dao.observeCustomChannelListMembers(listId).map { members ->
+            members.map { ChannelListMembership(it.listId, it.channelId, it.sortOrder) }
+        }.distinctUntilChanged().flowOn(Dispatchers.Default)
 
     suspend fun activeChannel(channelId: String): IptvChannelEntity? = dao.getActiveChannel(channelId)
 
@@ -799,21 +866,7 @@ class GuideRepository(
     private fun timelineChannels(rows: List<GuideTimelineRow>): List<GuideTimelineChannel> =
         rows.groupByTo(LinkedHashMap(), GuideTimelineRow::channelId).values.map { channelRows ->
             val channel = channelRows.first()
-            GuideTimelineChannel(
-                legacyPosition = channel.legacyPosition,
-                organizationGroupKey = channel.organizationGroupKey,
-                sourceId = channel.sourceId,
-                sourceName = channel.sourceName,
-                sourcePriority = channel.sourcePriority,
-                id = channel.channelId,
-                name = channel.channelName,
-                groupTitle = channel.groupTitle,
-                logoUrl = channel.logoUrl,
-                playlistOrder = channel.playlistOrder,
-                catchupType = channel.catchupType,
-                catchupSource = channel.catchupSource,
-                catchupDays = channel.catchupDays,
-                channelNumber = channel.channelNumber,
+            channel.toTimelineChannel(
                 programmes = deduplicateGuideSchedule(
                     channelRows.mapNotNull { row ->
                         val id = row.programmeId ?: return@mapNotNull null
@@ -834,9 +887,53 @@ class GuideRepository(
             )
         }
 
+    // Channel-only reads are already one row per channel. Do not build a map,
+    // a singleton list and an empty schedule for every channel in the lineup.
+    private fun GuideTimelineRow.toTimelineChannel(
+        programmes: List<GuideTimelineProgramme> = emptyList(),
+    ) = GuideTimelineChannel(
+        legacyPosition = legacyPosition,
+        organizationGroupKey = organizationGroupKey,
+        sourceId = sourceId,
+        sourceName = sourceName,
+        sourcePriority = sourcePriority,
+        id = channelId,
+        name = channelName,
+        groupTitle = groupTitle,
+        logoUrl = logoUrl,
+        playlistOrder = playlistOrder,
+        catchupType = catchupType,
+        catchupSource = catchupSource,
+        catchupDays = catchupDays,
+        channelNumber = channelNumber,
+        programmes = programmes,
+    )
+
+    private fun GuideRosterRow.toTimelineChannel() = GuideTimelineChannel(
+        legacyPosition = legacyPosition,
+        organizationGroupKey = organizationGroupKey ?: com.streammate.tv.core.model.organizationGroupKey(groupTitle),
+        sourceId = sourceId,
+        sourceName = sourceName,
+        sourcePriority = sourcePriority,
+        id = channelId,
+        name = channelName,
+        groupTitle = groupTitle,
+        logoUrl = logoUrl,
+        playlistOrder = playlistOrder,
+        catchupType = catchupType,
+        catchupSource = catchupSource,
+        catchupDays = catchupDays,
+        channelNumber = channelNumber,
+        programmes = emptyList(),
+    )
+
     private companion object {
         const val CATEGORY_SEPARATOR = "\u001F"
         const val MAX_CUSTOMIZED_CHANNELS = 100_000
+        /** Channel rows per statement: about a megabyte, inside the two a cursor window holds. */
+        const val CHANNEL_PAGE_SIZE = 2_000
+        const val CHANNEL_READ_ATTEMPTS = 3
+        const val SLOW_CHANNEL_READ_MILLIS = 250L
         const val MAX_CUSTOM_CHANNEL_LISTS = 1_000
         const val MAX_CUSTOM_LIST_MEMBERS = 500_000
         const val MIN_SEARCH_QUERY_LENGTH = 2

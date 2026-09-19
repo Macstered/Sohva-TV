@@ -71,34 +71,65 @@ class EventChannelMatcher {
         aliases: Map<String, Set<String>>,
         decisions: Map<Pair<String, String>, ManualMatchDecision>,
     ): Map<String, List<EventChannelMatch>> {
-        val preparedByChannel = candidates
-            .map(::prepareCandidate)
-            .groupBy { it.candidate.channelId }
-        return events.associate { event ->
-            val homeVariants = teamVariants(event.home, aliases)
-            val awayVariants = teamVariants(event.away, aliases)
-            val channelMatches = preparedByChannel.mapNotNull { (channelId, options) ->
-                val decision = decisions[event.id to channelId]
-                val automaticallyScored = options.mapNotNull { candidate ->
-                    scoreCandidate(event, candidate, homeVariants, awayVariants, allowWithoutTeam = false)
-                }
-                val bestAutomatic = automaticallyScored.bestCandidate()
-                val selected = bestAutomatic ?: if (decision != null) {
-                    options.mapNotNull { candidate ->
-                        scoreCandidate(event, candidate, homeVariants, awayVariants, allowWithoutTeam = true)
-                    }.bestCandidate()
-                } else {
-                    null
-                }
-                selected?.withDecision(decision)
-            }.sortedWith(
-                compareBy<EventChannelMatch> { confidenceRank(it.confidence) }
-                    .thenByDescending { it.score }
-                    .thenBy { abs(it.startOffsetMinutes) }
-                    .thenBy { it.channelName },
-            )
-            event.id to channelMatches
+        val accumulator = accumulator(events, aliases, decisions)
+        candidates.forEach(accumulator::add)
+        return accumulator.finish()
+    }
+
+    fun accumulator(
+        events: List<TodayEvent>,
+        aliases: Map<String, Set<String>>,
+        decisions: Map<Pair<String, String>, ManualMatchDecision>,
+    ) = Accumulator(events, aliases, decisions)
+
+    /** Retains winners only, never programme descriptions or normalized candidate corpora. */
+    inner class Accumulator internal constructor(
+        events: List<TodayEvent>,
+        aliases: Map<String, Set<String>>,
+        private val decisions: Map<Pair<String, String>, ManualMatchDecision>,
+    ) {
+        private val states = events.map { event ->
+            EventState(event, teamVariants(event.home, aliases), teamVariants(event.away, aliases))
         }
+
+        fun add(candidate: ProgrammeCandidate) {
+            val prepared = prepareCandidate(candidate)
+            for (state in states) {
+                val automatic = scoreCandidate(state.event, prepared, state.home, state.away, false)
+                if (automatic != null) {
+                    val previous = state.automatic[candidate.channelId]
+                    if (previous == null || candidateOrder.compare(automatic, previous) < 0) {
+                        state.automatic[candidate.channelId] = automatic
+                    }
+                    state.fallback.remove(candidate.channelId)
+                } else if (candidate.channelId !in state.automatic &&
+                    decisions[state.event.id to candidate.channelId] != null
+                ) {
+                    val fallback = scoreCandidate(state.event, prepared, state.home, state.away, true) ?: continue
+                    val previous = state.fallback[candidate.channelId]
+                    if (previous == null || candidateOrder.compare(fallback, previous) < 0) {
+                        state.fallback[candidate.channelId] = fallback
+                    }
+                }
+            }
+        }
+
+        fun finish(): Map<String, List<EventChannelMatch>> = states.associate { state ->
+            state.event.id to (state.automatic.values.asSequence() + state.fallback.values.asSequence())
+                .map { it.withDecision(decisions[it.eventId to it.channelId]) }
+                .sortedWith(
+                    compareBy<EventChannelMatch> { confidenceRank(it.confidence) }
+                        .thenByDescending { it.score }
+                        .thenBy { abs(it.startOffsetMinutes) }
+                        .thenBy { it.channelName }
+                        .thenBy { it.channelId },
+                ).toList()
+        }
+    }
+
+    private class EventState(val event: TodayEvent, val home: Set<String>, val away: Set<String>) {
+        val automatic = mutableMapOf<String, EventChannelMatch>()
+        val fallback = mutableMapOf<String, EventChannelMatch>()
     }
 
     private fun scoreCandidate(
@@ -124,8 +155,8 @@ class EventChannelMatcher {
             absoluteOffset > MAX_START_DELTA_MINUTES
         ) return null
 
-        val homeMatched = homeVariants.any { prepared.corpus.containsTerm(it) }
-        val awayMatched = awayVariants.any { prepared.corpus.containsTerm(it) }
+        val homeMatched = homeVariants.any(prepared.corpus::contains)
+        val awayMatched = awayVariants.any(prepared.corpus::contains)
         if (!homeMatched && !awayMatched && !allowWithoutTeam) return null
 
         val bothTeams = homeMatched && awayMatched
@@ -185,29 +216,30 @@ class EventChannelMatcher {
 
     private fun prepareCandidate(candidate: ProgrammeCandidate): PreparedCandidate = PreparedCandidate(
         candidate = candidate,
-        corpus = MatchTextNormalizer.normalize(
+        corpus = " " + MatchTextNormalizer.normalize(
             listOfNotNull(candidate.title, candidate.subtitle, candidate.description).joinToString(" "),
-        ),
+        ) + " ",
         schedule = if (candidate.source == MatchCandidateSource.M3U_CHANNEL_NAME) {
             ChannelNameSchedule.parse(candidate.channelName)
         } else null,
     )
 
-    private fun List<EventChannelMatch>.bestCandidate(): EventChannelMatch? = sortedWith(
+    // The old read visited programmes chronologically. Keep earlier starts on
+    // otherwise equal scores; a final id tie-break makes page order irrelevant.
+    private val candidateOrder =
         compareByDescending<EventChannelMatch> { it.score }
             .thenBy { abs(it.startOffsetMinutes) }
-            .thenBy { if (it.source == MatchCandidateSource.XMLTV_PROGRAMME) 0 else 1 },
-    ).firstOrNull()
+            .thenBy { if (it.source == MatchCandidateSource.XMLTV_PROGRAMME) 0 else 1 }
+            .thenBy { it.programmeStartEpochMillis }
+            .thenBy { it.programmeId }
 
     private fun teamVariants(teamName: String, aliases: Map<String, Set<String>>): Set<String> {
         val canonical = MatchTextNormalizer.normalize(teamName)
         return buildSet {
             add(canonical)
             addAll(aliases[canonical].orEmpty())
-        }.filterTo(mutableSetOf()) { it.length >= MIN_TERM_LENGTH }
+        }.filter { it.length >= MIN_TERM_LENGTH }.mapTo(mutableSetOf()) { " $it " }
     }
-
-    private fun String.containsTerm(term: String): Boolean = " $this ".contains(" $term ")
 
     private fun confidenceRank(confidence: ChannelMatchConfidence): Int = when (confidence) {
         ChannelMatchConfidence.AVAILABLE -> 0

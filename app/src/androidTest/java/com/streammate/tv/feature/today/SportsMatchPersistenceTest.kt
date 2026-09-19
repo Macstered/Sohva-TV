@@ -28,7 +28,7 @@ class SportsMatchPersistenceTest {
 
     @Before fun setup() = runBlocking {
         database = Room.inMemoryDatabaseBuilder(context, StreamMateDatabase::class.java)
-            .setQueryCallback({ sql, _ -> if (sql.contains("FROM organization_visible_channels c")) scans.incrementAndGet() }, java.util.concurrent.Executor { it.run() })
+            .setQueryCallback({ sql, _ -> if (sql.contains("sports-channel-page") || sql.contains("sports-programme-page")) scans.incrementAndGet() }, java.util.concurrent.Executor { it.run() })
             .build()
         file = File.createTempFile("sports-matches", ".bin", context.cacheDir)
         database.guideDao().upsertSourceState(source)
@@ -56,7 +56,7 @@ class SportsMatchPersistenceTest {
         database.guideDao().upsertChannelPreference(ChannelPreferenceEntity("channel", "fixture", null, null, true, null, null, 100))
         assertTrue(restarted.cachedMatchesFor(listOf(event)).isEmpty())
         assertTrue(restarted.matchesFor(listOf(event)).getValue(event.id).isEmpty())
-        assertEquals(2, scans.get())
+        assertEquals(1, scans.get()) // No programme query when no visible channels remain.
     }
 
     @Test fun cachedFeedHasChannelCountsBeforeNetworkCompletesAndDecisionsDoNotRescan() = runBlocking {
@@ -90,5 +90,61 @@ class SportsMatchPersistenceTest {
             withTimeout(10_000) { model.uiState.first { !it.isLoading } }
             assertEquals(ManualMatchDecision.REJECTED, model.uiState.value.matches.getValue(event.id).single().manualDecision)
         } finally { instrumentation.runOnMainSync { store.clear() } }
+    }
+
+    @Test fun programmePagesKeepSharedXmltvMappingsOffsetsAndVisibilityWithoutDuplicates() = runBlocking {
+        val dao = database.guideDao()
+        dao.upsertSourceState(source.copy(epgOffsetMinutes = 60))
+        dao.upsertChannels(listOf("channel", "second", "hidden").map { id ->
+            IptvChannelEntity("fixture", "one", id, "original", "Name $id", id, "Sport", null, "synthetic", null, null, 1)
+        })
+        for (id in listOf("channel", "second", "hidden")) {
+            dao.upsertChannelPreference(ChannelPreferenceEntity(id, "fixture", "Custom $id", null,
+                id == "hidden", null, "shared", 1))
+        }
+        // A late row from an inactive snapshot must not leak into the channel scan.
+        dao.upsertChannels(listOf(IptvChannelEntity("fixture", "staged", "inactive", "shared", "Inactive", "inactive", null, null, "synthetic", null, null, 1)))
+        dao.insertProgrammes((0 until 100).map { index ->
+            TvProgrammeEntity("fixture", "epg", "p-$index", "shared", event.startEpochMillis,
+                event.startEpochMillis + 60_000, "Real Betis vs Getafe", null, "Description", "")
+        })
+        dao.activateEpgSnapshot("fixture", "epg", 100, 1)
+        val channels = mutableListOf<ChannelNameCandidateRow>()
+        var after = Long.MIN_VALUE
+        while (true) {
+            val page = dao.channelNameCandidatesPage(after, 1)
+            if (page.isEmpty()) break
+            channels += page
+            after = page.last().channelRowId
+        }
+        assertEquals(setOf("channel", "second"), channels.map { it.channelId }.toSet())
+        assertTrue(channels.all { it.channelName == "Custom ${it.channelId}" })
+        val keys = mutableSetOf<Pair<String, String>>()
+        var afterProgramme = Long.MIN_VALUE
+        var afterChannel = Long.MIN_VALUE
+        val adjusted = event.startEpochMillis + 60 * 60_000
+        while (true) {
+            // Odd page size deliberately divides two streams sharing one programme.
+            val page = dao.programmeCandidatesPage(channels.map { it.channelRowId }, adjusted, adjusted,
+                afterProgramme, afterChannel, 3)
+            assertTrue(page.size <= 3)
+            for (row in page) {
+                assertEquals(adjusted, row.programmeStartEpochMillis)
+                assertEquals("Custom ${row.channelId}", row.channelName)
+                assertTrue("duplicate ${row.channelId}/${row.programmeId}", keys.add(row.channelId to row.programmeId))
+            }
+            if (page.isEmpty()) break
+            afterProgramme = page.last().programmeRowId
+            afterChannel = page.last().channelRowId
+        }
+        assertEquals(200, keys.size)
+        assertTrue(dao.programmeCandidatesPage(channels.map { it.channelRowId }, adjusted + 1, adjusted + 2,
+            Long.MIN_VALUE, Long.MIN_VALUE, 3).isEmpty())
+        database.organizationDao().upsertRules(listOf(OrganizationRuleEntity("LIVE", "", "", "second", false, null, null)))
+        assertEquals(listOf("channel"), dao.channelNameCandidatesPage(Long.MIN_VALUE, 10).map { it.channelId })
+        assertEquals(setOf("channel"), dao.programmeCandidatesPage(channels.map { it.channelRowId }, adjusted, adjusted,
+            Long.MIN_VALUE, Long.MIN_VALUE, 300).map { it.channelId }.toSet())
+        dao.upsertSourceState(source.copy(enabled = false))
+        assertTrue(dao.channelNameCandidatesPage(Long.MIN_VALUE, 10).isEmpty())
     }
 }

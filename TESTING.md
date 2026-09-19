@@ -1,7 +1,25 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.21 (43)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.22 (50)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 22: large playlists, guide paging and memory
+
+1. Open Live TV with your largest playlist and choose **All channels**. Compare
+   the first opening with returning from a smaller group. Leave a large list
+   while it loads and check that the next selection responds promptly.
+2. Hold Left and Right through several time pages, including when new listings
+   load slowly. Focus should return to the timeline on the same channel; the
+   channel name may briefly highlight while the next page loads. Check Up/Down
+   navigation and deliberately opening the category drawer too.
+3. After a playlist or EPG refresh, browse Sohva Sport and play a stream for
+   at least 15 minutes. Check for increasing lag, audio/video stutter or a crash.
+   Return to the guide and save diagnostics if anything seems wrong.
+4. Confirm sports-channel matches and manual Confirm/Reject decisions remain
+   correct after matching completes and after restarting the app.
+5. If the guide is still slow, mention any enabled accessibility service, such
+   as a screen reader or button remapper, along with your device, build number
+   and **Settings > About > Save diagnostics**.
 
 ## Beta 21: progressive guide loading and startup focus
 

@@ -15,10 +15,12 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 /**
- * The rows-only read the guide uses for a very large selection, in front of
- * SQLite's planner on the exported schema with fifty thousand channels.
- * It must never touch the programme table, and it must return every channel
- * of the source in well under a second without statistics.
+ * The rows-only read the guide uses for every selection, in front of SQLite's
+ * planner on the exported schema with fifty thousand channels. It must never
+ * touch the programme table; a page must walk the primary key without a
+ * sorter, since Android re-runs a statement for every cursor window it fills;
+ * and the pages put back in display order must be the rows, in the order, the
+ * one ordered statement they replaced gave.
  */
 class GuideChannelsQueryPlanTest {
     private lateinit var connection: Connection
@@ -48,38 +50,156 @@ class GuideChannelsQueryPlanTest {
 
     @Test
     fun theRowsReadNeverJoinsTheProgrammes() {
-        val plan = connection.createStatement().use { statement ->
-            statement.executeQuery("EXPLAIN QUERY PLAN ${wholeSourceSql()}").use { rows ->
-                generateSequence { if (rows.next()) rows.getString("detail") else null }.toList()
-            }
-        }
+        val plan = plan(pageSql())
         assertTrue(plan.toString(), plan.isNotEmpty())
         plan.forEach { line -> assertFalse("plan touches programmes:\n$line", "tv_programmes" in line) }
     }
 
     @Test
+    fun sportsChannelPagesSeekTheRowIdWithoutSortingTheWholeLibrary() {
+        val sql = SPORTS_CHANNEL_CANDIDATES_PAGE_SQL.replace(":afterRowId", "40000").replace(":limit", "256")
+        val queryPlan = plan(sql)
+        assertTrue(queryPlan.toString(), queryPlan.any { "SEARCH c USING INTEGER PRIMARY KEY (rowid>?)" in it })
+        assertFalse(queryPlan.toString(), queryPlan.any { "TEMP B-TREE" in it })
+        connection.createStatement().use { statement ->
+            statement.executeQuery(sql).use { rows ->
+                var count = 0
+                while (rows.next()) {
+                    assertTrue(rows.getLong("channelRowId") > 40000)
+                    count++
+                }
+                assertEquals(256, count)
+            }
+        }
+    }
+
+    @Test
+    fun sportsProgrammePagesSeekOnlySelectedChannelsAndTheirIndexedTimeRange() {
+        val sql = SPORTS_PROGRAMME_CANDIDATES_PAGE_SQL
+            .replace(":channelRowIds", "40001,40002")
+            .replace(":fromEpochMillis", "1000000").replace(":toEpochMillis", "2000000")
+            .replace(":afterProgrammeRowId", "-1").replace(":afterChannelRowId", "-1")
+            .replace(":limit", "64")
+        val queryPlan = plan(sql)
+        assertTrue(queryPlan.toString(), queryPlan.any { "SEARCH c USING INTEGER PRIMARY KEY (rowid=?)" in it })
+        assertTrue(queryPlan.toString(), queryPlan.any {
+            "SEARCH p USING INDEX index_tv_programmes_sourceId_xmltvChannelId_startEpochMillis_stopEpochMillis" in it &&
+                "sourceId=? AND xmltvChannelId=? AND startEpochMillis>? AND startEpochMillis<?" in it
+        })
+        assertFalse(queryPlan.toString(), queryPlan.any { it.startsWith("SCAN p") })
+    }
+
+    @Test
+    fun aPageWalksThePrimaryKeyFromWhereTheLastEndedWithoutASorter() {
+        listOf(pageSql(), pageSql(group = "Group 07"), pageSql(after = "$SOURCE:30000")).forEach { sql ->
+            val plan = plan(sql)
+            // A sorter would make every page, and every cursor window a page
+            // overflowed into, pay for every channel of the source again.
+            plan.forEach { line -> assertFalse("plan sorts:\n$plan", "TEMP B-TREE" in line) }
+            val channels = plan.filter { "sqlite_autoindex_iptv_channels_1" in it }
+            assertEquals("channels are not read along their primary key:\n$plan", 1, channels.size)
+            assertTrue("a page does not start where the last ended:\n$plan", "channelId>?" in channels.single())
+        }
+    }
+
+    @Test
     fun everyChannelOfALargeSourceComesBackQuickly() {
         val started = System.nanoTime()
-        val count = rowCount(wholeSourceSql())
+        val rows = allPages()
         val elapsedMillis = (System.nanoTime() - started) / 1_000_000
-        assertEquals(CHANNELS, count)
+        assertEquals(CHANNELS, rows.size)
+        assertEquals(CHANNELS, rows.map { it.channelId }.toSet().size)
         assertTrue("rows read took $elapsedMillis ms", elapsedMillis < 2_000)
+        println("$CHANNELS channels in pages of $PAGE: $elapsedMillis ms")
     }
 
     @Test
     fun aGroupComesBackAlone() {
-        assertEquals(CHANNELS / GROUPS, rowCount(groupSql("Group 07")))
+        val rows = allPages(group = "Group 07")
+        assertEquals(CHANNELS / GROUPS, rows.size)
+        assertTrue(rows.all { it.groupTitle == "Group 07" })
+    }
+
+    @Test
+    fun aPageCostsItsOwnRowsWhereverInTheSourceItStarts() {
+        // The statement this replaced took as long for its last rows as for
+        // all of them; a page deep in the source must not read its way there.
+        fun millis(after: String): Long {
+            val started = System.nanoTime()
+            assertEquals(PAGE, page(after = after).size)
+            return (System.nanoTime() - started) / 1_000_000
+        }
+        millis("") // Warm the page cache before comparing.
+        val first = millis("")
+        // Ids sort as text, so the last page's worth begins a little before "source:9".
+        val deep = millis("$SOURCE:8")
+        assertTrue("first page $first ms, a page near the end $deep ms", deep <= first * 3 + 50)
+        println("a page of $PAGE: $first ms at the start, $deep ms near the end")
+    }
+
+    @Test
+    fun pagesPutBackInDisplayOrderAreTheOrderedStatementTheyReplaced() {
+        // Names that decide the last sort key: one high in the BMP and one
+        // past it, which UTF-16 and SQLite's UTF-8 order the opposite way.
+        val fullwidthTilde = String(Character.toChars(0xFF5E))
+        val television = String(Character.toChars(0x1F4FA))
+        connection.createStatement().use { statement ->
+            // Ties on every key but the name or the id, the viewer's own
+            // positions, a custom group, and rows the rules remove or restore.
+            statement.execute("UPDATE iptv_channels SET playlistOrder = 7 WHERE channelId IN ('$SOURCE:100', '$SOURCE:200', '$SOURCE:300', '$SOURCE:400')")
+            statement.execute("UPDATE iptv_channels SET name = 'Tie' WHERE channelId IN ('$SOURCE:300', '$SOURCE:400')")
+            statement.execute(
+                "INSERT INTO channel_preferences (channelId, sourceId, customName, customGroupTitle, hidden, sortOrder," +
+                    " manualXmltvChannelId, updatedAtEpochMillis, customOrganizationGroupKey, customLogoUrl, channelNumber) VALUES" +
+                    " ('$SOURCE:49000', '$SOURCE', NULL, NULL, 0, 2, NULL, 1, NULL, NULL, NULL)," +
+                    " ('$SOURCE:12', '$SOURCE', NULL, NULL, 0, 1, NULL, 1, NULL, NULL, NULL)," +
+                    " ('$SOURCE:100', '$SOURCE', '${fullwidthTilde}high', NULL, 0, NULL, NULL, 1, NULL, NULL, 501)," +
+                    " ('$SOURCE:200', '$SOURCE', '${television}beyond', NULL, 0, NULL, NULL, 1, NULL, NULL, NULL)," +
+                    " ('$SOURCE:500', '$SOURCE', '', 'Mine', 0, NULL, NULL, 1, 'name:mine', 'logo', NULL)," +
+                    " ('$SOURCE:600', '$SOURCE', NULL, NULL, 1, NULL, NULL, 1, NULL, NULL, NULL)," +
+                    " ('$SOURCE:601', '$SOURCE', NULL, NULL, 1, NULL, NULL, 1, NULL, NULL, NULL)",
+            )
+            statement.execute(
+                "INSERT INTO organization_rules (room, sourceId, groupKey, itemKey, enabled, sortMode, position) VALUES" +
+                    " ('LIVE', '$SOURCE', 'name:group 03', '', 0, NULL, NULL)," +
+                    " ('LIVE', '', '', '$SOURCE:700', 0, NULL, NULL)," +
+                    " ('LIVE', '$SOURCE', '', '$SOURCE:600', 1, NULL, NULL)," +
+                    " ('LIVE', '$SOURCE', 'name:group 08', '$SOURCE:808', 0, NULL, NULL)," +
+                    " ('MOVIES', '', '', '$SOURCE:1', 0, NULL, NULL)",
+            )
+        }
+        val expected = rosterRows(orderedStatementSql())
+        val paged = allPages().sortedWith(GuideRosterRow.DISPLAY_ORDER)
+        assertEquals(expected.map { it.channelId }, paged.map { it.channelId })
+        assertEquals(expected, paged)
+
+        // And the seeding did what it was meant to, so the comparison above
+        // is not of two lists that are alike because nothing happened.
+        assertEquals(listOf("$SOURCE:12", "$SOURCE:49000"), paged.take(2).map { it.channelId })
+        val tied = paged.filter { it.playlistOrder == 7 && it.legacyPosition == null }.map { it.channelId }
+        assertEquals(listOf("$SOURCE:7", "$SOURCE:300", "$SOURCE:400", "$SOURCE:100", "$SOURCE:200"), tied)
+        val hidden = setOf("$SOURCE:601", "$SOURCE:700", "$SOURCE:808")
+        assertTrue(paged.none { it.channelId in hidden || it.groupTitle == "Group 03" })
+        assertTrue("a rule that enables a channel outranks its legacy hidden flag", paged.any { it.channelId == "$SOURCE:600" })
+        assertEquals(CHANNELS - CHANNELS / GROUPS - hidden.size, paged.size)
+        assertEquals("Mine" to "name:mine", paged.single { it.channelId == "$SOURCE:500" }.let { it.groupTitle to it.organizationGroupKey })
+        assertEquals(501, paged.single { it.channelId == "$SOURCE:100" }.channelNumber)
+    }
+
+    @Test
+    fun sharingKeepsARowEqualAndItsRepeatedValuesOnce() {
+        val pool = HashMap<String, String>()
+        val rows = page().map { it.sharing(pool) }
+        assertEquals(page(), rows)
+        assertTrue(rows.all { it.sourceId === rows.first().sourceId && it.snapshotId === rows.first().snapshotId })
+        assertTrue("pooled ${pool.size} values for ${rows.size} rows", pool.size < 2 * GROUPS + 10)
     }
 
     @Test
     fun namedChannelsAlsoLoadWithoutReadingProgrammes() {
         val sql = GUIDE_CHANNELS_FOR_IDS_SQL.replace(":channelIds", "'$SOURCE:1', '$SOURCE:40001'")
         assertEquals(2, rowCount(sql))
-        connection.createStatement().use { statement ->
-            statement.executeQuery("EXPLAIN QUERY PLAN $sql").use { rows ->
-                while (rows.next()) assertFalse(rows.getString("detail").contains("tv_programmes"))
-            }
-        }
+        plan(sql).forEach { line -> assertFalse(line, "tv_programmes" in line) }
     }
 
     @Test
@@ -104,20 +224,70 @@ class GuideChannelsQueryPlanTest {
                 assertEquals("$SOURCE:1", rows.getString(1))
                 assertFalse(rows.next())
             }
-            statement.executeQuery("EXPLAIN QUERY PLAN $sql").use { rows ->
-                val plan = generateSequence { if (rows.next()) rows.getString("detail") else null }.toList()
-                assertTrue(plan.toString(), plan.any { "startEpochMillis<?" in it })
-            }
+        }
+        val plan = plan(sql)
+        assertTrue(plan.toString(), plan.any { "startEpochMillis<?" in it })
+    }
+
+    private fun pageSql(group: String? = null, after: String = "", limit: Int = PAGE): String = GUIDE_CHANNEL_PAGE_SQL
+        .replace(":sourceId", "'$SOURCE'")
+        .replace(":groupTitle", group?.let { "'$it'" } ?: "NULL")
+        .replace(":afterChannelId", "'$after'")
+        .replace(":limit", limit.toString())
+
+    /** What the guide used to run: the same rows from one statement, in the order it shows them. */
+    private fun orderedStatementSql(): String {
+        val ordered = pageSql(limit = -1).replace(
+            "ORDER BY c.channelId",
+            "ORDER BY source_state.priority DESC, source_state.name, COALESCE(preference.sortOrder, 2147483647)," +
+                " c.playlistOrder, COALESCE(NULLIF(preference.customName, ''), c.name), c.channelId",
+        )
+        check("c.playlistOrder," in ordered) { "the page statement no longer ends in the order this test replaces" }
+        return ordered
+    }
+
+    private fun page(group: String? = null, after: String = ""): List<GuideRosterRow> = rosterRows(pageSql(group, after))
+
+    /** The repository's loop: a page from where the last ended, until one comes back short. */
+    private fun allPages(group: String? = null): List<GuideRosterRow> = buildList {
+        var after = ""
+        while (true) {
+            val page = page(group, after)
+            addAll(page)
+            if (page.size < PAGE) break
+            after = page.last().channelId
         }
     }
 
-    private fun wholeSourceSql(): String = GUIDE_CHANNELS_FOR_SOURCE_SQL
-        .replace(":sourceId", "'$SOURCE'")
-        .replace(":groupTitle", "NULL")
+    private fun rosterRows(sql: String): List<GuideRosterRow> = connection.createStatement().use { statement ->
+        statement.executeQuery(sql).use { rows ->
+            generateSequence {
+                if (!rows.next()) null else GuideRosterRow(
+                    sourceId = rows.getString("sourceId"),
+                    snapshotId = rows.getString("snapshotId"),
+                    sourceName = rows.getString("sourceName"),
+                    sourcePriority = rows.getInt("sourcePriority"),
+                    channelId = rows.getString("channelId"),
+                    channelName = rows.getString("channelName"),
+                    groupTitle = rows.getString("groupTitle"),
+                    logoUrl = rows.getString("logoUrl"),
+                    channelNumber = rows.getInt("channelNumber").takeUnless { rows.wasNull() },
+                    playlistOrder = rows.getInt("playlistOrder"),
+                    legacyPosition = rows.getLong("legacyPosition").takeUnless { rows.wasNull() },
+                    organizationGroupKey = rows.getString("organizationGroupKey"),
+                    catchupType = rows.getString("catchupType"),
+                    catchupSource = rows.getString("catchupSource"),
+                    catchupDays = rows.getInt("catchupDays").takeUnless { rows.wasNull() },
+                )
+            }.toList()
+        }
+    }
 
-    private fun groupSql(group: String): String = GUIDE_CHANNELS_FOR_SOURCE_SQL
-        .replace(":sourceId", "'$SOURCE'")
-        .replace(":groupTitle", "'$group'")
+    private fun plan(sql: String): List<String> = connection.createStatement().use { statement ->
+        statement.executeQuery("EXPLAIN QUERY PLAN $sql").use { rows ->
+            generateSequence { if (rows.next()) rows.getString("detail") else null }.toList()
+        }
+    }
 
     private fun rowCount(sql: String): Int = connection.createStatement().use { statement ->
         statement.executeQuery(sql).use { rows -> generateSequence { rows.next().takeIf { it } }.count() }
@@ -173,5 +343,6 @@ class GuideChannelsQueryPlanTest {
         const val SNAPSHOT = "snapshot"
         const val CHANNELS = 50_000
         const val GROUPS = 100
+        const val PAGE = 2_000
     }
 }

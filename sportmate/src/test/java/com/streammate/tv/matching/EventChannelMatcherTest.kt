@@ -342,6 +342,45 @@ class EventChannelMatcherTest {
         assertEquals(possible, possible.withDecision(ManualMatchDecision.REJECTED).withDecision(null))
     }
 
+    @Test
+    fun `streamed candidates preserve winners and manual fallback across page boundaries`() {
+        val decisions = mapOf(
+            (event.id to "auto") to ManualMatchDecision.CONFIRMED,
+            (event.id to "fallback") to ManualMatchDecision.REJECTED,
+        )
+        val accumulator = matcher.accumulator(listOf(event), emptyMap(), decisions)
+        // A manual fallback with a better clock must lose to any automatic hit.
+        accumulator.add(candidate("Evening news", kickoff, "auto"))
+        accumulator.add(candidate("Evening news", kickoff, "fallback"))
+        repeat(10_000) { accumulator.add(candidate("Unrelated programme $it", kickoff, "unrelated-$it")) }
+        accumulator.add(candidate("Liverpool preview", kickoff - 60 * 60_000, "auto"))
+        // Equal scores on either side of kickoff keep the earlier programme,
+        // even though physical database order can deliver it last.
+        accumulator.add(candidate("Manchester United v Liverpool", kickoff + 15 * 60_000, "tie").copy(programmeId = "later"))
+        accumulator.add(candidate("Manchester United v Liverpool", kickoff - 15 * 60_000, "tie").copy(programmeId = "earlier"))
+        accumulator.add(candidate("Liverpool preview", kickoff - 90 * 60_000, "auto"))
+        val results = accumulator.finish().getValue(event.id)
+        assertEquals(listOf("tie", "auto", "fallback"), results.map { it.channelId })
+        assertEquals("earlier", results[0].programmeId)
+        assertEquals("Liverpool preview", results[1].programmeTitle)
+        assertEquals(-60L, results[1].startOffsetMinutes)
+        assertEquals(ChannelMatchConfidence.POSSIBLE, results[1].automaticConfidence)
+        assertEquals(ChannelMatchConfidence.AVAILABLE, results[1].confidence)
+        assertEquals(ChannelMatchConfidence.REJECTED, results[2].confidence)
+    }
+
+    @Test
+    fun `XMLTV beats a name on equal evidence and text boundaries remain whole words`() {
+        val accumulator = matcher.accumulator(listOf(event), emptyMap(), emptyMap())
+        accumulator.add(candidate("Manchester United v Liverpool 18:30 UTC", 0, source = MatchCandidateSource.M3U_CHANNEL_NAME))
+        accumulator.add(candidate("Live football", kickoff).copy(subtitle = "Manchester United", description = "Liverpool"))
+        accumulator.add(candidate("Manchester Unitedtown v Liverpooltown", kickoff, "unrelated"))
+        val match = accumulator.finish().getValue(event.id).single()
+        assertEquals(MatchCandidateSource.XMLTV_PROGRAMME, match.source)
+        assertEquals("Live football", match.programmeTitle)
+        assertEquals(ChannelMatchConfidence.AVAILABLE, match.confidence)
+    }
+
     private fun candidate(
         title: String,
         startEpochMillis: Long,

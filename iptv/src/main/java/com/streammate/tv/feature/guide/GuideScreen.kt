@@ -1,5 +1,6 @@
 package com.streammate.tv.feature.guide
 
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.produceState
@@ -29,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import android.os.Trace
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,6 +40,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -122,6 +125,9 @@ fun GuideScreen(
 ) {
     val palette = StreamMateThemeTokens.palette
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    // Named in a system trace, as the grid, its rows and cells and the hero
+    // are: a capture then says which of them a slow frame was spent in.
+    Trace.beginSection("Guide:Screen")
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var searchVisible by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -155,9 +161,7 @@ fun GuideScreen(
     val liveRoom = com.streammate.tv.core.model.LibraryRoom.LIVE
     val showFavourites = organization.shortcutEnabled(liveRoom, com.streammate.tv.core.model.ORGANIZATION_FAVOURITES)
     val showRecent = organization.shortcutEnabled(liveRoom, com.streammate.tv.core.model.ORGANIZATION_RECENT)
-    val customLists by guideRepository.observeCustomChannelLists()
-        .collectAsStateWithLifecycle(initialValue = emptyList())
-    val listMemberships by guideRepository.observeChannelListMemberships()
+    val customLists by remember(guideRepository) { guideRepository.observeCustomChannelLists() }
         .collectAsStateWithLifecycle(initialValue = emptyList())
     val coroutineScope = rememberCoroutineScope()
     val firstFocus = remember { FocusRequester() }
@@ -182,6 +186,11 @@ fun GuideScreen(
     var sourceSelectionInitialized by remember { mutableStateOf(false) }
     var selectedGroup by remember { mutableStateOf(initialManagedGroup) }
     var selectedListId by remember { mutableStateOf<String?>(null) }
+    val listMemberships by key(guideRepository, selectedListId) {
+        remember {
+            selectedListId?.let(guideRepository::observeChannelListMemberships) ?: flowOf(emptyList())
+        }.collectAsStateWithLifecycle(initialValue = emptyList())
+    }
     var sortMode by remember { mutableStateOf(GuideSortMode.PLAYLIST) }
     LaunchedEffect(showFavourites, showRecent, selectedListId, organizationState) {
         if ((channelFilter == ChannelFilter.FAVOURITES && !showFavourites) || (channelFilter == ChannelFilter.RECENT && !showRecent)) channelFilter = ChannelFilter.ALL
@@ -334,6 +343,7 @@ fun GuideScreen(
         timelineStale,
     ) {
         value = withContext(Dispatchers.Default) {
+            val listPositions = listMemberships.associate { it.channelId to it.sortOrder }
             val sourceChannels = if (timelineStale) baseGuide else baseGuide.filter { selectedSourceId == null || it.sourceId == selectedSourceId }
             val categoryChannels = if (channelFilter != ChannelFilter.ALL || selectedListId != null) sourceChannels else sourceChannels.filterNot { channel ->
                 channel.groupTitle?.let { group -> hiddenLiveCategories.any { it.equals(group, ignoreCase = true) } } == true
@@ -341,17 +351,13 @@ fun GuideScreen(
             categoryChannels
                 .filter { timelineStale || selectedGroup == null || it.groupTitle == selectedGroup }
                 .filter { channel ->
-                    selectedListId == null || listMemberships.any {
-                        it.listId == selectedListId && it.channelId == channel.id
-                    }
+                    selectedListId == null || channel.id in listPositions
                 }
                 .let { channels ->
                     when {
                         channelFilter == ChannelFilter.RECENT -> channels
                         selectedListId != null -> {
-                            val positions = listMemberships
-                                .filter { it.listId == selectedListId }
-                                .associate { it.channelId to it.sortOrder }
+                            val positions = listPositions
                             if (guideRepository.organization == null) channels.sortedWith(compareBy({ positions[it.id] ?: Int.MAX_VALUE }, { it.name.lowercase() }))
                             else {
                                 val byId = channels.associateBy { it.id }
@@ -388,8 +394,11 @@ fun GuideScreen(
                 .let(::GuideChannelRows)
         }
     }
+    // A row whose programmes did not change keeps its object from one arrival
+    // to the next, so the grid skips it instead of redrawing every row.
+    val programmeMerger = remember { ProgrammeMerger() }
     val filteredGuide = remember(orderedGuide, programmeCache) {
-        mergeProgrammes(orderedGuide?.channels.orEmpty(), programmeCache)
+        programmeMerger.merge(orderedGuide?.channels.orEmpty(), programmeCache)
     }
     val filteredChannelIds = orderedGuide?.ids.orEmpty()
     val timelineLoading = (loadedTimeline == null && shownTimeline == null) || orderedGuide == null
@@ -417,12 +426,7 @@ fun GuideScreen(
                 .collect { incoming -> programmeCache = retainProgrammeWindow(programmeCache, incoming) }
         }
     }
-    val initialFocusIndex = remember(filteredChannelIds, initialChannelId) {
-        filteredChannelIds
-            .indexOf(initialChannelId)
-            .takeIf { it >= 0 }
-            ?: 0
-    }
+    val initialFocusIndex = orderedGuide?.indexOf(initialChannelId) ?: 0
     // A dialled number moves the grid's focus; a changed list forgets the jump.
     val focusIndex = jumpIndex ?: initialFocusIndex
     LaunchedEffect(filteredChannelIds) { jumpIndex = null }
@@ -432,7 +436,7 @@ fun GuideScreen(
         val number = dialBuffer.toIntOrNull()
         // Resolved before the buffer clears, as in the player: the clear
         // restarts this effect.
-        val index = number?.let { ChannelDial.indexFor(filteredGuide.map(GuideTimelineChannel::channelNumber), it) }
+        val index = number?.let { orderedGuide?.indexForNumber(it) }
         dialBuffer = ""
         if (number == null) return@LaunchedEffect
         if (index != null) jumpIndex = index else dialMessage = dialResources.getString(R.string.dial_channel_none, number)
@@ -494,33 +498,42 @@ fun GuideScreen(
     }
     LaunchedEffect(filteredChannelIds, initialChannelId) {
         val selectedChannel = selection?.channel
-        val restoredChannel = filteredGuide.firstOrNull { it.id == initialChannelId }
+        val restoredChannel = orderedGuide?.indexOf(initialChannelId)?.let(filteredGuide::get)
         if (restoredChannel != null && selectedChannel?.id != restoredChannel.id) {
             selection = GuideSelection(restoredChannel, restoredChannel.preferredProgramme(now))
-        } else if (selectedChannel == null || filteredGuide.none { it.id == selectedChannel.id }) {
+        } else if (orderedGuide?.indexOf(selectedChannel?.id) == null) {
             selection = filteredGuide.firstOrNull()?.let { GuideSelection(it, it.preferredProgramme(now)) }
         }
     }
-    val pageProgrammesReady = selection?.channel?.id in programmeCache
-    LaunchedEffect(windowStart, filteredGuide, pageProgrammesReady, pendingPageDirection) {
-        if (pendingPageDirection == 0 || filteredGuide.isEmpty() || !pageProgrammesReady) return@LaunchedEffect
+    // The selection is read inside these effects, in the hero and in the rows,
+    // never in this function's own body: read here, every D-pad press
+    // recomposed the whole screen, the grid and the list's item provider to
+    // tell two rows and the hero that the selection had moved.
+    LaunchedEffect(windowStart, filteredGuide, programmeCache, pendingPageDirection) {
+        if (pendingPageDirection == 0 || filteredGuide.isEmpty()) return@LaunchedEffect
+        snapshotFlow { selection?.channel?.id in programmeCache }.first { it }
         // Adjacent to where focus was: the earliest programme of the new window
         // when moving forward, the latest when moving back.
-        if (pagedFocus.requestFocusWhenAttached()) pendingPageDirection = 0
+        pagedFocus.requestFocusWhenAttached()
+        // Even if the bounded focus request fails, allow another page attempt.
+        // Leaving this set would refuse every later page until the channel changes.
+        pendingPageDirection = 0
     }
     // Paging time leaves the selection on a programme that is no longer on
     // screen, and the hero above the grid would go on describing it.
-    LaunchedEffect(windowStart, programmeCache, selection?.channel?.id) {
-        val channel = selection?.channel ?: return@LaunchedEffect
-        val current = filteredGuide.firstOrNull { it.id == channel.id } ?: return@LaunchedEffect
-        val stillVisible = selection?.programme?.let { programme ->
-            programme.stopEpochMillis > windowStart && programme.startEpochMillis < windowEnd
-        } ?: false
-        val programme = selection?.programme?.takeIf { stillVisible }
-            ?.let { previous -> current.programmes.firstOrNull { it.id == previous.id } }
-            ?: current.preferredProgramme(now)?.takeIf { it.stopEpochMillis > windowStart && it.startEpochMillis < windowEnd }
-            ?: current.programmeAt(windowStart, windowEnd)
-        selection = GuideSelection(current, programme)
+    LaunchedEffect(windowStart, programmeCache, orderedGuide) {
+        snapshotFlow { selection?.channel?.id }.collect {
+            val channel = selection?.channel ?: return@collect
+            val current = orderedGuide?.indexOf(channel.id)?.let(filteredGuide::get) ?: return@collect
+            val stillVisible = selection?.programme?.let { programme ->
+                programme.stopEpochMillis > windowStart && programme.startEpochMillis < windowEnd
+            } ?: false
+            val programme = selection?.programme?.takeIf { stillVisible }
+                ?.let { previous -> current.programmes.firstOrNull { it.id == previous.id } }
+                ?: current.preferredProgramme(now)?.takeIf { it.stopEpochMillis > windowStart && it.startEpochMillis < windowEnd }
+                ?: current.programmeAt(windowStart, windowEnd)
+            selection = GuideSelection(current, programme)
+        }
     }
     // guideLoaded is a key so the empty state, which only appears after the
     // first read, still gets its focus once it is there.
@@ -533,17 +546,19 @@ fun GuideScreen(
             firstFocus.requestFocusWhenAttached()
         }
     }
-    LaunchedEffect(selection?.programme?.id) {
-        selectedMetadata = null
-        val programme = selection?.programme ?: return@LaunchedEffect
-        if (!metadataRepository.isEnabled()) return@LaunchedEffect
-        delay(METADATA_SELECTION_DELAY_MILLIS)
-        selectedMetadata = metadataRepository.enrich(
-            MetadataLookup(
-                mediaType = MetadataMediaType.PROGRAMME,
-                title = programme.title,
-            ),
-        )
+    LaunchedEffect(metadataRepository) {
+        snapshotFlow { selection?.programme?.id }.collectLatest {
+            selectedMetadata = null
+            val programme = selection?.programme ?: return@collectLatest
+            if (!metadataRepository.isEnabled()) return@collectLatest
+            delay(METADATA_SELECTION_DELAY_MILLIS)
+            selectedMetadata = metadataRepository.enrich(
+                MetadataLookup(
+                    mediaType = MetadataMediaType.PROGRAMME,
+                    title = programme.title,
+                ),
+            )
+        }
     }
     LaunchedEffect(optionsVisible) {
         if (optionsVisible) optionsFocus.requestFocusWhenAttached()
@@ -600,9 +615,9 @@ fun GuideScreen(
                     return@Column
                 }
                 if (libraryEmpty) {
-                    val sourceStates by guideRepository.observeSourceStates()
+                    val sourceStates by remember(guideRepository) { guideRepository.observeSourceStates() }
                         .collectAsStateWithLifecycle(initialValue = emptyList())
-                    val health by guideRepository.observeSourceRefreshHealth()
+                    val health by remember(guideRepository) { guideRepository.observeSourceRefreshHealth() }
                         .collectAsStateWithLifecycle(initialValue = emptyList())
                     EmptyGuide(
                         sources = sourceStates.filter(GuideSource::enabled),
@@ -613,57 +628,28 @@ fun GuideScreen(
                     )
                     return@Column
                 }
-                selection?.let { selected ->
-                    // The channel's own number when it has one, its place in the list
-                    // otherwise, and nothing when the viewer turned numbers off.
-                    val channelNumber = if (!preferences.showChannelNumbers) {
-                        null
-                    } else {
-                        selected.channel.channelNumber
-                            ?: filteredGuide.indexOfFirst { it.id == selected.channel.id }.takeIf { it >= 0 }?.plus(1)
-                    }
-                    GuideHero(
-                        selection = selected,
-                        channelNumber = channelNumber,
-                        now = now,
-                        timeZoneId = preferences.timeZoneId,
-                        favourite = selected.channel.id in favouriteChannelIds,
-                        metadata = selectedMetadata,
-                        onWatch = { onPlay(selected.channel.id) },
-                        reminderSet = selected.programme?.let { "programme:${selected.channel.id}:${it.id}" } in reminderIds,
-                        onToggleReminder = selected.programme
-                            ?.takeIf { onToggleReminder != null && it.startEpochMillis > now }
-                            ?.let { programme -> { onToggleReminder?.invoke(selected.channel, programme) } },
-                        onToggleFavourite = {
-                            coroutineScope.launch {
-                                preferencesRepository.setFavouriteChannel(
-                                    selected.channel.id,
-                                    selected.channel.id !in favouriteChannelIds,
-                                )
-                            }
-                        },
-                        onPlayCatchup = selected.programme
-                            ?.takeIf { selected.channel.canCatchup(it, now) }
-                            ?.let { programme ->
-                                {
-                                    onPlayCatchup(
-                                        selected.channel.id,
-                                        programme.startEpochMillis,
-                                        programme.stopEpochMillis,
-                                    )
-                                }
-                            },
-                        onSearch = {
-                            searchVisible = !searchVisible
-                            if (!searchVisible) searchQuery = ""
-                        },
-                        searchVisible = searchVisible,
-                        onOpenMetadata = selectedMetadata?.let { metadata ->
-                            { runCatching { uriHandler.openUri(metadata.attributionUrl) } }
-                        },
-                    )
-                    Spacer(Modifier.height(GUIDE_HERO_GAP))
-                }
+                GuideSelectionHero(
+                    selection = { selection },
+                    metadata = { selectedMetadata },
+                    showChannelNumbers = preferences.showChannelNumbers,
+                    rows = orderedGuide,
+                    now = now,
+                    timeZoneId = preferences.timeZoneId,
+                    favouriteChannelIds = favouriteChannelIds,
+                    reminderIds = reminderIds,
+                    searchVisible = searchVisible,
+                    onPlay = onPlay,
+                    onPlayCatchup = onPlayCatchup,
+                    onToggleReminder = onToggleReminder,
+                    onToggleFavourite = { channelId, favourite ->
+                        coroutineScope.launch { preferencesRepository.setFavouriteChannel(channelId, favourite) }
+                    },
+                    onSearch = {
+                        searchVisible = !searchVisible
+                        if (!searchVisible) searchQuery = ""
+                    },
+                    onOpenMetadata = { metadata -> runCatching { uriHandler.openUri(metadata.attributionUrl) } },
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(GUIDE_CONTENT_GAP),
@@ -782,7 +768,7 @@ fun GuideScreen(
                                 windowEnd = windowEnd,
                                 now = now,
                                 timeZoneId = preferences.timeZoneId,
-                                selection = selection,
+                                selection = { selection },
                                 listState = channelListState,
                                 initialFocusIndex = focusIndex,
                                 firstFocusRequester = firstFocus,
@@ -802,6 +788,7 @@ fun GuideScreen(
                                     programmeActions = GuideSelection(channel, programme)
                                 },
                                 pagedFocusAtEnd = pendingPageDirection < 0,
+                                pendingPageDirection = pendingPageDirection,
                                 onSelection = { channel, programme ->
                                     if (selection?.channel?.id != channel.id) pendingPageDirection = 0
                                     // Focus is back in the EPG. The rail is a
@@ -908,6 +895,72 @@ fun GuideScreen(
             }
         }
     }
+    Trace.endSection()
+}
+
+/**
+ * The hero for whatever is selected, and the gap beneath it.
+ *
+ * The selection and its metadata are read here, not in [GuideScreen], so a
+ * D-pad press recomposes this and the two rows it touches rather than the
+ * screen. The buttons act on what is selected when they are pressed: capturing
+ * the selection itself made each of them a new lambda, and so a recomposed
+ * button, on every press.
+ */
+@Composable
+private fun GuideSelectionHero(
+    selection: () -> GuideSelection?,
+    metadata: () -> EnrichedMetadata?,
+    showChannelNumbers: Boolean,
+    rows: GuideChannelRows?,
+    now: Long,
+    timeZoneId: String,
+    favouriteChannelIds: Set<String>,
+    reminderIds: Set<String>,
+    searchVisible: Boolean,
+    onPlay: (String) -> Unit,
+    onPlayCatchup: (String, Long, Long) -> Unit,
+    onToggleReminder: ((GuideTimelineChannel, GuideTimelineProgramme) -> Unit)?,
+    onToggleFavourite: (String, Boolean) -> Unit,
+    onSearch: () -> Unit,
+    onOpenMetadata: (EnrichedMetadata) -> Unit,
+) {
+    val selected = selection() ?: return
+    val shownMetadata = metadata()
+    val current = rememberUpdatedState(selected)
+    val favourites = rememberUpdatedState(favouriteChannelIds)
+    // The channel's own number when it has one, its place in the list
+    // otherwise, and nothing when the viewer turned numbers off.
+    val channelNumber = if (!showChannelNumbers) {
+        null
+    } else {
+        selected.channel.channelNumber ?: rows?.indexOf(selected.channel.id)?.plus(1)
+    }
+    GuideHero(
+        selection = selected,
+        channelNumber = channelNumber,
+        now = now,
+        timeZoneId = timeZoneId,
+        favourite = selected.channel.id in favouriteChannelIds,
+        metadata = shownMetadata,
+        onWatch = { onPlay(current.value.channel.id) },
+        reminderSet = selected.programme?.let { "programme:${selected.channel.id}:${it.id}" } in reminderIds,
+        onToggleReminder = if (onToggleReminder != null && selected.programme?.let { it.startEpochMillis > now } == true) {
+            { current.value.let { shown -> shown.programme?.let { onToggleReminder(shown.channel, it) } } }
+        } else null,
+        onToggleFavourite = { current.value.channel.id.let { id -> onToggleFavourite(id, id !in favourites.value) } },
+        onPlayCatchup = if (selected.programme?.let { selected.channel.canCatchup(it, now) } == true) {
+            {
+                current.value.let { shown ->
+                    shown.programme?.let { onPlayCatchup(shown.channel.id, it.startEpochMillis, it.stopEpochMillis) }
+                }
+            }
+        } else null,
+        onSearch = onSearch,
+        searchVisible = searchVisible,
+        onOpenMetadata = shownMetadata?.let { shown -> { onOpenMetadata(shown) } },
+    )
+    Spacer(Modifier.height(GUIDE_HERO_GAP))
 }
 
 /**

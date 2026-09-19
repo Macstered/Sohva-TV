@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import android.os.Trace
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -46,6 +48,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,7 +89,8 @@ internal fun GuideGrid(
     windowEnd: Long,
     now: Long,
     timeZoneId: String,
-    selection: GuideSelection?,
+    /** Read in each row's own scope, so a selection that moves recomposes the rows it touches and not the grid. */
+    selection: () -> GuideSelection?,
     listState: LazyListState,
     initialFocusIndex: Int,
     firstFocusRequester: FocusRequester,
@@ -91,6 +98,8 @@ internal fun GuideGrid(
     onOpenGroupRail: () -> Unit,
     pagedFocusRequester: FocusRequester,
     pagedFocusAtEnd: Boolean,
+    /** -1 while paging back, +1 while paging forward, 0 when focus is not parked for a page. */
+    pendingPageDirection: Int = 0,
     onSelection: (GuideTimelineChannel, GuideTimelineProgramme?) -> Unit,
     onPlay: (GuideTimelineChannel, GuideTimelineProgramme?) -> Unit,
     /** OK on a programme not yet started, or OK held on any: what can be done with it. */
@@ -101,6 +110,7 @@ internal fun GuideGrid(
     modifier: Modifier = Modifier,
 ) {
     val palette = StreamMateThemeTokens.palette
+    Trace.beginSection("Guide:Grid")
     BoxWithConstraints(modifier = modifier) {
         // Three hours fill the width that is left; nothing here is a pixel
         // coordinate copied off a 1920-wide mockup.
@@ -135,6 +145,11 @@ internal fun GuideGrid(
                 contentPadding = PaddingValues(bottom = GRID_ROW_GAP),
             ) {
                 itemsIndexed(channels, key = { _, channel -> channel.id }) { index, channel ->
+                    // A row is told only what the selection means to it. Given
+                    // the selection itself, every row on screen recomposed on
+                    // every D-pad press to find out that it was not the one.
+                    val selected = selection()
+                    val rowSelected = channel.id == selected?.channel?.id
                     GuideChannelRow(
                         number = if (showNumbers) channel.channelNumber ?: (index + 1) else null,
                         channel = channel,
@@ -144,19 +159,17 @@ internal fun GuideGrid(
                         now = now,
                         minuteWidth = minuteWidth,
                         timelineWidth = timelineWidth,
-                        selection = selection,
+                        rowSelected = rowSelected,
+                        selectedProgrammeId = if (rowSelected) selected?.programme?.id else null,
                         onSelection = { programme -> onSelection(channel, programme) },
                         onPlay = { programme -> onPlay(channel, programme) },
                         onActions = { programme -> onProgrammeActions(channel, programme) },
                         focusRequester = if (index == initialFocusIndex) firstFocusRequester else null,
-                        returnFocusRequester = returnFocusRequester.takeIf {
-                            channel.id == selection?.channel?.id
-                        },
+                        returnFocusRequester = returnFocusRequester.takeIf { rowSelected },
                         onOpenGroupRail = onOpenGroupRail,
-                        pagedFocusRequester = pagedFocusRequester.takeIf {
-                            channel.id == selection?.channel?.id
-                        },
+                        pagedFocusRequester = pagedFocusRequester.takeIf { rowSelected },
                         pagedFocusAtEnd = pagedFocusAtEnd,
+                        pendingPageDirection = if (rowSelected) pendingPageDirection else 0,
                         onPageForward = onPageForward,
                         onPageBack = onPageBack,
                     )
@@ -186,6 +199,7 @@ internal fun GuideGrid(
             )
         }
     }
+    Trace.endSection()
 }
 
 /**
@@ -229,7 +243,9 @@ private fun GuideTimelineHeader(
             )
         }
         Spacer(Modifier.width(GRID_GAP))
-        Box(modifier = Modifier.width(timelineWidth).height(20.dp)) {
+        // Every cell says its own times, so the ruler is left out of the
+        // semantics tree; see [cellText].
+        Box(modifier = Modifier.width(timelineWidth).height(20.dp).clearAndSetSemantics { }) {
             repeat(TIMELINE_WINDOW_MINUTES / TICK_MINUTES) { index ->
                 val minute = index * TICK_MINUTES
                 Text(
@@ -255,7 +271,9 @@ private fun GuideChannelRow(
     now: Long,
     minuteWidth: Dp,
     timelineWidth: Dp,
-    selection: GuideSelection?,
+    /** Whether the selection is on this row, and on which of its programmes; null is the row itself. */
+    rowSelected: Boolean,
+    selectedProgrammeId: String?,
     onSelection: (GuideTimelineProgramme?) -> Unit,
     onPlay: (GuideTimelineProgramme?) -> Unit,
     onActions: (GuideTimelineProgramme) -> Unit = {},
@@ -264,21 +282,24 @@ private fun GuideChannelRow(
     onOpenGroupRail: () -> Unit,
     pagedFocusRequester: FocusRequester?,
     pagedFocusAtEnd: Boolean,
+    pendingPageDirection: Int,
     onPageForward: () -> Unit,
     onPageBack: (() -> Unit)?,
 ) {
     val palette = StreamMateThemeTokens.palette
+    Trace.beginSection("Guide:Row")
     Row(modifier = Modifier.fillMaxWidth().height(GUIDE_ROW_HEIGHT)) {
         GuideChannelCell(
             number = number,
             channel = channel,
             programmesLoaded = programmesLoaded,
-            selected = selection?.channel?.id == channel.id,
+            selected = rowSelected,
             onFocus = { onSelection(channel.preferredProgramme(now)) },
             onClick = { onPlay(null) },
             focusRequester = focusRequester,
             returnFocusRequester = returnFocusRequester,
             onOpenGroupRail = onOpenGroupRail,
+            pendingPageDirection = pendingPageDirection,
         )
         Spacer(Modifier.width(GRID_GAP))
         Box(modifier = Modifier.width(timelineWidth).fillMaxHeight()) {
@@ -292,7 +313,7 @@ private fun GuideChannelRow(
                     enabled = programmesLoaded,
                     x = 0.dp,
                     width = timelineWidth,
-                    selected = selection?.channel?.id == channel.id && selection.programme == null,
+                    selected = rowSelected && selectedProgrammeId == null,
                     airing = false,
                     past = false,
                     progress = null,
@@ -336,8 +357,7 @@ private fun GuideChannelRow(
                         // minimum width deliberately spilled short entries over
                         // the programme beginning at their end timestamp.
                         width = minuteWidth * durationMinutes,
-                        selected = selection?.channel?.id == channel.id &&
-                            selection.programme?.id == programme.id,
+                        selected = rowSelected && selectedProgrammeId == programme.id,
                         airing = programme.isLive(now),
                         past = programme.stopEpochMillis <= now,
                         progress = programme.progressAt(now),
@@ -358,6 +378,7 @@ private fun GuideChannelRow(
             }
         }
     }
+    Trace.endSection()
 }
 
 /** Number when wanted, logo, name and what the provider says the feed is. */
@@ -372,25 +393,48 @@ private fun GuideChannelCell(
     focusRequester: FocusRequester?,
     returnFocusRequester: FocusRequester?,
     onOpenGroupRail: () -> Unit,
+    pendingPageDirection: Int,
 ) {
     val typography = StreamMateThemeTokens.typography
+    Trace.beginSection("Guide:ChannelCell")
     var focused by remember(channel.id) { mutableStateOf(false) }
     val colors = tvSurfaceColors(
         focused = focused,
         selected = selected,
         resting = Color.Transparent,
     )
-    val background by animateColorAsState(colors.background, label = "channel background")
+    // Read where it is drawn, not here: read in composition, the colour's
+    // animation recomposed this cell on every one of its frames, for both the
+    // cell losing focus and the one gaining it, on every D-pad press.
+    val background = animateColorAsState(colors.background, label = "channel background")
+    // A name the column cannot hold on one line, such as a long custom name,
+    // wraps onto a second line in place of the feed line instead of being cut
+    // short; the row keeps its height.
+    var nameWraps by remember(channel.name) { mutableStateOf(false) }
+    // What the provider says about the feed - quality and language - read off
+    // the channel name, the same markers the stream switcher shows. Falls back
+    // to the group when a name says nothing.
+    val streamTags = remember(channel.name) {
+        ChannelStreamTags.read(channel.name).joinToString(" · ") { it.label }
+    }
+    val feedLine = streamTags.ifBlank { channel.groupTitle ?: channel.sourceName }
     Row(
         modifier = Modifier
             .width(CHANNEL_COLUMN_WIDTH)
             .fillMaxHeight()
             .clip(StreamMateThemeTokens.shapes.small)
-            .background(background)
+            .drawBehind { drawRect(background.value) }
             .then(focusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .then(returnFocusRequester?.let { Modifier.focusRequester(it) } ?: Modifier)
             .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
+                // Repeats in the paging direction must stay on the parked row.
+                // Left during a forward read is still an intentional way into
+                // the drawer; opening it cancels the pending focus restoration.
+                if ((pendingPageDirection < 0 && event.key == Key.DirectionLeft) ||
+                    (pendingPageDirection > 0 && event.key == Key.DirectionRight)
+                ) {
+                    true
+                } else if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionLeft) {
                     onOpenGroupRail()
                     true
                 } else event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && !programmesLoaded
@@ -402,7 +446,8 @@ private fun GuideChannelCell(
             .clickable(onClick = onClick)
             .focusable()
             .testTag("guide-channel-${channel.id}")
-            .padding(start = 4.dp, end = 8.dp),
+            .padding(start = 4.dp, end = 8.dp)
+            .clearAndSetSemantics { cellText(number?.toString(), channel.name, feedLine.takeUnless { nameWraps }) },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (number != null) {
@@ -420,10 +465,6 @@ private fun GuideChannelCell(
         ChannelLogo(channel.logoUrl, channel.name, CHANNEL_LOGO_SIZE, focused = focused)
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
-            // A name the column cannot hold on one line, such as a long custom
-            // name, wraps onto a second line in place of the feed line instead
-            // of being cut short; the row keeps its height.
-            var nameWraps by remember(channel.name) { mutableStateOf(false) }
             Text(
                 text = channel.name,
                 color = colors.content,
@@ -435,14 +476,8 @@ private fun GuideChannelCell(
                 // An ellipsised single line does not count as overflow; ask for the line itself.
                 onTextLayout = { layout -> if (!nameWraps && (layout.isLineEllipsized(0) || layout.hasVisualOverflow)) nameWraps = true },
             )
-            // What the provider says about the feed - quality and language -
-            // read off the channel name, the same markers the stream switcher
-            // shows. Falls back to the group when a name says nothing.
-            val streamTags = remember(channel.name) {
-                ChannelStreamTags.read(channel.name).joinToString(" · ") { it.label }
-            }
             if (!nameWraps) Text(
-                text = streamTags.ifBlank { channel.groupTitle ?: channel.sourceName },
+                text = feedLine,
                 color = colors.secondaryContent,
                 fontSize = typography.caption.fontSize,
                 lineHeight = 14.sp,
@@ -451,6 +486,7 @@ private fun GuideChannelCell(
             )
         }
     }
+    Trace.endSection()
 }
 
 @Composable
@@ -487,6 +523,26 @@ internal fun ChannelLogo(
 }
 
 /**
+ * What a cell says, on the cell itself, with the texts inside it left out of
+ * the semantics tree.
+ *
+ * While any accessibility service is enabled, and on a TV box that is usually
+ * a button remapper rather than a screen reader, Compose walks the window's
+ * whole semantics tree on the main thread about ten times a second to tell the
+ * service what changed. The grid is where most of that tree is: eight rows of
+ * a channel and half a dozen programmes, each a focusable node with two or
+ * three text nodes under it. On the Shield with a button remapper enabled that walk
+ * was 30% of the main thread while browsing, in blocks of 5 to 25 ms that a
+ * 16 ms frame cannot absorb. As the innermost modifier, clearing keeps the
+ * cell's own focus, click and test tag and drops only its children, so a cell
+ * is one node rather than three to five and says what it said before.
+ */
+private fun SemanticsPropertyReceiver.cellText(vararg lines: String?) {
+    val spoken = lines.filterNot { it.isNullOrBlank() }.map { AnnotatedString(it!!) }
+    if (spoken.isNotEmpty()) set(SemanticsProperties.Text, spoken)
+}
+
+/**
  * One programme block.
  *
  * Resting is the quietest step on the ladder, what is on now sits one step up
@@ -520,6 +576,7 @@ private fun ProgrammeCell(
     // OK held fires once on the first repeat; the release that follows is
     // swallowed so the click underneath does not fire as well.
     var selectHeld by remember { mutableStateOf(false) }
+    Trace.beginSection("Guide:ProgrammeCell")
     Box(
         modifier = Modifier
             .zIndex(if (selected) 1f else 0f)
@@ -588,7 +645,8 @@ private fun ProgrammeCell(
             .onFocusChanged { if (it.isFocused) onFocus() }
             .clickable(enabled = enabled, onClick = onClick)
             .focusable(enabled = enabled)
-            .testTag(testTag),
+            .testTag(testTag)
+            .clearAndSetSemantics { cellText(title, subtitle) },
     ) {
         accent?.takeIf { !selected }?.let { colour ->
             Box(
@@ -604,7 +662,9 @@ private fun ProgrammeCell(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = if (accent != null && !selected) 10.dp else 8.dp, end = 8.dp, top = 4.dp),
+                // The same inset selected or not: two dp less when selected
+                // laid both texts out again for a change nobody could see.
+                .padding(start = if (accent != null) 10.dp else 8.dp, end = 8.dp, top = 4.dp),
         ) {
             Text(
                 text = title,
@@ -629,6 +689,7 @@ private fun ProgrammeCell(
             )
         }
     }
+    Trace.endSection()
 }
 
 private val PROGRAMME_PROGRESS_HEIGHT = 3.dp

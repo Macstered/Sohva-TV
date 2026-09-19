@@ -65,6 +65,8 @@ class GuideScreenTest {
     @Volatile private var epgGate: CountDownLatch? = null
     @Volatile private var epgStarted: CountDownLatch? = null
     private val timelineReads = ConcurrentLinkedQueue<List<Any?>>()
+    private val listReads = ConcurrentLinkedQueue<String>()
+    private val memberReads = ConcurrentLinkedQueue<List<Any?>>()
 
     // Compose must dispose its Room collectors before their database is closed.
     // JUnit @After runs inside the Compose rule, which raced teardown on CI.
@@ -83,6 +85,10 @@ class GuideScreenTest {
             .edit().clear().commit()
         database = Room.inMemoryDatabaseBuilder(context, StreamMateDatabase::class.java)
             .setQueryCallback({ sql, arguments ->
+                if (sql.contains("FROM channel_lists") || sql.contains("FROM channel_list_members")) {
+                    listReads.add(sql)
+                }
+                if (sql.contains("FROM channel_list_members")) memberReads.add(arguments.toList())
                 if (sql.contains("p.programmeId AS programmeId")) {
                     timelineReads.add(arguments.toList())
                     epgGate?.let { gate ->
@@ -299,6 +305,43 @@ class GuideScreenTest {
     }
 
     /** One line for the whole grid, drawn over the header and every row. */
+    @Test
+    fun aGridCellIsOneSemanticsNodeThatStillSaysWhatItShows() {
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-programme-current").fetchSemanticsNodes().isNotEmpty() }
+
+        // With an accessibility service enabled Compose walks this tree many
+        // times a second, skipping what lies under a node that clears its
+        // descendants' semantics (SemanticsNode.replacedChildren, which the
+        // test API does not expose: its unmerged children include them). So
+        // every node directly in the grid is a cell, and every cell clears.
+        val list = composeRule.onNodeWithTag("guide-channel-list", useUnmergedTree = true).fetchSemanticsNode()
+        fun isCell(node: androidx.compose.ui.semantics.SemanticsNode): Boolean =
+            node.config.getOrNull(SemanticsProperties.TestTag).orEmpty().let { it.startsWith("guide-channel-") || it.startsWith("guide-programme-") }
+        fun walked(node: androidx.compose.ui.semantics.SemanticsNode): List<androidx.compose.ui.semantics.SemanticsNode> =
+            node.children.flatMap { child -> listOf(child) + if (child.config.isClearingSemantics) emptyList() else walked(child) }
+        val nodes = walked(list)
+        assertTrue("the grid has no cells", nodes.size >= 4)
+        nodes.forEach { node ->
+            assertTrue("a node that is not a cell is walked in the grid: ${node.config}", isCell(node))
+            assertTrue("${node.config.getOrNull(SemanticsProperties.TestTag)} leaves its texts in the walk", node.config.isClearingSemantics)
+        }
+
+        fun said(tag: String): List<String> = composeRule.onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode()
+            .config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }
+        assertEquals("Current programme", said("guide-programme-current").first())
+        assertEquals(2, said("guide-programme-current").size)
+        assertTrue(said("guide-channel-test:one").toString(), "Channel One" in said("guide-channel-test:one"))
+        // A cell keeps what makes it a cell: focus, a click and its tag.
+        val cell = composeRule.onNodeWithTag("guide-programme-current").fetchSemanticsNode().config
+        assertTrue(cell.contains(SemanticsProperties.Focused) && cell.contains(SemanticsActions.OnClick))
+        // And is still found by what it shows, as the hero above it also is.
+        composeRule.onNode(
+            androidx.compose.ui.test.hasTestTag("guide-programme-current") and androidx.compose.ui.test.hasText("Current programme"),
+        ).assertExists()
+    }
+
     @Test
     fun theGridDrawsASingleNowLine() {
         showGuide()
@@ -636,6 +679,59 @@ class GuideScreenTest {
     }
 
     @Test
+    fun focusChangesDoNotRestartCustomListQueries() {
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-programme-current").fetchSemanticsNodes().isNotEmpty() &&
+                listReads.any { it.contains("FROM channel_lists") }
+        }
+        composeRule.waitForIdle()
+        val before = listReads.size
+        repeat(6) {
+            composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionDown) }
+            composeRule.awaitFocused("guide-channel-test:two")
+            composeRule.onNodeWithTag("guide-channel-test:two").performKeyInput { pressKey(Key.DirectionUp) }
+            composeRule.awaitFocused("guide-channel-test:one")
+        }
+        // A barrier behind the Room queries ensures cancelled/restarted reads have been counted.
+        queryExecutor.submit {}.get(5, TimeUnit.SECONDS)
+        assertEquals("Moving focus resubscribed to custom-list Room queries", before, listReads.size)
+        assertTrue("All channels must not read custom-list memberships", memberReads.isEmpty())
+    }
+
+    @Test
+    fun customListReadsAreScopedAndStillReceiveMembershipChanges() {
+        val repository = GuideRepository(database.guideDao())
+        val (selectedList, otherList) = runBlocking {
+            val selected = repository.createCustomChannelList("Selected", 0)
+            val other = repository.createCustomChannelList("Other", 1)
+            repository.setCustomListMembership(selected, "test:one", true, 0)
+            repository.setCustomListMembership(other, "test:two", true, 0)
+            selected to other
+        }
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        assertTrue(memberReads.isEmpty())
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.onNodeWithTag("guide-list-$selectedList").performClick()
+        composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.onAllNodesWithTag("guide-channel-test:two").assertCountEquals(0)
+        runBlocking { repository.setCustomListMembership(selectedList, "test:two", true, 1) }
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-channel-test:two").fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue(memberReads.isNotEmpty())
+        assertTrue("Only the selected list may be queried: $memberReads", memberReads.all { it == listOf(selectedList) })
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.onNodeWithTag("guide-list-$otherList").performClick()
+        composeRule.awaitFocused("guide-channel-test:two")
+        composeRule.onAllNodesWithTag("guide-channel-test:one").assertCountEquals(0)
+        assertTrue(memberReads.any { it == listOf(otherList) })
+        assertTrue(memberReads.all { it.size == 1 })
+    }
+
+    @Test
     fun smallGuideChannelsAreUsableBeforeEpgAndArrivalsKeepFocus() {
         val gate = CountDownLatch(1)
         val started = CountDownLatch(1)
@@ -690,6 +786,53 @@ class GuideScreenTest {
             gate.countDown()
             runBlocking { preferences.setFavouriteChannel("test:two", false) }
         }
+    }
+
+    @Test
+    fun threePlaylistsWithNinetyThousandProgrammesKeepReadsWindowed() {
+        val now = System.currentTimeMillis()
+        runBlocking {
+            val dao = database.guideDao()
+            for (source in listOf("test", "second", "third")) {
+                if (source != "test") dao.upsertSourceState(IptvSourceStateEntity(source, source, "M3U", true, 0, 0, now))
+                dao.upsertChannels((1..1_000).map { index ->
+                    IptvChannelEntity(
+                        sourceId = source, snapshotId = "playlist", channelId = "$source:scale-$index",
+                        tvgId = "scale-$index", name = "Scale $index", normalizedName = "scale $index",
+                        groupTitle = "Scale", logoUrl = null, encryptedStreamUrl = "encrypted",
+                        userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = index + 100,
+                    )
+                })
+                // Import-sized batches also keep the fixture from allocating 90k entities at once.
+                for (batchStart in 1..1_000 step 20) {
+                    dao.upsertProgrammes((batchStart until batchStart + 20).flatMap { channel ->
+                        (0 until 30).map { slot ->
+                            val start = now - 4 * 3_600_000L + slot * 30 * 60_000L
+                            TvProgrammeEntity(source, "epg", "scale-$channel-$slot", "scale-$channel",
+                                start, start + 30 * 60_000L, "Programme $channel/$slot", null,
+                                "Synthetic schedule description for the large guide fixture.", "News")
+                        }
+                    })
+                }
+                dao.activatePlaylistSnapshot(source, "playlist", if (source == "test") 1_002 else 1_000, now)
+                dao.activateEpgSnapshot(source, "epg", if (source == "test") 1_002 else 1_000, now)
+            }
+        }
+        val started = android.os.SystemClock.elapsedRealtime()
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        val channelsReady = android.os.SystemClock.elapsedRealtime() - started
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionDown) }
+        composeRule.awaitFocused("guide-channel-test:two")
+        composeRule.onNodeWithTag("guide-channel-list").performScrollToIndex(901)
+        composeRule.awaitUntil { timelineReads.any { "test:scale-900" in it } }
+        assertTrue("No unrelated custom-list membership reads", memberReads.isEmpty())
+        timelineReads.forEach { read ->
+            assertTrue("Unbounded channel request: ${read.size}", read.size <= 82)
+            assertEquals(4 * 3_600_000L, (read[0] as Number).toLong() - (read[1] as Number).toLong())
+            assertTrue(read.drop(2).all { it.toString().startsWith("test:") })
+        }
+        println("Synthetic 3-playlist/90k-programme guide: channels focused in ${channelsReady}ms (debug emulator, not a device benchmark)")
     }
 
     @Test

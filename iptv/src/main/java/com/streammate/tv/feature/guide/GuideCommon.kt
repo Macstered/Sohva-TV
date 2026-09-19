@@ -198,30 +198,86 @@ internal fun programmeWindowIds(
 internal class GuideChannelRows(
     val channels: List<GuideTimelineChannel>,
 ) {
-    val ids = channels.map { it.id }
+    private val indicesById = HashMap<String, Int>()
+    private val indicesByNumber = HashMap<Int, Int>()
+    val ids = channels.mapIndexed { index, channel ->
+        indicesById[channel.id] = index
+        channel.channelNumber?.let { number -> if (number !in indicesByNumber) indicesByNumber[number] = index }
+        channel.id
+    }
+
+    fun indexOf(id: String?): Int? = id?.let(indicesById::get)
+
+    /** Match provider numbers first, then the displayed position, as ChannelDial does. */
+    fun indexForNumber(number: Int): Int? = indicesByNumber[number]
+        ?: (number - 1).takeIf { it in channels.indices && channels[it].channelNumber == null }
 }
 
-/** At most three prefetched scroll windows, refreshed in recency order. */
+/**
+ * At most three prefetched scroll windows, refreshed in recency order.
+ *
+ * A window that moves ten rows reads again the sixty it shares with the last
+ * one, and they arrive as new objects that are equal to the old. The schedule
+ * already held is the one kept: a row and its cells hold lists, which Compose
+ * can only compare by identity, so equal-but-new schedules recomposed, measured
+ * and drew every row on screen each time a window arrived, 50 to 108 ms a
+ * frame on the Shield, for rows on which nothing had changed.
+ */
 internal fun retainProgrammeWindow(
     previous: Map<String, List<GuideTimelineProgramme>>,
     incoming: List<GuideTimelineChannel>,
     limit: Int = 240,
 ): Map<String, List<GuideTimelineProgramme>> = LinkedHashMap(previous).apply {
-    incoming.forEach { row -> remove(row.id); put(row.id, row.programmes) }
+    incoming.forEach { row ->
+        val held = remove(row.id)
+        put(row.id, if (held != null && held == row.programmes) held else row.programmes)
+    }
     while (size > limit) remove(keys.first())
 }
 
-/** Copy only the rows requested by the lazy grid, never every channel on each programme emission. */
+/**
+ * Copy only the rows requested by the lazy grid, never every channel on each
+ * programme emission. Given the list the grid holds now as [previous], a row
+ * whose schedule is the same object as before is the same row object too, so
+ * the grid skips it; see [retainProgrammeWindow].
+ */
 internal fun mergeProgrammes(
     rows: List<GuideTimelineChannel>,
     programmes: Map<String, List<GuideTimelineProgramme>>,
-): List<GuideTimelineChannel> = object : AbstractList<GuideTimelineChannel>() {
+    previous: List<GuideTimelineChannel>? = null,
+): List<GuideTimelineChannel> = ProgrammeOverlay(
+    rows,
+    programmes,
+    // By index, so only from an overlay of these very rows. Its map is taken
+    // rather than the overlay, or each would keep alive every one before it.
+    held = (previous as? ProgrammeOverlay)?.takeIf { it.rows === rows }?.mergedRows.orEmpty(),
+)
+
+private class ProgrammeOverlay(
+    val rows: List<GuideTimelineChannel>,
+    private val programmes: Map<String, List<GuideTimelineProgramme>>,
+    private val held: Map<Int, GuideTimelineChannel>,
+) : AbstractList<GuideTimelineChannel>() {
+    val mergedRows = HashMap<Int, GuideTimelineChannel>()
     override val size: Int get() = rows.size
     override fun get(index: Int): GuideTimelineChannel {
+        mergedRows[index]?.let { return it }
         val row = rows[index]
-        return programmes[row.id]?.let { row.copy(programmes = it) } ?: row
+        val schedule = programmes[row.id] ?: return row
+        val merged = held[index]?.takeIf { it.programmes === schedule } ?: row.copy(programmes = schedule)
+        return merged.also { mergedRows[index] = it }
     }
     // Compose keys must not compare all 50k rows merely because a window changed.
     override fun equals(other: Any?): Boolean = this === other
     override fun hashCode(): Int = System.identityHashCode(this)
+}
+
+/** The grid's rows with their programmes, remembering the last so [mergeProgrammes] can keep what did not change. */
+internal class ProgrammeMerger {
+    private var last: List<GuideTimelineChannel>? = null
+
+    fun merge(
+        rows: List<GuideTimelineChannel>,
+        programmes: Map<String, List<GuideTimelineProgramme>>,
+    ): List<GuideTimelineChannel> = mergeProgrammes(rows, programmes, last).also { last = it }
 }

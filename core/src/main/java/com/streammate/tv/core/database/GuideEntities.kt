@@ -504,6 +504,74 @@ data class GuideChannelRow(
     val channelNumber: Int? = null,
 )
 
+/** One channel of a [GuideDao.guideChannelPage]: a guide row with no programme columns to carry. */
+data class GuideRosterRow(
+    val sourceId: String,
+    val snapshotId: String,
+    val sourceName: String,
+    val sourcePriority: Int,
+    val channelId: String,
+    val channelName: String,
+    val groupTitle: String?,
+    val logoUrl: String?,
+    val channelNumber: Int?,
+    val playlistOrder: Int,
+    val legacyPosition: Long?,
+    /** Null only for a regrouped channel written before its key was stored. */
+    val organizationGroupKey: String?,
+    val catchupType: String?,
+    val catchupSource: String?,
+    val catchupDays: Int?,
+) {
+    /**
+     * This row holding [pool]'s copy of the values a source repeats on every
+     * channel. Each page arrives with its own strings, and fifty thousand
+     * copies of a source's id, name, snapshot and a few hundred group titles
+     * were about twenty megabytes of a heap that has 192.
+     */
+    fun sharing(pool: MutableMap<String, String>): GuideRosterRow {
+        fun shared(value: String): String = pool.getOrPut(value) { value }
+        return copy(
+            sourceId = shared(sourceId),
+            snapshotId = shared(snapshotId),
+            sourceName = shared(sourceName),
+            groupTitle = groupTitle?.let(::shared),
+            organizationGroupKey = organizationGroupKey?.let(::shared),
+            catchupType = catchupType?.let(::shared),
+        )
+    }
+
+    companion object {
+        /**
+         * The order the guide shows channels in, which the paged read cannot
+         * ask SQLite for: source priority and name, the viewer's own position,
+         * the playlist's, then the shown name. Names compare by code point, as
+         * SQLite's BINARY collation does over UTF-8; the channel id settles
+         * what SQLite would leave to chance.
+         */
+        val DISPLAY_ORDER: Comparator<GuideRosterRow> =
+            compareByDescending<GuideRosterRow> { it.sourcePriority }
+                .thenComparator { a, b -> compareCodePoints(a.sourceName, b.sourceName) }
+                .thenBy { it.legacyPosition ?: Int.MAX_VALUE.toLong() }
+                .thenBy { it.playlistOrder }
+                .thenComparator { a, b -> compareCodePoints(a.channelName, b.channelName) }
+                .thenComparator { a, b -> compareCodePoints(a.channelId, b.channelId) }
+
+        private fun compareCodePoints(a: String, b: String): Int {
+            var i = 0
+            var j = 0
+            while (i < a.length && j < b.length) {
+                val left = a.codePointAt(i)
+                val right = b.codePointAt(j)
+                if (left != right) return left.compareTo(right)
+                i += Character.charCount(left)
+                j += Character.charCount(right)
+            }
+            return (a.length - i).compareTo(b.length - j)
+        }
+    }
+}
+
 data class GuideTimelineRow(
     val sourceId: String,
     val sourceName: String,
@@ -618,6 +686,8 @@ data class XmlTvChannelOptionRow(
 )
 
 data class ProgrammeCandidateRow(
+    val channelRowId: Long,
+    val programmeRowId: Long,
     val sourceId: String,
     val channelId: String,
     val channelName: String,
@@ -630,6 +700,7 @@ data class ProgrammeCandidateRow(
 )
 
 data class ChannelNameCandidateRow(
+    val channelRowId: Long,
     val sourceId: String,
     val channelId: String,
     val channelName: String,

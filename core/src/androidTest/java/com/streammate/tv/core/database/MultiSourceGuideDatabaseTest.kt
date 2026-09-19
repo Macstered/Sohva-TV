@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -305,11 +306,24 @@ class MultiSourceGuideDatabaseTest {
         )
         assertEquals("On one", dao.observeGuideForGroup("News", 150).first().first { it.name == "One" }.currentProgrammeTitle)
         assertEquals(0, dao.observeGuideForGroup(null, 150).first().size)
-        // The rows-only read of a large selection: every channel, no programme.
-        val rowsOnly = dao.observeGuideChannelsForSource("source-a", null).first()
-        assertEquals(setOf("One", "Two", "Three"), rowsOnly.map { it.channelName }.toSet())
-        assertTrue(rowsOnly.all { it.programmeId == null && it.programmeTitle == null })
-        assertEquals(listOf("One", "Two"), dao.observeGuideChannelsForSource("source-a", "News").first().map { it.channelName })
+        // The rows-only read of every selection: the active snapshot's
+        // channels a page at a time by id, each page from where the last ended.
+        val rowsOnly = dao.guideChannelPage("source-a", null, "", 2)
+        assertEquals(listOf("source-a:one", "source-a:three"), rowsOnly.map { it.channelId })
+        assertTrue(rowsOnly.all { it.snapshotId == "playlist" })
+        assertEquals(listOf("Two"), dao.guideChannelPage("source-a", null, rowsOnly.last().channelId, 2).map { it.channelName })
+        assertEquals(listOf("One", "Two"), dao.guideChannelPage("source-a", "News", "", 2).map { it.channelName })
+        assertEquals("playlist", dao.activePlaylistSnapshotId("source-a"))
+        // The signal the repository re-reads on: once at the start, again after a write behind the rows.
+        val signals = kotlinx.coroutines.channels.Channel<Int>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+        val watching = launch { dao.observeGuideChannelTables().collect { signals.send(it) } }
+        signals.receive()
+        dao.upsertChannelPreference(
+            ChannelPreferenceEntity("source-a:one", "source-a", null, null, hidden = true, sortOrder = null, manualXmltvChannelId = null, updatedAtEpochMillis = 1),
+        )
+        kotlinx.coroutines.withTimeout(5_000) { signals.receive() }
+        watching.cancel()
+        assertEquals(listOf("Two"), dao.guideChannelPage("source-a", "News", "", 2).map { it.channelName })
         assertEquals(
             listOf("Two", "Four"),
             dao.observeGuideTimelineForChannels(150, 300, listOf("source-a:two", "source-b:four")).first().map { it.channelName },

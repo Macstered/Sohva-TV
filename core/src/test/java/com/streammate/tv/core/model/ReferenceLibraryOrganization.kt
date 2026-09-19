@@ -3,79 +3,13 @@ package com.streammate.tv.core.model
 import java.text.Collator
 import java.util.Locale
 
-enum class LibraryRoom { LIVE, MOVIES, SERIES }
-
-enum class LibrarySort {
-    PROVIDER, TITLE_ASC, TITLE_DESC, NEWEST, OLDEST, RATING, MANUAL;
-
-    companion object {
-        fun parse(value: String?): LibrarySort? = entries.firstOrNull { it.name == value }
-    }
-}
-
-/** Empty source is an explicit combined-library scope, never an unknown source. */
-data class OrganizationKey(
-    val room: LibraryRoom,
-    val sourceId: String = "",
-    val groupKey: String = "",
-    val itemKey: String = "",
-)
-
-data class OrganizationRule(
-    val key: OrganizationKey,
-    val enabled: Boolean? = null,
-    val sort: LibrarySort? = null,
-    val position: Long? = null,
-)
-
-data class OrganizationItem(
-    val id: String,
-    val sourceId: String,
-    val title: String,
-    val groupName: String?,
-    val groupKey: String = organizationGroupKey(groupName),
-    val imageUrl: String? = null,
-    val year: Int? = null,
-    val rating: String? = null,
-    val providerOrder: Int = Int.MAX_VALUE,
-    val identity: String = id,
-    val legacyHidden: Boolean = false,
-    val legacyPosition: Long? = null,
-    val sourceEnabled: Boolean = true,
-)
-
-fun organizationGroupKey(name: String?, providerId: String? = null): String =
-    providerId?.takeIf(String::isNotBlank)?.let { "id:$it" }
-        ?: "name:${name.orEmpty().trim().lowercase(Locale.ROOT)}"
-
-const val ORGANIZATION_GROUP_ORDER = "@groups"
-const val ORGANIZATION_HISTORY = "@history"
-const val ORGANIZATION_RECENT = "@recent"
-const val ORGANIZATION_FAVOURITES = "@favourites"
-
-/** Immutable read model shared by management and browsing; no UI or database work. */
-class LibraryOrganization(rules: List<OrganizationRule> = emptyList()) {
+/**
+ * [LibraryOrganization] word for word as it was before it learned to answer without
+ * looking: what [LibraryOrganizationEquivalenceTest] holds the quicker one to.
+ */
+internal class ReferenceLibraryOrganization(rules: List<OrganizationRule> = emptyList()) {
     val rules: List<OrganizationRule> = rules.toList()
     private val byKey = rules.associateBy(OrganizationRule::key)
-
-    // Ordering a source asks three questions of every item, and each used to
-    // build its keys afresh, lower-casing the group's name and copying the
-    // list twice on the way: fifty thousand channels were 225 MB of garbage a
-    // pass, on a heap of 192, for answers that are nearly all "no rule".
-    // Few rules name an item, so an item none names is answered without
-    // looking; a source has a few hundred groups, so a group is worked out
-    // once. Both are the same answers, only sooner.
-    private val namedItems: Map<LibraryRoom, Set<String>> =
-        rules.groupBy({ it.key.room }, { it.key.itemKey }).mapValues { it.value.toHashSet() }
-    private val groupRules = java.util.concurrent.ConcurrentHashMap<GroupOf, OrganizationRule>()
-
-    private data class GroupOf(val room: LibraryRoom, val sourceId: String, val groupKey: String, val groupName: String?)
-
-    /** Whether no rule of [room] carries this item's id or identity, the empty id of a group's stand-in included. */
-    private fun unnamed(room: LibraryRoom, item: OrganizationItem): Boolean {
-        val named = namedItems[room] ?: return true
-        return item.identity !in named && item.id !in named
-    }
 
     fun rule(key: OrganizationKey): OrganizationRule? = byKey[key]
 
@@ -88,21 +22,19 @@ class LibraryOrganization(rules: List<OrganizationRule> = emptyList()) {
     fun shortcutEnabled(room: LibraryRoom, key: String): Boolean =
         rule(OrganizationKey(room, groupKey = key))?.enabled != false
 
-    fun groupRule(room: LibraryRoom, item: OrganizationItem): OrganizationRule =
-        groupRules.getOrPut(GroupOf(room, item.sourceId, item.groupKey, item.groupName)) {
-            val nameKey = organizationGroupKey(item.groupName)
-            firstFields(
-                listOf(
-                    OrganizationKey(room, item.sourceId, item.groupKey),
-                    OrganizationKey(room, item.sourceId, nameKey),
-                    OrganizationKey(room, groupKey = item.groupKey),
-                    OrganizationKey(room, groupKey = nameKey),
-                ).distinct(),
-            )
-        }
+    fun groupRule(room: LibraryRoom, item: OrganizationItem): OrganizationRule {
+        val nameKey = organizationGroupKey(item.groupName)
+        return firstFields(
+            listOf(
+                OrganizationKey(room, item.sourceId, item.groupKey),
+                OrganizationKey(room, item.sourceId, nameKey),
+                OrganizationKey(room, groupKey = item.groupKey),
+                OrganizationKey(room, groupKey = nameKey),
+            ).distinct(),
+        )
+    }
 
     fun memberRule(room: LibraryRoom, item: OrganizationItem, viewKey: String? = null): OrganizationRule {
-        if (unnamed(room, item)) return OrganizationRule(OrganizationKey(room, item.sourceId, viewKey ?: item.groupKey, item.identity))
         val groups = if (viewKey != null) listOf(viewKey) else listOf(item.groupKey, organizationGroupKey(item.groupName)).distinct()
         val keys = buildList {
             for (source in listOf(item.sourceId, "")) {
@@ -116,7 +48,6 @@ class LibraryOrganization(rules: List<OrganizationRule> = emptyList()) {
     }
 
     fun globallyEnabled(room: LibraryRoom, item: OrganizationItem): Boolean {
-        if (unnamed(room, item)) return !item.legacyHidden
         val keys = listOf(item.sourceId, "").flatMap { source ->
             listOf(item.identity, item.id).distinct().map { OrganizationKey(room, source, itemKey = it) }
         }
@@ -124,8 +55,7 @@ class LibraryOrganization(rules: List<OrganizationRule> = emptyList()) {
     }
 
     fun eligible(room: LibraryRoom, item: OrganizationItem): Boolean =
-        item.sourceEnabled && globallyEnabled(room, item) && groupRule(room, item).enabled != false &&
-            (unnamed(room, item) || memberRule(room, item).enabled != false)
+        item.sourceEnabled && globallyEnabled(room, item) && groupRule(room, item).enabled != false && memberRule(room, item).enabled != false
 
     fun enabledInView(room: LibraryRoom, item: OrganizationItem, viewKey: String? = null): Boolean =
         eligible(room, item) && (viewKey == null || memberRule(room, item, viewKey).enabled != false)
@@ -218,11 +148,4 @@ class LibraryOrganization(rules: List<OrganizationRule> = emptyList()) {
     private fun titleCollator(): Collator = Collator.getInstance(Locale.forLanguageTag("fi")).apply { strength = Collator.PRIMARY }
 
     companion object { private val RATING = Regex("^\\d+(?:[.,]\\d+)?") }
-}
-
-/** Moves only a known item. Newly imported members outside this list are never deleted. */
-fun movedOrganizationIds(ids: List<String>, id: String, destination: Int): List<String> {
-    val current = ids.indexOf(id)
-    if (current < 0 || ids.size < 2) return ids
-    return ids.toMutableList().apply { add(destination.coerceIn(0, lastIndex), removeAt(current)) }
 }

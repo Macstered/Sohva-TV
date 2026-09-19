@@ -52,8 +52,8 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 43
-        versionName = "0.1.0-beta.21"
+        versionCode = 50
+        versionName = "0.1.0-beta.22"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // AGP leaves the instrumentation timeout at a year, so one hung test
