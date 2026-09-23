@@ -10,18 +10,19 @@ to access.
 
 ## Download
 
-The prepared tester build is **0.1.0-beta.22 (build 51)**. It is an early beta, not
+The prepared tester build is **0.1.0-beta.23 (build 57)**. It is an early beta, not
 a stable release. Download the signed APK only from the explicitly numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.22)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.1.0-beta.23)
 and verify the published SHA-256 value.
 
-Beta 22 improves large-playlist loading and remote navigation in the Live TV
-guide, fixes held-button time paging, and reduces memory use in background
-sports-channel matching to prevent a cause of playback stutter and crashes.
+Beta 23 is lighter on slower TV boxes, opens the Live TV guide on a group
+instead of every channel, returns finished movies to their details and
+continues Discover episodes, and keeps a playlist in the guide when it is
+refreshed twice at once.
 
 - [Installation and setup](INSTALL.md)
 - [Testing and feedback](TESTING.md)
-- [Beta 22 release notes](RELEASE_NOTES.md)
+- [Beta 23 release notes](RELEASE_NOTES.md)
 - [Discover setup and imports](ADDONS.md)
 - [Privacy policy](PRIVACY.md)
 - [Security reporting](SECURITY.md)

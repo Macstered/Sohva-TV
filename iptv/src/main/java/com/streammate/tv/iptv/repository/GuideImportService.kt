@@ -78,6 +78,14 @@ class GuideImportService(
         sourceId: String,
         url: String,
         includeEntry: (com.streammate.tv.iptv.m3u.ParsedIptvChannel) -> Boolean,
+    ): ImportSummary = SourceImports.oneAtATime(sourceId, GuideDao.PLAYLIST_KIND) {
+        importPlaylist(sourceId, url, includeEntry)
+    }
+
+    private suspend fun importPlaylist(
+        sourceId: String,
+        url: String,
+        includeEntry: (com.streammate.tv.iptv.m3u.ParsedIptvChannel) -> Boolean,
     ): ImportSummary {
         val snapshotId = store.newSnapshotId()
         store.markRefreshStarted(sourceId, GuideDao.PLAYLIST_KIND)
@@ -145,7 +153,11 @@ class GuideImportService(
         }
     }
 
-    suspend fun refreshEpg(sourceId: String, url: String): ImportSummary {
+    /** The Xtream guide hands over to this, so it takes the source's guide lock itself. */
+    suspend fun refreshEpg(sourceId: String, url: String): ImportSummary =
+        SourceImports.oneAtATime(sourceId, GuideDao.EPG_KIND) { importEpg(sourceId, url) }
+
+    private suspend fun importEpg(sourceId: String, url: String): ImportSummary {
         val snapshotId = store.newSnapshotId()
         store.markRefreshStarted(sourceId, GuideDao.EPG_KIND)
         var channelCount = 0

@@ -83,7 +83,7 @@ class StreamMateContainer(context: Context) {
     private val connectionLimiter = SourceConnectionLimiter()
     val organizationRepository = OrganizationRepository(database.organizationDao(), preferencesRepository)
     private val organizationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val guideRepository = GuideRepository(database.guideDao(), organization = organizationRepository)
+    val guideRepository = GuideRepository(database.guideDao(), organization = organizationRepository, rosterScope = organizationScope)
     val catalogueRepository = CatalogueRepository(
         database.catalogueDao(),
         organization = organizationRepository,

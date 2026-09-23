@@ -168,6 +168,14 @@ fun GuideScreen(
     val selectedSidebarFocus = remember { FocusRequester() }
     val guideReturnFocus = remember { FocusRequester() }
     val optionsFocus = remember { FocusRequester() }
+    // The Options entry on the rail, for focus to go back to when the sheet
+    // it opened is closed.
+    val optionsEntryFocus = remember { FocusRequester() }
+    // The list changed under the options sheet - another source, another
+    // order - and is owed the focus it would have taken at once without the
+    // sheet. It gets it when the sheet closes.
+    var listFocusOwed by remember { mutableStateOf(false) }
+    var listFocusRequest by remember { mutableIntStateOf(0) }
     val channelListState = rememberLazyListState()
     // The drawer leaves composition when closed; keep its viewport with the screen.
     val groupListState = rememberLazyListState()
@@ -184,7 +192,19 @@ fun GuideScreen(
     val restriction by restrictionFlow.collectAsStateWithLifecycle(initialValue = ProfileRestriction.NONE)
     var selectedSourceId by remember { mutableStateOf<String?>(null) }
     var sourceSelectionInitialized by remember { mutableStateOf(false) }
+    // A switched source starts afresh, on its first group and its first
+    // channel, whichever channel the guide was opened for: the owner's rule,
+    // switching back to that channel's own source included.
+    var sourceSwitched by remember(initialChannelId) { mutableStateOf(false) }
+    val openedForChannelId = initialChannelId.takeUnless { sourceSwitched }
     var selectedGroup by remember { mutableStateOf(initialManagedGroup) }
+    // The guide opens on a group. All channels is a choice on the rail, and
+    // for a large source an expensive one: 56,000 rows and three seconds of
+    // "Loading" on the Shield, every time the guide was opened. No rows are
+    // read until the group to open on is known. Coming back from the manager
+    // returns to what was being managed, All channels included.
+    var groupSelectionInitialized by remember { mutableStateOf(startInOptions) }
+    var defaultGroup by remember { mutableStateOf<String?>(null) }
     var selectedListId by remember { mutableStateOf<String?>(null) }
     val listMemberships by key(guideRepository, selectedListId) {
         remember {
@@ -246,6 +266,27 @@ fun GuideScreen(
             hiddenLiveCategories.any { it.equals(group, ignoreCase = true) }
         }
     }
+    // Where the viewer has put each entry of the rail, when they order it by hand.
+    val railPositions = remember(sourceRail, organizationState) {
+        if (organization.groupSort(liveRoom) == com.streammate.tv.core.model.LibrarySort.MANUAL) buildMap {
+            organization.rules.filter { it.key.room == liveRoom && it.key.itemKey.isEmpty() && it.position != null }.forEach {
+                val key = when (it.key.groupKey) {
+                    com.streammate.tv.core.model.ORGANIZATION_FAVOURITES -> "favourites"
+                    com.streammate.tv.core.model.ORGANIZATION_RECENT -> "recent"
+                    else -> it.key.groupKey.removePrefix("@")
+                }
+                put(key, it.position!!)
+            }
+            sourceRail.filter { it.groupTitle != null }.groupBy { it.groupTitle!! }.forEach { (name, rows) ->
+                rows.mapNotNull { row ->
+                    organization.groupRule(
+                        liveRoom,
+                        com.streammate.tv.core.model.OrganizationItem("", row.sourceId, name, name, row.organizationGroupKey),
+                    ).position
+                }.minOrNull()?.let { put("group:$name", it) }
+            }
+        } else emptyMap()
+    }
     // Counted off the rail, so a group's number says how many are in it, not
     // how many survived the filter that is currently applied.
     val groupCounts = remember(sourceRail) {
@@ -270,13 +311,13 @@ fun GuideScreen(
     }
     // Every view shows channel rows first, without an EPG join. Paging time
     // and receiving programmes must never reload or reorder these rows.
-    val loadedTimeline by key(guideRepository, selectedSourceId, selectedGroup, timelineChannelIds) {
+    val loadedTimeline by key(guideRepository, selectedSourceId, selectedGroup, timelineChannelIds, groupSelectionInitialized) {
         remember {
             val ids = timelineChannelIds
             val sourceId = selectedSourceId
             when {
                 ids != null -> guideRepository.observeChannelsForIds(ids)
-                sourceId != null -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
+                sourceId != null && groupSelectionInitialized -> guideRepository.observeChannelsForSource(sourceId, selectedGroup)
                 else -> kotlinx.coroutines.flow.flowOf<List<GuideTimelineChannel>?>(null)
             }
         }.collectAsStateWithLifecycle(initialValue = null)
@@ -426,7 +467,7 @@ fun GuideScreen(
                 .collect { incoming -> programmeCache = retainProgrammeWindow(programmeCache, incoming) }
         }
     }
-    val initialFocusIndex = orderedGuide?.indexOf(initialChannelId) ?: 0
+    val initialFocusIndex = orderedGuide?.indexOf(openedForChannelId) ?: 0
     // A dialled number moves the grid's focus; a changed list forgets the jump.
     val focusIndex = jumpIndex ?: initialFocusIndex
     LaunchedEffect(filteredChannelIds) { jumpIndex = null }
@@ -486,19 +527,43 @@ fun GuideScreen(
             preferencesRepository.setLastGuideSourceId(selectedSourceId)
         }
     }
+    // The group the guide opens on: the one the channel it was opened for is
+    // in, when that channel is in this source, otherwise the first the rail
+    // lists; a switched source always the first. A source with no groups
+    // opens on all of its channels, there being nothing else to open on.
+    // Cleared by a switch, groupSelectionInitialized brings this back.
+    LaunchedEffect(sourceSelectionInitialized, selectedSourceId, groupSelectionInitialized, groups, railPositions) {
+        if (groupSelectionInitialized || !sourceSelectionInitialized) return@LaunchedEffect
+        val placement = openedForChannelId?.let { guideRepository.channelPlacement(it) }
+            ?.takeIf { it.sourceId == selectedSourceId }
+        if (placement != null) {
+            selectedGroup = placement.groupTitle
+        } else if (selectedGroup == null) {
+            defaultGroup = firstGuideGroup(groups, railPositions)
+            selectedGroup = defaultGroup
+        }
+        groupSelectionInitialized = true
+    }
     // A group that has gone - hidden, or belonging to a source no longer
     // selected - drops back to All channels. It does not pick a different
     // group: "everything" is a state someone can be in, and the guide used to
-    // have no way of being in it.
-    LaunchedEffect(groups, selectedSourceId) {
-        if (sourceSelectionInitialized && selectedGroup != null && selectedGroup !in groups) selectedGroup = null
+    // have no way of being in it. The group the guide chose for itself is not
+    // a choice of the viewer's, and is chosen again: the rules that hide
+    // groups can arrive after the rail does.
+    LaunchedEffect(groups, selectedSourceId, railPositions) {
+        if (!sourceSelectionInitialized || !groupSelectionInitialized) return@LaunchedEffect
+        val group = selectedGroup
+        if (group != null && group !in groups) {
+            defaultGroup = if (group == defaultGroup) firstGuideGroup(groups, railPositions) else null
+            selectedGroup = defaultGroup
+        }
     }
     LaunchedEffect(customLists.map { it.id }) {
         if (selectedListId != null && customLists.none { it.id == selectedListId }) selectedListId = null
     }
-    LaunchedEffect(filteredChannelIds, initialChannelId) {
+    LaunchedEffect(filteredChannelIds, openedForChannelId) {
         val selectedChannel = selection?.channel
-        val restoredChannel = orderedGuide?.indexOf(initialChannelId)?.let(filteredGuide::get)
+        val restoredChannel = orderedGuide?.indexOf(openedForChannelId)?.let(filteredGuide::get)
         if (restoredChannel != null && selectedChannel?.id != restoredChannel.id) {
             selection = GuideSelection(restoredChannel, restoredChannel.preferredProgramme(now))
         } else if (orderedGuide?.indexOf(selectedChannel?.id) == null) {
@@ -536,9 +601,17 @@ fun GuideScreen(
         }
     }
     // guideLoaded is a key so the empty state, which only appears after the
-    // first read, still gets its focus once it is there.
-    LaunchedEffect(filteredChannelIds, focusIndex, guideLoaded) {
-        if (optionsVisible || !guideLoaded) return@LaunchedEffect
+    // first read, still gets its focus once it is there. Under the options
+    // sheet focus stays on the sheet, and the list takes it when the sheet
+    // closes. The row is put on screen now, so it can take focus the moment
+    // the sheet goes; listFocusRequest runs this again if it could not.
+    LaunchedEffect(filteredChannelIds, focusIndex, guideLoaded, listFocusRequest) {
+        if (!guideLoaded) return@LaunchedEffect
+        if (optionsVisible) {
+            listFocusOwed = true
+            if (filteredGuide.isNotEmpty()) channelListState.scrollToItem(focusIndex)
+            return@LaunchedEffect
+        }
         if (filteredGuide.isNotEmpty()) {
             channelListState.scrollToItem(focusIndex)
             firstFocus.requestFocusWhenAttached()
@@ -571,9 +644,36 @@ fun GuideScreen(
             restoreGuideFocus = false
         }
     }
+    fun openOptions() {
+        listFocusOwed = false
+        optionsVisible = true
+    }
+    // The sheet takes its buttons with it when it closes, and the focus that
+    // was on one of them, left to itself, fell to the first focusable on the
+    // screen: the hero's Watch button, at the top. It is moved before the
+    // sheet goes, while its target is on screen, so it never passes through
+    // the hero: to the list when the list changed under the sheet, as
+    // choosing a group does, and otherwise back to where the sheet was opened.
+    fun closeOptions() {
+        val owed = listFocusOwed
+        listFocusOwed = false
+        val target = when {
+            owed -> firstFocus
+            groupRailVisible -> optionsEntryFocus
+            else -> guideReturnFocus
+        }
+        val moved = runCatching { target.requestFocus() }.getOrDefault(false)
+        optionsVisible = false
+        when {
+            moved -> Unit
+            // The row is not on screen: scrolled to first, then focused.
+            owed -> listFocusRequest += 1
+            else -> coroutineScope.launch { target.requestFocusWhenAttached() }
+        }
+    }
     // Back peels one layer at a time: the options sheet, then category editing,
     // then out of the guide the way any other screen leaves.
-    BackHandler(enabled = optionsVisible) { optionsVisible = false }
+    BackHandler(enabled = optionsVisible) { closeOptions() }
     programmeActions?.let { actions ->
         val programme = actions.programme
         fun close() {
@@ -661,24 +761,7 @@ fun GuideScreen(
                         selectedGroup = selectedGroup,
                         selectedListId = selectedListId,
                         groups = groups,
-                        manualPositions = if (organization.groupSort(liveRoom) == com.streammate.tv.core.model.LibrarySort.MANUAL) buildMap {
-                            organization.rules.filter { it.key.room == liveRoom && it.key.itemKey.isEmpty() && it.position != null }.forEach {
-                                val key = when (it.key.groupKey) {
-                                    com.streammate.tv.core.model.ORGANIZATION_FAVOURITES -> "favourites"
-                                    com.streammate.tv.core.model.ORGANIZATION_RECENT -> "recent"
-                                    else -> it.key.groupKey.removePrefix("@")
-                                }
-                                put(key, it.position!!)
-                            }
-                            sourceRail.filter { it.groupTitle != null }.groupBy { it.groupTitle!! }.forEach { (name, rows) ->
-                                rows.mapNotNull { row ->
-                                    organization.groupRule(
-                                        liveRoom,
-                                        com.streammate.tv.core.model.OrganizationItem("", row.sourceId, name, name, row.organizationGroupKey),
-                                    ).position
-                                }.minOrNull()?.let { put("group:$name", it) }
-                            }
-                        } else emptyMap(),
+                        manualPositions = railPositions,
                         allGroups = allGroups,
                         groupCounts = groupCounts,
                         customLists = customLists.filter { organization.shortcutEnabled(liveRoom, "@list:${it.id}") }.map { it.id to it.name },
@@ -725,7 +808,8 @@ fun GuideScreen(
                                 )
                             }
                         },
-                        onOpenOptions = { optionsVisible = true },
+                        onOpenOptions = { openOptions() },
+                        optionsFocusRequester = optionsEntryFocus,
                         selectedItemFocusRequester = selectedSidebarFocus,
                         onExitToGuide = {
                             groupRailVisible = false
@@ -841,7 +925,7 @@ fun GuideScreen(
                                             true
                                         }
                                         Key.Menu -> {
-                                            optionsVisible = true
+                                            openOptions()
                                             true
                                         }
                                         else -> false
@@ -868,10 +952,23 @@ fun GuideScreen(
                     categoryEditMode = categoryEditMode,
                     firstFocusRequester = optionsFocus,
                     onCycleSource = {
-                        selectedSourceId = nextValue(sources.map(GuideSourceOption::sourceId), selectedSourceId)
-                        channelFilter = ChannelFilter.ALL
-                        selectedGroup = null
-                        selectedListId = null
+                        val next = nextValue(sources.map(GuideSourceOption::sourceId), selectedSourceId)
+                        // With one playlist there is nothing to switch to.
+                        // Taken for a switch, it waited for a group to be
+                        // chosen for the same source, and the rows stayed
+                        // under "Loading" until the guide was opened again.
+                        if (next != selectedSourceId) {
+                            selectedSourceId = next
+                            sourceSwitched = true
+                            channelFilter = ChannelFilter.ALL
+                            selectedListId = null
+                            // As on opening: the new source's first group, not
+                            // all of its channels, which for a source of 57,000
+                            // was a four-second read on the Shield at every switch.
+                            selectedGroup = null
+                            defaultGroup = null
+                            groupSelectionInitialized = false
+                        }
                     },
                     onCycleSort = {
                         if (onManageGroups != null) {
@@ -884,13 +981,18 @@ fun GuideScreen(
                         }
                     },
                     onToggleCategoryEdit = {
-                        if (onManageGroups != null) onManageGroups(selectedGroup, selectedSourceId) else categoryEditMode = !categoryEditMode
-                        optionsVisible = false
+                        if (onManageGroups != null) {
+                            onManageGroups(selectedGroup, selectedSourceId)
+                            optionsVisible = false
+                        } else {
+                            categoryEditMode = !categoryEditMode
+                            closeOptions()
+                        }
                     },
                     onChannels = onChannels,
                     onSettings = onSettings,
                     onBack = onBack,
-                    onDismiss = { optionsVisible = false },
+                    onDismiss = { closeOptions() },
                 )
             }
         }

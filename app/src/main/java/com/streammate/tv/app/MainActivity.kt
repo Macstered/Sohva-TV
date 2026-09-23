@@ -5,6 +5,8 @@ import android.content.res.Configuration
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.Context
+import android.graphics.drawable.ColorDrawable
+import com.streammate.tv.R
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
@@ -13,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -86,6 +89,18 @@ class MainActivity : ComponentActivity() {
         val container = (application as StreamMateApplication).container
         container.openRequests.offer(OpenRequest.fromIntent(intent))
         setContent {
+            // The launch picture is the window's background so that it shows
+            // before the first frame. After that it lay under every frame, a
+            // screen-sized gradient and two pictures that the app's own opaque
+            // ground always covers: one more pass over every pixel for the
+            // GPU, on every frame of the session. A flat colour costs a
+            // tile-based GPU nothing, and is what shows if a frame ever leaves
+            // a gap.
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+                withFrameNanos { }
+                window.setBackgroundDrawable(ColorDrawable(ContextCompat.getColor(this@MainActivity, R.color.sportmate_background)))
+            }
             var initialPreferences by remember(container) { mutableStateOf<AppPreferences?>(null) }
             LaunchedEffect(Unit) {
                 container.awaitReady()

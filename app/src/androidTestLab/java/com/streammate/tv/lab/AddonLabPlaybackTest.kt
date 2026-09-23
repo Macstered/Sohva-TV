@@ -159,6 +159,9 @@ class AddonLabPlaybackTest {
                     compose.onNodeWithTag("player-aspect").performClick().performClick().assertTextContains("Picture: Fit")
                     compose.onNodeWithTag("player-audio").performClick()
                     compose.onNodeWithTag("player-track-picker").assertIsDisplayed()
+                    // Compose can expose dialog semantics before Android gives
+                    // its window focus. Back sent earlier reaches the player.
+                    compose.waitUntil(5_000) { !compose.runOnIdle { compose.activity.hasWindowFocus() } }
                     InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
                     waitForPlayerControl("player-audio")
                     compose.onNodeWithTag("player-subtitles").performClick()

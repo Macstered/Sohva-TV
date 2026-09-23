@@ -121,10 +121,10 @@ internal fun AddonManagerScreen(host: AddonHost, preferences: AppPreferences, on
     }
     if (showOrder) { AddonCatalogOrderScreen(host, profileId, installations, { showOrder = false }, modifier); return }
     selectedHistory?.let { item ->
-        AddonSourcesScreen(host, profileId, item.identity.video, item.title, {
+        AddonHistoryDetailsScreen(host, profileId, item, {
             selectedHistory = null
             run { history = host.progress.recent(profileId) }
-        }, modifier, item.identity)
+        }, modifier)
         return
     }
     if (showHistory) {

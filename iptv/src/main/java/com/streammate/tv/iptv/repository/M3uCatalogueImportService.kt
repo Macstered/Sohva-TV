@@ -32,7 +32,10 @@ class M3uCatalogueImportService(
     /** Runs once an import has activated: the database refreshes its planner statistics here. */
     private val afterImport: suspend () -> Unit = {},
 ) {
-    suspend fun refresh(source: IptvSourceConfiguration): CatalogueImportSummary {
+    suspend fun refresh(source: IptvSourceConfiguration): CatalogueImportSummary =
+        SourceImports.oneAtATime(source.id, SourceImports.CATALOGUE_KIND) { importCatalogue(source) }
+
+    private suspend fun importCatalogue(source: IptvSourceConfiguration): CatalogueImportSummary {
         if (source.type != IptvSourceType.M3U) {
             throw LocalizedException(CoreR.string.error_source_not_m3u)
         }

@@ -27,8 +27,8 @@ sealed interface AppUpdateState {
     data object UpToDate : AppUpdateState
     data class Available(val update: AvailableUpdate) : AppUpdateState
     data class Downloading(val update: AvailableUpdate, val percent: Int) : AppUpdateState
-    data class Downloaded(val update: AvailableUpdate, val file: File) : AppUpdateState
-    data class NeedsInstallPermission(val update: AvailableUpdate, val file: File) : AppUpdateState
+    data class Downloaded(val update: AvailableUpdate, val file: File, val profile: File? = null) : AppUpdateState
+    data class NeedsInstallPermission(val update: AvailableUpdate, val file: File, val profile: File? = null) : AppUpdateState
     data class Failed(val reason: AppUpdateFailure, val update: AvailableUpdate?) : AppUpdateState
 }
 
@@ -41,6 +41,12 @@ sealed interface AppUpdateState {
  * one the release published; a mismatch deletes it. The install itself is
  * Android's: the same package-installer screen a sideload shows, with its
  * one-time "allow installs from this app" prompt.
+ *
+ * A release may also carry the APK's install-time profile. It is fetched and
+ * verified the same way and handed over with the APK, so that the system
+ * compiles the update as it installs it (see [UpdateSessionInstaller]).
+ * Nothing depends on it: without one, or if anything about it fails, the
+ * update installs as it always has.
  */
 class AppUpdateChecker(
     private val context: Context,
@@ -48,6 +54,7 @@ class AppUpdateChecker(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val updatesAllowed = AppRuntimePolicy.forPackage(context.packageName).publicUpdatesAllowed
+    private val sessionInstaller = UpdateSessionInstaller(context)
     private val preferences = context.getSharedPreferences("streammate_updates", Context.MODE_PRIVATE)
     private val mutableState = MutableStateFlow<AppUpdateState>(if (updatesAllowed) AppUpdateState.Idle else AppUpdateState.Disabled)
     val state: StateFlow<AppUpdateState> = mutableState
@@ -92,7 +99,7 @@ class AppUpdateChecker(
                 val releases = AppUpdates.parseReleases(fetchText(AppUpdates.RELEASES_URL))
                 val installed = AppUpdates.installedRelease(releases, installedVersionCode)
                     ?.let { AppUpdates.releaseNotes(it.body) }
-                AppUpdates.selectUpdate(releases, installedVersionCode) to installed
+                AppUpdates.selectUpdate(releases, installedVersionCode, Build.VERSION.SDK_INT) to installed
             }
         }
         preferences.edit().putLong(KEY_LAST_CHECK, clock()).apply()
@@ -122,7 +129,8 @@ class AppUpdateChecker(
         mutableState.value = AppUpdateState.Downloading(update, 0)
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                val expected = AppUpdates.expectedChecksum(fetchText(checksums.downloadUrl), update.apk.name)
+                val published = fetchText(checksums.downloadUrl)
+                val expected = AppUpdates.expectedChecksum(published, update.apk.name)
                     ?: throw ChecksumException()
                 val directory = File(context.cacheDir, "updates").apply { mkdirs() }
                 directory.listFiles()?.forEach { it.delete() }
@@ -157,11 +165,11 @@ class AppUpdateChecker(
                     target.delete()
                     throw ChecksumException()
                 }
-                target
+                target to update.profile?.let { fetchProfile(it, published, directory) }
             }
         }
         mutableState.value = result.fold(
-            onSuccess = { file -> AppUpdateState.Downloaded(update, file) },
+            onSuccess = { (file, profile) -> AppUpdateState.Downloaded(update, file, profile) },
             onFailure = { error ->
                 AppUpdateState.Failed(
                     if (error is ChecksumException) AppUpdateFailure.CHECKSUM_MISMATCH else AppUpdateFailure.NETWORK,
@@ -171,16 +179,48 @@ class AppUpdateChecker(
         )
     }
 
+    /**
+     * The release's install-time profile, verified like the APK, or null: a
+     * few kilobytes that make the first start faster and that the update does
+     * not need.
+     */
+    private fun fetchProfile(asset: ReleaseAsset, published: String, directory: File): File? = runCatching {
+        val expected = AppUpdates.expectedChecksum(published, asset.name) ?: return null
+        val request = Request.Builder().url(asset.downloadUrl).get().build()
+        val bytes = httpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
+            if (response.body.contentLength() > MAX_PROFILE_BYTES) throw IOException("profile too large")
+            response.body.bytes()
+        }
+        if (bytes.size > MAX_PROFILE_BYTES) throw IOException("profile too large")
+        val actual = MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { byte -> HEX[(byte.toInt() shr 4) and 0x0f].toString() + HEX[byte.toInt() and 0x0f] }
+        if (actual != expected) throw ChecksumException()
+        File(directory, asset.name).also { it.writeBytes(bytes) }
+    }.onFailure { DiagnosticsLog.w("update", "install profile not used", it) }.getOrNull()
+
     /** Hands the verified file to the system installer, or asks for the permission it needs first. */
-    fun install(update: AvailableUpdate, file: File) {
+    fun install(update: AvailableUpdate, file: File, profile: File? = null) {
         if (!updatesAllowed) return
         if (!file.isFile) {
             mutableState.value = AppUpdateState.Failed(AppUpdateFailure.NETWORK, update)
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
-            mutableState.value = AppUpdateState.NeedsInstallPermission(update, file)
+            mutableState.value = AppUpdateState.NeedsInstallPermission(update, file, profile)
             return
+        }
+        if (profile != null && profile.isFile) {
+            val handedOver = sessionInstaller.install(file, profile) { outcome ->
+                DiagnosticsLog.i("update", "install with profile: $outcome")
+                mutableState.value = when (outcome) {
+                    UpdateSessionInstaller.Outcome.CANCELLED -> AppUpdateState.Downloaded(update, file, profile)
+                    // Once more the old way, which the press that follows takes.
+                    UpdateSessionInstaller.Outcome.FAILED -> AppUpdateState.Downloaded(update, file, null)
+                }
+            }
+            DiagnosticsLog.i("update", if (handedOver) "installing with profile" else "install session unavailable")
+            if (handedOver) return
         }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", file)
         val intent = Intent(Intent.ACTION_VIEW)
@@ -203,7 +243,7 @@ class AppUpdateChecker(
     /** Back to the verified file after the permission was granted. */
     fun retryInstall() {
         val current = mutableState.value
-        if (current is AppUpdateState.NeedsInstallPermission) install(current.update, current.file)
+        if (current is AppUpdateState.NeedsInstallPermission) install(current.update, current.file, current.profile)
     }
 
     private fun fetchText(url: String): String {
@@ -221,5 +261,7 @@ class AppUpdateChecker(
         const val KEY_INSTALLED_NOTES_PREFIX = "installed_notes_"
         const val CHECK_INTERVAL_MILLIS = 24L * 60 * 60 * 1_000
         const val HEX = "0123456789abcdef"
+        /** A profile is about fifteen kilobytes; anything far larger is not one. */
+        const val MAX_PROFILE_BYTES = 1L * 1024 * 1024
     }
 }

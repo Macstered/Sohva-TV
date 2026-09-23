@@ -42,7 +42,7 @@ dependencies {
     implementation(libs.androidx.tv.material)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.okhttp)
-    implementation(libs.kxml2)
+    testImplementation(libs.kxml2)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)

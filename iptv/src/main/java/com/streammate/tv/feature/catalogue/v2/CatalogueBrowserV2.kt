@@ -249,13 +249,29 @@ fun CatalogueBrowserV2Screen(
         ?.entries
         ?.size
     val wallEntries = state.wall?.entries.orEmpty()
-    val progressTargets by remember(wallGridState, wallEntries) {
+    // The watched marks look films up by the same identity the copy folding
+    // uses, a regular-expression normalisation of the title. This read the
+    // wall's layout, so it ran for every film in view on every layout pass,
+    // which is every frame of a scroll, on the main thread: an eighth of the
+    // main thread's time over a whole browse on the emulator. A film's key is
+    // now worked out once per wall, and not at all on a wall of series, which
+    // has no marks to show.
+    val workKeys = remember(wallEntries) { HashMap<Pair<String, String?>, String>() }
+    val findsMarks = progressRepository != null && state.mode == CatalogueMode.MOVIES
+    val progressTargets by remember(wallGridState, wallEntries, findsMarks) {
         derivedStateOf {
+            if (!findsMarks) return@derivedStateOf emptyList()
             val visible = wallGridState.layoutInfo.visibleItemsInfo
             val first = ((visible.firstOrNull()?.index ?: 0) - 12).coerceAtLeast(0)
             val last = ((visible.lastOrNull()?.index ?: 11) + 12).coerceAtMost(wallEntries.lastIndex)
             if (first > last) emptyList() else wallEntries.subList(first, last + 1).take(200).map { entry ->
-                MovieProgressTarget(entry.contentKey, catalogueWorkKey(entry.title, entry.year, entry.metadataOverride?.externalId))
+                val externalId = entry.metadataOverride?.externalId
+                MovieProgressTarget(
+                    entry.contentKey,
+                    workKeys.getOrPut(entry.contentKey to externalId) {
+                        catalogueWorkKey(entry.title, entry.year, externalId)
+                    },
+                )
             }
         }
     }

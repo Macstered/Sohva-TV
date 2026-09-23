@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.repository
 
+import org.kxml2.io.KXmlParser
 import com.streammate.tv.core.error.LocalizedException
 import com.streammate.tv.core.R as CoreR
 import com.streammate.tv.core.model.IptvSourceConfiguration
@@ -67,7 +68,7 @@ class XtreamImportServiceTest {
         val guideImporter = GuideImportService(
             sourceClient = UnusedGuideSource,
             m3uParser = M3uParser(),
-            xmlTvParser = XmlTvParser(),
+            xmlTvParser = XmlTvParser(::KXmlParser),
             store = store,
             secretCipher = XtreamPrefixCipher,
         )

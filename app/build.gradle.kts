@@ -52,8 +52,8 @@ android {
         minSdk = 23
         targetSdk = 36
         // Every distributed APK gets a new code; never reuse a released beta.
-        versionCode = 51
-        versionName = "0.1.0-beta.22"
+        versionCode = 57
+        versionName = "0.1.0-beta.23"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // AGP leaves the instrumentation timeout at a year, so one hung test
@@ -94,7 +94,7 @@ android {
         }
 
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             // The signing identity lives outside the repository, so CI and any
             // fresh clone have no keystore. Assigning the empty signing config
             // there fails validateSigningRelease; leaving it unset produces an
@@ -117,6 +117,11 @@ android {
             // Persistent local development identity; never needs the production key.
             signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false
+            // The Lab suites reach into app classes that shrinking would remove
+            // or inline, so Lab stays unshrunk. -PsohvaLabMinify=true builds it
+            // as the release is built, for captures that compare the two on the
+            // same data (.local/slowbox).
+            isMinifyEnabled = providers.gradleProperty("sohvaLabMinify").orNull == "true"
             matchingFallbacks += listOf("release")
         }
     }
@@ -200,7 +205,6 @@ dependencies {
     implementation(libs.androidx.work.runtime)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kxml2)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
 

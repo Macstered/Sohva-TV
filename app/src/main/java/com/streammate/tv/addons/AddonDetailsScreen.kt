@@ -39,6 +39,8 @@ internal fun AddonDetailsScreen(host: AddonHost, profileId: String, installation
     var retry by remember { mutableIntStateOf(0) }
     var loaded by remember { mutableStateOf(false) }
     var episode by remember { mutableStateOf<AddonVideo?>(null) }
+    var autoPlayEpisodeId by remember { mutableStateOf<String?>(null) }
+    val preferences by host.preferences.collectAsStateWithLifecycle(initialValue = null)
     var restoreEpisode by remember { mutableStateOf<String?>(null) }
     var initialHandled by remember { mutableStateOf(false) }
     var season by remember { mutableStateOf<Int?>(null) }
@@ -69,7 +71,15 @@ internal fun AddonDetailsScreen(host: AddonHost, profileId: String, installation
         key(selected.id) {
             AddonPlayableDetails(host, profileId, installation, preview, details, AddonMediaKey(details.key.type, selected.id),
                 selected.title, selected.overview, false, null, { retry++ },
-                { restoreEpisode = selected.id; episode = null }, modifier, episode = selected)
+                { restoreEpisode = selected.id; episode = null; autoPlayEpisodeId = null }, modifier, episode = selected,
+                startAutomatically = autoPlayEpisodeId == selected.id,
+                onPlaybackEnded = {
+                    val next = if (preferences?.autoPlayNextEpisodeEnabled == true) details.nextEpisode(selected.id) else null
+                    if (next != null) {
+                        episode = next
+                        autoPlayEpisodeId = next.id
+                    }
+                })
         }
         return
     }
@@ -138,12 +148,13 @@ internal fun episodeLabel(video: AddonVideo, labels: AddonStrings) = listOfNotNu
 @Composable
 private fun AddonPlayableDetails(host: AddonHost, profile: String, installation: InstalledAddon, preview: AddonMedia, details: AddonMedia,
     video: AddonMediaKey?, title: String, synopsis: String?, loading: Boolean, failure: AddonFailure?, refreshDetails: () -> Unit,
-    onBack: () -> Unit, modifier: Modifier, episode: AddonVideo? = null) {
+    onBack: () -> Unit, modifier: Modifier, episode: AddonVideo? = null,
+    startAutomatically: Boolean = false, onPlaybackEnded: () -> Unit = {}) {
     val labels = addonStrings()
     var playing by remember { mutableStateOf<AddonPlaybackSelection?>(null) }
-    var resume by remember(video) { mutableStateOf(true) }
+    var resume by remember(video) { mutableStateOf(!startAutomatically) }
     var saved by remember(video) { mutableStateOf<AddonWatchProgress?>(null) }
-    var autoPlayRequested by remember(video) { mutableStateOf(false) }
+    var autoPlayRequested by remember(video) { mutableStateOf(startAutomatically) }
     var playMessage by remember(video) { mutableStateOf<String?>(null) }
     val primaryFocus = remember { FocusRequester() }
     val sourcesFocus = remember { FocusRequester() }
@@ -162,7 +173,8 @@ private fun AddonPlayableDetails(host: AddonHost, profile: String, installation:
     playing?.let { selection ->
         AddonPlayerScreen(host, profile, checkNotNull(identity), if (episode == null) title else "${details.name} · ${episodeLabel(episode, labels)}",
             selection, resume, { playing = null }, modifier,
-            artwork = AddonWatchArtwork.from(details, preview), startupLogo = details.logo ?: preview.logo, episode = episode); return
+            artwork = AddonWatchArtwork.from(details, preview), startupLogo = details.logo ?: preview.logo, episode = episode,
+            onPlaybackEnded = { playing = null; onPlaybackEnded() }); return
     }
     BackHandler(onBack = onBack)
     Box(modifier.fillMaxSize().testTag(if (episode == null) "addon-movie-details" else "addon-episode-details")) {
@@ -197,7 +209,7 @@ private fun AddonPlayableDetails(host: AddonHost, profile: String, installation:
                             { resume = false; playMessage = null; autoPlayRequested = true }, icon = TvIcons.Replay,
                             enabled = !autoPlayRequested, compact = true, testTag = "addon-start-over")
                         if (autoPlayRequested) Text(labels(R.string.addon_ui_waiting_for_a_playable_source))
-                        playMessage?.let { Text(it) }
+                        playMessage?.let { Text(it, Modifier.testTag("addon-autoplay-unavailable")) }
                     }
                     if (video == null && episode == null) AddonLibraryButton(host, profile, installation, preview, details)
                     if (failure != null) TvActionButton(labels(R.string.addon_ui_retry_details), refreshDetails, compact = true)

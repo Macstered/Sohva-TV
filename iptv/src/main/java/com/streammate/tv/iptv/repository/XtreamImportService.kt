@@ -21,7 +21,10 @@ class XtreamImportService(
     /** Runs once an import has activated: the database refreshes its planner statistics here. */
     private val afterImport: suspend () -> Unit = {},
 ) {
-    suspend fun refreshPlaylist(source: IptvSourceConfiguration): ImportSummary {
+    suspend fun refreshPlaylist(source: IptvSourceConfiguration): ImportSummary =
+        SourceImports.oneAtATime(source.id, GuideDao.PLAYLIST_KIND) { importPlaylist(source) }
+
+    private suspend fun importPlaylist(source: IptvSourceConfiguration): ImportSummary {
         if (source.type != IptvSourceType.XTREAM) {
             throw LocalizedException(CoreR.string.error_source_not_xtream)
         }

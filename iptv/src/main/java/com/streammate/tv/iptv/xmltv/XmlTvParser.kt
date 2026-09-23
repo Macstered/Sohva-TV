@@ -1,8 +1,8 @@
 package com.streammate.tv.iptv.xmltv
 
+import android.util.Xml
 import java.io.InputStream
 import java.security.MessageDigest
-import org.kxml2.io.KXmlParser
 import org.xmlpull.v1.XmlPullParser
 
 sealed interface XmlTvRecord {
@@ -24,9 +24,16 @@ sealed interface XmlTvRecord {
     ) : XmlTvRecord
 }
 
-class XmlTvParser {
+/**
+ * [newParser] makes the pull parser. On a device it is Android's own KXml,
+ * which is also what the bundled kxml2 jar this used to name directly always
+ * resolved to there: the system's copy of the same class is loaded first. The
+ * bundled copy could not be shrunk away, since its XmlPullParser clashes with
+ * the platform's, so the JVM tests now bring kxml2 themselves.
+ */
+class XmlTvParser(private val newParser: () -> XmlPullParser = ::platformPullParser) {
     fun records(input: InputStream): Sequence<XmlTvRecord> = sequence {
-        val parser = KXmlParser().apply {
+        val parser = newParser().apply {
             setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
             // Let the XML parser consume the byte-order mark and detect the
             // declared encoding. A UTF-8 Reader exposes the BOM as text before
@@ -139,4 +146,9 @@ class XmlTvParser {
         const val HEX_DIGITS = "0123456789abcdef"
         const val PROGRAMME_ID_LENGTH = 16
     }
+}
+
+/** As a bare KXmlParser starts: Xml.newPullParser also reads document type declarations. */
+private fun platformPullParser(): XmlPullParser = Xml.newPullParser().apply {
+    setFeature(XmlPullParser.FEATURE_PROCESS_DOCDECL, false)
 }

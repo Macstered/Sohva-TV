@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -66,6 +67,8 @@ internal fun GuideGroupRail(
     onToggleGroupHidden: (String) -> Unit,
     onOpenOptions: () -> Unit,
     selectedItemFocusRequester: FocusRequester,
+    /** On the Options entry, where focus goes back to when the sheet it opened is closed. */
+    optionsFocusRequester: FocusRequester? = null,
     onExitToGuide: () -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
@@ -126,7 +129,8 @@ internal fun GuideGroupRail(
             label = stringResource(R.string.guide_options),
             icon = TvIcons.Info,
             onClick = onOpenOptions,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                .then(optionsFocusRequester?.let { Modifier.focusRequester(it) } ?: Modifier),
             compact = true,
             // Somewhere for left off the grid to land while nothing in the
             // list is selected - in category editing, or with no groups at
@@ -191,3 +195,11 @@ internal fun GuideGroupRail(
         }
     }
 }
+
+/**
+ * The first group as the rail lists them: by the viewer's own order where they
+ * have given one, which puts the groups they have not placed last, and
+ * otherwise in the order of the playlist.
+ */
+internal fun firstGuideGroup(groups: List<String>, manualPositions: Map<String, Long>): String? =
+    groups.minByOrNull { manualPositions["group:$it"] ?: Long.MAX_VALUE }

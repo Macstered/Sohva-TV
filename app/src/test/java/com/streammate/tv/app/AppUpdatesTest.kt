@@ -57,6 +57,42 @@ class AppUpdatesTest {
         assertEquals("https://example.invalid/sums.txt", fromBeta1?.checksums?.downloadUrl)
     }
 
+    // A sideloaded update runs interpreted for about a day unless the system
+    // is given the APK's profile while installing it.
+    @Test
+    fun `a release's install profile is chosen for the device's Android version`() {
+        fun asset(name: String) = ReleaseAsset(name, "https://example.invalid/$name", 1)
+        val release = AppRelease(
+            "v0.1.0-beta.23", "Beta 23", "Android build **53**", prerelease = true, draft = false,
+            assets = listOf(
+                // Listed before the APK: a build without this change takes the first ".apk" and must still find it.
+                asset("sohva-tv-0.1.0-beta.23.api31.dm"),
+                asset("sohva-tv-0.1.0-beta.23.api28.dm"),
+                asset("sohva-tv-0.1.0-beta.23.apk"),
+                asset("SHA256SUMS.txt"),
+            ),
+        )
+        assertEquals("sohva-tv-0.1.0-beta.23.apk", release.apk?.name)
+        assertEquals("sohva-tv-0.1.0-beta.23.api31.dm", release.installProfile(34)?.name)
+        assertEquals("sohva-tv-0.1.0-beta.23.api31.dm", release.installProfile(31)?.name)
+        assertEquals("sohva-tv-0.1.0-beta.23.api28.dm", release.installProfile(30)?.name)
+        assertEquals("sohva-tv-0.1.0-beta.23.api28.dm", release.installProfile(28)?.name)
+        assertNull("Android 8 cannot take one", release.installProfile(27))
+
+        assertEquals("sohva-tv-0.1.0-beta.23.api28.dm", AppUpdates.selectUpdate(listOf(release), 52, sdkInt = 30)?.profile?.name)
+        assertNull(AppUpdates.selectUpdate(listOf(release), 52)?.profile)
+        // Another APK's profile is not this one's.
+        val mismatched = release.copy(assets = listOf(asset("sohva-tv-0.1.0-beta.23.apk"), asset("sohva-tv-0.1.0-beta.22.api28.dm")))
+        assertNull(mismatched.installProfile(30))
+    }
+
+    @Test
+    fun `a release without a profile is an update all the same`() {
+        val update = AppUpdates.selectUpdate(AppUpdates.parseReleases(releases), installedVersionCode = 2, sdkInt = 30)
+        assertEquals(3, update?.versionCode)
+        assertNull(update?.profile)
+    }
+
     @Test
     fun `drafts, releases without a build line, and older builds are never offered`() {
         val parsed = AppUpdates.parseReleases(releases)

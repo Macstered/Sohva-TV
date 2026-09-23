@@ -19,13 +19,22 @@ import com.streammate.tv.core.model.IptvSourceConfiguration
 import com.streammate.tv.core.model.LibraryRoom
 import com.streammate.tv.app.ProfileRestriction
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.withIndex
 
 data class StoredIptvChannel(
     val id: String,
@@ -409,8 +418,32 @@ class GuideRepository(
     private val dao: GuideDao,
     private val clock: () -> Long = System::currentTimeMillis,
     val organization: OrganizationRepository? = null,
+    /**
+     * Where the last channel rows are kept between two visits to the guide.
+     * Without one nothing is kept and every visit reads, as the tests expect.
+     */
+    private val rosterScope: CoroutineScope? = null,
+    private val rosterKeptMillis: Long = ROSTER_KEPT_MILLIS,
 ) {
     constructor(dao: GuideDao, clock: () -> Long) : this(dao, clock, null)
+
+    // Leaving the guide for a channel and coming back is the commonest thing
+    // done on it, and each return read its rows again: three seconds of
+    // "Loading" for a source of 56,000 on the Shield. The rows last read are
+    // kept instead, for as long as nothing behind them has been written.
+    // Room only tells an observer, and between two visits the guide has none,
+    // so this one counts the writes for it.
+    private val rosterWrites = AtomicLong()
+    @Volatile private var keptRoster: KeptRoster? = null
+    private var rosterRelease: Job? = null
+    private var rosterReaders = 0
+
+    init {
+        // The flow's first value is the state it found, not a write. Counted,
+        // it arrived after the first read often enough to make the kept rows
+        // look stale and be read again.
+        rosterScope?.launch { dao.observeGuideChannelTables().drop(1).collect { rosterWrites.incrementAndGet() } }
+    }
     // Room runs the query off the main thread but the row-to-domain mapping ran
     // wherever the flow was collected, which is the main thread for every screen
     // in this app. distinctUntilChanged also drops the repeat emissions Room
@@ -479,13 +512,21 @@ class GuideRepository(
     fun observeChannelsForSource(sourceId: String, groupTitle: String?): Flow<List<GuideTimelineChannel>> =
         dao.observeGuideChannelTables()
             .conflate()
-            .map { readChannels(sourceId, groupTitle) }
+            .withIndex()
+            // The first value is the state of things as the guide opens, which
+            // the kept rows may still be. Every later one is a write.
+            .map { (index, _) -> (if (index == 0) keptChannels(sourceId, groupTitle) else null) ?: readChannels(sourceId, groupTitle) }
+            .onStart { rosterReaderArrived() }
+            .onCompletion { rosterReaderLeft() }
             .let { organization?.organize(it, com.streammate.tv.core.model.LibraryRoom.LIVE, GuideTimelineChannel::organizationItem) ?: it }
             .distinctUntilChanged()
             .flowOn(Dispatchers.Default)
 
     private suspend fun readChannels(sourceId: String, groupTitle: String?): List<GuideTimelineChannel> {
         val started = System.nanoTime()
+        // Counted before the read: a write that lands during it leaves the
+        // rows looking older than they are, never newer.
+        val writes = rosterWrites.get()
         var attempts = 0
         var read: ChannelPages
         do {
@@ -503,7 +544,47 @@ class GuideRepository(
                     "$elapsedMillis ms" + if (attempts > 1) ", $attempts attempts" else "",
             )
         }
+        // An empty read costs nothing to repeat and has no snapshot to be checked against.
+        keptRoster = read.rows.firstOrNull()?.takeIf { rosterScope != null && !read.spliced }
+            ?.let { KeptRoster(sourceId, groupTitle, writes, it.snapshotId, channels) }
         return channels
+    }
+
+    private class KeptRoster(
+        val sourceId: String,
+        val groupTitle: String?,
+        val writes: Long,
+        val snapshotId: String,
+        val channels: List<GuideTimelineChannel>,
+    )
+
+    /**
+     * The rows of the last read, if they are of this selection and nothing has
+     * been written since. The count of writes arrives a moment after the write
+     * itself, so the one write that replaces every row, a playlist's
+     * activation, is asked after directly.
+     */
+    private suspend fun keptChannels(sourceId: String, groupTitle: String?): List<GuideTimelineChannel>? {
+        val kept = keptRoster ?: return null
+        if (kept.sourceId != sourceId || kept.groupTitle != groupTitle || kept.writes != rosterWrites.get()) return null
+        if (dao.activePlaylistSnapshotId(sourceId) != kept.snapshotId) return null
+        return kept.channels
+    }
+
+    private fun rosterReaderArrived() = synchronized(rosterWrites) {
+        rosterReaders++
+        rosterRelease?.cancel()
+        rosterRelease = null
+    }
+
+    /** A source's rows are tens of megabytes: kept for a return to the guide, not for the evening. */
+    private fun rosterReaderLeft() = synchronized(rosterWrites) {
+        if (--rosterReaders > 0) return
+        rosterRelease?.cancel()
+        rosterRelease = rosterScope?.launch {
+            delay(rosterKeptMillis)
+            synchronized(rosterWrites) { if (rosterReaders == 0) keptRoster = null }
+        }
     }
 
     private class ChannelPages(val rows: List<GuideRosterRow>, val pages: Int, val spliced: Boolean)
@@ -934,6 +1015,7 @@ class GuideRepository(
         const val CHANNEL_PAGE_SIZE = 2_000
         const val CHANNEL_READ_ATTEMPTS = 3
         const val SLOW_CHANNEL_READ_MILLIS = 250L
+        const val ROSTER_KEPT_MILLIS = 10 * 60_000L
         const val MAX_CUSTOM_CHANNEL_LISTS = 1_000
         const val MAX_CUSTOM_LIST_MEMBERS = 500_000
         const val MIN_SEARCH_QUERY_LENGTH = 2

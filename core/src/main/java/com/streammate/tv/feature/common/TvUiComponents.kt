@@ -41,6 +41,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
@@ -96,8 +97,14 @@ fun StreamMateScreenBackground(
         horizontal = spacing.safeHorizontal,
         vertical = spacing.safeVertical,
     )
-    Box(modifier = modifier.fillMaxSize().background(palette.background)) {
-        Canvas(Modifier.fillMaxSize()) {
+    // The ground and its two washes were four passes over every pixel on
+    // every frame, repainted whenever anything moved: on the Mali-G31 of an
+    // Elisa box, a fair share of a frame before any of the screen is drawn.
+    // Painted once into a layer of their own, a frame draws them as a single
+    // picture; the layer is repainted only if the screen's size or theme
+    // changes. The flat fill the gradient always covered is gone.
+    Box(modifier = modifier.fillMaxSize()) {
+        Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
             val w = size.width
             val h = size.height
 

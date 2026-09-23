@@ -1,31 +1,46 @@
-# Sohva TV 0.1.0-beta.22
+# Sohva TV 0.1.0-beta.23
 
-Prepared: **19 September 2026**. Android version code: **51**.
+Prepared: **23 September 2026**. Android version code: **57**.
 
-This beta improves large-playlist guide loading, remote navigation and memory use during playback.
-No addons, subscriptions, channels, credentials
+This beta is lighter on slower TV boxes, opens the Live TV guide on a group,
+finishes movies and episodes properly, and keeps a refreshed playlist in the
+guide. No addons, subscriptions, channels, credentials
 or accounts are included.
 
-## New in beta 22
+## New in beta 23
 
-- **Faster large-playlist loading.** Channel lists load in small pages, and
-  leaving a list cancels its remaining reads. Large lists also use less
-  temporary memory while being ordered.
-- **Lower memory use during playback.** Fixed a memory-exhaustion path in
-  background sports-channel matching that could make playback stutter or
-  crash with large EPGs. Matching now reads small batches and retains only
-  the best results, preserving saved decisions and channel visibility.
-- **Reliable held-button paging.** Holding Left or Right through guide time
-  pages keeps navigation on the current channel while new listings load.
-- **Smoother guide navigation.** Focus changes and programme arrivals update
-  less of the screen. Guide accessibility descriptions are simpler, reducing
-  work when screen readers or button-remapping services are enabled.
-- **Better diagnostics.** Large or slow channel reads are recorded as counts
-  and timings without playlist contents.
+- **Lighter on slower TV boxes.** The app is optimised and less than half its
+  former size, static backgrounds are drawn once rather than on every frame,
+  film browsing prepares titles in the background, and moving around Home no
+  longer redraws the whole page.
+- **Updates that arrive ready.** From this beta on, an update installed from
+  **Settings > About > Check for updates** brings its startup profile, so
+  Android prepares the new version as it installs instead of during a later
+  idle period. The update to this beta from an earlier one does not benefit
+  yet.
+- **The guide opens on a group.** Live TV opens on your playlist's first group,
+  or on the group of the channel you came from, instead of reading every
+  channel. **All channels** remains on the group list. Returning within ten
+  minutes reuses the channel list the guide last read.
+- **Switching playlist in the guide** lands on the new playlist's first group
+  and its first channel. Closing the guide options returns focus to where they
+  were opened.
+- **A refreshed playlist stays in the guide.** Refreshing a playlist twice at
+  once, for example with **Sync everything** running in the background and
+  **Refresh channels**, could leave it without channels in the guide. Imports
+  of one playlist now run one at a time. If a playlist is missing from the
+  guide on an earlier beta although Settings lists its channels, refresh that
+  playlist once.
+- **Finished movies and episodes.** A finished movie returns to its details
+  page instead of a black screen. With autoplay on, Discover episodes continue
+  to the next one, across seasons; the last episode returns to the series
+  details.
 
-Tested on Shield with a large playlist and sustained playback, plus Android
-emulator regression and memory stress tests. Please report results from other
-devices, especially lower-memory TV sticks.
+Tested on Shield with large playlists, playlist refreshes and playback, plus
+emulator regression tests and measurements on an emulator set up like a slower
+TV box. Please report results from other devices, especially lower-powered TV
+boxes. This is the first beta built with Android's R8 optimiser: if something
+that worked in beta 22 fails, please report it with diagnostics.
 
 See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
@@ -33,7 +48,7 @@ See [Discover setup](ADDONS.md) and the [tester checklist](TESTING.md).
 
 Install over your existing Sohva TV app; **do not uninstall or clear storage**.
 You may also use **Settings > About > Check for updates** once this beta is
-published. Android build 51 uses the existing production signing identity.
+published. Android build 57 uses the existing production signing identity.
 The IPTV database stays at version 29 and the Discover progress database at
 4; no migration runs. No data is copied from a separate Lab app. Existing Trakt connections are retained; on a new installation,
 Trakt is off until you connect an account.

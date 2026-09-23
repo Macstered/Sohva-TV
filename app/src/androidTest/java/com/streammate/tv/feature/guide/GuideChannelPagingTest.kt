@@ -12,6 +12,7 @@ import com.streammate.tv.iptv.repository.GuideTimelineChannel
 import com.streammate.tv.iptv.repository.OrganizationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
@@ -152,6 +153,92 @@ class GuideChannelPagingTest {
         collecting.join()
         Thread.sleep(500)
         assertEquals("The read went on without anyone to read for", 1, pageReads.get())
+    }
+
+    // Leaving the guide for a channel and coming back read the whole source
+    // again: three seconds of "Loading" on the Shield for 56,000 channels.
+    @Test
+    fun aReturnToTheGuideIsGivenTheRowsLastReadWithoutReadingThem() = runBlocking {
+        val keeping = CoroutineScope(Dispatchers.Default)
+        val repository = GuideRepository(database.guideDao(), rosterScope = keeping)
+        val first = repository.observeChannelsForSource("test", null).first()
+        assertEquals(3, pageReads.get())
+        val second = repository.observeChannelsForSource("test", null).first()
+        assertEquals("The rows were read again", 3, pageReads.get())
+        assertTrue(first === second)
+        // Another selection is another read, and takes the place of the first.
+        assertEquals(CHANNELS / 5, repository.observeChannelsForSource("test", "Group 2").first().size)
+        assertEquals(4, pageReads.get())
+        assertEquals(CHANNELS, repository.observeChannelsForSource("test", null).first().size)
+        assertEquals(7, pageReads.get())
+        keeping.cancel()
+    }
+
+    @Test
+    fun aRepositoryGivenNowhereToKeepRowsReadsThemEachTime() = runBlocking {
+        val repository = GuideRepository(database.guideDao())
+        repository.observeChannelsForSource("test", null).first()
+        repository.observeChannelsForSource("test", null).first()
+        assertEquals(6, pageReads.get())
+    }
+
+    @Test
+    fun aWriteMadeWhileNobodyWasInTheGuideIsSeenOnReturn() = runBlocking {
+        val keeping = CoroutineScope(Dispatchers.Default)
+        val repository = GuideRepository(database.guideDao(), rosterScope = keeping)
+        assertEquals("Channel 1", repository.observeChannelsForSource("test", null).first().first().name)
+        database.guideDao().upsertChannelPreference(
+            ChannelPreferenceEntity(id(7), "test", "Renamed", null, hidden = false, sortOrder = 0, manualXmltvChannelId = null, updatedAtEpochMillis = 2),
+        )
+        // Room tells its observers of a write a moment after it; in the app
+        // the moment is the time it takes to get back to the guide.
+        val renamed = withTimeout(30_000) {
+            var rows = repository.observeChannelsForSource("test", null).first()
+            while (rows.first().name != "Renamed") {
+                kotlinx.coroutines.delay(50)
+                rows = repository.observeChannelsForSource("test", null).first()
+            }
+            rows
+        }
+        assertEquals(CHANNELS, renamed.size)
+        keeping.cancel()
+    }
+
+    @Test
+    fun aPlaylistActivatedWhileNobodyWasInTheGuideIsReadOnReturnWhateverRoomHasSaid() = runBlocking {
+        val keeping = CoroutineScope(Dispatchers.Default)
+        val repository = GuideRepository(database.guideDao(), rosterScope = keeping)
+        repository.observeChannelsForSource("test", null).first()
+        database.guideDao().upsertChannels((1..CHANNELS).map { index -> channel("next", index, "Next") })
+        // Wait out the word of that write, so that what follows is the kept
+        // rows' own check and not the count of writes.
+        withTimeout(30_000) {
+            while (true) {
+                val before = pageReads.get()
+                repository.observeChannelsForSource("test", null).first()
+                if (pageReads.get() == before) break
+                kotlinx.coroutines.delay(50)
+            }
+        }
+        // Straight through the helper: Room is told nothing of this one.
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE import_state SET activeSnapshotId = 'next' WHERE sourceId = 'test' AND kind = 'playlist'",
+        )
+        val channels = repository.observeChannelsForSource("test", null).first()
+        assertTrue("The old playlist's rows were served", channels.all { it.name.startsWith("Next ") })
+        keeping.cancel()
+    }
+
+    @Test
+    fun theRowsAreLetGoWhenNobodyComesBackForThem() = runBlocking {
+        val keeping = CoroutineScope(Dispatchers.Default)
+        val repository = GuideRepository(database.guideDao(), rosterScope = keeping, rosterKeptMillis = 200)
+        repository.observeChannelsForSource("test", null).first()
+        assertEquals(3, pageReads.get())
+        Thread.sleep(1_000)
+        repository.observeChannelsForSource("test", null).first()
+        assertEquals("Tens of megabytes were held for a visit that did not come", 6, pageReads.get())
+        keeping.cancel()
     }
 
     private fun id(index: Int) = "test:" + (CHANNELS - index).toString().padStart(5, '0')

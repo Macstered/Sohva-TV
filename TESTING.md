@@ -1,7 +1,30 @@
 # Sohva TV beta tester checklist
 
-Build: **0.1.0-beta.22 (51)**. Use only sources you are authorized to access.
+Build: **0.1.0-beta.23 (57)**. Use only sources you are authorized to access.
 Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 23: slower boxes, the guide's groups and finished playback
+
+1. On a slower TV box, move around Home, the Live TV guide and the film and
+   series walls, and compare with beta 22. Note your device model and anything
+   still slow, and use **Settings > About > Save diagnostics**.
+2. Open Live TV. It should open on your playlist's first group, or on the
+   group of the channel you came from, and **All channels** should still be on
+   the group list. Leave the guide and return within ten minutes: the channel
+   list should appear at once.
+3. With more than one playlist, press Left in the guide, choose **Options**,
+   switch playlist and press Back. Focus should be on the first channel of the
+   new playlist's first group. Closing the options without switching should
+   return focus to where you opened them.
+4. Start **Sync everything**, then press **Refresh channels** for one playlist
+   while it runs. When both finish, the playlist should still be in the guide
+   with all of its channels.
+5. Let a movie play to the end: it should return to its details page. In
+   Discover, with autoplay on, let an episode finish: the next episode should
+   start, also across seasons, and the last episode should return to the
+   series details.
+6. This is the first beta optimised with Android's R8. If anything that worked
+   in beta 22 fails, report the screen and the steps, with diagnostics.
 
 ## Beta 22: large playlists, guide paging and memory
 

@@ -11,7 +11,11 @@ import com.streammate.tv.core.database.OrganizationSnapshot
 import com.streammate.tv.core.database.toEntity
 import com.streammate.tv.core.model.*
 import com.streammate.tv.iptv.metadata.catalogueWorkKey
+import android.os.Process
+import java.util.concurrent.Executors
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.*
 
 data class OrganizationReadState(
@@ -36,6 +40,23 @@ private const val METADATA_MATCH_SETTLE_MILLIS = 60_000L
 
 /** Films per page of the identity pass: a few thousand keeps each page's aliases to a few chunks. */
 private const val IDENTITY_PAGE_SIZE = 2_000
+
+/**
+ * The film identity pass runs a regular-expression title normalisation for
+ * every film after a catalogue or metadata change: seconds of CPU on the
+ * emulator for thirty thousand films, and a minute or more on the four slow
+ * cores of a TV box. On the default pool it competed with the screen at the
+ * same priority. On its own thread at background priority, which Android also
+ * keeps to the background CPU set, it gives way to the interface.
+ */
+private val filmIdentityDispatcher: CoroutineDispatcher by lazy {
+    Executors.newSingleThreadExecutor { task ->
+        Thread({
+            runCatching { Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND) }
+            task.run()
+        }, "SohvaFilmIdentity").apply { isDaemon = true }
+    }.asCoroutineDispatcher()
+}
 
 class OrganizationRepository(
     private val dao: OrganizationDao,
@@ -144,7 +165,7 @@ class OrganizationRepository(
             registerAllMovieIdentities()
             preferences?.setMovieIdentityMark(mark)
         }
-    }.flowOn(Dispatchers.Default)
+    }.flowOn(filmIdentityDispatcher)
 
     /**
      * Folds every active film into the alias table, a page at a time. A copy

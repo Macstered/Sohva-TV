@@ -29,6 +29,23 @@ data class AppRelease(
 
     val checksums: ReleaseAsset? get() = assets.firstOrNull { it.name.equals("SHA256SUMS.txt", ignoreCase = true) }
 
+    /**
+     * The install-time profile of the APK for a device of [sdkInt], when the
+     * release carries one: the APK's name with ".api31.dm" for Android 12 and
+     * later, ".api28.dm" for Android 9 to 11, whose profile format is older.
+     * Earlier Androids cannot take one.
+     */
+    fun installProfile(sdkInt: Int): ReleaseAsset? {
+        val apkName = apk?.name ?: return null
+        val suffix = when {
+            sdkInt >= 31 -> ".api31.dm"
+            sdkInt >= 28 -> ".api28.dm"
+            else -> return null
+        }
+        val wanted = apkName.dropLast(".apk".length) + suffix
+        return assets.firstOrNull { it.name == wanted }
+    }
+
     private companion object {
         val VERSION_CODE_PATTERN = Regex("""[Bb]uild \*\*(\d+)\*\*""")
     }
@@ -41,6 +58,8 @@ data class AvailableUpdate(
     val notes: String,
     val apk: ReleaseAsset,
     val checksums: ReleaseAsset?,
+    /** Compiled with at install, so the update's first start is not an interpreted one. Optional. */
+    val profile: ReleaseAsset? = null,
 )
 
 /**
@@ -83,7 +102,7 @@ object AppUpdates {
      * and that carries an APK. Drafts and releases with no stated build are
      * never offered: a release that cannot say what it is cannot be compared.
      */
-    fun selectUpdate(releases: List<AppRelease>, installedVersionCode: Int): AvailableUpdate? =
+    fun selectUpdate(releases: List<AppRelease>, installedVersionCode: Int, sdkInt: Int = 0): AvailableUpdate? =
         releases
             .asSequence()
             .filter { !it.draft }
@@ -97,6 +116,7 @@ object AppUpdates {
                     notes = release.body,
                     apk = apk,
                     checksums = release.checksums,
+                    profile = release.installProfile(sdkInt),
                 )
             }
             .maxByOrNull { it.versionCode }

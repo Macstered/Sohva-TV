@@ -80,6 +80,7 @@ internal class AddonPlayback(
     private var session: AddonProgressSession? = null
     private var sequence = 0L
     private var everReady = false
+    private var ended = false
     private var released = false
     private var foreground = true
     init {
@@ -132,7 +133,7 @@ internal class AddonPlayback(
                     val duration = player.duration
                     if (duration > 0) { pendingResumeFraction = null; player.seekTo((duration * fraction).toLong().coerceIn(0L, duration)) }
                 }
-                if (state == Player.STATE_ENDED) { snapshot(ended = true); trakt.ended() }
+                if (state == Player.STATE_ENDED) { ended = true; snapshot(); trakt.ended() }
             }
             override fun onPlayerError(error: PlaybackException) { failed = true; snapshot() }
             override fun onRenderedFirstFrame() { firstFrameReady = true; markStartup("first-frame") }
@@ -171,6 +172,7 @@ internal class AddonPlayback(
     private fun prepareMedia(position: Long, play: Boolean) {
         if (released || !foreground) return
         failed = false
+        ended = false
         ready = false; firstFrameReady = false
         val stream = selection.stream
         val bytes = subtitle
@@ -354,16 +356,19 @@ internal class AddonPlayback(
             throw AddonException(AddonFailure.NOT_FOUND)
         }
     }
-    fun snapshot(ended: Boolean = false) {
+    fun snapshot() {
         if (released || !everReady) return
         val progressSession = session ?: return
         positionMillis = player.currentPosition.coerceAtLeast(0)
         durationMillis = player.duration.coerceAtLeast(0)
         val position = positionMillis
         val duration = durationMillis
+        // Disposal also saves progress; it must preserve the terminal completion,
+        // including streams whose declared duration differs from the actual end.
+        val completed = ended
         val seq = ++sequence
         host.pendingProgressWrite = host.persistenceScope.launch {
-            try { host.progress.save(progressSession, seq, position, duration, ended) }
+            try { host.progress.save(progressSession, seq, position, duration, completed) }
             catch (_: AddonException) { progressFailure = true }
         }
     }

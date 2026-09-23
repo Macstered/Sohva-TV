@@ -89,6 +89,7 @@ try {
         Invoke-AddonProbe 'automatic-subtitles' $addonRunner 'com.streammate.tv.lab.AddonLabAutomaticSubtitleTest'
         Invoke-AddonProbe 'subtitle-timing' $addonRunner 'com.streammate.tv.lab.AddonLabSubtitleTimingTest'
         Invoke-AddonProbe 'player-navigation' $addonRunner 'com.streammate.tv.lab.AddonLabPlayerNavigationTest'
+        Invoke-AddonProbe 'playback-completion' $addonRunner 'com.streammate.tv.lab.AddonLabPlaybackCompletionTest,com.streammate.tv.lab.VodLabPlaybackCompletionTest'
         Invoke-AddonProbe 'search' $addonRunner 'com.streammate.tv.lab.AddonLabSearchTest'
         Invoke-AddonProbe 'library' $addonRunner 'com.streammate.tv.lab.AddonLabLibraryTest'
     } finally {

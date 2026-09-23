@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.repository
 
+import org.kxml2.io.KXmlParser
 import com.streammate.tv.core.network.GuideSource
 import com.streammate.tv.core.model.IptvImportScope
 import com.streammate.tv.core.model.IptvSourceConfiguration
@@ -386,7 +387,7 @@ class GuideImportServiceTest {
         val service = GuideImportService(
             sourceClient = TextGuideSource("#EXTINF:-1 tvg-id=one,One\nhttps://stream.example/one"),
             m3uParser = M3uParser(),
-            xmlTvParser = XmlTvParser(),
+            xmlTvParser = XmlTvParser(::KXmlParser),
             store = store,
             secretCipher = PrefixCipher,
             clock = { FIXED_NOW_MILLIS },
@@ -403,7 +404,7 @@ class GuideImportServiceTest {
     private fun service(source: GuideSource, store: RecordingGuideStore) = GuideImportService(
         sourceClient = source,
         m3uParser = M3uParser(),
-        xmlTvParser = XmlTvParser(),
+        xmlTvParser = XmlTvParser(::KXmlParser),
         store = store,
         secretCipher = PrefixCipher,
         // The feeds below are dated around EPG_START; the clock has to agree

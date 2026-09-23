@@ -383,12 +383,25 @@ fun StreamMateApp(
             if (backStack.lastOrNull() == Destination.Home) navigateTo(destination)
         }
     }
-    fun continueToNextEpisode(player: Destination.VodPlayer) {
-        if (!appPreferences.autoPlayNextEpisodeEnabled) return
+    fun finishVodPlayback(player: Destination.VodPlayer) {
         coroutineScope.launch {
-            val next = container.catalogueRepository.nextEpisode(player.contentKey) ?: return@launch
+            val next = try {
+                if (appPreferences.autoPlayNextEpisodeEnabled) container.catalogueRepository.nextEpisode(player.contentKey) else null
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { null }
+            val previous = backStack.dropLast(1)
+            // Search can start playback directly. Supply its title page when
+            // there is no existing details page underneath the finished player.
+            val details = if (next == null && previous.lastOrNull() !is Destination.MovieDetails &&
+                previous.lastOrNull() !is Destination.SeriesDetails) {
+                try {
+                    container.catalogueRepository.movie(player.contentKey)?.let { Destination.MovieDetails(it) }
+                        ?: container.catalogueRepository.seriesForEpisode(player.contentKey)?.let { Destination.SeriesDetails(it) }
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { null }
+            } else null
             if (backStack.lastOrNull() == player) {
-                backStack = backStack.dropLast(1) + Destination.VodPlayer(
+                backStack = if (next == null) previous + listOfNotNull(details) else previous + Destination.VodPlayer(
                     contentKey = next.contentKey,
                     resumePositionMillis = 0L,
                 )
@@ -831,7 +844,7 @@ fun StreamMateApp(
                     },
                     onInstall = {
                         when (val current = appUpdateState) {
-                            is AppUpdateState.Downloaded -> container.appUpdateChecker.install(current.update, current.file)
+                            is AppUpdateState.Downloaded -> container.appUpdateChecker.install(current.update, current.file, current.profile)
                             is AppUpdateState.NeedsInstallPermission -> container.appUpdateChecker.retryInstall()
                             else -> Unit
                         }
@@ -1002,7 +1015,7 @@ fun StreamMateApp(
                     )
                 },
                 onBack = ::handleBack,
-                onPlaybackEnded = { continueToNextEpisode(current) },
+                onPlaybackEnded = { finishVodPlayback(current) },
                 previewArtworkUrl = container.demoPlaybackArtworkUrl,
             )
         }

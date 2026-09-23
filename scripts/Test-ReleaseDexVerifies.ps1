@@ -70,6 +70,11 @@ if ($bad.Count -gt 0) {
     exit 1
 }
 
+# Verifying is not compiling: a method past ART's size limit verifies and
+# then runs interpreted after every start. The receipt covers both.
+& (Join-Path $PSScriptRoot 'Test-ReleaseMethodSizes.ps1') -Apk $apk
+if ($LASTEXITCODE -ne 0) { exit 1 }
+
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $apk).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText($receipt, "$hash $Serial $(Get-Date -Format o)`n", [Text.UTF8Encoding]::new($false))
 Write-Host "Release dex verifies cleanly ($ran verification lines, no rejections)." -ForegroundColor Green

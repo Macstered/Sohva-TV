@@ -25,6 +25,15 @@ import com.streammate.tv.feature.common.TvActionButton
 internal fun DiscoverTitleScreen(container: StreamMateContainer, profileId: String, progress: AddonWatchProgress, onBack: () -> Unit) {
     val context = LocalContext.current
     val host = remember(container) { AddonHost.get(context, container) }
+    StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { modifier ->
+        AddonHistoryDetailsScreen(host, profileId, progress, onBack, modifier)
+    }
+}
+
+/** Home and Discover history share title details and episode-completion behavior. */
+@Composable
+internal fun AddonHistoryDetailsScreen(host: AddonHost, profileId: String, progress: AddonWatchProgress,
+    onBack: () -> Unit, modifier: Modifier) {
     var installation by remember(progress) { mutableStateOf<InstalledAddon?>(null) }
     var missing by remember(progress) { mutableStateOf(false) }
     LaunchedEffect(progress, profileId) {
@@ -34,15 +43,13 @@ internal fun DiscoverTitleScreen(container: StreamMateContainer, profileId: Stri
         missing = installation == null
     }
     BackHandler(onBack = onBack)
-    StreamMateScreenBackground(contentPadding = PaddingValues(0.dp)) { modifier ->
-        val current = installation
-        if (current != null) {
-            val artwork = progress.artwork
-            val preview = AddonMedia(progress.identity.media, artwork?.name ?: progress.title, artwork?.poster, "poster", artwork?.background, null, null, emptyList())
-            AddonDetailsScreen(host, profileId, current, preview, onBack, modifier, initialVideo = progress.identity.video)
-        } else Column(modifier) {
-            Text(stringResource(if (missing) R.string.addon_access_denied else R.string.addon_loading))
-            TvActionButton(stringResource(R.string.addon_back), onBack)
-        }
+    val current = installation
+    if (current != null) {
+        val artwork = progress.artwork
+        val preview = AddonMedia(progress.identity.media, artwork?.name ?: progress.title, artwork?.poster, "poster", artwork?.background, null, null, emptyList())
+        AddonDetailsScreen(host, profileId, current, preview, onBack, modifier, initialVideo = progress.identity.video)
+    } else Column(modifier) {
+        Text(stringResource(if (missing) R.string.addon_access_denied else R.string.addon_loading))
+        TvActionButton(stringResource(R.string.addon_back), onBack)
     }
 }

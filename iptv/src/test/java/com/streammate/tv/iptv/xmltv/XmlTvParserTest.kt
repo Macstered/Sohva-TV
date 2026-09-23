@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.xmltv
 
+import org.kxml2.io.KXmlParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.zip.GZIPOutputStream
@@ -27,7 +28,7 @@ class XmlTvParserTest {
 
     @Test
     fun `streams channel and programme records`() {
-        val records = XmlTvParser().records(xml.stream()).toList()
+        val records = XmlTvParser(::KXmlParser).records(xml.stream()).toList()
         val channel = records[0] as XmlTvRecord.Channel
         val programme = records[1] as XmlTvRecord.Programme
 
@@ -42,8 +43,8 @@ class XmlTvParserTest {
 
     @Test
     fun `reads a UTF-8 byte order mark before the XML declaration`() {
-        val expected = XmlTvParser().records(xml.stream()).toList()
-        val records = XmlTvParser().records(("\uFEFF" + xml).stream()).toList()
+        val expected = XmlTvParser(::KXmlParser).records(xml.stream()).toList()
+        val records = XmlTvParser(::KXmlParser).records(("\uFEFF" + xml).stream()).toList()
 
         assertEquals(expected, records)
     }
@@ -54,16 +55,16 @@ class XmlTvParserTest {
         GZIPOutputStream(output).use { it.write(("\uFEFF" + xml).toByteArray(Charsets.UTF_8)) }
 
         val records = CompressionAwareInputStream.wrap(output.toByteArray().inputStream()).use {
-            XmlTvParser().records(it).toList()
+            XmlTvParser(::KXmlParser).records(it).toList()
         }
 
-        assertEquals(XmlTvParser().records(xml.stream()).toList(), records)
+        assertEquals(XmlTvParser(::KXmlParser).records(xml.stream()).toList(), records)
     }
 
     @Test
     fun `honours the declared encoding for accented programme text`() {
         val document = xml.replace("UTF-8", "ISO-8859-1").replace("Tappara - Ilves", "Météo à Tampère")
-        val records = XmlTvParser().records(document.toByteArray(Charsets.ISO_8859_1).inputStream()).toList()
+        val records = XmlTvParser(::KXmlParser).records(document.toByteArray(Charsets.ISO_8859_1).inputStream()).toList()
 
         assertEquals("Météo à Tampère", (records[1] as XmlTvRecord.Programme).title)
     }
@@ -72,7 +73,7 @@ class XmlTvParserTest {
     fun `detects UTF-16 byte order marks`() {
         val document = xml.replace("UTF-8", "UTF-16").replace("Liiga HD", "Jääkiekko")
         for (encoding in listOf(Charsets.UTF_16LE, Charsets.UTF_16BE)) {
-            val records = XmlTvParser().records(("\uFEFF" + document).toByteArray(encoding).inputStream()).toList()
+            val records = XmlTvParser(::KXmlParser).records(("\uFEFF" + document).toByteArray(encoding).inputStream()).toList()
             assertEquals("Jääkiekko", (records[0] as XmlTvRecord.Channel).displayName)
             assertEquals(2, records.size)
         }
@@ -85,7 +86,7 @@ class XmlTvParserTest {
 
         val records = CompressionAwareInputStream.wrap(
             ByteArrayInputStream(output.toByteArray()),
-        ).use { XmlTvParser().records(it).toList() }
+        ).use { XmlTvParser(::KXmlParser).records(it).toList() }
 
         assertEquals(2, records.size)
     }
@@ -102,7 +103,7 @@ class XmlTvParserTest {
             </tv>
         """.trimIndent()
 
-        val records = XmlTvParser().records(malformed.stream()).toList()
+        val records = XmlTvParser(::KXmlParser).records(malformed.stream()).toList()
 
         assertEquals(1, records.size)
         assertEquals("valid", (records.single() as XmlTvRecord.Channel).id)
@@ -127,7 +128,7 @@ class XmlTvParserTest {
             </tv>
         """.trimIndent()
 
-        val records = XmlTvParser().records(document.stream()).toList()
+        val records = XmlTvParser(::KXmlParser).records(document.stream()).toList()
 
         assertEquals(1, records.size)
         assertEquals("Good programme", (records.single() as XmlTvRecord.Programme).title)
@@ -145,7 +146,7 @@ class XmlTvParserTest {
             </tv>
         """.trimIndent()
 
-        val ids = XmlTvParser().records(document.stream())
+        val ids = XmlTvParser(::KXmlParser).records(document.stream())
             .filterIsInstance<XmlTvRecord.Channel>()
             .map { it.id }
             .toList()

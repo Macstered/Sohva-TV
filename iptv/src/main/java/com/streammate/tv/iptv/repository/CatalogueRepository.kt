@@ -1102,7 +1102,9 @@ class XtreamCatalogueImportService(
     // whichever dispatcher called them, and refreshEpisodes is called straight
     // from a LaunchedEffect, i.e. the main thread.
     suspend fun refresh(source: IptvSourceConfiguration): CatalogueImportSummary =
-        withContext(Dispatchers.IO) { refreshInternal(source) }
+        withContext(Dispatchers.IO) {
+            SourceImports.oneAtATime(source.id, SourceImports.CATALOGUE_KIND) { refreshInternal(source) }
+        }
 
     suspend fun refreshEpisodes(source: IptvSourceConfiguration, seriesId: String): Int =
         withContext(Dispatchers.IO) { refreshEpisodesInternal(source, seriesId) }

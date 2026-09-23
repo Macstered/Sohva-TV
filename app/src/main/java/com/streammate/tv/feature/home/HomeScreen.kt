@@ -90,6 +90,9 @@ import coil3.request.bitmapConfig
 import com.sohva.tv.addons.AddonWatchProgress
 import com.streammate.tv.trakt.TraktHomeTitle
 import kotlinx.coroutines.delay
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
 import com.streammate.tv.R
 import com.streammate.tv.app.AppPreferences
 import com.streammate.tv.app.AppPreferencesRepository
@@ -236,11 +239,18 @@ fun HomeScreen(
     // part-watched title stands, then the last channel, then a welcome.
     val idleHero = rememberIdleHero(resumeEntries, recentChannels, now)
     var focusedHero by remember(resume.profileId, resume.discoverAllowed) { mutableStateOf<HomeHero?>(null) }
+    // Every card writes the focus here and only this effect reads it. As
+    // produceState's key it was read by Home itself, which then recomposed,
+    // rows and all, on every press of the D-pad for a hero that changes only
+    // once focus rests: on a slow box, most of what a press cost. Home now
+    // recomposes when the hero changes.
+    val latestIdleHero by rememberUpdatedState(idleHero)
     val hero by key(resume.profileId, resume.discoverAllowed) {
-        produceState(initialValue = idleHero, focusedHero, idleHero) {
-            val focused = focusedHero
-            if (focused == null) value = idleHero
-            else { delay(HERO_FOCUS_SETTLE_MILLIS); value = focused }
+        produceState(initialValue = idleHero) {
+            snapshotFlow { focusedHero to latestIdleHero }.collectLatest { (focused, idle) ->
+                if (focused == null) value = idle
+                else { delay(HERO_FOCUS_SETTLE_MILLIS); value = focused }
+            }
         }
     }
     val heroDetails = rememberHeroDetails(hero, catalogueRepository, guideRepository, metadataRepository, discoverSynopsis, enabled = resume.settled)
@@ -643,8 +653,12 @@ private fun HomeHeroBackdrop(hero: HomeHero, artwork: String?, modifier: Modifie
     val palette = StreamMateThemeTokens.palette
     val context = LocalContext.current
     // The washes cover the whole screen so they end nowhere visible; only the
-    // picture is confined to the hero's part of it.
-    Box(modifier = modifier.fillMaxSize()) {
+    // picture is confined to the hero's part of it. Picture and washes are one
+    // layer, painted when the hero changes and otherwise drawn as it stands:
+    // moving along a row repainted three screen-sized passes per frame here,
+    // which a weak TV GPU notices. Layering over the ground gives the same
+    // picture as painting each over it in turn.
+    Box(modifier = modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
         val artwork = artwork?.takeIf(String::isNotBlank) ?: (hero as? HomeHero.Resume)?.entry?.backdropUrl?.takeIf(String::isNotBlank)
         // The picture fades out at its bottom and its left edge instead of being
         // painted over: what shows through is the screen's own ground, so there

@@ -18,6 +18,7 @@ $allowedNames = @(
 $allowedExtensions = @(
     '.apk',
     '.css',
+    '.dm',
     '.html',
     '.ico',
     '.jpeg',

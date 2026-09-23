@@ -51,7 +51,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 @OptIn(UnstableApi::class)
 internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: AddonWatchIdentity, title: String,
     selection: AddonPlaybackSelection, resume: Boolean, onBack: () -> Unit, modifier: Modifier, artwork: AddonWatchArtwork? = null, startupLogo: String? = null,
-    subtitleStartupTimeoutMillis: Long = AUTOMATIC_SUBTITLE_BUDGET_MILLIS, episode: AddonVideo? = null) {
+    subtitleStartupTimeoutMillis: Long = AUTOMATIC_SUBTITLE_BUDGET_MILLIS, episode: AddonVideo? = null,
+    onPlaybackEnded: () -> Unit = onBack) {
     val labels = addonStrings()
     val palette = StreamMateThemeTokens.palette
     val context = LocalContext.current
@@ -136,9 +137,19 @@ internal fun AddonPlayerScreen(host: AddonHost, profileId: String, identity: Add
     LaunchedEffect(Unit) {
         while (true) { position = player.currentPosition.coerceAtLeast(0); duration = player.duration.coerceAtLeast(0); delay(500) }
     }
+    val currentOnPlaybackEnded by rememberUpdatedState(onPlaybackEnded)
     DisposableEffect(player, lifecycle) {
+        var endedHandled = false
         val listener = object : Player.Listener {
-            override fun onEvents(player: Player, events: Player.Events) { playing = player.isPlaying; tracks = player.currentTracks }
+            override fun onEvents(player: Player, events: Player.Events) {
+                playing = player.isPlaying; tracks = player.currentTracks
+                // Individual callbacks have already saved completion progress. Pausing,
+                // buffering, errors and background stops must never advance the title.
+                if (player.playbackState == Player.STATE_ENDED && !endedHandled) {
+                    endedHandled = true
+                    currentOnPlaybackEnded()
+                }
+            }
         }
         player.addListener(listener)
         val observer = LifecycleEventObserver { _, event ->

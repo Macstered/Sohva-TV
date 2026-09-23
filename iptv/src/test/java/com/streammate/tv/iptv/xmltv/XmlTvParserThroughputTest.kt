@@ -1,5 +1,6 @@
 package com.streammate.tv.iptv.xmltv
 
+import org.kxml2.io.KXmlParser
 import java.io.ByteArrayInputStream
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -21,7 +22,7 @@ class XmlTvParserThroughputTest {
         val perChannel = 7 * 48
         val feed = syntheticFeed(channels, perChannel)
         val bytes = feed.toByteArray(Charsets.UTF_8)
-        val parser = XmlTvParser()
+        val parser = XmlTvParser(::KXmlParser)
 
         // Warm the JIT once, then measure.
         parser.records(ByteArrayInputStream(bytes)).count()

@@ -1,6 +1,6 @@
 # Sohva TV third-party notices
 
-For the **0.1.0-beta.22** tester package and accompanying public source. Sohva
+For the **0.1.0-beta.23** tester package and accompanying public source. Sohva
 TV's original source is licensed separately under `GPL-3.0-only`. This document
 does not relicense third-party material; third-party copyrights, licences,
 service terms, logos, and trademarks remain in force.
@@ -21,14 +21,12 @@ component families include:
 | Accompanist | Apache 2.0 | [Accompanist](https://github.com/google/accompanist) |
 | JSpecify annotations | Apache 2.0 | [JSpecify](https://github.com/jspecify/jspecify) |
 | AndroidSVG | Apache 2.0 | [AndroidSVG](https://github.com/BigBadaboom/androidsvg) |
-| kXML2 | BSD-style | [kXML2](https://central.sonatype.com/artifact/net.sf.kxml/kxml2/2.3.0) |
-| XmlPull API in kXML2 | Public domain | [kXML2 artifact](https://central.sonatype.com/artifact/net.sf.kxml/kxml2/2.3.0) |
 
 The complete Apache License 2.0 text is distributed as
-[`LICENSE-APACHE-2.0.txt`](LICENSE-APACHE-2.0.txt), and the kXML2 permission
-notice as [`LICENSE-KXML2.txt`](LICENSE-KXML2.txt). The APK also retains its
-embedded upstream licence files. This summary is not a grant of rights to
-upstream content.
+[`LICENSE-APACHE-2.0.txt`](LICENSE-APACHE-2.0.txt). The APK also retains its
+embedded upstream licence files. From beta 23 the app no longer bundles kXML2:
+programme guides are read with the XML parser built into Android. This summary
+is not a grant of rights to upstream content.
 
 ## Color palettes
 

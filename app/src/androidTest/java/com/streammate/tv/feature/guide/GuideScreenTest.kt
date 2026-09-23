@@ -3,6 +3,9 @@ package com.streammate.tv.feature.guide
 import androidx.compose.ui.test.onAllNodesWithText
 import org.junit.Assert.assertTrue
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.SemanticsMatcher
+import android.view.KeyEvent
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.semantics.SemanticsActions
@@ -67,6 +70,8 @@ class GuideScreenTest {
     private val timelineReads = ConcurrentLinkedQueue<List<Any?>>()
     private val listReads = ConcurrentLinkedQueue<String>()
     private val memberReads = ConcurrentLinkedQueue<List<Any?>>()
+    /** The group each page of channel rows was read for. */
+    private val channelPageReads = ConcurrentLinkedQueue<String>()
 
     // Compose must dispose its Room collectors before their database is closed.
     // JUnit @After runs inside the Compose rule, which raced teardown on CI.
@@ -83,12 +88,16 @@ class GuideScreenTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         context.getSharedPreferences("streammate_secure_sources", android.content.Context.MODE_PRIVATE)
             .edit().clear().commit()
+        // A test that switches source leaves the switch saved, and the next
+        // guide would open on that source rather than the test source.
+        AppPreferencesRepository(context).setLastGuideSourceId(null)
         database = Room.inMemoryDatabaseBuilder(context, StreamMateDatabase::class.java)
             .setQueryCallback({ sql, arguments ->
                 if (sql.contains("FROM channel_lists") || sql.contains("FROM channel_list_members")) {
                     listReads.add(sql)
                 }
                 if (sql.contains("FROM channel_list_members")) memberReads.add(arguments.toList())
+                if (sql.contains("c.channelId > ?")) channelPageReads.add(arguments[2]?.toString() ?: ALL_CHANNELS_READ)
                 if (sql.contains("p.programmeId AS programmeId")) {
                     timelineReads.add(arguments.toList())
                     epgGate?.let { gate ->
@@ -230,13 +239,12 @@ class GuideScreenTest {
         composeRule.awaitFocused("guide-channel-test:one")
         composeRule.onNodeWithTag("guide-channel-test:one").assertIsDisplayed()
 
-        // Left off the grid lands on whichever rail row is selected. The guide
-        // opens on All channels now rather than picking a group for you, so
-        // that is where it goes.
+        // Left off the grid lands on whichever rail row is selected: the
+        // first group, which the guide opens on, with All channels above it.
         composeRule.onNodeWithTag("guide-channel-test:one")
             .performKeyInput { pressKey(Key.DirectionLeft) }
-        composeRule.onNodeWithTag("guide-filter-all").assertIsFocused()
-        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").assertIsDisplayed()
+        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").assertIsFocused()
+        composeRule.onNodeWithTag("guide-filter-all").assertIsDisplayed()
 
         // The hero carries the actions for whatever the grid is pointing at.
         composeRule.onNodeWithTag("guide-preview-watch").assertIsDisplayed()
@@ -267,25 +275,31 @@ class GuideScreenTest {
     }
 
     /**
-     * All channels is a state, not the absence of one.
+     * The guide opens on its first group, and All channels is a state that
+     * can be chosen, not the absence of one.
      *
-     * The guide used to select the first group on arrival, so the whole
-     * line-up could never be seen at once and there was no way back to it once
-     * a group had been picked.
+     * Opening on All channels read every row of the source each time the
+     * guide was opened: 56,000 of them and three seconds of "Loading" on the
+     * Shield. An earlier guide that opened on a group had no way to the whole
+     * line-up at all, which is why this one was given the entry on the rail.
      */
     @Test
-    fun theGuideOpensOnAllChannelsAndCanReturnToIt() {
+    fun theGuideOpensOnItsFirstGroupAndAllChannelsCanBeChosen() {
+        seedExtraChannels(3)
         showGuide()
         composeRule.awaitFocused("guide-channel-test:one")
+        composeRule.onNodeWithTag("guide-channel-test:two").assertIsDisplayed()
+        composeRule.onAllNodesWithTag("guide-channel-test:extra-1").assertCountEquals(0)
+        assertTrue("The whole source was read to show one group", channelPageReads.none { it == ALL_CHANNELS_READ })
 
         // The groups stay out of the way until left is pressed from the fixed
         // channel column.
         composeRule.onAllNodesWithTag("guide-filter-all").assertCountEquals(0)
         composeRule.onNodeWithTag("guide-channel-test:one")
             .performKeyInput { pressKey(Key.DirectionLeft) }
-        composeRule.onNodeWithTag("guide-filter-all").assertIsDisplayed().assertIsFocused()
-        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").performClick()
-        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").assertIsDisplayed().assertIsFocused()
+        composeRule.onNodeWithTag("guide-filter-all").performClick()
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-test:extra-1").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithTag("guide-channel-test:one").assertIsDisplayed()
 
         // A refreshed list can restore focus to the grid without sending the
@@ -297,11 +311,182 @@ class GuideScreenTest {
 
         composeRule.onNodeWithTag("guide-channel-test:one")
             .performKeyInput { pressKey(Key.DirectionLeft) }
-        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").assertIsFocused()
-        composeRule.onNodeWithTag("guide-filter-all").performClick()
-        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("guide-filter-all").assertIsFocused()
+        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").performClick()
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-test:extra-1").fetchSemanticsNodes().isEmpty() }
         composeRule.onNodeWithTag("guide-channel-test:one").assertIsDisplayed()
         composeRule.onNodeWithTag("guide-channel-test:two").assertIsDisplayed()
+    }
+
+    /**
+     * Switching source lands on its first group, as opening the guide does.
+     * It landed on all of the source's channels: on the Shield, a four-second
+     * read of 57,644 rows at every switch to the large source.
+     */
+    @Test
+    fun switchingSourceLandsOnItsFirstGroupRatherThanEveryChannel() {
+        seedSecondSource()
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+        channelPageReads.clear()
+
+        // Options live in the group drawer, which Left opens.
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.onNodeWithTag("guide-options").performClick()
+        composeRule.onNodeWithTag("guide-filter-source").performClick()
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-second:ch-1").fetchSemanticsNodes().isNotEmpty() }
+
+        composeRule.onAllNodesWithTag("guide-channel-second:ch-4").assertCountEquals(0)
+        composeRule.onAllNodesWithTag("guide-channel-test:one").assertCountEquals(0)
+        assertTrue("The new source was read whole: $channelPageReads", channelPageReads.none { it == ALL_CHANNELS_READ })
+        assertTrue(channelPageReads.contains("Alpha"))
+    }
+
+    /**
+     * Closing the options after a switch puts focus on the new source's first
+     * channel, the way the owner goes: Left into the drawer, up to Options,
+     * OK, OK on the source, Back. The sheet's buttons leave with it, and focus
+     * left to itself fell to the first focusable on the screen, the hero's
+     * buttons at the top.
+     */
+    @Test
+    fun closingTheOptionsAfterASourceSwitchLandsOnItsFirstChannel() {
+        seedSecondSource()
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        pressUntilFocused(Key.DirectionUp, "guide-options")
+        composeRule.onNodeWithTag("guide-options").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitFocused("guide-filter-source")
+        composeRule.onNodeWithTag("guide-filter-source").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-second:ch-1").fetchSemanticsNodes().isNotEmpty() }
+
+        pressBackOnTheRemote()
+        composeRule.awaitFocused("guide-channel-second:ch-1")
+        composeRule.onAllNodesWithTag("guide-options-sheet").assertCountEquals(0)
+        // Focus in the grid closes the drawer, as choosing a group does.
+        composeRule.onAllNodesWithTag("guide-filter-all").assertCountEquals(0)
+    }
+
+    /**
+     * A switch starts the source afresh, the one the guide was opened on
+     * included: back on it, the guide shows its first group and focus is on
+     * its first channel, not on the channel the guide was opened for.
+     */
+    @Test
+    fun switchingBackToTheOpeningSourceLandsOnItsFirstChannel() {
+        seedSecondSource()
+        showGuide(initialChannelId = "test:two")
+        composeRule.awaitFocused("guide-channel-test:two")
+
+        // Menu opens the options from the grid.
+        composeRule.onNodeWithTag("guide-channel-test:two").performKeyInput { pressKey(Key.Menu) }
+        composeRule.awaitFocused("guide-filter-source")
+        composeRule.onNodeWithTag("guide-filter-source").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-second:ch-1").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithTag("guide-filter-source").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitUntil {
+            composeRule.onAllNodesWithTag("guide-channel-test:one").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag("guide-channel-second:ch-1").fetchSemanticsNodes().isEmpty()
+        }
+
+        pressBackOnTheRemote()
+        composeRule.awaitFocused("guide-channel-test:one")
+    }
+
+    /**
+     * Far down a long list, a switch still lands on the top of the next one.
+     * The lists on the owner's Shield run to thousands of channels, and the
+     * new list's first row is not on screen until the list is scrolled to it.
+     */
+    @Test
+    fun aSwitchFromFarDownAListLandsOnTheTopOfTheNext() {
+        seedExtraChannels(40, group = "News")
+        seedSecondSource(alphaCount = 40)
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+
+        pressUntilFocused(Key.DirectionDown, "guide-channel-test:extra-24", limit = 30)
+        composeRule.onAllNodesWithTag("guide-channel-test:one").assertCountEquals(0)
+
+        composeRule.onNodeWithTag("guide-channel-test:extra-24").performKeyInput { pressKey(Key.Menu) }
+        composeRule.awaitFocused("guide-filter-source")
+        composeRule.onNodeWithTag("guide-filter-source").performKeyInput { pressKey(Key.DirectionCenter) }
+        val secondSourceRow = SemanticsMatcher("a row of the second source") {
+            it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("guide-channel-second:") == true
+        }
+        composeRule.awaitUntil { composeRule.onAllNodes(secondSourceRow).fetchSemanticsNodes().isNotEmpty() }
+
+        pressBackOnTheRemote()
+        composeRule.awaitFocused("guide-channel-second:ch-1")
+    }
+
+    /**
+     * Back from the group manager the guide opens with its options showing,
+     * and its list is read under them. Closing them puts focus in the list,
+     * not on the hero at the top.
+     */
+    @Test
+    fun closingTheOptionsOnReturnFromTheGroupManagerPutsFocusInTheList() {
+        showGuide(startInOptions = true, initialManagedGroup = "News")
+        composeRule.awaitFocused("guide-filter-source")
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-test:one").fetchSemanticsNodes().isNotEmpty() }
+
+        pressBackOnTheRemote()
+        composeRule.awaitFocused("guide-channel-test:one")
+    }
+
+    /** Closed with nothing switched, the options give focus back to where they were opened from. */
+    @Test
+    fun closingTheOptionsWithoutASwitchReturnsFocusToWhereTheyWereOpened() {
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+
+        // From the drawer, closed with the sheet's own Close: back on Options.
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        pressUntilFocused(Key.DirectionUp, "guide-options")
+        composeRule.onNodeWithTag("guide-options").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitFocused("guide-filter-source")
+        pressUntilFocused(Key.DirectionDown, "guide-options-close")
+        composeRule.onNodeWithTag("guide-options-close").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitFocused("guide-options")
+        composeRule.onNodeWithTag("guide-filter-all").assertIsDisplayed()
+
+        // From the grid, with Menu, closed with Back: back on the channel.
+        pressUntilFocused(Key.DirectionRight, "guide-channel-test:one")
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.Menu) }
+        composeRule.awaitFocused("guide-filter-source")
+        pressBackOnTheRemote()
+        composeRule.awaitFocused("guide-channel-test:one")
+    }
+
+    /**
+     * With one playlist the source button has nothing to switch to and changes
+     * nothing. Preview 55 took the press for a switch and waited for a group
+     * to be chosen for the same source, which nothing did: the rows stayed
+     * under a reading notice until the guide was opened again.
+     */
+    @Test
+    fun theSourceButtonWithOnePlaylistLeavesTheGuideAsItWas() {
+        seedExtraChannels(3)
+        showGuide()
+        composeRule.awaitFocused("guide-channel-test:one")
+
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.Menu) }
+        composeRule.awaitFocused("guide-filter-source")
+        composeRule.onNodeWithTag("guide-filter-source").performKeyInput { pressKey(Key.DirectionCenter) }
+        pressBackOnTheRemote()
+        composeRule.awaitFocused("guide-channel-test:one")
+
+        // Still on its group, and another group's rows still arrive when it
+        // is chosen: stuck, the drawer had All channels selected and no
+        // group's rows were read any more.
+        composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
+        composeRule.awaitFocused("guide-group-${"News".hashCode()}")
+        pressUntilFocused(Key.DirectionDown, "guide-group-${"Extra".hashCode()}")
+        composeRule.onNodeWithTag("guide-group-${"Extra".hashCode()}").performKeyInput { pressKey(Key.DirectionCenter) }
+        composeRule.awaitUntil { composeRule.onAllNodesWithTag("guide-channel-test:extra-1").fetchSemanticsNodes().isNotEmpty() }
     }
 
     /** One line for the whole grid, drawn over the header and every row. */
@@ -537,7 +722,7 @@ class GuideScreenTest {
         showGuide()
         composeRule.awaitFocused("guide-channel-test:one")
         composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
-        composeRule.awaitFocused("guide-filter-all")
+        composeRule.awaitFocused("guide-group-${"News".hashCode()}")
         val groupTag = "guide-group-${"Group 20".hashCode()}"
         composeRule.onNodeWithTag("guide-group-list").performScrollToIndex(18)
         composeRule.onNodeWithTag(groupTag)
@@ -653,9 +838,53 @@ class GuideScreenTest {
         }
     }
 
+    /**
+     * A second playlist, below the test source by priority: [alphaCount]
+     * channels in its first group, Alpha, then three in Beta.
+     */
+    private fun seedSecondSource(alphaCount: Int = 3) = runBlocking {
+        val now = System.currentTimeMillis()
+        val dao = database.guideDao()
+        val count = alphaCount + 3
+        // Below the test source by priority, so the guide starts on that one.
+        dao.upsertSourceState(IptvSourceStateEntity("second", "Second source", "M3U", true, 1, -1, now))
+        dao.upsertChannels((1..count).map { index ->
+            IptvChannelEntity(
+                sourceId = "second", snapshotId = "second-playlist", channelId = "second:ch-$index",
+                tvgId = null, name = "Second $index", normalizedName = "second $index",
+                groupTitle = if (index <= alphaCount) "Alpha" else "Beta", logoUrl = null, encryptedStreamUrl = "encrypted",
+                userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = index,
+            )
+        })
+        dao.activatePlaylistSnapshot("second", "second-playlist", count, now)
+    }
+
+    /** Presses [key] where focus is, as the remote does, until [testTag] holds focus. */
+    private fun pressUntilFocused(key: Key, testTag: String, limit: Int = 10) {
+        repeat(limit) {
+            composeRule.waitForIdle()
+            if (composeRule.onAllNodes(hasTestTag(testTag) and isFocused()).fetchSemanticsNodes().isNotEmpty()) return
+            composeRule.onAllNodes(isFocused()).onFirst().performKeyInput { pressKey(key) }
+        }
+        composeRule.awaitFocused(testTag)
+    }
+
+    /**
+     * Back as the remote sends it, through the window: the sheet closes on the
+     * activity's back dispatch, which key input sent into Compose never reaches.
+     */
+    private fun pressBackOnTheRemote() {
+        composeRule.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        composeRule.waitForIdle()
+    }
+
     private fun showGuide(
         organization: com.streammate.tv.iptv.repository.OrganizationRepository? = null,
         onPlay: (String) -> Unit = {},
+        initialChannelId: String? = null,
+        startInOptions: Boolean = false,
+        initialManagedGroup: String? = null,
     ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         composeRule.setContent {
@@ -668,6 +897,9 @@ class GuideScreenTest {
                         SecretSettingsStore(context, TestSecretCipher),
                         OkHttpClient(),
                     ),
+                    initialChannelId = initialChannelId,
+                    startInOptions = startInOptions,
+                    initialManagedGroup = initialManagedGroup,
                     onBack = {},
                     onSettings = {},
                     onChannels = {},
@@ -799,7 +1031,7 @@ class GuideScreenTest {
                     IptvChannelEntity(
                         sourceId = source, snapshotId = "playlist", channelId = "$source:scale-$index",
                         tvgId = "scale-$index", name = "Scale $index", normalizedName = "scale $index",
-                        groupTitle = "Scale", logoUrl = null, encryptedStreamUrl = "encrypted",
+                        groupTitle = "News", logoUrl = null, encryptedStreamUrl = "encrypted",
                         userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = index + 100,
                     )
                 })
@@ -837,7 +1069,7 @@ class GuideScreenTest {
 
     @Test
     fun scrollingALargeGuideReadsOnlyNearbyChannelsAndFourHours() {
-        seedExtraChannels(600)
+        seedExtraChannels(600, group = "News")
         showGuide()
         composeRule.awaitUntil { timelineReads.isNotEmpty() }
         val first = timelineReads.first()
@@ -855,7 +1087,7 @@ class GuideScreenTest {
 
     @Test
     fun guideSearchFindsAnOffscreenProgrammeWithoutLoadingEveryTimeline() {
-        seedExtraChannels(600)
+        seedExtraChannels(600, group = "News")
         runBlocking {
             val now = System.currentTimeMillis()
             database.guideDao().upsertProgrammes(listOf(TvProgrammeEntity(
@@ -875,13 +1107,14 @@ class GuideScreenTest {
         assertTrue(timelineReads.all { it.size <= 82 })
     }
 
-    private fun seedExtraChannels(count: Int) = runBlocking {
+    /** In a group of their own, or in [group]: "News" is the one the guide opens on. */
+    private fun seedExtraChannels(count: Int, group: String = "Extra") = runBlocking {
         val now = System.currentTimeMillis()
         database.guideDao().upsertChannels((1..count).map { index ->
             IptvChannelEntity(
                 sourceId = "test", snapshotId = "playlist", channelId = "test:extra-$index",
                 tvgId = "extra$index", name = "Extra $index", normalizedName = "extra $index",
-                groupTitle = "Extra", logoUrl = null, encryptedStreamUrl = "encrypted",
+                groupTitle = group, logoUrl = null, encryptedStreamUrl = "encrypted",
                 userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = 100 + index,
             )
         })
@@ -936,7 +1169,7 @@ class GuideScreenTest {
             composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.MediaNext) }
             assertTrue(started.await(5, TimeUnit.SECONDS))
             composeRule.onNodeWithTag("guide-channel-test:one").performKeyInput { pressKey(Key.DirectionLeft) }
-            composeRule.onNodeWithTag("guide-filter-all").assertIsFocused()
+            composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").assertIsFocused()
         } finally {
             epgGate = null
             epgStarted = null
@@ -945,7 +1178,7 @@ class GuideScreenTest {
         composeRule.awaitUntil {
             composeRule.onAllNodesWithTag("guide-programme-test:one-none").fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithTag("guide-filter-all").assertIsFocused()
+        composeRule.onNodeWithTag("guide-group-${"News".hashCode()}").assertIsFocused()
     }
 
     @Test
@@ -960,7 +1193,7 @@ class GuideScreenTest {
                     IptvChannelEntity(
                         sourceId = "test", snapshotId = "playlist", channelId = "test:big-$index",
                         tvgId = "big$index.fi", name = "Big $index", normalizedName = "big $index",
-                        groupTitle = "Big", logoUrl = null, encryptedStreamUrl = "encrypted-big-$index",
+                        groupTitle = "News", logoUrl = null, encryptedStreamUrl = "encrypted-big-$index",
                         userAgent = null, referrer = null, lastSeenEpochMillis = now, playlistOrder = 100 + index,
                     )
                 },
@@ -978,7 +1211,7 @@ class GuideScreenTest {
             dao.activateEpgSnapshot("test", "epg", 7, now)
         }
         showGuide()
-        // The guide opens on the whole source, 403 channels: past the threshold.
+        // The guide opens on its first group, 403 channels here: past the threshold.
         composeRule.awaitUntil(timeoutMillis = 15_000) {
             composeRule.onAllNodesWithTag("guide-channel-test:big-1").fetchSemanticsNodes().isNotEmpty()
         }
@@ -1216,3 +1449,4 @@ private object TestSecretCipher : SecretCipher {
 
 /** One more than the guide's windowed-read threshold. */
 private const val GUIDE_WINDOWED_READ_THRESHOLD_FOR_TEST = 401
+private const val ALL_CHANNELS_READ = "<all channels>"
