@@ -1,0 +1,215 @@
+package com.sohva.tv.feature.settings
+
+import com.sohva.tv.core.model.error.AppError
+import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.settings.RefreshInterval
+import com.sohva.tv.core.model.source.ImportScope
+import com.sohva.tv.core.model.source.RefreshKind
+import com.sohva.tv.core.model.source.RefreshState
+import com.sohva.tv.core.model.source.Source
+import com.sohva.tv.core.model.source.SourceConfig
+import com.sohva.tv.core.model.source.SourceHealth
+import com.sohva.tv.core.model.source.SourceRules
+import com.sohva.tv.core.model.source.SourceType
+import com.sohva.tv.core.model.source.XtreamAccount
+import com.sohva.tv.core.sync.SourceChecks
+import com.sohva.tv.ui.design.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class SettingsModelTest {
+    private class FakeServices : SettingsServices {
+        val sources = MutableStateFlow<List<Source>>(emptyList())
+        val health = MutableStateFlow<List<SourceHealth>>(emptyList())
+        val interval = MutableStateFlow(RefreshInterval.TWENTY_FOUR_HOURS)
+        val saved = HashMap<String, SourceConfig>()
+        val synced = ArrayList<String>()
+        val removed = ArrayList<String>()
+        var refreshResult: SourceHealth? = null
+        var playlistResult: SourceChecks.Result = SourceChecks.Result.Playlist(0, false)
+        var films = 0 to 0
+
+        override fun sources(): Flow<List<Source>> = sources
+        override fun health(): Flow<List<SourceHealth>> = health
+        override fun refreshInterval(): Flow<RefreshInterval> = interval
+        override suspend fun load(sourceId: String): Outcome<SourceConfig?> = Outcome.Ok(saved[sourceId])
+        override suspend fun save(config: SourceConfig): Outcome<SourceConfig> = when (val r = SourceRules.validate(config)) {
+            is SourceRules.Result.Invalid -> Outcome.Failed(r.error)
+            is SourceRules.Result.Valid -> {
+                saved[r.config.source.id] = r.config
+                sources.value = saved.values.map { it.source }
+                Outcome.Ok(r.config)
+            }
+        }
+        override suspend fun remove(sourceId: String): Outcome<Unit> {
+            removed += sourceId
+            saved.remove(sourceId)
+            sources.value = saved.values.map { it.source }
+            return Outcome.Ok(Unit)
+        }
+        override fun syncNow(sourceId: String) {
+            synced += sourceId
+        }
+        override suspend fun refresh(sourceId: String, kind: RefreshKind): SourceHealth? = refreshResult
+        override suspend fun catalogueCounts(sourceId: String): Pair<Int, Int> = films
+        override suspend fun testPlaylist(address: String): SourceChecks.Result = playlistResult
+        override suspend fun testXtream(account: XtreamAccount): SourceChecks.Result = SourceChecks.Result.Account(4)
+        override suspend fun setRefreshInterval(interval: RefreshInterval) {
+            this.interval.value = interval
+        }
+    }
+
+    private val services = FakeServices()
+    private lateinit var model: SettingsModel
+
+    @Before
+    fun start() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        model = SettingsModel(services, accounts = false)
+    }
+
+    @After
+    fun stop() = Dispatchers.resetMain()
+
+    private val state get() = model.ui.value
+    private val status get() = state.messages[SettingsSection.SOURCES]
+
+    private fun newM3u(url: String = "http://provider.example/list.m3u"): SourceDraft {
+        model.addSource(SourceType.M3U)
+        model.edit { it.copy(m3uUrl = url) }
+        return state.page!!
+    }
+
+    @Test
+    fun newPagesGetDefaultNamesPerType() {
+        assertEquals("IPTV 1", newM3u().name)
+        model.save()
+        model.closePage()
+        model.addSource(SourceType.M3U)
+        assertEquals("IPTV 2", state.page!!.name)
+        model.addSource(SourceType.XTREAM)
+        assertEquals("Xtream 1", state.page!!.name)
+        assertEquals(SettingsMessage.Text(R.string.source_new_xtream), status)
+    }
+
+    @Test
+    fun savingANewSourceSyncsItAndARenameAloneDoesNot() {
+        val page = newM3u()
+        model.save()
+        assertEquals(listOf(page.id), services.synced)
+        assertEquals(SettingsMessage.Text(R.string.source_saved_syncing), status)
+        assertFalse(state.page!!.isNew)
+
+        model.edit { it.copy(name = "Renamed") }
+        model.save()
+        assertEquals(1, services.synced.size)
+        assertEquals(SettingsMessage.Text(R.string.source_saved), status)
+
+        model.edit { it.copy(scope = ImportScope.LIVE_TV) }
+        model.save()
+        assertEquals("a changed scope syncs (plan/09 M1)", 2, services.synced.size)
+    }
+
+    @Test
+    fun anInvalidPageSavesAndSyncsNothing() {
+        newM3u(url = "provider.example/list.m3u")
+        model.save()
+        assertEquals(SettingsMessage.Failure(AppError.SourceUrlInvalid(AppError.FieldLabel.M3U)), status)
+        assertTrue(services.saved.isEmpty())
+        assertTrue(services.synced.isEmpty())
+        assertTrue(state.page!!.isNew)
+    }
+
+    @Test
+    fun testingNeverSaves() {
+        newM3u()
+        services.playlistResult = SourceChecks.Result.Playlist(42, more = false)
+        model.test()
+        assertEquals(SettingsMessage.Count(R.plurals.source_test_m3u_ok, 42), status)
+        services.playlistResult = SourceChecks.Result.Playlist(500, more = true)
+        model.test()
+        assertEquals(SettingsMessage.Text(R.string.source_test_m3u_ok_more, listOf(500)), status)
+        services.playlistResult = SourceChecks.Result.Failed(AppError.PlaylistNotM3u)
+        model.test()
+        assertEquals(SettingsMessage.Failure(AppError.PlaylistNotM3u), status)
+        assertTrue(services.saved.isEmpty())
+
+        model.addSource(SourceType.XTREAM)
+        model.edit { it.copy(server = "http://panel.example", username = "u", password = "p") }
+        model.test()
+        assertEquals(SettingsMessage.ConnectionOk(4), status)
+        assertTrue(services.saved.isEmpty())
+    }
+
+    @Test
+    fun refreshReportsTheStoredResult() {
+        val page = newM3u()
+        services.refreshResult = SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.SUCCESS, null, 56_164, 0)
+        model.refresh(RefreshKind.PLAYLIST)
+        assertEquals(SettingsMessage.Count(R.plurals.source_imported_channels, 56_164), status)
+        services.refreshResult = SourceHealth(page.id, RefreshKind.EPG, RefreshState.FAILED, AppError.EpgUnmatched, 10, 1)
+        model.refresh(RefreshKind.EPG)
+        assertEquals(SettingsMessage.Failure(AppError.EpgUnmatched), status)
+        services.refreshResult = SourceHealth(page.id, RefreshKind.CATALOGUE, RefreshState.SUCCESS, null, 3, 0)
+        services.films = 2 to 1
+        model.refresh(RefreshKind.CATALOGUE)
+        assertEquals(SettingsMessage.Catalogue(2, 1), status)
+        assertFalse(state.busy)
+    }
+
+    @Test
+    fun removingAsksFirstThenReturnsToTheList() {
+        val page = newM3u()
+        model.save()
+        model.askDelete()
+        assertTrue(state.confirmingDelete)
+        model.cancelDelete()
+        assertFalse(state.confirmingDelete)
+        assertTrue(services.removed.isEmpty())
+        model.askDelete()
+        model.confirmDelete()
+        assertEquals(listOf(page.id), services.removed)
+        assertNull(state.page)
+        assertEquals(SettingsMessage.Text(R.string.source_deleted), status)
+        assertEquals(FocusTarget.SectionStart, state.focus.target)
+    }
+
+    @Test
+    fun closingAPageFocusesItsRowAndRowsCarryTheFirstFailure() {
+        val page = newM3u()
+        model.save()
+        services.health.value = listOf(
+            SourceHealth(page.id, RefreshKind.CATALOGUE, RefreshState.FAILED, AppError.CatalogueEmpty, 0, 1),
+            SourceHealth(page.id, RefreshKind.EPG, RefreshState.FAILED, AppError.EpgEmpty, 0, 1),
+            SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.SUCCESS, null, 5, 0),
+        )
+        model.closePage()
+        assertEquals(FocusTarget.SourceRowOf(page.id), state.focus.target)
+        assertEquals(AppError.EpgEmpty, state.sources!!.single().failure)
+    }
+
+    @Test
+    fun choosingARailSectionClosesThePageAndTheIntervalReportsInGeneral() {
+        newM3u()
+        model.select(SettingsSection.GENERAL)
+        assertNull(state.page)
+        assertEquals(SettingsSection.GENERAL, state.section)
+        model.setRefreshInterval(RefreshInterval.FOUR_HOURS)
+        assertEquals(RefreshInterval.FOUR_HOURS, state.refreshInterval)
+        assertEquals(SettingsMessage.IntervalSaved(RefreshInterval.FOUR_HOURS), state.messages[SettingsSection.GENERAL])
+        assertEquals("Playlists keeps its own line", SettingsMessage.Text(R.string.source_new_m3u), state.messages[SettingsSection.SOURCES])
+    }
+}

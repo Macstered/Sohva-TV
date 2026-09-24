@@ -9,4 +9,6 @@
     <string name="error_secrets_unreadable">Sparade källadresser och lösenord kan inte längre läsas på den här enheten. Återställ en säkerhetskopia eller lägg till källorna igen.</string>
     <string name="error_source_response_too_large">Svaret från källan var för stort</string>
     <string name="error_source_limit_reached">Fler källor kan inte läggas till (högst %1$d)</string>
+    <string name="action_cancel">Avbryt</string>
+    <string name="source_delete_confirm">Ta bort %1$s med dess kanaler, programguide och filmer? Det går inte att ångra.</string>
 </resources>

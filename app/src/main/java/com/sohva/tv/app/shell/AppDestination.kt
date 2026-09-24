@@ -2,17 +2,23 @@ package com.sohva.tv.app.shell
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRoute
+import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
+import com.sohva.tv.feature.settings.SettingsModel
+import com.sohva.tv.feature.settings.SettingsScreen
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.navigation.BackStack
 
 /** The route table: the only place that knows every screen (plan/03 §4.3 rule 2). */
 @Composable
-fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, flags: FeatureFlags) {
+fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph) {
+    val flags = graph.flags
     val back = { stack.pop() }
     when (route) {
         AppRoute.Home -> {
@@ -28,7 +34,11 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, flags: FeatureFl
         AppRoute.Search -> PlaceholderScreen(R.string.home_search, { back() }, "screen-search")
         AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
         AppRoute.ProfilePicker -> PlaceholderScreen(R.string.profile_active_title, { back() }, "screen-profiles")
-        AppRoute.Settings -> PlaceholderScreen(R.string.home_settings, { back() }, "screen-settings")
+        AppRoute.Settings -> {
+            // Scoped to this stack entry: popped with Settings (plan/03 §4.5). Accounts waits for Trakt (M6).
+            val model = viewModel { SettingsModel(AppSettingsServices(graph), accounts = false) }
+            SettingsScreen(model, onBack = { back() })
+        }
     }
 }
 

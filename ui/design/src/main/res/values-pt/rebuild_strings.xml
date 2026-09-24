@@ -10,4 +10,6 @@
     <string name="error_secrets_unreadable">Os endereços e as senhas salvos das fontes não podem mais ser lidos neste dispositivo. Restaure um backup ou adicione as fontes novamente.</string>
     <string name="error_source_response_too_large">A resposta da fonte era grande demais</string>
     <string name="error_source_limit_reached">Não é possível adicionar mais fontes (máximo %1$d)</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="source_delete_confirm">Remover %1$s com seus canais, guia e filmes? Isso não pode ser desfeito.</string>
 </resources>

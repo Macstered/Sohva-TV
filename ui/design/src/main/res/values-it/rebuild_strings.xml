@@ -10,4 +10,6 @@
     <string name="error_secrets_unreadable">Gli indirizzi e le password salvati delle sorgenti non sono più leggibili su questo dispositivo. Ripristina un backup o aggiungi di nuovo le sorgenti.</string>
     <string name="error_source_response_too_large">La risposta della sorgente era troppo grande</string>
     <string name="error_source_limit_reached">Non è possibile aggiungere altre sorgenti (massimo %1$d)</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="source_delete_confirm">Rimuovere %1$s con canali, guida e film? Non si può annullare.</string>
 </resources>

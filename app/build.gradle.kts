@@ -97,6 +97,7 @@ dependencies {
     implementation(project(":core:sync"))
     implementation(project(":ui:design"))
     implementation(project(":feature:home"))
+    implementation(project(":feature:settings"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
@@ -110,6 +111,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

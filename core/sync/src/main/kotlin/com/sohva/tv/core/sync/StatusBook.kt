@@ -4,6 +4,7 @@ import com.sohva.tv.core.data.database.SourceStatusDao
 import com.sohva.tv.core.data.database.SourceStatusEntity
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.source.RefreshKind
+import com.sohva.tv.core.model.source.RefreshState
 import com.sohva.tv.core.model.time.Clock
 
 /**
@@ -71,10 +72,10 @@ internal class StatusBook(private val dao: SourceStatusDao, private val clock: C
     )
 
     companion object {
-        const val IDLE = "idle"
-        const val RUNNING = "running"
-        const val SUCCESS = "success"
-        const val FAILED = "failed"
+        val IDLE = RefreshState.IDLE.id
+        val RUNNING = RefreshState.RUNNING.id
+        val SUCCESS = RefreshState.SUCCESS.id
+        val FAILED = RefreshState.FAILED.id
         const val ARG_SEPARATOR = '\u001F'
     }
 }

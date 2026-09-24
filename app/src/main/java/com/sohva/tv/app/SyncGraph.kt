@@ -8,6 +8,7 @@ import com.sohva.tv.core.sync.FallbackNames
 import com.sohva.tv.core.sync.ImportEnvironment
 import com.sohva.tv.core.sync.ImportRunner
 import com.sohva.tv.core.sync.RefreshScheduler
+import com.sohva.tv.core.sync.SourceChecks
 import com.sohva.tv.core.sync.StreamSealer
 import com.sohva.tv.ui.design.R
 
@@ -35,6 +36,8 @@ class SyncGraph(private val graph: AppGraph) {
         )
         ImportRunner(environment, data.sources, graph.appScope)
     }
+
+    val checks: SourceChecks by lazy { SourceChecks(http, graph.dispatchers.io) }
 
     val scheduler: RefreshScheduler by lazy { RefreshScheduler(WorkManager.getInstance(graph.app)) }
 }

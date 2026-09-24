@@ -9,4 +9,6 @@
     <string name="error_secrets_unreadable">Tallennettuja lähdeosoitteita ja salasanoja ei voi enää lukea tällä laitteella. Palauta varmuuskopio tai lisää lähteet uudelleen.</string>
     <string name="error_source_response_too_large">Lähteen vastaus oli liian suuri</string>
     <string name="error_source_limit_reached">Lähteitä ei voi lisätä enempää (enintään %1$d)</string>
+    <string name="action_cancel">Peruuta</string>
+    <string name="source_delete_confirm">Poistetaanko %1$s kanavineen, ohjelmaoppaineen ja elokuvineen? Tätä ei voi perua.</string>
 </resources>
