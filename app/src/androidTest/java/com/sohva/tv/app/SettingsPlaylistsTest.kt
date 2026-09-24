@@ -4,6 +4,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -170,6 +171,45 @@ class SettingsPlaylistsTest {
         await("source-$id")
         compose.waitForIdle()
         awaitFocus("source-$id")
+    }
+
+    /**
+     * OK on Save disables the actions while it runs (SRC-FR-19); focus must stay on Save instead
+     * of falling to the rail's Playlists entry (AGENTS 5.2; found in the M2 release check).
+     */
+    @Test
+    fun saveKeepsFocusOnTheSaveButton() {
+        openSettings()
+        click("source-add-m3u")
+        type("settings-m3u", "http://192.0.2.10/list.m3u")
+        compose.onNodeWithTag("settings-save").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("settings-save")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        statusShows("Saved.")
+        compose.waitForIdle()
+        awaitFocus("settings-save")
+        assertTrue(compose.onAllNodes(hasTestTag("settings-section-sources") and isFocused()).fetchSemanticsNodes().isEmpty())
+    }
+
+    /** A stepper's end disables its button; the viewer's focus stays on it (AGENTS 5.2). */
+    @Test
+    fun steppingToTheLowestLimitKeepsFocusOnMinus() {
+        openSettings()
+        click("source-add-m3u")
+        compose.onNodeWithTag("settings-limit-up").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("settings-limit-up")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.onNodeWithTag("settings-limit-down").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("settings-limit-down")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings-limit-down").assertIsNotEnabled()
+        awaitFocus("settings-limit-down")
+        // Disabled means OK does nothing, not that the limit drops below one.
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitForIdle()
+        awaitFocus("settings-limit-down")
+        assertTrue(compose.onAllNodesWithText("Connection limit 1").fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test

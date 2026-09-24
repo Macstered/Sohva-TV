@@ -144,7 +144,7 @@ private fun SourceRows(page: SourceDraft, state: SettingsState, model: SettingsM
             "−",
             { model.edit { it.copy(connectionLimit = (it.connectionLimit - 1).coerceIn(limits)) } },
             Modifier.testTag("settings-limit-down"),
-            state = SurfaceState(enabled = page.connectionLimit > limits.first),
+            state = SurfaceState(enabled = page.connectionLimit > limits.first, keepsFocus = true),
             compact = true,
         )
         Text(
@@ -157,7 +157,7 @@ private fun SourceRows(page: SourceDraft, state: SettingsState, model: SettingsM
             "+",
             { model.edit { it.copy(connectionLimit = (it.connectionLimit + 1).coerceIn(limits)) } },
             Modifier.testTag("settings-limit-up"),
-            state = SurfaceState(enabled = page.connectionLimit < limits.last),
+            state = SurfaceState(enabled = page.connectionLimit < limits.last, keepsFocus = true),
             compact = true,
         )
     }

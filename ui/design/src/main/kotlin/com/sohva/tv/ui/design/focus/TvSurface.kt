@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -45,6 +46,11 @@ data class TvSurfaceColors(
 /**
  * What the control is, as opposed to what it looks like. [showFocused] draws the focused look
  * without holding focus; only the component gallery and screenshot tests use it.
+ *
+ * A disabled control cannot be focused (design/01 §13). [keepsFocus] is for a control that is
+ * disabled only for a moment under the viewer's focus (a button while its own action runs): it
+ * looks disabled and ignores OK but stays focusable, because losing focus would hand it to the
+ * first focusable on screen (AGENTS 5.2).
  */
 @Immutable
 data class SurfaceState(
@@ -52,6 +58,7 @@ data class SurfaceState(
     val enabled: Boolean = true,
     val danger: Boolean = false,
     val showFocused: Boolean = false,
+    val keepsFocus: Boolean = false,
 )
 
 /** How the container is drawn. Colours left null take the defaults of design/02 §5. */
@@ -118,9 +125,18 @@ fun TvSurface(
     Box(
         modifier = modifier
             .onFocusChanged { hasFocus = it.isFocused }
-            .semantics(mergeDescendants = true) { selected = state.selected }
-            .then(if (onLongClick != null) Modifier.longPress(gesture, onLongClick) else Modifier)
-            .clickable(interactionSource = null, indication = null, enabled = state.enabled, role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                selected = state.selected
+                if (!state.enabled) disabled()
+            }
+            .then(if (onLongClick != null && state.enabled) Modifier.longPress(gesture, onLongClick) else Modifier)
+            .clickable(
+                interactionSource = null,
+                indication = null,
+                enabled = state.enabled || state.keepsFocus,
+                role = Role.Button,
+                onClick = { if (state.enabled) onClick() },
+            )
             .then(if (style.focusScale != 1f) Modifier.graphicsLayer { scaleX = scale; scaleY = scale } else Modifier)
             .drawBehind {
                 val radius = CornerRadius(style.corner.toPx())

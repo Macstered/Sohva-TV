@@ -158,7 +158,8 @@ private fun IconAction(
     TvSurface(
         onClick,
         modifier.size(44.dp).onFocusChanged { onFocus(it.isFocused) }.semantics { contentDescription = description },
-        SurfaceState(selected = selected, enabled = enabled),
+        // Only External player disables itself, while it opens; it is focused then (design/03 §7).
+        SurfaceState(selected = selected, enabled = enabled, keepsFocus = true),
         style,
     ) { colors ->
         Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {

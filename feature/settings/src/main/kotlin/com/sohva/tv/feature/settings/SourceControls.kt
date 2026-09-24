@@ -56,7 +56,7 @@ internal fun DeleteRow(page: SourceDraft, state: SettingsState, model: SettingsM
                 model::confirmDelete,
                 Modifier.testTag("settings-source-delete-confirm"),
                 icon = TvIcons.Delete,
-                state = SurfaceState(danger = true, enabled = !state.busy),
+                state = SurfaceState(danger = true, enabled = !state.busy, keepsFocus = true),
                 compact = true,
             )
             Spacer(Modifier.width(12.dp))
@@ -67,7 +67,7 @@ internal fun DeleteRow(page: SourceDraft, state: SettingsState, model: SettingsM
                 model::askDelete,
                 Modifier.focusRequester(delete).testTag("settings-source-delete"),
                 icon = TvIcons.Delete,
-                state = SurfaceState(danger = true, enabled = !state.busy),
+                state = SurfaceState(danger = true, enabled = !state.busy, keepsFocus = true),
                 compact = true,
             )
         }
@@ -115,7 +115,7 @@ internal fun EpgOffsetRow(page: SourceDraft, model: SettingsModel) {
             "−30 min",
             { model.edit { it.copy(epgOffsetMinutes = (it.epgOffsetMinutes - step).coerceIn(range)) } },
             Modifier.testTag("settings-epg-offset-down"),
-            state = SurfaceState(enabled = page.epgOffsetMinutes > range.first),
+            state = SurfaceState(enabled = page.epgOffsetMinutes > range.first, keepsFocus = true),
             compact = true,
         )
         Box(Modifier.width(74.dp), contentAlignment = Alignment.Center) {
@@ -131,7 +131,7 @@ internal fun EpgOffsetRow(page: SourceDraft, model: SettingsModel) {
             "+30 min",
             { model.edit { it.copy(epgOffsetMinutes = (it.epgOffsetMinutes + step).coerceIn(range)) } },
             Modifier.testTag("settings-epg-offset-up"),
-            state = SurfaceState(enabled = page.epgOffsetMinutes < range.last),
+            state = SurfaceState(enabled = page.epgOffsetMinutes < range.last, keepsFocus = true),
             compact = true,
         )
         Spacer(Modifier.width(14.dp))
@@ -144,10 +144,10 @@ internal fun EpgOffsetRow(page: SourceDraft, model: SettingsModel) {
     }
 }
 
-/** The action buttons of SRC-FR-17, at most three to a row; disabled while an action runs (SRC-FR-19). */
+/** The action buttons of SRC-FR-17, at most three to a row; disabled while an action runs (SRC-FR-19) but still focusable, so OK on one keeps focus there. */
 @Composable
 internal fun SourceActions(page: SourceDraft, busy: Boolean, model: SettingsModel) {
-    val state = SurfaceState(enabled = !busy)
+    val state = SurfaceState(enabled = !busy, keepsFocus = true)
     val live = page.scope.includesLive
     FlowRow(
         Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
