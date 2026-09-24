@@ -93,8 +93,9 @@ internal data class SizeBaseline(val apkBytes: Long, val milestoneBudgetBytes: L
 
 /**
  * Method-size gate (plan/05 §4.6, lessons 3.3): ART does not compile a method above 10,000 dex
- * code units ahead of time, so it runs interpreted after every start. Fails any method above
- * 95 % of that limit and reports the largest ones.
+ * code units ahead of time, so it runs interpreted after every start. Fails any app method above
+ * 95 % of that limit (plan/05 §3.10 gates app methods) and reports the largest ones, library
+ * methods above the limit included.
  */
 @CacheableTask
 abstract class MethodSizeGateTask : DefaultTask() {
@@ -129,18 +130,26 @@ abstract class MethodSizeGateTask : DefaultTask() {
             DexdumpParser.methodSizes(out.toString(Charsets.UTF_8))
         }
         val largest = methods.sortedByDescending { it.codeUnits }
-        val appMethods = methods.count { it.owner.startsWith("com.sohva.tv.") }
+        val appMethods = methods.count { it.isAppCode() }
         report.get().asFile.writeText(
             buildString {
                 appendLine("methods=${methods.size}")
                 appendLine("appMethods=$appMethods")
                 appendLine("limit=$LIMIT")
+                largest.filter { it.codeUnits > LIMIT && !it.isAppCode() }.forEach {
+                    appendLine("libraryAboveLimit=${it.codeUnits} ${it.owner}.${it.name}")
+                }
                 largest.take(20).forEach { appendLine("${it.codeUnits} ${it.owner}.${it.name}") }
             },
         )
         val top = largest.firstOrNull()
-        logger.lifecycle("Method sizes: ${methods.size} methods ($appMethods app); largest ${top?.codeUnits} (${top?.owner}.${top?.name})")
-        val tooBig = largest.takeWhile { it.codeUnits > LIMIT }
+        val topApp = largest.firstOrNull { it.isAppCode() }
+        logger.lifecycle(
+            "Method sizes: ${methods.size} methods ($appMethods app); largest ${top?.codeUnits} (${top?.owner}.${top?.name}); " +
+                "largest app ${topApp?.codeUnits} (${topApp?.owner}.${topApp?.name})",
+        )
+        // Only app code can be split; library methods above the limit are reported, not failed.
+        val tooBig = largest.filter { it.codeUnits > LIMIT && it.isAppCode() }
         if (tooBig.isNotEmpty()) {
             throw GradleException(
                 "Method-size gate: ${tooBig.size} method(s) above $LIMIT code units, first " +
@@ -155,7 +164,9 @@ abstract class MethodSizeGateTask : DefaultTask() {
     }
 }
 
-internal data class DexMethodSize(val owner: String, val name: String, val codeUnits: Int)
+internal data class DexMethodSize(val owner: String, val name: String, val codeUnits: Int) {
+    fun isAppCode(): Boolean = owner.startsWith("com.sohva.tv.") || owner.startsWith("com.streammate.tv.")
+}
 
 /** Reads `dexdump` text output: class descriptor, method name, then "insns size : N 16-bit code units". */
 internal object DexdumpParser {

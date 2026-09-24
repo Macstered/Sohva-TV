@@ -18,3 +18,5 @@ dependencyResolutionManagement {
 rootProject.name = "SohvaTV"
 
 include(":app")
+include(":core:model")
+include(":core:data")

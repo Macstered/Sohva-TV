@@ -14,14 +14,23 @@ val signingProps: Properties? = signingFile.takeIf { it.isFile }?.let { file ->
     Properties().apply { file.inputStream().use { load(it) } }
 }
 
+// Trakt client credentials stay in the ignored .local/ folder; builds without them (CI, public
+// clones) compile a Trakt-less app (plan/05 §3.4, §4.12).
+val traktConfigured: Boolean = rootProject.file(".local/trakt/trakt-credentials.properties").isFile
+
 android {
     namespace = "com.sohva.tv.app"
+
+    buildFeatures {
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.streammate.tv"
         // Beta 23 is build 57; the rebuild starts at 100 / 0.2.0-beta.1 (decision A3).
         versionCode = 100
         versionName = "0.2.0-beta.1"
+        buildConfigField("boolean", "TRAKT_CONFIGURED", traktConfigured.toString())
     }
 
     signingConfigs {
@@ -40,10 +49,12 @@ android {
 
     buildTypes {
         debug {
+            buildConfigField("String", "BUILD_KIND", "\"DEBUG\"")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
+            buildConfigField("String", "BUILD_KIND", "\"RELEASE\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -52,6 +63,7 @@ android {
         // Release code as a separately installable package for measurements and the Lab suites.
         // Minified like release, so what is measured is what ships (plan/05 §4.5).
         create("lab") {
+            buildConfigField("String", "BUILD_KIND", "\"LAB\"")
             initWith(getByName("release"))
             applicationIdSuffix = ".lab"
             versionNameSuffix = "-lab"
@@ -61,6 +73,7 @@ android {
         }
         // Screenshots and demos with fictional content from the demo source set.
         create("demo") {
+            buildConfigField("String", "BUILD_KIND", "\"DEMO\"")
             initWith(getByName("debug"))
             applicationIdSuffix = ".demo"
             versionNameSuffix = "-demo"
@@ -70,6 +83,9 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:model"))
+    implementation(project(":core:data"))
+    implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.profileinstaller)
 }

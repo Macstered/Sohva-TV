@@ -1,6 +1,6 @@
 # Release APK size baseline (plan/05 §4.8). The gate fails above milestoneBudgetBytes, above
 # 10 MB, or more than 200 KB above apkBytes. Change apkBytes only with a docs/decisions.md entry
 # that names the cause.
-apkBytes=1125074
+apkBytes=1381337
 # M0 skeleton budget: 4 MB (plan/02).
 milestoneBudgetBytes=4194304

@@ -1,0 +1,53 @@
+package com.sohva.tv.core.model.settings
+
+/** The seven colour themes, in picker order. [id] is what preferences and backups store (design/01 §3). */
+enum class ColorThemeId(val id: String) {
+    ORIGINAL("original"),
+    NORDIC_SLATE("nordic_slate"),
+    COZY_HEARTH("cozy_hearth"),
+    CYBER_PLUM("cyber_plum"),
+    NORD("nord"),
+    EVERFOREST("everforest"),
+    KANAGAWA("kanagawa"),
+    ;
+
+    companion object {
+        /** An unknown or missing id falls back to Original. */
+        fun fromStored(value: String?): ColorThemeId = entries.firstOrNull { it.id == value } ?: ORIGINAL
+    }
+}
+
+/**
+ * Interface size. It scales density, not font scale, and the launch screen stays unscaled
+ * (design/01 §14). Preferences store the enum [name].
+ */
+enum class InterfaceScale(val factor: Float) {
+    NORMAL(1.0f),
+    COMPACT(0.9f),
+    SMALL(0.8f),
+    SMALLER(0.7f),
+    ;
+
+    companion object {
+        fun fromStored(value: String?): InterfaceScale = entries.firstOrNull { it.name == value } ?: NORMAL
+    }
+}
+
+/** First screen after launch (spec 01 FR-10..12). Preferences store the enum [name]. */
+enum class StartupScreen {
+    HOME,
+    GUIDE,
+    LAST_CHANNEL,
+    ;
+
+    companion object {
+        fun fromStored(value: String?): StartupScreen = entries.firstOrNull { it.name == value } ?: HOME
+    }
+}
+
+/** What the first frame needs, read once off the main thread before composing (plan/03 §4.9). */
+data class StartSnapshot(
+    val theme: ColorThemeId,
+    val scale: InterfaceScale,
+    val startupScreen: StartupScreen,
+)
