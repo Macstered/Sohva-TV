@@ -53,9 +53,9 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
 - [ ] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
 - [ ] **SHELL-12** Live playback started from a Sohva Sport match card or a reminder returns to where it started; catch-up playback always returns to the previous screen.
-- [ ] **SHELL-13** Changing channel inside the player replaces the player, so Back never steps back through the channels zapped.
-- [ ] **SHELL-14** Zap-back: the player offers the channel watched before the current one (session memory).
-- [ ] **SHELL-15** Player shortcuts to Home, the guide, Sohva Sport and "guide at this channel" reset the stack to that screen.
+- [x] **SHELL-13** Changing channel inside the player replaces the player, so Back never steps back through the channels zapped.
+- [x] **SHELL-14** Zap-back: the player offers the channel watched before the current one (session memory).
+- [x] **SHELL-15** Player shortcuts to Home, the guide, Sohva Sport and "guide at this channel" reset the stack to that screen.
 - [ ] **SHELL-16** Resuming a film or episode from Home puts its library page and its details page under the player, so Back walks Details, then Movies/Series, then Home.
 - [ ] **SHELL-17** A finished film returns to its details page; a finished episode starts the next one (when autoplay is on) or returns to the series page, also when playback began in Search.
 - [ ] **SHELL-18** A Trakt card on Home opens the library's own details page when the title is in the library, otherwise the Trakt title page.
@@ -216,7 +216,7 @@ Spec: [specs/10-sources-and-import.md](../specs/10-sources-and-import.md) · Mil
 - [x] **SRC-08** Xtream server field with username and masked password side by side.
 - [x] **SRC-09** Source name (1–100 characters).
 - [x] **SRC-10** "Source in use" switch: a switched-off source disappears everywhere and is not refreshed, but keeps its data.
-- [ ] **SRC-11** Connection limit 1–16 (default 1); playback beyond it is refused with a message naming the source.
+- [x] **SRC-11** Connection limit 1–16 (default 1); playback beyond it is refused with a message naming the source.
 - [x] **SRC-12** Content to import: Live TV / VOD only / TV and VOD (default TV and VOD).
 - [x] **SRC-13** EPG time correction from −12 h to +12 h in 30-minute steps (live-TV sources only).
 - [x] **SRC-14** Remove source: deletes the source, its credentials and every row that came from it.
@@ -249,7 +249,7 @@ Spec: [specs/10-sources-and-import.md](../specs/10-sources-and-import.md) · Mil
 - [x] **SRC-35** XMLTV feeds may be gzip-compressed, start with a byte-order mark, use any declared encoding or UTF-16; a malformed programme is skipped, not fatal.
 - [x] **SRC-36** Xtream brings live channels with categories, EPG ids, logos, numbers and catch-up archive length; films and series with categories, poster, backdrop, year, rating and plot; episodes are fetched when a series is opened.
 - [x] **SRC-37** Stream quality and language markers are read off channel names (4K, FHD, HDR, 50 FPS, FI…) for the guide, player and Sohva Sport.
-- [ ] **SRC-38** The EPG time correction shifts every programme of the source on screen, immediately after saving.
+- [x] **SRC-38** The EPG time correction shifts every programme of the source on screen, immediately after saving.
 - [ ] **SRC-39** Sources are part of the encrypted backup ([Backup](../specs/71-backup-restore.md)).
 
 **Rebuild additions (owner-adopted ideas, [OwnTV study](../reference/owntv-study.md) items 2–11, 22)**
@@ -281,58 +281,58 @@ Spec: [specs/11-phone-setup.md](../specs/11-phone-setup.md) · Milestone: M1 · 
 
 Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2 · 52 items
 
-- [ ] **GUIDE-01** Guide screen: hero, day label and half-hour ruler, channel column, 3-hour programme grid, key-hint bar (anatomy in guide.md §0–§3).
-- [ ] **GUIDE-02** Opens on the group of the channel it was opened for; otherwise on the first group of the chosen source; never on All channels by default.
-- [ ] **GUIDE-03** The chosen source is remembered across launches; fallback order: channel opened for, saved source, last watched channel's source, first source.
-- [ ] **GUIDE-04** Options > Source cycles through the sources; a switch lands on the new source's first group and its first channel; with one source the button does nothing.
-- [ ] **GUIDE-05** Group rail opened with Left from the channel column: Favourites, All channels, Recently watched, custom channel lists, provider groups, each with a count where known.
+- [x] **GUIDE-01** Guide screen: hero, day label and half-hour ruler, channel column, 3-hour programme grid, key-hint bar (anatomy in guide.md §0–§3).
+- [x] **GUIDE-02** Opens on the group of the channel it was opened for; otherwise on the first group of the chosen source; never on All channels by default.
+- [x] **GUIDE-03** The chosen source is remembered across launches; fallback order: channel opened for, saved source, last watched channel's source, first source.
+- [x] **GUIDE-04** Options > Source cycles through the sources; a switch lands on the new source's first group and its first channel; with one source the button does nothing.
+- [x] **GUIDE-05** Group rail opened with Left from the channel column: Favourites, All channels, Recently watched, custom channel lists, provider groups, each with a count where known.
 - [ ] **GUIDE-06** The rail follows the viewer's manual group order when one is set (All channels always first).
 - [ ] **GUIDE-07** The Favourites, Recently watched and custom-list entries disappear when switched off in the Library manager.
 - [ ] **GUIDE-08** Groups switched off by a rule, or outside a restricted profile's groups, are not on the rail and their channels are never shown.
-- [ ] **GUIDE-09** All channels: every visible channel of the source in guide order.
-- [ ] **GUIDE-10** Favourites: the active profile's favourite channels of the selected source, in guide order.
-- [ ] **GUIDE-11** Recently watched: the active profile's last 20 channels of the selected source, most recent first.
+- [x] **GUIDE-09** All channels: every visible channel of the source in guide order.
+- [x] **GUIDE-10** Favourites: the active profile's favourite channels of the selected source, in guide order.
+- [x] **GUIDE-11** Recently watched: the active profile's last 20 channels of the selected source, most recent first.
 - [ ] **GUIDE-12** Custom list: the list's channels of the selected source, in the list's own order.
 - [ ] **GUIDE-13** Channel order within a list follows the organisation rules (provider order by default; manual or A–Z per group from the Library manager; positions set in Channel management).
-- [ ] **GUIDE-14** Channel cell: number, logo (or two-letter initials), name (wraps to two lines when long), feed line (quality/language tags from the name, else group, else source).
+- [x] **GUIDE-14** Channel cell: number, logo (or two-letter initials), name (wraps to two lines when long), feed line (quality/language tags from the name, else group, else source).
 - [ ] **GUIDE-15** Channel numbers can be switched off (Settings > General > Channel numbers).
-- [ ] **GUIDE-16** Programme blocks proportional to running time, clipped to the window and to the next programme's start; genre accent bar; airing block with progress strip; finished blocks dimmed.
-- [ ] **GUIDE-17** A row without listings in the window shows "No EPG information / Watch channel"; before its programmes are read it shows a blank disabled bar.
-- [ ] **GUIDE-18** Day label ("Thu 24.9.") with Now / Today / Tomorrow / Yesterday.
-- [ ] **GUIDE-19** One red now-line across the grid and ruler, moved every minute.
+- [x] **GUIDE-16** Programme blocks proportional to running time, clipped to the window and to the next programme's start; genre accent bar; airing block with progress strip; finished blocks dimmed.
+- [x] **GUIDE-17** A row without listings in the window shows "No EPG information / Watch channel"; before its programmes are read it shows a blank disabled bar.
+- [x] **GUIDE-18** Day label ("Thu 24.9.") with Now / Today / Tomorrow / Yesterday.
+- [x] **GUIDE-19** One red now-line across the grid and ruler, moved every minute.
 - [ ] **GUIDE-20** Hero: 16:9 still (backdrop, poster, or channel logo), channel and number caption, live dot and progress line; title, LIVE chip, time range, first category, year, TMDB rating chip, synopsis.
 - [ ] **GUIDE-21** Hero actions: Watch, Favourite, Remind me / Reminder set, Watch from start / Watch recording, Find programme / Close search, Source: TMDB (or TVmaze).
 - [ ] **GUIDE-22** Programme metadata (TMDB or TVmaze) looked up 350 ms after the selection settles, only when a metadata service is enabled.
-- [ ] **GUIDE-23** Right on the last block of a row pages +90 min; Left on the first block pages −90 min unless the window is at now.
-- [ ] **GUIDE-24** Fast forward / Rewind page ±90 min; Next / Previous page ±1 day.
-- [ ] **GUIDE-25** Paging reaches one day back and seven days ahead; a paged window stays where it is while the clock moves; the window at now follows the clock.
-- [ ] **GUIDE-26** Held Left/Right pages continuously; focus waits on the channel during a slow read and lands on the adjacent programme when it arrives.
+- [x] **GUIDE-23** Right on the last block of a row pages +90 min; Left on the first block pages −90 min unless the window is at now.
+- [x] **GUIDE-24** Fast forward / Rewind page ±90 min; Next / Previous page ±1 day.
+- [x] **GUIDE-25** Paging reaches one day back and seven days ahead; a paged window stays where it is while the clock moves; the window at now follows the clock.
+- [x] **GUIDE-26** Held Left/Right pages continuously; focus waits on the channel during a slow read and lands on the adjacent programme when it arrives.
 - [ ] **GUIDE-27** OK on a channel plays it live; OK on an airing or past programme plays catch-up from its start when the channel supports it, otherwise live; OK on a future programme opens its actions.
-- [ ] **GUIDE-28** OK held on any programme opens its actions once.
+- [x] **GUIDE-28** OK held on any programme opens its actions once.
 - [ ] **GUIDE-29** Programme actions dialog: Watch / Watch the channel now, Watch from start / Watch recording, Remind me / Reminder set, Favourite / Add favourite.
-- [ ] **GUIDE-30** Favourite toggles from the hero and the actions dialog (per profile).
+- [x] **GUIDE-30** Favourite toggles from the hero and the actions dialog (per profile).
 - [ ] **GUIDE-31** Reminders for future programmes (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
-- [ ] **GUIDE-32** Number dialling: overlay "Channel 12", up to 4 digits, commits 2 s after the last digit, "No channel 12" for 1.5 s; own numbers first, then list positions; focus moves to the channel.
-- [ ] **GUIDE-33** Find programme: a search field on the rail filters the rows by channel name or by a programme title in the three hours shown.
-- [ ] **GUIDE-34** Options sheet (Menu, or Options on the rail): Source, Sort, Edit (groups), Edit (channels), Settings, Back, Close.
+- [x] **GUIDE-32** Number dialling: overlay "Channel 12", up to 4 digits, commits 2 s after the last digit, "No channel 12" for 1.5 s; own numbers first, then list positions; focus moves to the channel.
+- [x] **GUIDE-33** Find programme: a search field on the rail filters the rows by channel name or by a programme title in the three hours shown.
+- [x] **GUIDE-34** Options sheet (Menu, or Options on the rail): Source, Sort, Edit (groups), Edit (channels), Settings, Back, Close.
 - [ ] **GUIDE-35** Sort and Edit (groups) open the Library manager at the current group and source; back from it the guide reopens with the options open on that group.
 - [ ] **GUIDE-36** Edit (channels) opens [Channel management](../specs/21-channel-management.md).
-- [ ] **GUIDE-37** Key-hint bar listing only working bindings.
-- [ ] **GUIDE-38** "Reading the guide…" while the first rows are read.
-- [ ] **GUIDE-39** The previous rows stay on screen while another list is read; a reading notice appears above them after 400 ms.
-- [ ] **GUIDE-40** Empty-list messages for Favourites, Recently watched and any other list.
-- [ ] **GUIDE-41** Empty-library card with per-source import health, Sync now and Open settings.
-- [ ] **GUIDE-42** Back from live playback started in the guide returns to the guide at now, on the watched channel in its group.
-- [ ] **GUIDE-43** Returning to the guide within 10 minutes shows the last rows without reading them again when nothing changed.
-- [ ] **GUIDE-44** Up from the top row reaches the hero's buttons.
-- [ ] **GUIDE-45** Programme data arriving never moves focus.
+- [x] **GUIDE-37** Key-hint bar listing only working bindings.
+- [x] **GUIDE-38** "Reading the guide…" while the first rows are read.
+- [x] **GUIDE-39** The previous rows stay on screen while another list is read; a reading notice appears above them after 400 ms.
+- [x] **GUIDE-40** Empty-list messages for Favourites, Recently watched and any other list.
+- [x] **GUIDE-41** Empty-library card with per-source import health, Sync now and Open settings.
+- [x] **GUIDE-42** Back from live playback started in the guide returns to the guide at now, on the watched channel in its group.
+- [x] **GUIDE-43** Returning to the guide within 10 minutes shows the last rows without reading them again when nothing changed.
+- [x] **GUIDE-44** Up from the top row reaches the hero's buttons.
+- [x] **GUIDE-45** Programme data arriving never moves focus.
 - [ ] **GUIDE-46** Times in the chosen time zone (Settings > General > Time zone; the TV's zone until one is chosen).
-- [ ] **GUIDE-47** A source's EPG offset (±12 h in 30-min steps) shifts all its programme times.
-- [ ] **GUIDE-48** Duplicate and overlapping provider entries are reduced to one block per start time.
+- [x] **GUIDE-47** A source's EPG offset (±12 h in 30-min steps) shifts all its programme times.
+- [x] **GUIDE-48** Duplicate and overlapping provider entries are reduced to one block per start time.
 - [ ] **GUIDE-49** A restricted profile sees only its allowed groups; a change applies while the guide is open.
-- [ ] **GUIDE-50** An import finishing while the guide is open refreshes rows and programmes in place.
-- [ ] **GUIDE-51** Named trace sections for the screen, grid, rows and hero.
-- [ ] **GUIDE-52** One accessibility node per cell (per row in the rebuild) that states its text.
+- [x] **GUIDE-50** An import finishing while the guide is open refreshes rows and programmes in place.
+- [x] **GUIDE-51** Named trace sections for the screen, grid, rows and hero.
+- [x] **GUIDE-52** One accessibility node per cell (per row in the rebuild) that states its text.
 
 ## Channel management
 
@@ -413,48 +413,48 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [ ] **PLAY-01** Live channel playback full screen, opened from the guide, Home, Search, Sohva Sport, a reminder or the start screen.
 - [ ] **PLAY-02** Catch-up playback of a past programme ("Watch from start") with transport controls.
 - [ ] **PLAY-03** Film and episode (VOD) playback from a resume position.
-- [ ] **PLAY-04** Black video ground and letterbox bars in every colour theme.
-- [ ] **PLAY-05** "Connecting to playback service…" screen, and a full-screen message with Back when the service fails.
-- [ ] **PLAY-06** Live information box: channel logo or initials, name, LIVE tag, stream tags, group, programme title, start time, "% watched", time left, stop time, progress bar, next programme, stream name when it differs.
-- [ ] **PLAY-07** Live information box hides after 5 s idle, stays while its buttons have focus, and does not reappear by itself when the programme changes or the guide refreshes.
-- [ ] **PLAY-08** Live action row: hide controls, picture shape, audio, subtitles, channel list, stream details, quick actions, open in another player.
+- [x] **PLAY-04** Black video ground and letterbox bars in every colour theme.
+- [x] **PLAY-05** "Connecting to playback service…" screen, and a full-screen message with Back when the service fails.
+- [x] **PLAY-06** Live information box: channel logo or initials, name, LIVE tag, stream tags, group, programme title, start time, "% watched", time left, stop time, progress bar, next programme, stream name when it differs.
+- [x] **PLAY-07** Live information box hides after 5 s idle, stays while its buttons have focus, and does not reappear by itself when the programme changes or the guide refreshes.
+- [x] **PLAY-08** Live action row: hide controls, picture shape, audio, subtitles, channel list, stream details, quick actions, open in another player.
 - [ ] **PLAY-09** Transport controls for catch-up and VOD: title, Back, picture, audio, subtitles, progress bar, position / duration, rewind, play/pause, forward (buttons name the skip step).
 - [ ] **PLAY-10** Transport controls hide after 5 s idle unless focused or a track picker is open.
-- [ ] **PLAY-11** Channel list down the right edge: the playing channel's group, numbers (setting), logos, what is on now.
-- [ ] **PLAY-12** Group list beside the channel list with channel counts; browsing another group is temporary until a channel is tuned.
-- [ ] **PLAY-13** Channel up / down within the playing channel's group, wrapping at the ends.
-- [ ] **PLAY-14** Switch to the previous channel (zap-back), and back again.
-- [ ] **PLAY-15** Dial a channel by number on live TV, with "Channel 12" read-out and "No channel 12".
+- [x] **PLAY-11** Channel list down the right edge: the playing channel's group, numbers (setting), logos, what is on now.
+- [x] **PLAY-12** Group list beside the channel list with channel counts; browsing another group is temporary until a channel is tuned.
+- [x] **PLAY-13** Channel up / down within the playing channel's group, wrapping at the ends.
+- [x] **PLAY-14** Switch to the previous channel (zap-back), and back again.
+- [x] **PLAY-15** Dial a channel by number on live TV, with "Channel 12" read-out and "No channel 12".
 - [ ] **PLAY-16** Skip back / forward by the chosen step (10 s, 30 s, 1 min, 2 min); quick repeated presses climb to 2 min (held keys too in the Discover player); the size of each skip shows for a moment.
-- [ ] **PLAY-17** Audio track picker; step to the next audio track.
-- [ ] **PLAY-18** Subtitle picker with Off; subtitles on / off toggle.
+- [x] **PLAY-17** Audio track picker; step to the next audio track.
+- [x] **PLAY-18** Subtitle picker with Off; subtitles on / off toggle.
 - [ ] **PLAY-19** VOD audio and subtitle language preferences (primary, secondary); subtitles stay off when the primary audio language is present.
-- [ ] **PLAY-20** Quick actions menu (hold OK, or Menu): audio, subtitles, picture shape, playback info, score ticker.
-- [ ] **PLAY-21** Picture shape: Fit, Fill, Zoom.
-- [ ] **PLAY-22** Playback info line (resolution and frame rate, codecs, bitrate, subtitle format, buffer, dropped frames) with a clock.
-- [ ] **PLAY-23** Buffering indicator whenever the player buffers.
-- [ ] **PLAY-24** Automatic reconnection (Standard: 3 tries; Persistent: 8 tries) with a banner naming the cause and the attempt, and a Reconnect button.
-- [ ] **PLAY-25** Failure causes in plain words (rebuild improvement over beta 23's code-plus-exception text; see PLAY-FR-93).
+- [x] **PLAY-20** Quick actions menu (hold OK, or Menu): audio, subtitles, picture shape, playback info, score ticker.
+- [x] **PLAY-21** Picture shape: Fit, Fill, Zoom.
+- [x] **PLAY-22** Playback info line (resolution and frame rate, codecs, bitrate, subtitle format, buffer, dropped frames) with a clock.
+- [x] **PLAY-23** Buffering indicator whenever the player buffers.
+- [x] **PLAY-24** Automatic reconnection (Standard: 3 tries; Persistent: 8 tries) with a banner naming the cause and the attempt, and a Reconnect button.
+- [x] **PLAY-25** Failure causes in plain words (rebuild improvement over beta 23's code-plus-exception text; see PLAY-FR-93).
 - [ ] **PLAY-26** Playback buffer profile: Media3 default, Low latency, Stability; applies to the next playback.
 - [ ] **PLAY-27** Subtitle size, colour and background, each "Follow the TV" by default.
 - [ ] **PLAY-28** Match the display refresh rate to the stream, and restore it afterwards.
 - [ ] **PLAY-29** Keep watching in a corner (picture in picture) on Home, with a Close button.
-- [ ] **PLAY-30** Open the live stream in another player app on the TV.
+- [x] **PLAY-30** Open the live stream in another player app on the TV.
 - [ ] **PLAY-31** Sohva Sport score ticker over live and catch-up playback.
-- [ ] **PLAY-32** Leaving the app stops the stream; returning resumes it.
-- [ ] **PLAY-33** The screen never sleeps while the player is open.
+- [x] **PLAY-32** Leaving the app stops the stream; returning resumes it.
+- [x] **PLAY-33** The screen never sleeps while the player is open.
 - [ ] **PLAY-34** VOD progress saved every 10 s, on pause, at the end and on leaving; watched rule applied.
 - [ ] **PLAY-35** A finished film returns to its details; a finished episode continues to the next one (setting) or returns to the series.
-- [ ] **PLAY-36** Per-source connection limit enforced before a stream opens.
-- [ ] **PLAY-37** Provider headers (User-Agent, Referer) sent with the stream; Sohva's own user agent otherwise.
-- [ ] **PLAY-38** HLS, DASH and progressive (MPEG-TS, MP4) streams, container chosen from the address.
-- [ ] **PLAY-39** Hardware decoding preferred, next decoder tried if one fails.
+- [x] **PLAY-36** Per-source connection limit enforced before a stream opens.
+- [x] **PLAY-37** Provider headers (User-Agent, Referer) sent with the stream; Sohva's own user agent otherwise.
+- [x] **PLAY-38** HLS, DASH and progressive (MPEG-TS, MP4) streams, container chosen from the address.
+- [x] **PLAY-39** Hardware decoding preferred, next decoder tried if one fails.
 - [ ] **PLAY-40** A locked channel asks for the parental PIN when zapped to; a channel outside the profile's groups is refused.
-- [ ] **PLAY-41** Back removes one layer at a time; from the bare picture it leaves to the guide on the channel just watched.
-- [ ] **PLAY-42** Remote shortcuts out of the player: guide at this channel, Home, Guide, Sohva Sport.
-- [ ] **PLAY-43** Playback published as a media session (system media controls, voice "pause").
+- [x] **PLAY-41** Back removes one layer at a time; from the bare picture it leaves to the guide on the channel just watched.
+- [x] **PLAY-42** Remote shortcuts out of the player: guide at this channel, Home, Guide, Sohva Sport.
+- [x] **PLAY-43** Playback published as a media session (system media controls, voice "pause").
 - [ ] **PLAY-44** Demo build shows a still picture instead of a stream.
-- [ ] **PLAY-45** Playback failures written to the diagnostics log without addresses or credentials.
+- [x] **PLAY-45** Playback failures written to the diagnostics log without addresses or credentials.
 - [ ] **PLAY-46** Trakt scrobbling of VOD playback ([Trakt](../specs/51-trakt.md)).
 - [ ] **PLAY-47** Discover player shares the transport controls, track picker, skip ladder and subtitle look.
 

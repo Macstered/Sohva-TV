@@ -78,3 +78,42 @@ look); the first three open the "arrives in a later version" placeholder the she
 7. Emulator playback tests with generated clips; the guide trace test and the playback
    recomposition test on the stand-in; performance log.
 8. Exit check.
+
+## Exit check (25 September 2026)
+
+Exit criteria:
+
+1. Guide on the first group of a 56,000-channel source within the key-press budget — **met**
+   (docs/performance-log.md, benchmarkRelease with R8 on the API 30 stand-in, owner-scale fixture:
+   main-thread CPU 4.78 ms per press between rows (budget 11), 3.14 ms along a row (budget 7);
+   beta 23 took 21.0 ms. Java heap 45 MB at owner scale; guide open 669 ms, All channels 418 ms).
+2. No focus jumps when programmes arrive — **met** (`GuideTimingTest` with gated reads, held
+   paging proven to fail when the old window's programmes are kept; the owner-scale test found
+   and now covers a dial to an unread page).
+3. Hidden overlays cost nothing — **met** (0 UI frames over 15 s of playback with every overlay
+   hidden; a mutant that kept the info line composed drew 5 frames and failed).
+4. A dropped stream shows the reconnect banner with its counter, then Reconnect recovers — **met**
+   (`PlayerLiveTest`).
+5. The guide and player UI tests are green — **met** (the whole API 34 suite, 46 tests, passed on
+   25 September after the focus fix; `GuideOwnerScaleTest` runs only with `ownerScale=true`).
+
+Release check (R8 release build on the API 30 stand-in, 25 September): an M3U source added in
+Settings imported and filled the guide by itself; OK played the channel through the playback
+service (H.264 decoded into the video surface, the media session ran to the clip's end); no R8,
+missing-class or Media3 errors in the log. The emulator's screenshot does not show the video
+layer (SurfaceFlinger shows it visible and fed); this is the emulator's compositor, not the app.
+The check found one M1 bug, fixed with a test: OK on "Save securely" disabled the focused button
+and focus fell to the Settings rail (decision "A control disabled under the viewer's focus").
+
+Inventory (ticked in `rebuild/plan/01-feature-inventory.md`, 25 September 2026):
+
+- Done: GUIDE-01…05, 09…11, 14, 16…19, 23…26, 28, 30, 32…34, 37…45, 47, 48, 50…52;
+  PLAY-04…08, 11…15, 17, 18, 20…25, 30, 32, 33, 36…39, 41…43, 45; SHELL-13…15; SRC-11
+  (the limit refused at playback), SRC-38 (the offset applied on screen).
+- Built in M2, finished by a later milestone (see "What waits" above): GUIDE-27 and -29 (catch-up
+  and reminder actions, M3), GUIDE-20…22 (metadata, M4), GUIDE-15, -46, PLAY-26…28 (settings
+  screens, M7; the preferences are read with their defaults now), PLAY-01 and SHELL-11 (played
+  from the guide, a dialled number and the last-channel start; Home cards, Search and Sohva Sport
+  open it when those screens exist), PLAY-16 (skip ladder built; used by catch-up and VOD).
+- Not in M2: PLAY-29 (corner, deferred to M7 by decision), PLAY-44 (the demo build's still picture; the roadmap names no milestone for it yet), and the
+  items in the "What waits" table.
