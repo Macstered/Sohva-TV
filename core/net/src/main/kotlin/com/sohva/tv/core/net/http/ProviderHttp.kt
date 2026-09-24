@@ -4,6 +4,7 @@ import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.diagnostics.Redactor
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
+import com.sohva.tv.core.model.player.UserAgents
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -119,7 +120,7 @@ class ProviderHttp(
             .build()
 
         /** `Sohva TV/<version> (Android TV <release>)`. */
-        fun userAgent(versionName: String, androidRelease: String): String = "Sohva TV/$versionName (Android TV $androidRelease)"
+        fun userAgent(versionName: String, androidRelease: String): String = UserAgents.sohva(versionName, androidRelease)
 
         /** The exception text without addresses, host names or credentials (SRC-FR-48). */
         internal fun transportDetail(e: IOException, host: String): String? {
