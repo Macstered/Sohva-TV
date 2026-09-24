@@ -8,4 +8,5 @@ dependencies {
     implementation(libs.compose.compiler.gradle.plugin)
     implementation(libs.ksp.gradle.plugin)
     implementation(libs.room.gradle.plugin)
+    implementation(libs.roborazzi.gradle.plugin)
 }

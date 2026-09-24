@@ -25,11 +25,6 @@ sealed interface AppError {
         override val code: String = "http_status"
     }
 
-    /** The device ran out of storage while writing. */
-    data object StorageFull : AppError {
-        override val code: String = "storage_full"
-    }
-
     /** The Keystore key cannot unwrap the stored data key (spec 73 §8): secrets are unreadable. */
     data object SecretsUnreadable : AppError {
         override val code: String = "secrets_unreadable"

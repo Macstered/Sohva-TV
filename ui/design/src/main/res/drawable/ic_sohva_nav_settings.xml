@@ -1,0 +1,10 @@
+<!-- Owner-supplied Sohva navigation SVG, converted to Android vector paths. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.75" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M9.206 5.256L10.234 4.917L10.368 2.743L13.632 2.743L13.766 4.917L14.794 5.256L15.760 5.743L17.392 4.300L19.700 6.608L18.257 8.240L18.744 9.206L19.083 10.234L21.257 10.368L21.257 13.632L19.083 13.766L18.744 14.794L18.257 15.760L19.700 17.392L17.392 19.700L15.760 18.257L14.794 18.744L13.766 19.083L13.632 21.257L10.368 21.257L10.234 19.083L9.206 18.744L8.240 18.257L6.608 19.700L4.300 17.392L5.743 15.760L5.256 14.794L4.917 13.766L2.743 13.632L2.743 10.368L4.917 10.234L5.256 9.206L5.743 8.240L4.300 6.608L6.608 4.300L8.240 5.743Z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.75" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M15 12A3 3 0 1 1 9 12A3 3 0 1 1 15 12Z" />
+</vector>
