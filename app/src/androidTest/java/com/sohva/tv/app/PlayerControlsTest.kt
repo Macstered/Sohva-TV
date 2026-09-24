@@ -111,6 +111,25 @@ class PlayerControlsTest {
         compose.waitUntil(5_000) { !exists("player-dial") }
     }
 
+    /** PLAY-FR-71: the pickers list every choice, the marked one first in focus; subtitles start with Off. */
+    @Test
+    fun trackPickersListTheChoicesAndBackClosesThem() {
+        openPlayer()
+        press(KeyEvent.KEYCODE_MEDIA_AUDIO_TRACK)
+        compose.waitUntil(5_000) { exists("player-picker") && compose.onAllNodesWithTextExists("Select audio track") }
+        // The clip has one audio track, selected: it is listed with the mark.
+        compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("●", substring = true) }
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(5_000) { !exists("player-picker") }
+        press(KeyEvent.KEYCODE_CAPTIONS)
+        compose.waitUntil(5_000) { exists("player-picker") && compose.onAllNodesWithTextExists("Select subtitles") }
+        assert(compose.onAllNodesWithTextExists("Off", substring = true))
+        assert(compose.onAllNodesWithTextExists("No subtitles", substring = true))
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(5_000) { !exists("player-picker") }
+        assert(exists("screen-player"))
+    }
+
     @Test
     fun quickActionsCyclePictureInPlaceAndPlaybackInfoCloses() {
         openPlayer()
