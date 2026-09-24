@@ -56,6 +56,15 @@ class StableIds {
 object Keys {
     fun globalChannelId(sourceId: String, localId: String): String = "$sourceId:$localId"
 
+    /** Xtream channel local id: `xtream-<stream_id>`. */
+    fun xtreamChannelLocalId(streamId: String): String = "xtream-$streamId"
+
+    fun movieKey(sourceId: String, movieId: String): String = "vod:movie:$sourceId:$movieId"
+
+    fun seriesKey(sourceId: String, seriesId: String): String = "series:$sourceId:$seriesId"
+
+    fun episodeKey(sourceId: String, episodeId: String): String = "vod:episode:$sourceId:$episodeId"
+
     /** `id:<providerGroupId>` when the provider gives an id, else `name:` + trimmed lower-case title. */
     fun groupKey(providerGroupId: String?, title: String?): String =
         if (!providerGroupId.isNullOrBlank()) "id:$providerGroupId" else "name:" + title.orEmpty().trim().lowercase(Locale.ROOT)

@@ -67,6 +67,7 @@ fun errorMessage(error: AppError): String = when (error) {
     AppError.Interrupted -> stringResource(R.string.error_import_interrupted)
     AppError.SourceNameRequired -> stringResource(R.string.settings_source_name_required)
     is AppError.SourceNameTooLong -> pluralStringResource(R.plurals.error_source_name_too_long, error.max, error.max)
+    is AppError.SourceLimitReached -> stringResource(R.string.error_source_limit_reached, error.max)
     is AppError.SourceUrlInvalid -> stringResource(R.string.error_source_url_invalid, fieldLabel(error.label))
     AppError.SourceUrlMalformed -> stringResource(R.string.error_source_url_malformed)
     AppError.XtreamUsernameMissing -> stringResource(R.string.error_xtream_username_missing)

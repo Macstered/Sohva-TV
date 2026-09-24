@@ -8,4 +8,5 @@
     <string name="error_import_interrupted">The update stopped when the app closed. The previous data was kept.</string>
     <string name="error_secrets_unreadable">Saved source addresses and passwords can no longer be read on this device. Restore a backup or add your sources again.</string>
     <string name="error_source_response_too_large">The source response was too large</string>
+    <string name="error_source_limit_reached">No more sources can be added (limit %1$d)</string>
 </resources>

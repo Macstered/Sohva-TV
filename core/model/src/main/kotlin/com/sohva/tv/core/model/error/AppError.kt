@@ -47,6 +47,12 @@ sealed interface AppError {
         override val args get() = listOf(max.toString())
     }
 
+    /** SRC-FR-07: at most [max] sources. */
+    data class SourceLimitReached(val max: Int) : AppError {
+        override val code = "source_limit_reached"
+        override val args get() = listOf(max.toString())
+    }
+
     data class SourceUrlInvalid(val label: FieldLabel) : AppError {
         override val code = "source_url_invalid"
         override val args get() = listOf(label.name)
@@ -105,6 +111,7 @@ object AppErrors {
             "transport_failed" -> AppError.TransportFailed(args.getOrNull(0))
             "http_status" -> int(0)?.let { AppError.HttpStatus(it) }
             "source_name_too_long" -> int(0)?.let { AppError.SourceNameTooLong(it) }
+            "source_limit_reached" -> int(0)?.let { AppError.SourceLimitReached(it) }
             "source_url_invalid" -> args.getOrNull(0)
                 ?.let { name -> AppError.FieldLabel.entries.firstOrNull { it.name == name } }
                 ?.let { AppError.SourceUrlInvalid(it) }

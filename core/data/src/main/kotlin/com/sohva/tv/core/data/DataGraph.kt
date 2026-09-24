@@ -12,7 +12,9 @@ import com.sohva.tv.core.data.security.EnvelopeCipher
 import com.sohva.tv.core.data.security.EnvelopeSpec
 import com.sohva.tv.core.data.security.PrefsWrappedKeyStore
 import com.sohva.tv.core.data.security.SecretStore
+import com.sohva.tv.core.data.source.SourceStore
 import com.sohva.tv.core.model.concurrent.AppDispatchers
+import com.sohva.tv.core.model.time.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
@@ -46,4 +48,6 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
         )
         SecretStore(app, cipher, dispatchers.io)
     }
+
+    val sources: SourceStore by lazy { SourceStore(database.sources(), secrets, SystemClock) }
 }

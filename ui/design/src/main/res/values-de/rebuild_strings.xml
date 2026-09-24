@@ -8,4 +8,5 @@
     <string name="error_import_interrupted">Die Aktualisierung wurde beim Schließen der App abgebrochen. Die bisherigen Daten wurden behalten.</string>
     <string name="error_secrets_unreadable">Gespeicherte Quelladressen und Passwörter können auf diesem Gerät nicht mehr gelesen werden. Stelle eine Sicherung wieder her oder füge die Quellen erneut hinzu.</string>
     <string name="error_source_response_too_large">Die Antwort der Quelle war zu groß</string>
+    <string name="error_source_limit_reached">Es können keine weiteren Quellen hinzugefügt werden (höchstens %1$d)</string>
 </resources>

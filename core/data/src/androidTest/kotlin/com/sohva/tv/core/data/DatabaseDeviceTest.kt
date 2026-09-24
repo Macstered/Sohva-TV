@@ -45,6 +45,17 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom1To2KeepingTheInstallFacts() {
+        helper.createDatabase(name, 1).use { it.execSQL("INSERT INTO app_meta (key, value) VALUES ('probe', 'kept')") }
+        helper.runMigrationsAndValidate(name, 2, true).use { db ->
+            db.query("SELECT value FROM app_meta WHERE key = 'probe'").use { it.moveToFirst(); assertEquals("kept", it.getString(0)) }
+            for (table in listOf("source", "source_status", "content_group", "channel", "movie", "series", "episode", "epg_channel", "programme")) {
+                db.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); assertEquals(table, 0, it.getInt(0)) }
+            }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.
