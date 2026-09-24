@@ -1,0 +1,66 @@
+# Every push and pull request: the gates of plan/06 §5 and §10.6 that need no device.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # gitleaks scans the history
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      # v5 on purpose: v6 moves caching into a component under separate licence terms (plan/06 §5).
+      - uses: gradle/actions/setup-gradle@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow==12.2.0
+
+      - name: Strings match beta 23's texts
+        run: python tools/import_strings.py --check
+      - name: Public-source audit
+        run: python tools/audit_public_source.py
+      - name: Secret scan (tree and history)
+        run: |
+          curl -sSfL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks dir . --config .gitleaks.toml --no-banner --redact
+          ./gitleaks git . --config .gitleaks.toml --no-banner --redact
+
+      - name: Checks, tests, lint, release build and gates
+        run: >
+          ./gradlew --no-daemon
+          checkModuleDependencies
+          testDebugUnitTest :core:model:test :lint-checks:test
+          verifyRoborazziDebug
+          lintDebug :app:lintRelease :app:lintLab
+          assembleDebugAndroidTest
+          :app:assembleRelease :app:assembleLab :benchmark:assemble
+          :app:checkReleaseGates
+
+      - if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: reports
+          retention-days: 14
+          path: |
+            **/build/reports/
+            **/build/test-results/
+            **/build/outputs/roborazzi/

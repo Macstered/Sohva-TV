@@ -19,6 +19,7 @@ class SpikeActivity : ComponentActivity() {
         val variant = GridVariant.valueOf(intent.getStringExtra("variant") ?: GridVariant.CANVAS.name)
         setContent {
             // Throw-away code outside the app graph; the real guide gets AppDispatchers.ui.
+            @Suppress("SohvaDispatchers")
             CompositionLocalProvider(LocalRenderDispatcher provides Dispatchers.Default) {
                 // Standard motion: the spike measures the full focus animation, the costlier case.
                 SohvaTheme(ColorThemeId.ORIGINAL, reducedMotion = false) { GuideSpikeScreen(variant) }

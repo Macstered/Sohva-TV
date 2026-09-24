@@ -32,6 +32,8 @@ extensions.configure<LibraryExtension> {
 
 dependencies {
     "coreLibraryDesugaring"(libs.findLibrary("desugar-jdk-libs").get())
+    // The project's own rules (plan/05 §4.11), in every module's lint.
+    "lintChecks"(project(":lint-checks"))
 }
 
 configureKotlinCompile()

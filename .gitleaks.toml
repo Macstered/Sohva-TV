@@ -1,0 +1,9 @@
+# Secret scanning (plan/06 §6 gate 3). The default rules, plus the one exclusion decided on
+# 24 September 2026: the rebuild kit in docs/rebuild/ (public contact address, certificate hashes
+# and old machine paths by design; its secrets-shaped examples are placeholders).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "The rebuild kit (docs/rebuild/) is reference material, audited when it was written"
+paths = ['''^docs/rebuild/''']

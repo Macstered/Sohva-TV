@@ -1,3 +1,7 @@
+// Variant B rebuilds beta 23's structure on purpose, clip-and-background cells included, as the
+// spike's baseline.
+@file:Suppress("SohvaClipBackground")
+
 package com.sohva.tv.spike.guidegrid
 
 import androidx.compose.animation.animateColorAsState
