@@ -25,6 +25,13 @@ interface SourceDao {
 
     @Query("DELETE FROM source WHERE id = :id")
     suspend fun delete(id: String)
+
+    /** Enabled live-TV sources without a successful playlist import yet (spec 10 SRC-FR-98 deferral). */
+    @Query(
+        "SELECT COUNT(*) FROM source AS s WHERE s.enabled = 1 AND s.import_scope <> 'VOD' AND NOT EXISTS " +
+            "(SELECT 1 FROM source_status AS st WHERE st.source_id = s.id AND st.kind = 'playlist' AND st.last_success_at IS NOT NULL)",
+    )
+    suspend fun liveSourcesNeverImported(): Int
 }
 
 @Dao
@@ -37,6 +44,9 @@ interface SourceStatusDao {
 
     @Upsert
     fun upsert(status: SourceStatusEntity)
+
+    @Query("SELECT COUNT(*) FROM source_status WHERE status = 'failed' AND last_failure_at >= :since AND kind IN (:kinds)")
+    suspend fun failuresSince(since: Long, kinds: List<String>): Int
 
     @Query("DELETE FROM source_status WHERE source_id = :sourceId")
     fun deleteForSource(sourceId: String)

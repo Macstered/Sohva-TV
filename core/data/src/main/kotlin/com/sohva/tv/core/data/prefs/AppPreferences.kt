@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.sohva.tv.core.model.settings.ColorThemeId
 import com.sohva.tv.core.model.settings.InterfaceScale
+import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
     val theme: Flow<ColorThemeId> = key(THEME) { ColorThemeId.fromStored(it) }
     val scale: Flow<InterfaceScale> = key(SCALE) { InterfaceScale.fromStored(it) }
     val startupScreen: Flow<StartupScreen> = key(STARTUP_SCREEN) { StartupScreen.fromStored(it) }
+    val refreshInterval: Flow<RefreshInterval> = key(REFRESH_INTERVAL) { RefreshInterval.fromStored(it) }
 
     /** One read for the first frame. Call off the main thread. */
     suspend fun startSnapshot(): StartSnapshot {
@@ -45,6 +47,10 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         store.edit { it[STARTUP_SCREEN] = value.name }
     }
 
+    suspend fun setRefreshInterval(value: RefreshInterval) {
+        store.edit { it[REFRESH_INTERVAL] = value.name }
+    }
+
     /** Every household setting back to its default (tests' clear-state rule; restore defaults later). */
     suspend fun resetToDefaults() {
         store.edit { it.clear() }
@@ -61,5 +67,6 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val THEME = stringPreferencesKey("color_theme")
         private val SCALE = stringPreferencesKey("interface_scale")
         private val STARTUP_SCREEN = stringPreferencesKey("startup_screen")
+        private val REFRESH_INTERVAL = stringPreferencesKey("playlist_epg_refresh_interval")
     }
 }

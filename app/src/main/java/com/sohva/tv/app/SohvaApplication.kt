@@ -2,13 +2,18 @@ package com.sohva.tv.app
 
 import android.app.Application
 import android.os.StrictMode
+import android.util.Log
+import androidx.work.Configuration
 import com.sohva.tv.core.model.FeatureFlags
+import com.sohva.tv.core.model.source.RefreshKind
+import com.sohva.tv.core.sync.ImportRunner
+import com.sohva.tv.core.sync.RefreshHost
 
 /**
  * Process entry. Builds lazy holders only: no disk, database, preferences, WorkManager,
  * Keystore, network or image loader before the first frame (plan/03 §4.9).
  */
-class SohvaApplication : Application() {
+class SohvaApplication : Application(), Configuration.Provider, RefreshHost {
     lateinit var graph: AppGraph
         private set
 
@@ -21,4 +26,19 @@ class SohvaApplication : Application() {
         }
         graph = AppGraph(this, FeatureFlags.resolve(BuildInfo.KIND, BuildInfo.TRAKT_CONFIGURED))
     }
+
+    // WorkManager initialises on first use, after the first frame (the manifest removes its start-up initializer).
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.INFO else Log.ERROR).build()
+
+    override val importRunner: ImportRunner get() = graph.sync.runner
+
+    override fun appInForeground(): Boolean = graph.inForeground.value
+
+    override suspend fun everyLiveSourceImportedOnce(): Boolean = graph.data.refreshFacts.liveSourcesNeverImported() == 0
+
+    override suspend fun failuresSince(sinceMillis: Long, kinds: Set<RefreshKind>): Int =
+        graph.data.refreshFacts.failuresSince(sinceMillis, kinds.map { it.id })
+
+    override fun nowMillis(): Long = graph.clock.wallMillis()
 }

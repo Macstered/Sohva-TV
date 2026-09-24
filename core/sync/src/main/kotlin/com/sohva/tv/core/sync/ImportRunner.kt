@@ -15,6 +15,7 @@ import com.sohva.tv.core.model.source.SourceType
 import com.sohva.tv.core.net.xtream.XtreamUrls
 import com.sohva.tv.core.sync.diff.KeyedDiff
 import com.sohva.tv.core.sync.diff.Room
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -51,7 +52,8 @@ class ImportRunner(
 ) {
     private val locks = ConcurrentHashMap<String, Mutex>()
     private val running = HashMap<String, MutableList<Running>>()
-    private val removing = ConcurrentHashMap.newKeySet<String>()
+    // Not ConcurrentHashMap.newKeySet() (API 24): on Android 6 it would swap in the desugared map.
+    private val removing: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
     private val status = StatusBook(env.db.sourceStatus(), env.clock)
     private val live = LiveImport(env)
     private val guide = GuideImport(env)

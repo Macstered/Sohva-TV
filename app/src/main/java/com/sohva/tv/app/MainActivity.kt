@@ -27,11 +27,22 @@ class MainActivity : ComponentActivity(), RootHost {
         setContent { SohvaRoot(graph, this, screen) }
     }
 
+    override fun onStart() {
+        super.onStart()
+        (application as SohvaApplication).graph.inForeground.value = true
+    }
+
+    override fun onStop() {
+        (application as SohvaApplication).graph.inForeground.value = false
+        super.onStop()
+    }
+
     override fun onAppDrawn() {
         // A flat colour costs a tile-based GPU nothing; the launch picture would be repainted
         // under every later frame (design/01 §2, lessons of beta 23).
         window.setBackgroundDrawable(WINDOW_COLOR.toDrawable())
         reportFullyDrawn()
+        (application as SohvaApplication).graph.afterFirstFrame()
     }
 
     private companion object {

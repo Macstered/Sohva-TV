@@ -93,6 +93,8 @@ dependencies {
     "labImplementation"(project(":spike:guidegrid"))
     implementation(project(":core:model"))
     implementation(project(":core:data"))
+    implementation(project(":core:net"))
+    implementation(project(":core:sync"))
     implementation(project(":ui:design"))
     implementation(project(":feature:home"))
     implementation(libs.kotlinx.coroutines.android)
@@ -101,6 +103,7 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
     implementation(libs.androidx.tracing)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.work.runtime)
 
     testImplementation(libs.junit)
 

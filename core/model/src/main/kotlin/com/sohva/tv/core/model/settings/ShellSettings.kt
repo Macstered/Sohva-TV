@@ -51,3 +51,17 @@ data class StartSnapshot(
     val scale: InterfaceScale,
     val startupScreen: StartupScreen,
 )
+
+/** How often playlists and guides refresh in the background (spec 70 SET-26). Stored by [name]. */
+enum class RefreshInterval(val hours: Int) {
+    ONE_HOUR(1),
+    TWO_HOURS(2),
+    FOUR_HOURS(4),
+    TEN_HOURS(10),
+    TWENTY_FOUR_HOURS(24),
+    ;
+
+    companion object {
+        fun fromStored(value: String?): RefreshInterval = entries.firstOrNull { it.name == value } ?: TWENTY_FOUR_HOURS
+    }
+}
