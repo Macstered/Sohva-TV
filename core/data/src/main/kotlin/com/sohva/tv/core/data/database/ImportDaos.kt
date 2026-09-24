@@ -39,7 +39,7 @@ interface ChannelImportDao {
 }
 
 /** A channel's guide id and catch-up depth: what the guide import's keep filter needs. */
-data class ChannelEpgId(val id: Long, val epgId: String, val catchupDays: Int?)
+data class ChannelEpgId(val id: Long, val epgId: String, val catchupType: String?, val catchupDays: Int?)
 
 @Dao
 interface MovieImportDao {
@@ -142,7 +142,7 @@ object ImportSql {
     const val CHANNEL_KEYS_PAGE = "SELECT id, key FROM channel WHERE key > :from AND key < :until ORDER BY key LIMIT :limit"
     const val CHANNEL_DELETE = "DELETE FROM channel WHERE id IN (:ids)"
     const val CHANNEL_COUNT = "SELECT COUNT(*) FROM channel WHERE key > :from AND key < :until"
-    const val CHANNEL_EPG_PAGE = "SELECT id, epg_id AS epgId, catchup_days AS catchupDays FROM channel " +
+    const val CHANNEL_EPG_PAGE = "SELECT id, epg_id AS epgId, catchup_type AS catchupType, catchup_days AS catchupDays FROM channel " +
         "WHERE source_id = :sourceId AND (epg_id > :afterEpgId OR (epg_id = :afterEpgId AND id > :afterId)) " +
         "ORDER BY epg_id, id LIMIT :limit"
 

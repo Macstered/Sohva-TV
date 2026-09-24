@@ -51,6 +51,10 @@ class XmlTvReader(
     var hashedProgrammes: Int = 0
         private set
 
+    /** Every `<programme>` element met, kept or not: the guide's "came back empty" guard. */
+    var seenProgrammes: Int = 0
+        private set
+
     init {
         // A UTF-8 byte-order mark is dropped here; a UTF-16 one is the parser's to read.
         if (source.rangeEquals(0, UTF8_BOM)) source.skip(UTF8_BOM.size.toLong())
@@ -102,6 +106,7 @@ class XmlTvReader(
     }
 
     private fun programme(): XmlTvProgramme? {
+        seenProgrammes++
         val channel = parser.getAttributeValue(null, "channel")?.trim()
         val start = parser.getAttributeValue(null, "start")?.let(XmlTvTime::parseMillis)
         val stop = parser.getAttributeValue(null, "stop")?.let(XmlTvTime::parseMillis)

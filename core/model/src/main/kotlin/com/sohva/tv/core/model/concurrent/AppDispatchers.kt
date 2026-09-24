@@ -17,6 +17,12 @@ interface AppDispatchers {
     /** Network calls, small file and preference reads, Keystore work. */
     val io: CoroutineDispatcher
 
-    /** One background-priority thread for imports and every other bulk pass. */
+    /** One background-priority thread for imports (download and parse) and every other bulk pass. */
     val bulk: CoroutineDispatcher
+
+    /**
+     * A second background-priority thread that writes an import's batches while [bulk] parses the
+     * next one (spec 10 SRC-L-08). Nothing else runs here.
+     */
+    val bulkWrite: CoroutineDispatcher
 }
