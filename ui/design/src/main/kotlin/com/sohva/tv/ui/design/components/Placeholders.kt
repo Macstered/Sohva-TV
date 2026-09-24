@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,8 +61,38 @@ fun errorMessage(error: AppError): String = when (error) {
             stringResource(R.string.error_transport_failed_detail, error.detail.orEmpty())
         }
     is AppError.HttpStatus -> stringResource(R.string.error_source_http, error.status)
-    // SecretsUnreadable gets its own sentence with spec 73 in M1 (docs/decisions.md).
-    AppError.Unknown, AppError.SecretsUnreadable -> stringResource(R.string.error_unknown)
+    AppError.Unknown -> stringResource(R.string.error_unknown)
+    AppError.SecretsUnreadable -> stringResource(R.string.error_secrets_unreadable)
+    AppError.Interrupted -> stringResource(R.string.error_import_interrupted)
+    AppError.SourceNameRequired -> stringResource(R.string.settings_source_name_required)
+    is AppError.SourceNameTooLong -> pluralStringResource(R.plurals.error_source_name_too_long, error.max, error.max)
+    is AppError.SourceUrlInvalid -> stringResource(R.string.error_source_url_invalid, fieldLabel(error.label))
+    AppError.SourceUrlMalformed -> stringResource(R.string.error_source_url_malformed)
+    AppError.XtreamUsernameMissing -> stringResource(R.string.error_xtream_username_missing)
+    AppError.XtreamPasswordMissing -> stringResource(R.string.error_xtream_password_missing)
+    AppError.SourceNoLiveTv -> stringResource(R.string.error_source_no_live_tv)
+    AppError.SourceNoVod -> stringResource(R.string.error_source_no_vod)
+    AppError.PlaylistEmpty -> stringResource(R.string.error_playlist_empty)
+    AppError.PlaylistNotM3u -> stringResource(R.string.error_playlist_not_m3u)
+    AppError.EpgEmpty -> stringResource(R.string.error_epg_empty)
+    AppError.EpgUnmatched -> stringResource(R.string.error_epg_unmatched)
+    AppError.CatalogueEmpty -> stringResource(R.string.error_catalogue_empty)
+    AppError.XtreamAuthFailed -> stringResource(R.string.error_xtream_auth_failed)
+    AppError.XtreamNoUserInfo -> stringResource(R.string.error_xtream_no_user_info)
+    is AppError.XtreamHttp -> stringResource(R.string.error_xtream_http, error.status)
+    AppError.XtreamResponseTooLarge -> stringResource(R.string.error_xtream_response_too_large)
+    AppError.XtreamResponseInvalid -> stringResource(R.string.error_xtream_response_invalid)
+    AppError.SeriesIdInvalid -> stringResource(R.string.error_series_id_invalid)
+    is AppError.ConnectionLimit -> stringResource(R.string.error_source_connection_limit, error.sourceName, error.limit)
+}
+
+/** "M3U" and "XMLTV" are format names and stay untranslated, as in beta 23. */
+@Composable
+private fun fieldLabel(label: AppError.FieldLabel): String = when (label) {
+    AppError.FieldLabel.M3U -> "M3U"
+    AppError.FieldLabel.XMLTV -> "XMLTV"
+    AppError.FieldLabel.XTREAM_SERVER -> stringResource(R.string.error_label_xtream_server)
+    AppError.FieldLabel.SOURCE -> stringResource(R.string.error_source_label)
 }
 
 /** Fills its parent with a centred [SectionMessage]; for screens that have nothing else yet. */

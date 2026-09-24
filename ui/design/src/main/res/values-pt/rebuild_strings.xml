@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings the rebuild added; beta 23 had no sentence for these (docs/decisions.md). Not managed by tools/import_strings.py. -->
+<resources>
+    <plurals name="error_source_name_too_long">
+        <item quantity="one">O nome da fonte pode ter no máximo %1$d caractere</item>
+        <item quantity="many">O nome da fonte pode ter no máximo %1$d caracteres</item>
+        <item quantity="other">O nome da fonte pode ter no máximo %1$d caracteres</item>
+    </plurals>
+    <string name="error_import_interrupted">A atualização parou quando o app foi fechado. Os dados anteriores foram mantidos.</string>
+    <string name="error_secrets_unreadable">Os endereços e as senhas salvos das fontes não podem mais ser lidos neste dispositivo. Restaure um backup ou adicione as fontes novamente.</string>
+</resources>
