@@ -15,6 +15,14 @@ import com.sohva.tv.ui.design.ground.LocalRenderDispatcher
 import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import com.sohva.tv.core.model.settings.ColorThemeId
+import com.sohva.tv.core.model.settings.InterfaceScale
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -64,12 +72,41 @@ class ShellStartTest {
 
     @Test
     fun chosenLanguageAppliesBeforeAnyTextIsDrawn() {
-        // Below Android 13 the app's own file holds the language (the stand-in is API 30).
-        LocaleStore(context).setLanguageTag("fi")
+        // Below Android 13 the app's own file holds the language; from 13 the platform does.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.forLanguageTags("fi")
+        } else {
+            LocaleStore(context).setLanguageTag("fi")
+        }
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
             compose.onNodeWithText("Suora TV").assertExists()
             compose.onNodeWithText("Asetukset").assertExists()
+        }
+    }
+
+    @Test
+    fun savedThemeIsUsedFromTheFirstAppFrame() {
+        val graph = (context.applicationContext as SohvaApplication).graph
+        runBlocking { graph.data.preferences.setTheme(ColorThemeId.KANAGAWA) }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
+            // The Home marker is filled with textPrimary: Kanagawa's parchment, not Original's white.
+            val image = compose.onNodeWithTag("home-nav-home").captureToImage().asAndroidBitmap()
+            val pixel = image.getPixel(image.width * 9 / 10, image.height / 2)
+            assertEquals(Integer.toHexString(0xFFDCD7BA.toInt()), Integer.toHexString(pixel))
+        }
+    }
+
+    @Test
+    fun interfaceSizeScalesTheWholeInterface() {
+        val graph = (context.applicationContext as SohvaApplication).graph
+        runBlocking { graph.data.preferences.setScale(InterfaceScale.SMALLER) }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
+            val height = compose.onNodeWithTag("home-nav-home").fetchSemanticsNode().size.height
+            val expected = 48 * context.resources.displayMetrics.density * InterfaceScale.SMALLER.factor
+            assertEquals(expected, height.toFloat(), 1.5f)
         }
     }
 }

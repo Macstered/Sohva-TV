@@ -41,16 +41,16 @@ spec's section 10.
 
 Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) · Milestone: M0 · 34 items
 
-- [ ] **SHELL-01** Sohva TV appears in the Android TV launcher (Leanback launcher entry, 320×180 dp banner, adaptive icon, label `app_name` "Sohva TV").
-- [ ] **SHELL-02** Launch picture: the Sohva mark and wordmark on the dark vertical gradient, drawn by the window before the first frame.
-- [ ] **SHELL-03** A Compose launch screen identical to the launch picture stays up while local state loads, so nothing moves at the hand-over.
-- [ ] **SHELL-04** The saved colour theme is used from the first app frame (no flash of the default theme) and no text flashes between the launch picture and the first screen.
-- [ ] **SHELL-05** The whole interface is drawn at the chosen interface size (100, 90, 80 or 70 %); the launch picture stays at device density.
-- [ ] **SHELL-06** The chosen interface language is applied before any text is resolved (below Android 13 by the app, from Android 13 by the platform's per-app language).
+- [x] **SHELL-01** Sohva TV appears in the Android TV launcher (Leanback launcher entry, 320×180 dp banner, adaptive icon, label `app_name` "Sohva TV").
+- [x] **SHELL-02** Launch picture: the Sohva mark and wordmark on the dark vertical gradient, drawn by the window before the first frame.
+- [x] **SHELL-03** A Compose launch screen identical to the launch picture stays up while local state loads, so nothing moves at the hand-over.
+- [x] **SHELL-04** The saved colour theme is used from the first app frame (no flash of the default theme) and no text flashes between the launch picture and the first screen.
+- [x] **SHELL-05** The whole interface is drawn at the chosen interface size (100, 90, 80 or 70 %); the launch picture stays at device density.
+- [x] **SHELL-06** The chosen interface language is applied before any text is resolved (below Android 13 by the app, from Android 13 by the platform's per-app language).
 - [ ] **SHELL-07** Start screen setting: Home (default), Programme guide, or Last channel.
 - [ ] **SHELL-08** Last channel start opens the guide on that channel and plays it; a PIN-locked channel asks for the PIN first; a channel that no longer exists falls back to the guide.
 - [ ] **SHELL-09** Who is watching at start when the household has more than one profile and the question is switched on (details in [Profiles](../specs/04-profiles-parental.md)).
-- [ ] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
+- [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
 - [ ] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
 - [ ] **SHELL-12** Live playback started from a Sohva Sport match card or a reminder returns to where it started; catch-up playback always returns to the previous screen.
 - [ ] **SHELL-13** Changing channel inside the player replaces the player, so Back never steps back through the channels zapped.
@@ -60,8 +60,8 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [ ] **SHELL-17** A finished film returns to its details page; a finished episode starts the next one (when autoplay is on) or returns to the series page, also when playback began in Search.
 - [ ] **SHELL-18** A Trakt card on Home opens the library's own details page when the title is in the library, otherwise the Trakt title page.
 - [ ] **SHELL-19** Returning to Movies or Series restores the browse position; returning to Sohva Sport restores the open match card; returning to the guide focuses the channel.
-- [ ] **SHELL-20** Home navigation rail down the left edge: icons only at rest, widening over the content with labels when it takes focus.
-- [ ] **SHELL-21** Rail destinations: Live TV, Sohva Sport, Movies, Series, Search, Discover (only when available), Who is watching (only with two or more profiles), Settings, under a Home marker.
+- [x] **SHELL-20** Home navigation rail down the left edge: icons only at rest, widening over the content with labels when it takes focus.
+- [x] **SHELL-21** Rail destinations: Live TV, Sohva Sport, Movies, Series, Search, Discover (only when available), Who is watching (only with two or more profiles), Settings, under a Home marker.
 - [ ] **SHELL-22** Settings sits behind the parental PIN for a restricted profile.
 - [ ] **SHELL-23** A channel outside a restricted profile's groups is refused with a short toast "This profile cannot watch that channel".
 - [ ] **SHELL-24** A PIN-locked channel asks for the PIN before live, catch-up and zapped playback.
@@ -73,8 +73,8 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [ ] **SHELL-30** Update check once a day at start (release package only).
 - [ ] **SHELL-31** The phone setup page closes when the viewer leaves the screen that opened it.
 - [ ] **SHELL-32** Sohva Sport is polled only while its screen or the score ticker is visible and the app is in front.
-- [ ] **SHELL-33** One focus language across the app: the focused control fills with off-white and its content inverts; artwork gets a ring instead; nothing is outlined at rest.
-- [ ] **SHELL-34** Landscape only; the picture-in-picture resize never restarts the activity.
+- [x] **SHELL-33** One focus language across the app: the focused control fills with off-white and its content inverts; artwork gets a ring instead; nothing is outlined at rest.
+- [x] **SHELL-34** Landscape only; the picture-in-picture resize never restarts the activity.
 
 ## Home
 

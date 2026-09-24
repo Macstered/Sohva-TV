@@ -1,7 +1,9 @@
 # M0 plan: foundations
 
-Proposal for milestone M0 of [plan/02-roadmap.md](rebuild/plan/02-roadmap.md). Status: **proposed,
-waiting for the owner's go**. Nothing here is code yet.
+Plan for milestone M0 of [plan/02-roadmap.md](rebuild/plan/02-roadmap.md). Status: **done on
+branch `m0-foundations`, 24 September 2026** (owner's go the same day). The exit check is at the
+end; decisions are in [decisions.md](decisions.md), measurements in
+[performance-log.md](performance-log.md).
 
 M0 inventory IDs: SHELL-01…34 ([plan/01](rebuild/plan/01-feature-inventory.md)). M0 can finish
 SHELL-01–07, 10, 20, 21 (placeholder destinations), 33 and 34. The rest need later features; M0
@@ -134,3 +136,33 @@ SQLite versions), so M1's first tables arrive with their tests.
 ## 8. Needs from the owner
 
 See the reply that accompanied this plan; answers are recorded in [decisions.md](decisions.md).
+
+## 9. Exit check (plan/02 M0)
+
+| Exit criterion | Result |
+|---|---|
+| Cold start to the first shell frame within the plan/07 budget on the stand-in | Time to initial display 357 ms with the baseline profile, 375 ms without (budget on the emulator: 400 ms) |
+| Release APK size recorded as the baseline, ≤ 4 MB | 2,339,240 bytes (`config/size-baseline.txt`) |
+| The gallery renders every component in all seven themes; screenshot tests green | 6 pages × 7 themes, 42 Roborazzi goldens verified; on-device gallery in debug builds |
+| Focus returns to the originating rail item after Back from every placeholder destination | Device test with real Back key events, green on API 30 and 34; proven to fail without the fix |
+| CI green; release dex verifies on the emulator | Local run of the Build workflow's checks green (`tools/check_all.py`); hosted CI not run (nothing pushed); release dex verifies (34 dex2oat lines, no rejections) |
+
+Also delivered: data foundations with 19 + 13 JVM and 6 device tests; the start-up benchmark and
+the first generated baseline profile (14,573 rules); the owner-scale fixture and loopback server;
+the guide-grid spike and its decision (one canvas and one focusable per row); the project lint
+rules, module rules, public-source audit and secret scan.
+
+Inventory: SHELL-01–06, 10, 20, 21, 33, 34 ticked. The other SHELL items need later milestones
+(player routing M2, profiles and PIN M6, reminders M3, background work M1/M4, updates M7).
+
+Carried into M1 and M2:
+
+- The between-row guide cost (10.3 ms of an 11 ms budget) is mostly framework work; attribute it
+  with Perfetto in M2 (needs `trace_processor`, not installed) and decide whether the guide's
+  scroll should snap.
+- Start the start snapshot read at process start, in parallel with activity creation (up to
+  60 ms on the stand-in's debug build; measure on release).
+- compileSdk 37 would unlock Compose 1.12, core-ktx 1.19 and lifecycle 2.11 (all pinned one step
+  back); it needs the API 37 SDK platform downloaded.
+- Hosted CI has never run: the first push will be its first run (Roborazzi goldens recorded on
+  Windows may need a tolerance review on Linux).

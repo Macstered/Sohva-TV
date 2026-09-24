@@ -1,5 +1,8 @@
 package com.sohva.tv.app
 
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.core.data.prefs.LocaleStore
 import kotlinx.coroutines.runBlocking
@@ -21,6 +24,9 @@ class ClearStateRule : ExternalResource() {
         check(app.packageName == "com.streammate.tv.debug") { "clear-state runs only against the debug app, not ${app.packageName}" }
         val graph = (app as SohvaApplication).graph
         LocaleStore(app).setLanguageTag(null)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            app.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.getEmptyLocaleList()
+        }
         runBlocking { graph.data.preferences.resetToDefaults() }
     }
 }
