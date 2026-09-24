@@ -26,6 +26,10 @@ object GuideFixture {
         withGuide: Boolean = true,
         userAgent: String? = null,
         referrer: String? = null,
+        /** Programmes for the first this many channels of each source only (owner-scale fixtures). */
+        guideFor: Int = Int.MAX_VALUE,
+        /** One sealed address for every channel, instead of sealing each (owner-scale fixtures). */
+        sealedStream: String? = null,
     ) {
         val db = graph.data.database
         val now = System.currentTimeMillis()
@@ -48,18 +52,18 @@ object GuideFixture {
                         val epg = "e$s-$index"
                         channels += ChannelEntity(
                             key = "$sourceId:c$index", sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
-                            tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = graph.data.cipher.encrypt(stream(sourceId, index)),
+                            tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = sealedStream ?: graph.data.cipher.encrypt(stream(sourceId, index)),
                             userAgent = userAgent, referrer = referrer, playlistOrder = index, providerNumber = index + 1, number = index + 1,
                             displayRank = index * 1024L, visible = true, catchupType = null, catchupSource = null, catchupDays = null,
                             catchupTz = null, xtreamStreamId = null, contentHash = 1, generation = 1,
                         )
-                        if (withGuide) programmes += schedule(sourceId, epg, index, now)
+                        if (withGuide && index < guideFor) programmes += schedule(sourceId, epg, index, now)
                         index++
                     }
                 }
-                db.channelImport().insert(channels)
+                channels.chunked(2_000).forEach { db.channelImport().insert(it) }
                 if (withGuide) {
-                    db.guideImport().insertProgrammes(programmes)
+                    programmes.chunked(2_000).forEach { db.guideImport().insertProgrammes(it) }
                     db.sourceStatus().upsert(
                         SourceStatusEntity(sourceId, "epg", "success", now, now, null, null, null, programmes.size, 0, 1, 1, 90 * MIN),
                     )

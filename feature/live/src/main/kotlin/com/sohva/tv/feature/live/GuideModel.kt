@@ -454,7 +454,23 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     }
 
     fun focusRow(index: Int, column: Int) {
+        ensurePage(index)
         _focus.value = GuideFocus(index, column, ++focusSerial)
+    }
+
+    /** Reads the page holding [index] when it is not resident (a dial or a return far down the list). */
+    private fun ensurePage(index: Int) {
+        val view = _list.value ?: return
+        val pages = rowPages
+        val page = index / ChannelList.PAGE
+        if (index !in 0 until view.size || pages.has(page)) return
+        viewModelScope.launch {
+            val rows = format(view.list, page)
+            if (rowPages === pages) {
+                pages.put(page, rows, page)
+                requestProgrammes()
+            }
+        }
     }
 
     fun toggleFavourite(key: String) {

@@ -111,7 +111,8 @@ private fun FocusApplier(state: LazyListState, handles: Map<Int, RowHandle>, mod
         if (visible.none { it.index == target.index && it.offset >= 0 }) state.scrollToItem(target.index)
         repeat(FOCUS_FRAMES) {
             val handle = handles[target.index]
-            if (handle != null) {
+            // A row whose page is still being read is a stand-in and cannot take focus: wait for it.
+            if (handle != null && model.rowPages.peek(target.index) != null) {
                 memory.focusedState?.takeIf { it !== handle.state }?.column = NONE
                 if (target.column != GuideModel.KEEP) {
                     memory.channelMode = target.column == GuideModel.CHANNEL
@@ -221,4 +222,5 @@ private fun NowLine(model: GuideModel, timeline: Dp) {
 }
 
 private const val TEXT_CACHE = 512
-private const val FOCUS_FRAMES = 30
+/** About five seconds of frames: a page read at owner scale takes well under one. */
+private const val FOCUS_FRAMES = 300
