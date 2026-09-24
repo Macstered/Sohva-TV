@@ -160,3 +160,45 @@ object UserAgents {
     fun sohva(versionName: String?, release: String?): String =
         "Sohva TV/${versionName?.takeIf { it.isNotBlank() } ?: "?"} (Android TV ${release?.takeIf { it.isNotBlank() } ?: "?"})"
 }
+
+/** Subtitle look (PLAY-FR-100), each following the TV by default. */
+enum class SubtitleSize(val scale: Float?) {
+    FOLLOW_TV(null), SMALL(0.8f), NORMAL(1.0f), LARGE(1.3f), VERY_LARGE(1.6f);
+
+    companion object {
+        fun fromStored(value: String?): SubtitleSize = entries.firstOrNull { it.name == value } ?: FOLLOW_TV
+    }
+}
+
+enum class SubtitleColor(val argb: Long?) {
+    FOLLOW_TV(null), WHITE(0xFFFFFFFF), YELLOW(0xFFFFE14D);
+
+    companion object {
+        fun fromStored(value: String?): SubtitleColor = entries.firstOrNull { it.name == value } ?: FOLLOW_TV
+    }
+}
+
+enum class SubtitleBackground {
+    FOLLOW_TV, NONE, SHADOW, BOX;
+
+    companion object {
+        fun fromStored(value: String?): SubtitleBackground = entries.firstOrNull { it.name == value } ?: FOLLOW_TV
+    }
+}
+
+/**
+ * The player's configuration, read once per playback from preferences and handed to every mode
+ * (spec 30 L-08: one object, so no call site forgets a setting).
+ */
+data class PlaybackSettings(
+    val buffer: BufferProfile = BufferProfile.DEFAULT,
+    val reconnect: ReconnectPolicy = ReconnectPolicy.STANDARD,
+    val skipStep: SkipStep = SkipStep.TEN_SECONDS,
+    val matchFrameRate: Boolean = true,
+    val pictureInPicture: Boolean = false,
+    val subtitleSize: SubtitleSize = SubtitleSize.FOLLOW_TV,
+    val subtitleColor: SubtitleColor = SubtitleColor.FOLLOW_TV,
+    val subtitleBackground: SubtitleBackground = SubtitleBackground.FOLLOW_TV,
+    val showChannelNumbers: Boolean = true,
+    val timeZone: String? = null,
+)

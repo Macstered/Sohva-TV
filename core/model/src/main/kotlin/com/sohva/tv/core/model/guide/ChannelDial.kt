@@ -41,7 +41,7 @@ object ChannelDial {
         number: Int,
         byOwnNumber: suspend (Int) -> C?,
         atPosition: suspend (Int) -> C?,
-        ownNumber: (C) -> Int?,
+        ownNumber: suspend (C) -> Int?,
     ): C? {
         if (number <= 0) return null
         byOwnNumber(number)?.let { return it }
