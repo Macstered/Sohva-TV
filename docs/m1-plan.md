@@ -65,3 +65,27 @@ PHONE-*, SEC-*. Branch `m1-sources`. Owner's go: 24 September 2026.
 - The migration spike needs a beta 23 installation the rebuild can read. Reading its encrypted
   sources is only possible inside the same app (same signing key) or from a debug-signed beta 23
   build; this repository cannot build the old app. Asked at the M1 exit.
+
+## Exit check (draft, 24 September 2026)
+
+Exit criteria:
+
+1. Owner-scale import on the stand-in within budget, Java heap under 128 MB — **met**
+   (docs/performance-log.md: 50,546 channels 15.9 s, guide 13.8 s, 200,000 films 60.9 s,
+   Xtream 13.3 s / 15.0 s / 36.1 s; heap max 30 MB).
+2. Two concurrent imports of one source stay intact, proven to fail without the lock — **met**
+   (`ImportScenarios.twoGuideImportsOfOneSourceOverlap`, JVM and emulator; without the lock the
+   active guide kept 3,000 of 12,000 programmes).
+3. Parser tests cover spec 10 §11's provider quirks — **met** (`:core:net` tests).
+4. No credential in logs or diagnostics — **met** (`noCredentialReachesTheLog`, redaction tests in
+   `:core:net` and `:core:model`).
+
+Inventory (tick when the milestone closes):
+
+- Done: SRC-01…10, 12…37, 40, 41; PHONE-01…09, 12…14; SEC-01…03, 07…13, 15 (128-bit token,
+  decision of 24 Sept), 16, 20, 23 (playlists, guides, Xtream; streams in M2), 25, 28.
+- Stored in M1, shown or enforced in a later milestone: SRC-11 (limit refused at playback, M2),
+  SRC-38 (offset applied on screen, M2), SRC-42 (no stutter during playback, needs the player,
+  M2), SRC-39 (backup), PHONE-10 (logo, M3), PHONE-11 (addons, Discover).
+- Open for M1: SEC-04 and the migration spike (step 8), waiting for the owner's go to sign a test
+  build with the release key (see below).

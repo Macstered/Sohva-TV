@@ -69,6 +69,21 @@ class ImportRunnerTest {
         assertEquals("0", h.query("SELECT COUNT(*) FROM channel WHERE source_id = 'm3u-1'").single())
     }
 
+    /** M1 exit criterion 4: failing imports whose addresses carry credentials log none of them. */
+    @Test
+    fun noCredentialReachesTheLog() = runBlocking {
+        h.addXtream()
+        h.serve("/panel/player_api.php", "", code = 500)
+        val getPhp = h.server.url("/get.php").newBuilder().addQueryParameter("username", "m3uviewer").addQueryParameter("password", "m3usecret").build()
+        h.addM3u(playlist = getPhp.toString())
+        h.runner.sync("xtream-1").join()
+        h.runner.sync("m3u-1").join()
+        assertTrue("the failures were logged", h.log.snapshot().any { "failed" in it })
+        for (secret in listOf("viewer", "secret", "m3uviewer", "m3usecret")) {
+            assertTrue("$secret in ${h.log.snapshot()}", h.log.snapshot().none { secret in it })
+        }
+    }
+
     @Test
     fun aRefreshLeftRunningByADeadProcessReadsAsInterrupted() = runBlocking {
         h.addM3u(guide = "/guide.xml")
