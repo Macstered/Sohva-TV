@@ -21,7 +21,7 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
     private val io get() = graph.dispatchers.io
     private val prefs get() = graph.data.preferences
 
-    override val reads: LiveReads get() = graph.data.live
+    override val reads: LiveReads = graph.liveReads
     override val clock: Clock get() = graph.clock
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 

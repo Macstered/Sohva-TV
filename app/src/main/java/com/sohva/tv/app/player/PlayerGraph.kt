@@ -56,7 +56,7 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
     /** The screen's side, one per player screen. */
     fun screen(locale: Locale): PlayerEnvironmentUi = object : PlayerEnvironmentUi {
-        override val reads: LiveReads get() = graph.data.live
+        override val reads: LiveReads = graph.liveReads
         override val client: PlaybackClient = PlaybackClient(graph.app)
         override val clock: Clock get() = graph.clock
         override val locale: Locale = locale

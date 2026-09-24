@@ -60,6 +60,15 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     @Volatile
     var guideFocusChannel: String? = null
 
+    /**
+     * The live reads the guide and player use: [DataGraph.live], unless a device test wraps it to
+     * gate one read and prove that slow data never moves focus (AGENTS.md §8).
+     */
+    @Volatile
+    var liveReadsOverride: com.sohva.tv.core.data.live.LiveReads? = null
+
+    val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
+
     /** Options that open screens of later milestones say so briefly (the shell's placeholder toast). */
     fun notYetAvailable() {
         android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()

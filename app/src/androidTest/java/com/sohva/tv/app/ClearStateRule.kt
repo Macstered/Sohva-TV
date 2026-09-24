@@ -36,5 +36,6 @@ class ClearStateRule : ExternalResource() {
             graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM recent_channel")
         }
         graph.guideFocusChannel = null
+        graph.liveReadsOverride = null
     }
 }
