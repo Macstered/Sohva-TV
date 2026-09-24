@@ -48,7 +48,8 @@ enum class ProviderRequest {
  * unblocks a read that would otherwise wait out the 90-second timeout.
  */
 class ProviderHttp(
-    private val client: OkHttpClient,
+    /** Shared with the playback client, which derives its own from it (plan/03 §4.12). */
+    val client: OkHttpClient,
     private val log: DiagnosticsLog,
     private val maxBodyBytes: Long = MAX_BODY_BYTES,
 ) {

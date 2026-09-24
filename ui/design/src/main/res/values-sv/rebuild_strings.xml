@@ -11,4 +11,13 @@
     <string name="error_source_limit_reached">Fler källor kan inte läggas till (högst %1$d)</string>
     <string name="action_cancel">Avbryt</string>
     <string name="source_delete_confirm">Ta bort %1$s med dess kanaler, programguide och filmer? Det går inte att ångra.</string>
+    <string name="player_cause_network">Det går inte att nå leverantören. Kontrollera nätverket.</string>
+    <string name="player_cause_refused">Leverantören nekade strömmen. Kontot kan användas någon annanstans eller ha gått ut.</string>
+    <string name="player_cause_gone">Leverantören har inte längre den här strömmen.</string>
+    <string name="player_cause_server">Leverantörens server fungerade inte.</string>
+    <string name="player_cause_broke_off">Anslutningen till leverantören bröts.</string>
+    <string name="player_cause_not_a_stream">Leverantören skickade något som inte är en spelbar ström.</string>
+    <string name="player_cause_decoder">Den här tv:n kan inte avkoda strömmens bild- eller ljudformat.</string>
+    <string name="player_cause_too_heavy">Den här tv:n kan inte spela strömmens bild jämnt (%1$s).</string>
+    <string name="player_cause_other">Strömmen slutade spelas.</string>
 </resources>

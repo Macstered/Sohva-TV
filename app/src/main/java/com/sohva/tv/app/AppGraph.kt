@@ -47,6 +47,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val sync: SyncGraph by lazy { SyncGraph(this) }
 
+    /** The playback engine's and player screen's view of the graph; built on first playback. */
+    val player: com.sohva.tv.app.player.PlayerGraph by lazy { com.sohva.tv.app.player.PlayerGraph(this) }
+
     /** The phone setup page (spec 11); built on first use. */
     val phone: PhoneSetup by lazy { PhoneSetup(this) }
 

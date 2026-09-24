@@ -5,6 +5,7 @@ import com.sohva.tv.core.data.database.FavouriteChannelEntity
 import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.data.database.LiveGroup
 import com.sohva.tv.core.data.database.LiveSource
+import com.sohva.tv.core.data.database.PlayableChannel
 import com.sohva.tv.core.data.database.ProgrammeRow
 import com.sohva.tv.core.data.database.RecentChannelEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
@@ -52,6 +53,9 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     override suspend fun indexOf(list: ChannelList, channel: LiveChannel): Int = withContext(io) { list.indexOf(channel.id, channel.rank) }
 
     override suspend fun channel(key: String): LiveChannel? = withContext(io) { live.byKey(key) }
+
+    /** What the playback engine opens: the sealed address and the source's limit (spec 30 PLAY-FR-14). */
+    suspend fun playable(key: String): PlayableChannel? = withContext(io) { live.playable(key) }
 
     /** Favourites of the profile in [sourceId], in display order (GUIDE-FR-33, GUIDE-NFR-12). */
     override suspend fun favourites(sourceId: String, profileId: String): ListSpec.Named = withContext(io) {

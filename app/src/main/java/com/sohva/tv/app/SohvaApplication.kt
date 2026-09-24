@@ -6,6 +6,8 @@ import android.util.Log
 import androidx.work.Configuration
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.source.RefreshKind
+import com.sohva.tv.core.player.PlayerEnvironment
+import com.sohva.tv.core.player.PlayerHost
 import com.sohva.tv.core.sync.ImportRunner
 import com.sohva.tv.core.sync.RefreshHost
 import com.sohva.tv.core.sync.RefreshWorkerFactory
@@ -14,7 +16,7 @@ import com.sohva.tv.core.sync.RefreshWorkerFactory
  * Process entry. Builds lazy holders only: no disk, database, preferences, WorkManager,
  * Keystore, network or image loader before the first frame (plan/03 §4.9).
  */
-class SohvaApplication : Application(), Configuration.Provider, RefreshHost {
+class SohvaApplication : Application(), Configuration.Provider, RefreshHost, PlayerHost {
     lateinit var graph: AppGraph
         private set
 
@@ -45,4 +47,6 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost {
         graph.data.refreshFacts.failuresSince(sinceMillis, kinds.map { it.id })
 
     override fun nowMillis(): Long = graph.clock.wallMillis()
+
+    override fun playerEnvironment(): PlayerEnvironment = graph.player
 }

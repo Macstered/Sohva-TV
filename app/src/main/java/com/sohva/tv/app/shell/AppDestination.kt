@@ -16,6 +16,9 @@ import com.sohva.tv.feature.home.RailItem
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
+import com.sohva.tv.feature.player.PlayerModel
+import com.sohva.tv.feature.player.PlayerNavigation
+import com.sohva.tv.feature.player.PlayerScreen
 import com.sohva.tv.feature.settings.SettingsModel
 import com.sohva.tv.feature.settings.SettingsScreen
 import com.sohva.tv.ui.design.R
@@ -38,7 +41,14 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val navigation = remember(stack, graph) { guideNavigation(stack, graph) }
             GuideScreen(model, navigation)
         }
-        is AppRoute.Player -> PlaceholderScreen(R.string.home_live_tv, { leavePlayer(route, stack, graph) }, "screen-player")
+        is AppRoute.Player -> {
+            val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
+            // One model per player session: zaps happen inside it, so the controller, the picture
+            // shape and the previous channel carry across them (spec 30 PLAY-FR-23, -58, -81).
+            val navigation = remember(stack, graph, route) { playerNavigation(route, stack, graph) }
+            val model = viewModel { PlayerModel(graph.player.screen(locale), route.channelKey, navigation) }
+            PlayerScreen(model)
+        }
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
         is AppRoute.Catalogue -> when (route.mode) {
             CatalogueMode.MOVIES -> PlaceholderScreen(R.string.home_movies, { back() }, "screen-movies")
@@ -75,16 +85,25 @@ private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = objec
 }
 
 /**
- * Back from the bare picture (spec 30 §3.2): a guide-started live player leaves to
- * `[Home, Guide]` with the guide on the channel just watched; anything else pops.
+ * Leaving the player (spec 30 §3.2–3.3): Back from the bare picture of a guide-started live player
+ * leaves to `[Home, Guide]` with the guide on the channel just watched; anything else pops. The
+ * mapped Home, Guide, Sport and Guide-at-channel actions reset the stack (PLAY-FR-07).
  */
-internal fun leavePlayer(route: AppRoute.Player, stack: BackStack<AppRoute>, graph: AppGraph) {
-    if (route.returnToGuide) {
-        graph.guideFocusChannel = route.channelKey
-        stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
-    } else {
-        stack.pop()
+private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>, graph: AppGraph) = object : PlayerNavigation {
+    override fun leave(channelKey: String) {
+        if (route.returnToGuide) guideAt(channelKey) else stack.pop()
     }
+
+    override fun guideAt(channelKey: String) {
+        graph.guideFocusChannel = channelKey
+        stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
+    }
+
+    override fun home() = stack.resetTo(listOf(AppRoute.Home))
+
+    override fun guide() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
+
+    override fun sport() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Today))
 }
 
 /**

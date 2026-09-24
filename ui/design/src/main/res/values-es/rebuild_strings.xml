@@ -12,4 +12,13 @@
     <string name="error_source_limit_reached">No se pueden añadir más fuentes (máximo %1$d)</string>
     <string name="action_cancel">Cancelar</string>
     <string name="source_delete_confirm">¿Eliminar %1$s con sus canales, guía y películas? No se puede deshacer.</string>
+    <string name="player_cause_network">No se puede contactar con el proveedor. Comprueba la red.</string>
+    <string name="player_cause_refused">El proveedor rechazó la emisión. La cuenta puede estar en uso en otro lugar o haber caducado.</string>
+    <string name="player_cause_gone">El proveedor ya no tiene esta emisión.</string>
+    <string name="player_cause_server">El servidor del proveedor falló.</string>
+    <string name="player_cause_broke_off">Se cortó la conexión con el proveedor.</string>
+    <string name="player_cause_not_a_stream">El proveedor envió algo que no es una emisión reproducible.</string>
+    <string name="player_cause_decoder">Este televisor no puede decodificar el formato de imagen o sonido de la emisión.</string>
+    <string name="player_cause_too_heavy">Este televisor no puede reproducir la imagen de esta emisión con fluidez (%1$s).</string>
+    <string name="player_cause_other">La emisión dejó de reproducirse.</string>
 </resources>

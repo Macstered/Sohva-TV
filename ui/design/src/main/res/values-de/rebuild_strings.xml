@@ -11,4 +11,13 @@
     <string name="error_source_limit_reached">Es können keine weiteren Quellen hinzugefügt werden (höchstens %1$d)</string>
     <string name="action_cancel">Abbrechen</string>
     <string name="source_delete_confirm">%1$s mit Sendern, Programmführer und Filmen entfernen? Das lässt sich nicht rückgängig machen.</string>
+    <string name="player_cause_network">Der Anbieter ist nicht erreichbar. Prüfe das Netzwerk.</string>
+    <string name="player_cause_refused">Der Anbieter hat den Stream abgelehnt. Das Konto wird vielleicht anderswo genutzt oder ist abgelaufen.</string>
+    <string name="player_cause_gone">Der Anbieter hat diesen Stream nicht mehr.</string>
+    <string name="player_cause_server">Der Server des Anbieters ist ausgefallen.</string>
+    <string name="player_cause_broke_off">Die Verbindung zum Anbieter ist abgebrochen.</string>
+    <string name="player_cause_not_a_stream">Der Anbieter hat etwas gesendet, das kein abspielbarer Stream ist.</string>
+    <string name="player_cause_decoder">Dieser Fernseher kann das Bild- oder Tonformat des Streams nicht decodieren.</string>
+    <string name="player_cause_too_heavy">Dieser Fernseher kann das Bild dieses Streams nicht flüssig abspielen (%1$s).</string>
+    <string name="player_cause_other">Der Stream wurde nicht mehr abgespielt.</string>
 </resources>

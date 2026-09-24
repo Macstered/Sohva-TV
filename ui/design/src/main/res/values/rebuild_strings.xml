@@ -11,4 +11,13 @@
     <string name="error_source_limit_reached">No more sources can be added (limit %1$d)</string>
     <string name="action_cancel">Cancel</string>
     <string name="source_delete_confirm">Remove %1$s with its channels, guide and films? This cannot be undone.</string>
+    <string name="player_cause_network">Cannot reach the provider. Check the network.</string>
+    <string name="player_cause_refused">The provider refused the stream. The account may be in use elsewhere or expired.</string>
+    <string name="player_cause_gone">The provider no longer has this stream.</string>
+    <string name="player_cause_server">The provider’s server failed.</string>
+    <string name="player_cause_broke_off">The connection to the provider broke off.</string>
+    <string name="player_cause_not_a_stream">The provider sent something that is not a playable stream.</string>
+    <string name="player_cause_decoder">This TV cannot decode the stream’s picture or sound format.</string>
+    <string name="player_cause_too_heavy">This TV cannot play this stream’s picture smoothly (%1$s).</string>
+    <string name="player_cause_other">The stream stopped playing.</string>
 </resources>
