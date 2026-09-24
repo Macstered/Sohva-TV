@@ -21,10 +21,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -37,6 +37,7 @@ import androidx.media3.common.C
 import com.sohva.tv.core.model.player.PlaybackCause
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.ListRowLayout
+import com.sohva.tv.ui.design.components.LogoTile
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvListRow
 import com.sohva.tv.ui.design.components.roundFill
@@ -94,6 +95,7 @@ internal fun ErrorBanner(model: PlayerModel, banner: Banner, modifier: Modifier 
         is BannerReason.Cause -> causeText(r.cause) to r.detail
         is BannerReason.ConnectionLimit -> stringResource(R.string.error_source_connection_limit, r.sourceName, r.limit) to null
         BannerReason.Unavailable -> stringResource(R.string.external_channel_unavailable) to null
+        is BannerReason.ExternalFailed -> stringResource(R.string.player_external_failed, r.message) to null
     }
     val line = when {
         banner.reason !is BannerReason.Cause -> sentence
@@ -279,7 +281,7 @@ private fun ChannelColumn(view: ChannelListView, numbers: Boolean, active: Boole
                             color = if (ink) p.background.copy(alpha = 0.7f) else p.textDim,
                         )
                     }
-                    com.sohva.tv.ui.design.components.InitialsTile(row.name, Modifier.width(44.dp).heightIn(44.dp, 44.dp), fontSize = 14.sp)
+                    LogoTile(row.name, row.logoUrl, 44.dp, fontSize = 14.sp)
                     Column(Modifier.padding(start = 12.dp)) {
                         Text(row.name, style = Sohva.typography.label.copy(fontWeight = FontWeight.Bold), color = if (ink) p.background else p.textPrimary, maxLines = 1)
                         Text(

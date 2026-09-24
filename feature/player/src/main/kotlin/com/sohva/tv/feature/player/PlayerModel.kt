@@ -75,6 +75,16 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
     private val _stats = MutableStateFlow(false)
     val statsOn: StateFlow<Boolean> = _stats.asStateFlow()
 
+    private val _external = MutableStateFlow(false)
+
+    /** "Opening…" while another player app is being started (PLAY-FR-44). */
+    val externalBusy: StateFlow<Boolean> = _external.asStateFlow()
+
+    private val _frameRate = MutableStateFlow<Float?>(null)
+
+    /** The selected video format's frame rate, for matching the display (PLAY-FR-103, -105). */
+    val frameRate: StateFlow<Float?> = _frameRate.asStateFlow()
+
     val channels = PlayerChannels(this, reads, viewModelScope)
     val dial = PlayerDial(this, reads, viewModelScope)
     val keys = PlayerKeys(this)
@@ -315,6 +325,38 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
         }
     }
 
+    // ---- Another player (PLAY-FR-115..116) ------------------------------------------------------------
+
+    /**
+     * Stops the stream and clears it (the lease goes back), waits 150 ms, then hands the live
+     * address to another app. Success leaves the player; failure says why and plays again.
+     */
+    fun openExternal() {
+        if (_external.value) return
+        val c = controller ?: return
+        val key = _playing.value?.channel?.key ?: return
+        _external.value = true
+        c.stop()
+        c.clearMediaItems()
+        viewModelScope.launch {
+            delay(EXTERNAL_WAIT_MS)
+            val stream = env.externalStream(key)
+            val error = if (stream == null) null else navigation.openExternal(stream)
+            _external.value = false
+            when {
+                stream == null -> {
+                    _banner.value = Banner(BannerReason.Unavailable, 0, 0, stopped = true)
+                    play(key, record = false)
+                }
+                error == null -> navigation.leave(key)
+                else -> {
+                    play(key, record = false)
+                    _banner.value = Banner(BannerReason.ExternalFailed(com.sohva.tv.core.model.diagnostics.Redactor.redact(error.message).orEmpty()), 0, 0, stopped = true)
+                }
+            }
+        }
+    }
+
     // ---- Lifecycle (PLAY-FR-20) ------------------------------------------------------------------
 
     fun onStop() {
@@ -356,6 +398,9 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
 
         override fun onTracksChanged(tracks: MediaTracks) {
             _tracks.value = tracksOf(tracks)
+            _frameRate.value = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
+                ?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).frameRate } }
+                ?.takeIf { it > 0f }
         }
 
         /** The engine's own refusals before playback (PLAY-FR-95). */
@@ -393,5 +438,6 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
     companion object {
         const val BOX_MS: Long = 5_000
         const val NOW_TICK_MS: Long = 30_000
+        const val EXTERNAL_WAIT_MS: Long = 150
     }
 }

@@ -50,6 +50,7 @@ fun PlayerScreen(model: PlayerModel) {
     val connection by model.connection.collectAsStateWithLifecycle()
     KeepScreenOn()
     PlayerLifecycle(model)
+    DisplayRateMatch(model)
     Box(Modifier.fillMaxSize().background(Color.Black).testTag("screen-player")) {
         when (connection) {
             Connection.CONNECTING -> FullScreenMessage(stringResource(R.string.player_connecting))

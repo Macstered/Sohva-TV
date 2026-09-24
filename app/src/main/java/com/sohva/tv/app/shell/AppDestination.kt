@@ -1,21 +1,25 @@
 package com.sohva.tv.app.shell
 
+import android.content.Intent
+import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.net.toUri
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
-import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.app.navigation.CatalogueMode
+import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
+import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerModel
 import com.sohva.tv.feature.player.PlayerNavigation
 import com.sohva.tv.feature.player.PlayerScreen
@@ -104,6 +108,16 @@ private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>,
     override fun guide() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
 
     override fun sport() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Today))
+
+    /** `ACTION_VIEW` with the address, any video type, a new task and the headers both ways players read them (PLAY-FR-115). */
+    override fun openExternal(stream: ExternalStream): Throwable? = runCatching {
+        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(stream.address.toUri(), "video/*").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (stream.headers.isNotEmpty()) {
+            intent.putExtra("com.android.browser.headers", Bundle().apply { stream.headers.forEach { (k, v) -> putString(k, v) } })
+            intent.putExtra("headers", stream.headers.flatMap { (k, v) -> listOf(k, v) }.toTypedArray())
+        }
+        graph.app.startActivity(intent)
+    }.exceptionOrNull()
 }
 
 /**

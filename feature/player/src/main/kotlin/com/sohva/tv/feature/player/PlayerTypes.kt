@@ -23,6 +23,14 @@ interface PlayerEnvironmentUi {
 
     /** Front of the profile's recents and the last channel (spec 30 PLAY-FR-57). */
     suspend fun recordWatched(channelKey: String)
+
+    /** The live stream's real address and headers for another player app (PLAY-FR-115), or null when gone. */
+    suspend fun externalStream(channelKey: String): ExternalStream?
+}
+
+/** What another player gets: the address (with the provider's credentials, inherent to the feature) and headers. */
+class ExternalStream(val address: String, val headers: Map<String, String>) {
+    override fun toString(): String = "ExternalStream(<redacted>)"
 }
 
 /** Where the player sends the viewer (spec 30 §3.2–3.3, REMOTE group Leave). */
@@ -37,6 +45,9 @@ interface PlayerNavigation {
     fun guide()
 
     fun sport()
+
+    /** Starts another player app with the stream; returns why it failed, or null (PLAY-FR-115..116). */
+    fun openExternal(stream: ExternalStream): Throwable?
 }
 
 enum class Connection { CONNECTING, READY, FAILED }
@@ -57,6 +68,9 @@ sealed interface BannerReason {
     data class ConnectionLimit(val sourceName: String, val limit: Int) : BannerReason
 
     data object Unavailable : BannerReason
+
+    /** The external player could not be opened; [message] is already redacted. */
+    data class ExternalFailed(val message: String) : BannerReason
 }
 
 /** The error banner: the reason, the attempt counter while reconnecting, and whether it gave up. */

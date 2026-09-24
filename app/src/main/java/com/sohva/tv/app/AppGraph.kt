@@ -50,6 +50,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** The playback engine's and player screen's view of the graph; built on first playback. */
     val player: com.sohva.tv.app.player.PlayerGraph by lazy { com.sohva.tv.app.player.PlayerGraph(this) }
 
+    /** Logos and artwork, decoded at their drawn size; the loader is built on first use. */
+    val artwork: com.sohva.tv.app.artwork.CoilArtwork by lazy { com.sohva.tv.app.artwork.CoilArtwork(this) }
+
     /** The phone setup page (spec 11); built on first use. */
     val phone: PhoneSetup by lazy { PhoneSetup(this) }
 

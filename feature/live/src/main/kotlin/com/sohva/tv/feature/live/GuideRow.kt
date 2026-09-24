@@ -30,6 +30,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
@@ -38,13 +39,19 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.nativeKeyCode
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.dp
 import com.sohva.tv.core.model.guide.GuideRules
+import com.sohva.tv.ui.design.components.LocalArtwork
 import com.sohva.tv.ui.design.motion.Motion
 
 internal const val NONE = -2
+
+/** The logo inside its 30 dp tile with 3 dp padding (spec 20 §5.1). */
+private val LOGO_BOX = 24.dp
 
 /**
  * One row's selected column and focus, read only in its draw phase and key handler: a press
@@ -127,6 +134,13 @@ internal fun GuideRow(
         return
     }
     val longPress = remember { LongOk() }
+    // The logo is decoded at its drawn size and read in the draw phase: its arrival redraws the cell only.
+    val loader = LocalArtwork.current
+    val logoPx = with(LocalDensity.current) { LOGO_BOX.roundToPx() }
+    val logo = remember(row.channel.logoUrl) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(row.channel.logoUrl) {
+        row.channel.logoUrl?.takeIf { it.isNotBlank() }?.let { logo.value = loader.load(it, logoPx, logoPx) }
+    }
     Box(
         base
             .focusRequester(requester)
@@ -139,7 +153,7 @@ internal fun GuideRow(
         // Two render nodes: the fade redraws only the cell; scrolling moves both without re-recording.
         Spacer(
             Modifier.width(CHANNEL_WIDTH).fillMaxHeight().graphicsLayer()
-                .drawBehind { with(painter) { drawChannel(row, state, channelFill.value, null) } },
+                .drawBehind { with(painter) { drawChannel(row, state, channelFill.value, logo.value) } },
         )
         Spacer(
             Modifier.fillMaxSize().padding(start = CHANNEL_WIDTH + TIMELINE_GAP).graphicsLayer()

@@ -32,7 +32,7 @@ import com.sohva.tv.core.model.player.PictureShape
 import com.sohva.tv.core.model.time.TimeLabels
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.DrawColorIcon
-import com.sohva.tv.ui.design.components.InitialsTile
+import com.sohva.tv.ui.design.components.LogoTile
 import com.sohva.tv.ui.design.components.PlayerProgressTrack
 import com.sohva.tv.ui.design.components.TagTone
 import com.sohva.tv.ui.design.components.TvIcons
@@ -60,7 +60,7 @@ internal fun LiveInfoBox(model: PlayerModel, modifier: Modifier = Modifier) {
     val now = model.now()
     Column(modifier.fillMaxWidth().padding(start = 40.dp, end = 40.dp, bottom = 28.dp).testTag("player-live-box")) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            InitialsTile(channel.channel.name, Modifier.size(64.dp), fontSize = 18.sp)
+            LogoTile(channel.channel.name, channel.channel.logoUrl, 64.dp, fontSize = 18.sp)
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(channel.channel.name, style = type.headline.copy(fontWeight = FontWeight.Black), color = p.textPrimary, maxLines = 1)
@@ -117,6 +117,7 @@ private fun ActionRow(model: PlayerModel) {
     val stats by model.statsOn.collectAsStateWithLifecycle()
     val tracks by model.tracks.collectAsStateWithLifecycle()
     val request by model.boxFocusRequest.collectAsStateWithLifecycle()
+    val opening by model.externalBusy.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
     val focused = remember { BooleanArray(8) }
     fun onFocus(i: Int, has: Boolean) {
@@ -131,6 +132,13 @@ private fun ActionRow(model: PlayerModel) {
         IconAction(TvIcons.Channels, stringResource(R.string.player_action_channels), { model.channels.openList() }, onFocus = { onFocus(4, it) })
         IconAction(TvIcons.Stats, stringResource(R.string.player_action_stats), { model.toggleStats() }, selected = stats, onFocus = { onFocus(5, it) })
         IconAction(TvIcons.Settings, stringResource(R.string.player_action_quick), { model.openQuickActions() }, onFocus = { onFocus(6, it) })
+        IconAction(
+            TvIcons.Forward,
+            stringResource(if (opening) R.string.player_opening_external else R.string.player_external),
+            { model.openExternal() },
+            enabled = !opening,
+            onFocus = { onFocus(7, it) },
+        )
     }
     LaunchedEffect(request) { if (request > 0) first.requestFocusWhenAttached() }
 }
@@ -143,13 +151,14 @@ private fun IconAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    enabled: Boolean = true,
     onFocus: (Boolean) -> Unit,
 ) {
     val style = SurfaceStyle(corner = Sohva.shapes.small, resting = Sohva.palette.surface, restingContent = Sohva.palette.textPrimary, focusScale = 1f)
     TvSurface(
         onClick,
         modifier.size(44.dp).onFocusChanged { onFocus(it.isFocused) }.semantics { contentDescription = description },
-        SurfaceState(selected = selected),
+        SurfaceState(selected = selected, enabled = enabled),
         style,
     ) { colors ->
         Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {

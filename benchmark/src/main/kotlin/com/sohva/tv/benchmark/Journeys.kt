@@ -24,7 +24,8 @@ fun MacrobenchmarkScope.browseRail() {
     repeat(6) { step ->
         repeat(step) { device.pressDPadDown() }
         device.pressDPadCenter()
-        device.wait(Until.hasObject(By.res("placeholder-back")), WAIT_MS)
+        // Live TV is a real screen from M2; the others are placeholders until their milestones.
+        device.wait(Until.hasObject(By.res(if (step == 0) "screen-guide" else "placeholder-back")), WAIT_MS)
         device.pressBack()
         device.wait(Until.hasObject(By.res("home-live")), WAIT_MS)
     }

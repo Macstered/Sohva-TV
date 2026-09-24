@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
@@ -44,8 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tracing.trace
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.ui.design.R
-import com.sohva.tv.ui.design.components.InitialsTile
 import com.sohva.tv.ui.design.components.LiveDot
+import com.sohva.tv.ui.design.components.LogoTile
 import com.sohva.tv.ui.design.components.TagTone
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
@@ -83,7 +82,7 @@ private fun HeroStill(model: GuideModel, selection: GuideSelection) {
     val now = model.nowState.longValue
     val live = programme?.isLive(now) == true
     Box(Modifier.fillMaxHeight().aspectRatio(16f / 9f).roundFill(palette.surfaceSubtle, Sohva.shapes.large)) {
-        InitialsTile(selection.row.name, Modifier.size(56.dp).align(Alignment.Center), fontSize = Sohva.typography.caption.fontSize)
+        LogoTile(selection.row.name, selection.row.channel.logoUrl, 56.dp, Modifier.align(Alignment.Center), fontSize = Sohva.typography.caption.fontSize)
         val ground = palette.background
         Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.verticalGradient(0.46f to ground.copy(alpha = 0f), 1f to ground.copy(alpha = 0.92f)))

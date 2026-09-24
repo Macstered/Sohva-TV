@@ -12,6 +12,7 @@ import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.player.PlaybackClient
 import com.sohva.tv.core.player.PlayerEnvironment
 import com.sohva.tv.core.player.ResolvedStream
+import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerEnvironmentUi
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
@@ -67,6 +68,15 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         override suspend fun recordWatched(channelKey: String) = withContext(io) {
             graph.data.live.recordWatched(channelKey)
             graph.data.preferences.setLastChannel(channelKey)
+        }
+
+        override suspend fun externalStream(channelKey: String): ExternalStream? {
+            val stream = resolveLive(channelKey) ?: return null
+            val headers = buildMap {
+                stream.userAgent?.takeIf { it.isNotBlank() }?.let { put("User-Agent", it) }
+                stream.referrer?.takeIf { it.isNotBlank() }?.let { put("Referer", it) }
+            }
+            return ExternalStream(stream.address, headers)
         }
     }
 
