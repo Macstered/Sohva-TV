@@ -26,6 +26,11 @@ robolectric = "4.17"
 roborazzi = "1.75.0"
 sqlite-jdbc = "3.53.4.0"
 lint = "32.4.1"
+okhttp = "5.5.0"
+okio = "3.18.2"
+moshi = "1.15.2"
+kxml2 = "2.3.0"
+zxing = "3.5.4"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -66,6 +71,12 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 roborazzi-junit-rule = { module = "io.github.takahirom.roborazzi:roborazzi-junit-rule", version.ref = "roborazzi" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+moshi = { module = "com.squareup.moshi:moshi", version.ref = "moshi" }
+kxml2 = { module = "net.sf.kxml:kxml2", version.ref = "kxml2" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 
 lint-api = { module = "com.android.tools.lint:lint-api", version.ref = "lint" }

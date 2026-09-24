@@ -62,6 +62,7 @@ fun errorMessage(error: AppError): String = when (error) {
         }
     is AppError.HttpStatus -> stringResource(R.string.error_source_http, error.status)
     AppError.Unknown -> stringResource(R.string.error_unknown)
+    AppError.SourceResponseTooLarge -> stringResource(R.string.error_source_response_too_large)
     AppError.SecretsUnreadable -> stringResource(R.string.error_secrets_unreadable)
     AppError.Interrupted -> stringResource(R.string.error_import_interrupted)
     AppError.SourceNameRequired -> stringResource(R.string.settings_source_name_required)

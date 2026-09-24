@@ -19,6 +19,7 @@ rootProject.name = "SohvaTV"
 
 include(":app")
 include(":core:model")
+include(":core:net")
 include(":core:data")
 include(":ui:design")
 include(":feature:home")

@@ -8,4 +8,5 @@
     </plurals>
     <string name="error_import_interrupted">L\'aggiornamento si è interrotto alla chiusura dell\'app. I dati precedenti sono stati mantenuti.</string>
     <string name="error_secrets_unreadable">Gli indirizzi e le password salvati delle sorgenti non sono più leggibili su questo dispositivo. Ripristina un backup o aggiungi di nuovo le sorgenti.</string>
+    <string name="error_source_response_too_large">La risposta della sorgente era troppo grande</string>
 </resources>

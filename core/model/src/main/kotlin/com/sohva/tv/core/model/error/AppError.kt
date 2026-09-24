@@ -30,6 +30,9 @@ sealed interface AppError {
         override val args get() = listOf(status.toString())
     }
 
+    /** A playlist or guide body passed the 1 GiB runaway guard (plan/09 size caps). */
+    data object SourceResponseTooLarge : AppError { override val code = "source_response_too_large" }
+
     /** The Keystore key cannot unwrap the stored data key (spec 73 §8): secrets are unreadable. */
     data object SecretsUnreadable : AppError { override val code = "secrets_unreadable" }
 
@@ -87,7 +90,7 @@ sealed interface AppError {
 /** Rebuilds a stored error; an unknown code (from a newer build) reads as [AppError.Unknown]. */
 object AppErrors {
     private val singletons: Map<String, AppError> = listOf(
-        AppError.Unknown, AppError.SecretsUnreadable, AppError.Interrupted, AppError.SourceNameRequired,
+        AppError.Unknown, AppError.SourceResponseTooLarge, AppError.SecretsUnreadable, AppError.Interrupted, AppError.SourceNameRequired,
         AppError.SourceUrlMalformed, AppError.XtreamUsernameMissing, AppError.XtreamPasswordMissing,
         AppError.SourceNoLiveTv, AppError.SourceNoVod, AppError.PlaylistEmpty, AppError.PlaylistNotM3u,
         AppError.EpgEmpty, AppError.EpgUnmatched, AppError.CatalogueEmpty, AppError.XtreamAuthFailed,
