@@ -50,6 +50,18 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** The phone setup page (spec 11); built on first use. */
     val phone: PhoneSetup by lazy { PhoneSetup(this) }
 
+    /**
+     * The channel last played from the guide in this process: the guide opens on it (spec 20 §3.1,
+     * session memory, never stored).
+     */
+    @Volatile
+    var guideFocusChannel: String? = null
+
+    /** Options that open screens of later milestones say so briefly (the shell's placeholder toast). */
+    fun notYetAvailable() {
+        android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     private val started = AtomicBoolean(false)
 
     /**

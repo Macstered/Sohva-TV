@@ -26,54 +26,54 @@ import kotlinx.coroutines.withContext
  * §9). Every call runs on [io]; nothing here holds a catalogue: lists are [ChannelList] indexes,
  * schedules come for at most 80 guide ids and four hours at a time.
  */
-class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatcher, private val clock: Clock) {
+class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatcher, private val clock: Clock) : LiveReads {
     private val live = db.live()
     private val viewer = db.viewer()
 
     /** Enabled sources with visible channels, by priority then name; re-emitted on every write. */
-    val sources: Flow<List<LiveSource>> = live.observeSources().flowOn(io)
+    override val sources: Flow<List<LiveSource>> = live.observeSources().flowOn(io)
 
     /**
      * One signal per write to the tables a guide list depends on (GUIDE-FR-37); the first emission
      * is the current state, not a write (spec 20 §10).
      */
-    fun changes(): Flow<Unit> =
+    override fun changes(): Flow<Unit> =
         db.invalidationTracker.createFlow("channel", "content_group", "source", "source_status").map { }
 
     /** A new guide snapshot or a source edit re-reads the visible programmes (§8 "Import while open"). */
-    fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }
+    override fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }
 
-    suspend fun rail(sourceId: String): List<LiveGroup> = withContext(io) { live.rail(sourceId) }
+    override suspend fun rail(sourceId: String): List<LiveGroup> = withContext(io) { live.rail(sourceId) }
 
-    suspend fun open(spec: ListSpec): ChannelList = withContext(io) { ChannelList.open(spec, live) }
+    override suspend fun open(spec: ListSpec): ChannelList = withContext(io) { ChannelList.open(spec, live) }
 
-    suspend fun page(list: ChannelList, page: Int): List<LiveChannel> = withContext(io) { list.page(page) }
+    override suspend fun page(list: ChannelList, page: Int): List<LiveChannel> = withContext(io) { list.page(page) }
 
-    suspend fun indexOf(list: ChannelList, channel: LiveChannel): Int = withContext(io) { list.indexOf(channel.id, channel.rank) }
+    override suspend fun indexOf(list: ChannelList, channel: LiveChannel): Int = withContext(io) { list.indexOf(channel.id, channel.rank) }
 
-    suspend fun channel(key: String): LiveChannel? = withContext(io) { live.byKey(key) }
+    override suspend fun channel(key: String): LiveChannel? = withContext(io) { live.byKey(key) }
 
     /** Favourites of the profile in [sourceId], in display order (GUIDE-FR-33, GUIDE-NFR-12). */
-    suspend fun favourites(sourceId: String, profileId: String = DEFAULT_PROFILE): ListSpec.Named = withContext(io) {
+    override suspend fun favourites(sourceId: String, profileId: String): ListSpec.Named = withContext(io) {
         val keys = viewer.favouriteKeys(profileId)
         val found = keys.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it) }
         ListSpec.Named(sourceId, found.sortedWith(compareBy({ it.rank }, { it.id })).map { it.id }.toLongArray())
     }
 
     /** The profile's last 20 channels of [sourceId], most recent first (GUIDE-FR-34). */
-    suspend fun recents(sourceId: String, profileId: String = DEFAULT_PROFILE): ListSpec.Named = withContext(io) {
+    override suspend fun recents(sourceId: String, profileId: String): ListSpec.Named = withContext(io) {
         val keys = viewer.recentKeys(profileId)
         val byKey = live.keysByChannelKey(sourceId, keys).associateBy { it.key }
         ListSpec.Named(sourceId, keys.mapNotNull { byKey[it]?.id }.toLongArray())
     }
 
-    fun favouriteKeys(profileId: String = DEFAULT_PROFILE): Flow<Set<String>> =
+    override fun favouriteKeys(profileId: String): Flow<Set<String>> =
         viewer.observeFavouriteKeys(profileId).map { it.toHashSet() }.flowOn(io)
 
     fun recentsChanged(profileId: String = DEFAULT_PROFILE): Flow<List<String>> = viewer.observeRecentKeys(profileId).flowOn(io)
 
     /** Toggles a favourite; returns whether the channel is a favourite afterwards (GUIDE-FR-30). */
-    suspend fun toggleFavourite(key: String, profileId: String = DEFAULT_PROFILE): Boolean = withContext(io) {
+    override suspend fun toggleFavourite(key: String, profileId: String): Boolean = withContext(io) {
         if (viewer.removeFavourite(profileId, key) > 0) {
             false
         } else {
@@ -83,7 +83,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     }
 
     /** Front of the recents, trimmed to 20 (spec 30 PLAY-FR-57). */
-    suspend fun recordWatched(key: String, profileId: String = DEFAULT_PROFILE) = withContext(io) {
+    override suspend fun recordWatched(key: String, profileId: String): Unit = withContext(io) {
         viewer.recordRecent(RecentChannelEntity(profileId, key, clock.wallMillis()))
     }
 
@@ -91,7 +91,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
      * Schedules for [epgIds] of one source around [windowStart] (GUIDE-FR-51..53): read with the
      * source's EPG offset undone in the predicate and added to the result, cleaned per channel.
      */
-    suspend fun schedules(source: LiveSource, epgIds: Collection<String>, windowStart: Long): Map<String, List<GuideProgramme>> =
+    override suspend fun schedules(source: LiveSource, epgIds: Collection<String>, windowStart: Long): Map<String, List<GuideProgramme>> =
         withContext(io) {
             if (epgIds.isEmpty()) return@withContext emptyMap()
             val state = live.epgState(source.id)
@@ -104,13 +104,13 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
             rows.groupBy { it.epgId }.mapValues { (_, list) -> Schedules.clean(list.map { it.toProgramme(offset) }) }
         }
 
-    suspend fun description(programmeId: Long): String? = withContext(io) { live.description(programmeId) }
+    override suspend fun description(programmeId: Long): String? = withContext(io) { live.description(programmeId) }
 
     /**
      * Find programme (GUIDE-FR-92): the rows of [spec] (a group or All channels) whose name contains
      * [query] or that air a matching title in the window, in list order.
      */
-    suspend fun search(spec: ListSpec, source: LiveSource, query: String, windowStart: Long): ListSpec.Named = withContext(io) {
+    override suspend fun search(spec: ListSpec, source: LiveSource, query: String, windowStart: Long): ListSpec.Named = withContext(io) {
         val snapshot = live.epgState(source.id)?.snapshot ?: -1L
         val offset = source.epgOffsetMinutes * GuideWindow.MINUTE_MS
         val from = windowStart - offset
@@ -127,7 +127,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     }
 
     /** Number dialling within [list] (GUIDE-FR-81, -84): own number first, then position. Returns the list index or -1. */
-    suspend fun dial(list: ChannelList, number: Int): Int = withContext(io) {
+    override suspend fun dial(list: ChannelList, number: Int): Int = withContext(io) {
         val spec = list.spec
         val found = ChannelDial.resolve(
             number,

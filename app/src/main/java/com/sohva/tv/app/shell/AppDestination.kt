@@ -2,14 +2,20 @@ package com.sohva.tv.app.shell
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
+import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
+import com.sohva.tv.feature.live.GuideModel
+import com.sohva.tv.feature.live.GuideNavigation
+import com.sohva.tv.feature.live.GuideScreen
 import com.sohva.tv.feature.settings.SettingsModel
 import com.sohva.tv.feature.settings.SettingsScreen
 import com.sohva.tv.ui.design.R
@@ -25,7 +31,14 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val items = remember(flags) { railItems(flags) }
             HomeScreen(items, onOpen = { stack.push(it.route()) })
         }
-        AppRoute.Guide -> PlaceholderScreen(R.string.home_live_tv, { back() }, "screen-guide")
+        AppRoute.Guide -> {
+            val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
+            // Opened for the channel last played from the guide in this process (spec 20 §3.1).
+            val model = viewModel { GuideModel(AppGuideEnvironment(graph, locale), graph.guideFocusChannel) }
+            val navigation = remember(stack, graph) { guideNavigation(stack, graph) }
+            GuideScreen(model, navigation)
+        }
+        is AppRoute.Player -> PlaceholderScreen(R.string.home_live_tv, { leavePlayer(route, stack, graph) }, "screen-player")
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
         is AppRoute.Catalogue -> when (route.mode) {
             CatalogueMode.MOVIES -> PlaceholderScreen(R.string.home_movies, { back() }, "screen-movies")
@@ -39,6 +52,38 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel { SettingsModel(AppSettingsServices(graph), accounts = false) }
             SettingsScreen(model, onBack = { back() })
         }
+    }
+}
+
+private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = object : GuideNavigation {
+    override fun play(channelKey: String) {
+        graph.guideFocusChannel = channelKey
+        stack.push(AppRoute.Player(channelKey, returnToGuide = true))
+    }
+
+    override fun openSettings() {
+        stack.push(AppRoute.Settings)
+    }
+
+    override fun notYetAvailable() {
+        graph.notYetAvailable()
+    }
+
+    override fun leave() {
+        stack.pop()
+    }
+}
+
+/**
+ * Back from the bare picture (spec 30 §3.2): a guide-started live player leaves to
+ * `[Home, Guide]` with the guide on the channel just watched; anything else pops.
+ */
+internal fun leavePlayer(route: AppRoute.Player, stack: BackStack<AppRoute>, graph: AppGraph) {
+    if (route.returnToGuide) {
+        graph.guideFocusChannel = route.channelKey
+        stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
+    } else {
+        stack.pop()
     }
 }
 

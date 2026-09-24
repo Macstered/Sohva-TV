@@ -16,6 +16,12 @@ sealed interface AppRoute {
     data object Discover : AppRoute
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
+
+    /**
+     * Live playback of a channel (spec 30 §3.1). [returnToGuide]: Back from the bare picture
+     * leaves to `[Home, Guide]` on this channel. Never restored after process death (spec 01).
+     */
+    data class Player(val channelKey: String, val returnToGuide: Boolean) : AppRoute
 }
 
 enum class CatalogueMode { MOVIES, SERIES }
@@ -30,6 +36,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         AppRoute.Discover -> "discover"
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
+        is AppRoute.Player -> "player"
     }
 
     override fun decode(value: String): AppRoute? = when (value) {
@@ -42,6 +49,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         "discover" -> AppRoute.Discover
         "profiles" -> AppRoute.ProfilePicker
         "settings" -> AppRoute.Settings
+        // A playback route restores to the screen underneath it (spec 01 §4.4).
         else -> null
     }
 }
