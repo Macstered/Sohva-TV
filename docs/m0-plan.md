@@ -155,6 +155,20 @@ rules, module rules, public-source audit and secret scan.
 Inventory: SHELL-01–06, 10, 20, 21, 33, 34 ticked. The other SHELL items need later milestones
 (player routing M2, profiles and PIN M6, reminders M3, background work M1/M4, updates M7).
 
+Where the work differs from this plan (each is in decisions.md):
+
+- Routes are saved through a small string codec, not Parcelize (no compiler plugin needed).
+- No `:testing` module yet: the clear-state rule lives in `:app`'s device tests until a second
+  module needs it; `QueryGate` arrives with M1's first slow query.
+- The QR component moves to M1 with the phone setup and its ZXing dependency.
+- No side-by-side HTML page: the goldens were compared with beta 23's screenshots during the work
+  (options sheet against `12-guide-options.png`, rail against `06-home-rail-open.png`).
+- The ground is cached per (theme, screen size): its geometry is proportional, so the interface
+  size does not change it.
+- The rail is laid out once and animates drawn values, not a layer of its own.
+- The spike lives in the Lab and `benchmarkRelease` builds (measured minified), not in debug.
+- The APK size baseline is `config/size-baseline.txt` (`build/` is ignored by git).
+
 Carried into M1 and M2:
 
 - The between-row guide cost (10.3 ms of an 11 ms budget) is mostly framework work; attribute it
