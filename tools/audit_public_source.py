@@ -32,7 +32,7 @@ FORBIDDEN_EXTENSIONS = {
 FORBIDDEN_NAMES = {"keystore.properties", "local.properties", "secrets.properties", "trakt-credentials.properties"}
 BINARY_EXTENSIONS = {".png", ".webp", ".jpg", ".jpeg", ".gif", ".jar", ".ico", ".ttf", ".otf", ".prof", ".dm"}
 
-# Test code and the fixture tooling may use reserved hosts and the emulator's host alias.
+# Test code and the fixture tooling may use reserved hosts.
 TEST_PATH = re.compile(r"(^|/)(src/(test|androidTest)[^/]*/|tools/fixture/)")
 
 RULES: list[tuple[str, re.Pattern[str]]] = [
@@ -89,7 +89,8 @@ def audit(path: str) -> list[str]:
         if path not in KIT_FILES | RULE_FILES and MACHINE_PATH.search(line):
             findings.append(f"{where}: machine path")
         for address in PRIVATE_ADDRESS.findall(line):
-            if not (address == EMULATOR_HOST_ALIAS and in_tests) and not (address == EMULATOR_HOST_ALIAS and path.startswith("tools/")):
+            # The emulator's fixed alias for the host's loopback reveals no network.
+            if address != EMULATOR_HOST_ALIAS:
                 findings.append(f"{where}: private network address {address}")
         for email in EMAIL.findall(line):
             lower = email.lower()

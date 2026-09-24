@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 object SohvaBuild {
     const val MIN_SDK: Int = 23
     const val TARGET_SDK: Int = 36
-    const val COMPILE_SDK: Int = 36
+    const val COMPILE_SDK: Int = 37
     val JAVA_VERSION: JavaVersion = JavaVersion.VERSION_17
     val JVM_TARGET: JvmTarget = JvmTarget.JVM_17
 

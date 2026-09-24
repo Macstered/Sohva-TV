@@ -5,13 +5,10 @@ agp = "9.4.1"
 kotlin = "2.4.20"
 ksp = "2.3.12"
 coroutines = "1.11.0"
-# 2026.08.00+ (Compose 1.12) needs compileSdk 37; see docs/decisions.md.
-compose-bom = "2026.06.01"
+compose-bom = "2026.09.00"
 activity = "1.13.0"
-# 1.19+ needs compileSdk 37 (see docs/decisions.md, Compose version).
-core-ktx = "1.18.0"
-# 2.11+ needs compileSdk 37 (docs/decisions.md).
-lifecycle = "2.10.0"
+core-ktx = "1.19.1"
+lifecycle = "2.11.0"
 room = "2.8.5"
 datastore = "1.2.1"
 work = "2.12.0"
