@@ -29,9 +29,10 @@ import kotlinx.coroutines.delay
 class RefreshScheduler(private val workManager: WorkManager) {
     /** At start-up after the first frame and whenever the interval changes; UPDATE keeps a running job. */
     fun schedule(interval: RefreshInterval) {
-        // Beta 23's jobs name a worker class this build does not have; left alone they would fail
-        // on every run of an upgraded install (same application id).
-        LEGACY_WORK.forEach(workManager::cancelUniqueWork)
+        // Beta 23's jobs name worker classes this build does not have; left alone they fail on every
+        // run of an upgraded install (same application id). WorkManager tags each job with its class,
+        // so this catches every one of them, whatever its unique name.
+        LEGACY_WORKERS.forEach(workManager::cancelAllWorkByTag)
         workManager.enqueueUniquePeriodicWork(
             LIVE_WORK,
             ExistingPeriodicWorkPolicy.UPDATE,
@@ -70,10 +71,12 @@ class RefreshScheduler(private val workManager: WorkManager) {
     companion object {
         const val LIVE_WORK = "sohva-live-refresh"
         const val CATALOGUE_WORK = "sohva-catalogue-refresh"
-        const val SYNC_NOW_PREFIX = "sohva-sync-now-"
+        // Not beta 23's "sohva-sync-now-": with KEEP, a job of beta 23's still queued at the upgrade
+        // would otherwise stand in for the rebuild's first sync of the imported sources.
+        const val SYNC_NOW_PREFIX = "sohva-refresh-now-"
         private const val CATALOGUE_HOURS = 24L
         private const val BACKOFF_MINUTES = 15L
-        private val LEGACY_WORK = listOf("streammate-playlist-refresh", "streammate-epg-refresh", "streammate-catalogue-refresh")
+        private val LEGACY_WORKERS = listOf("com.streammate.tv.app.GuideRefreshWorker", "com.streammate.tv.app.CatalogueMetadataWorker")
         private val NETWORK = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
     }
 }

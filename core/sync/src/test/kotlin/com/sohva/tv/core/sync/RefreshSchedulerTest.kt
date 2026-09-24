@@ -52,7 +52,14 @@ class RefreshSchedulerTest {
     fun theIntervalSetsThePlaylistAndGuidePeriodAndTheCatalogueStaysDaily() {
         WorkManagerTestInitHelper.initializeTestWorkManager(context)
         val work = WorkManager.getInstance(context)
-        work.enqueueUniqueWork("streammate-playlist-refresh", androidx.work.ExistingWorkPolicy.KEEP, OneTimeWorkRequestBuilder<RefreshWorker>().setInitialDelay(1, TimeUnit.DAYS).build())
+        // Beta 23's jobs, tagged with its worker classes as WorkManager does (seen on a real upgrade).
+        for ((name, tag) in listOf(
+            "streammate-playlist-refresh" to "com.streammate.tv.app.GuideRefreshWorker",
+            "sohva-sync-now-all" to "com.streammate.tv.app.GuideRefreshWorker",
+            "streammate-catalogue-metadata-enrichment-v2" to "com.streammate.tv.app.CatalogueMetadataWorker",
+        )) {
+            work.enqueueUniqueWork(name, androidx.work.ExistingWorkPolicy.KEEP, OneTimeWorkRequestBuilder<RefreshWorker>().addTag(tag).setInitialDelay(1, TimeUnit.DAYS).build())
+        }
         val scheduler = RefreshScheduler(work)
         scheduler.schedule(RefreshInterval.FOUR_HOURS)
         fun period(name: String): Long = work.getWorkInfosForUniqueWork(name).get().single().periodicityInfo!!.repeatIntervalMillis
@@ -60,7 +67,11 @@ class RefreshSchedulerTest {
         assertEquals(TimeUnit.HOURS.toMillis(24), period(RefreshScheduler.CATALOGUE_WORK))
         scheduler.schedule(RefreshInterval.ONE_HOUR)
         assertEquals(TimeUnit.HOURS.toMillis(1), period(RefreshScheduler.LIVE_WORK))
-        assertEquals(WorkInfo.State.CANCELLED, work.getWorkInfosForUniqueWork("streammate-playlist-refresh").get().single().state)
+        for (name in listOf("streammate-playlist-refresh", "sohva-sync-now-all", "streammate-catalogue-metadata-enrichment-v2")) {
+            assertEquals(name, WorkInfo.State.CANCELLED, work.getWorkInfosForUniqueWork(name).get().single().state)
+        }
+        scheduler.syncNow(null)
+        assertEquals("the rebuild's sync-now is its own", 1, work.getWorkInfosForUniqueWork("sohva-refresh-now-all").get().size)
     }
 
     @Test

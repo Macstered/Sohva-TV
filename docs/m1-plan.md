@@ -87,5 +87,12 @@ Inventory (tick when the milestone closes):
 - Stored in M1, shown or enforced in a later milestone: SRC-11 (limit refused at playback, M2),
   SRC-38 (offset applied on screen, M2), SRC-42 (no stutter during playback, needs the player,
   M2), SRC-39 (backup), PHONE-10 (logo, M3), PHONE-11 (addons, Discover).
-- Open for M1: SEC-04 and the migration spike (step 8), waiting for the owner's go to sign a test
-  build with the release key (see below).
+- Migration spike (step 8) — **done** on the stand-in emulator with a release build signed by the
+  release key (owner's go, 24 Sept). Beta 23 (build 57) was installed, given an M3U source, an
+  Xtream source and both service keys through its own phone page, then upgraded in place. The
+  rebuild showed both sources with their names, addresses and credentials, synced the M3U at once
+  (3 channels, 150 programmes), and none of beta 23's WorkManager jobs ran against missing classes
+  (the first try found they did; fixed by cancelling them by worker tag, see decisions.md).
+- SEC-04: the first builds' single-source file is migrated (`Beta23SourceImportTest`); **clearing**
+  the old files waits for the last importer of plan/04 §17 (decision "Beta 23 import, M1 part"),
+  so SEC-04 is ticked when that milestone deletes them.
