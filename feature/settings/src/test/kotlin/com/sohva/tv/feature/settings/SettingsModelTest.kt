@@ -45,6 +45,7 @@ class SettingsModelTest {
         var films = 0 to 0
 
         override fun sources(): Flow<List<Source>> = sources
+        override suspend fun importProblem(): AppError? = null
         override fun health(): Flow<List<SourceHealth>> = health
         override fun refreshInterval(): Flow<RefreshInterval> = interval
         override suspend fun load(sourceId: String): Outcome<SourceConfig?> = Outcome.Ok(saved[sourceId])

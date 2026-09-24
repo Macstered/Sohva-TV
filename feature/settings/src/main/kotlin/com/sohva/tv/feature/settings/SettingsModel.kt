@@ -92,6 +92,11 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
         }
         viewModelScope.launch { services.refreshInterval().collect { value -> state.update { it.copy(refreshInterval = value) } } }
         viewModelScope.launch { services.phoneSetup().collect(::onPhoneSetup) }
+        viewModelScope.launch {
+            // One plain sentence in Playlists when beta 23's sources could not be read.
+            val problem = services.importProblem() ?: return@launch
+            state.update { s -> if (SettingsSection.SOURCES in s.messages) s else s.withMessage(SettingsMessage.Failure(problem), SettingsSection.SOURCES) }
+        }
     }
 
     fun openPhoneSetup() = services.openPhoneSetup()

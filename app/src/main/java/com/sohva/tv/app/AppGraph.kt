@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import com.sohva.tv.app.settings.PhoneSetup
 import com.sohva.tv.core.data.DataGraph
+import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.diagnostics.RingDiagnosticsLog
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.concurrent.AppDispatchers
@@ -57,7 +58,12 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
      */
     fun afterFirstFrame() {
         if (!started.compareAndSet(false, true)) return
-        appScope.launch { sync.runner.recoverAfterRestart() }
+        appScope.launch {
+            // Beta 23's sources first, so an upgraded install syncs them at once (decision A1).
+            val imported = data.beta23Import.run()
+            if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
+            sync.runner.recoverAfterRestart()
+        }
         appScope.launch { data.preferences.refreshInterval.collect { sync.scheduler.schedule(it) } }
     }
 

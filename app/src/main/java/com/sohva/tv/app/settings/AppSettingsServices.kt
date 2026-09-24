@@ -2,6 +2,7 @@ package com.sohva.tv.app.settings
 
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.core.model.concurrent.WorkOrigin
+import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
@@ -31,6 +32,8 @@ class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
     private val io get() = graph.dispatchers.io
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
+
+    override suspend fun importProblem(): AppError? = withContext(io) { graph.data.beta23Import.problem() }
 
     override fun health(): Flow<List<SourceHealth>> = flow { emitAll(graph.data.refreshStatus.observe()) }.flowOn(io)
 

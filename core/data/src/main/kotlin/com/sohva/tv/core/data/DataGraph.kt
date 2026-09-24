@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.prefs.AppPreferences
 import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.security.AndroidKeystoreKeyProvider
@@ -61,4 +62,7 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val refreshStatus: RefreshStatusStore by lazy { RefreshStatusStore(database, dispatchers.io) }
 
     val serviceKeys: ServiceKeys by lazy { ServiceKeys(secrets) }
+
+    /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
+    val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }
 }

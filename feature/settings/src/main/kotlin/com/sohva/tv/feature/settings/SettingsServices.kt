@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.settings
 
+import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
@@ -19,6 +20,9 @@ import kotlinx.coroutines.flow.Flow
  */
 interface SettingsServices {
     fun sources(): Flow<List<Source>>
+
+    /** Why beta 23's sources could not be imported, when that happened (plan/04 §17 failure path). */
+    suspend fun importProblem(): AppError?
 
     fun health(): Flow<List<SourceHealth>>
 
