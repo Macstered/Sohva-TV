@@ -14,3 +14,7 @@ per measurement; compare CPU time per phase on the emulator, frame times only on
 | 2026-09-24 | 067a182+ | benchmarkRelease (R8) | baseline profile required | same | none | cold start, 10 iterations | time to full display, median | 653 ms (611–1,231) | – |
 | 2026-09-24 | 067a182+ | debug | JIT | same | none | start state off the main thread | snapshot / tier / ground | 30–62 / 1–3 / 0–15 ms | – |
 | 2026-09-24 | 067a182+ | – | – | – | – | generated baseline profile | rules (app packages: shell 205, Home 94, design 373, data 65, model 112) | 14,573; startup profile 14,183 | beta 23 hand-written: 45 wildcard rules |
+| 2026-09-24 | 537cad9+ | benchmarkRelease (R8) | full (`CompilationMode.Full`) | emulator sohva_rebuild_tv30 | guide spike, 56,000 rows | 30 presses along a row | main-thread `doFrame` per press: A canvas row / B beta 23 cells | 2.47 / 4.50 ms (budget ≤ 7) | beta 23 guide 21.0 ms (plan/07 §3.2) |
+| 2026-09-24 | 537cad9+ | benchmarkRelease (R8) | full | same | same | 30 presses between rows | main-thread `doFrame` per press: A / B | 10.35 / 10.19 ms (budget ≤ 11) | beta 23 guide 31.7 ms |
+| 2026-09-24 | 537cad9+ | benchmarkRelease (R8) | full | same | same | per press along a row, A / B | recomposition; measure and layout | 0.02 / 0.35 ms; 0.00 / 0.64 ms | – |
+| 2026-09-24 | 537cad9+ | benchmarkRelease (R8) | full | same | same | per press between rows, A (channel cell on its own node) | total; programme drawing; channel drawing; layout; prefetch | 10.29; 1.41; 1.02; 0.82; 0.95 ms | – |

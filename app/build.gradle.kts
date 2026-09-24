@@ -83,7 +83,14 @@ android {
     }
 }
 
+// The guide-grid spike (M0) lives only in the measurement builds: Lab and benchmarkRelease.
+// The baseline-profile plugin creates benchmarkRelease after this script runs.
+configurations.configureEach {
+    if (name == "benchmarkReleaseImplementation") dependencies.add(project.dependencies.create(project(":spike:guidegrid")))
+}
+
 dependencies {
+    "labImplementation"(project(":spike:guidegrid"))
     implementation(project(":core:model"))
     implementation(project(":core:data"))
     implementation(project(":ui:design"))

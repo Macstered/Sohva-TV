@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged only into the builds that depend on the spike: Lab and benchmarkRelease.
+     Exported so :benchmark can start it through the shell. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name="com.sohva.tv.spike.guidegrid.SpikeActivity"
+            android:exported="true" />
+    </application>
+</manifest>
