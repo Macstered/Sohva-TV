@@ -66,7 +66,7 @@ PHONE-*, SEC-*. Branch `m1-sources`. Owner's go: 24 September 2026.
   sources is only possible inside the same app (same signing key) or from a debug-signed beta 23
   build; this repository cannot build the old app. Asked at the M1 exit.
 
-## Exit check (draft, 24 September 2026)
+## Exit check (24 September 2026)
 
 Exit criteria:
 
@@ -80,7 +80,7 @@ Exit criteria:
 4. No credential in logs or diagnostics — **met** (`noCredentialReachesTheLog`, redaction tests in
    `:core:net` and `:core:model`).
 
-Inventory (tick when the milestone closes):
+Inventory (the Done list is ticked in `rebuild/plan/01-feature-inventory.md`, 24 September 2026):
 
 - Done: SRC-01…10, 12…37, 40, 41; PHONE-01…09, 12…14; SEC-01…03, 07…13, 15 (128-bit token,
   decision of 24 Sept), 16, 20, 23 (playlists, guides, Xtream; streams in M2), 25, 28.

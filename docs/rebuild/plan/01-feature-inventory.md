@@ -203,79 +203,79 @@ Spec: [specs/10-sources-and-import.md](../specs/10-sources-and-import.md) · Mil
 
 **Source model and list**
 
-- [ ] **SRC-01** Any number of sources (up to 100), each an M3U playlist (+ optional XMLTV guide) or an Xtream Codes account.
-- [ ] **SRC-02** Settings › Playlists lists every source: name, "M3U"/"Xtream", the last failure reason when a refresh failed, and "In use"/"Off".
-- [ ] **SRC-03** Empty list message "No playlists yet. Add one below."
-- [ ] **SRC-04** "+ Add M3U source" and "+ Add Xtream source" open a blank source page with a default name ("IPTV n" / "Xtream n").
-- [ ] **SRC-05** "Set up from a phone" button on the list (flow in [Phone setup](../specs/11-phone-setup.md)).
-- [ ] **SRC-06** A source page per source, left with "All playlists" or Back; focus returns to that source's row.
+- [x] **SRC-01** Any number of sources (up to 100), each an M3U playlist (+ optional XMLTV guide) or an Xtream Codes account.
+- [x] **SRC-02** Settings › Playlists lists every source: name, "M3U"/"Xtream", the last failure reason when a refresh failed, and "In use"/"Off".
+- [x] **SRC-03** Empty list message "No playlists yet. Add one below."
+- [x] **SRC-04** "+ Add M3U source" and "+ Add Xtream source" open a blank source page with a default name ("IPTV n" / "Xtream n").
+- [x] **SRC-05** "Set up from a phone" button on the list (flow in [Phone setup](../specs/11-phone-setup.md)).
+- [x] **SRC-06** A source page per source, left with "All playlists" or Back; focus returns to that source's row.
 
 **Source page**
 
-- [ ] **SRC-07** M3U playlist address field and, when live TV is imported, an optional XMLTV guide address field.
-- [ ] **SRC-08** Xtream server field with username and masked password side by side.
-- [ ] **SRC-09** Source name (1–100 characters).
-- [ ] **SRC-10** "Source in use" switch: a switched-off source disappears everywhere and is not refreshed, but keeps its data.
+- [x] **SRC-07** M3U playlist address field and, when live TV is imported, an optional XMLTV guide address field.
+- [x] **SRC-08** Xtream server field with username and masked password side by side.
+- [x] **SRC-09** Source name (1–100 characters).
+- [x] **SRC-10** "Source in use" switch: a switched-off source disappears everywhere and is not refreshed, but keeps its data.
 - [ ] **SRC-11** Connection limit 1–16 (default 1); playback beyond it is refused with a message naming the source.
-- [ ] **SRC-12** Content to import: Live TV / VOD only / TV and VOD (default TV and VOD).
-- [ ] **SRC-13** EPG time correction from −12 h to +12 h in 30-minute steps (live-TV sources only).
-- [ ] **SRC-14** Remove source: deletes the source, its credentials and every row that came from it.
-- [ ] **SRC-15** Save securely: the configuration is stored encrypted on the device.
-- [ ] **SRC-16** A newly saved source is synced in the background straight away (channels, guide, films and series).
-- [ ] **SRC-17** Test address (M3U): reads the start of the playlist and says how many entries it found, or why it could not.
-- [ ] **SRC-18** Test connection (Xtream): signs in and reports success with the server's connection limit, or why it failed.
-- [ ] **SRC-19** Sync everything: queues channels, then guide, then films and series for this source in the background.
-- [ ] **SRC-20** Refresh playlist (M3U) / Refresh channels (Xtream), with the imported channel count.
-- [ ] **SRC-21** Refresh movies and series, with the imported film and series counts.
-- [ ] **SRC-22** Refresh programme guide, with the imported programme count.
-- [ ] **SRC-23** Plain-language validation and failure messages in the interface language; provider detail kept but addresses and credentials redacted.
-- [ ] **SRC-24** Status line with per-kind health ("Playlist: 56,164 items", "Programme guide: updating", the failure reason), updating live while background work runs.
-- [ ] **SRC-25** Security note under the status: credentials are encrypted and backups password-protected.
+- [x] **SRC-12** Content to import: Live TV / VOD only / TV and VOD (default TV and VOD).
+- [x] **SRC-13** EPG time correction from −12 h to +12 h in 30-minute steps (live-TV sources only).
+- [x] **SRC-14** Remove source: deletes the source, its credentials and every row that came from it.
+- [x] **SRC-15** Save securely: the configuration is stored encrypted on the device.
+- [x] **SRC-16** A newly saved source is synced in the background straight away (channels, guide, films and series).
+- [x] **SRC-17** Test address (M3U): reads the start of the playlist and says how many entries it found, or why it could not.
+- [x] **SRC-18** Test connection (Xtream): signs in and reports success with the server's connection limit, or why it failed.
+- [x] **SRC-19** Sync everything: queues channels, then guide, then films and series for this source in the background.
+- [x] **SRC-20** Refresh playlist (M3U) / Refresh channels (Xtream), with the imported channel count.
+- [x] **SRC-21** Refresh movies and series, with the imported film and series counts.
+- [x] **SRC-22** Refresh programme guide, with the imported programme count.
+- [x] **SRC-23** Plain-language validation and failure messages in the interface language; provider detail kept but addresses and credentials redacted.
+- [x] **SRC-24** Status line with per-kind health ("Playlist: 56,164 items", "Programme guide: updating", the failure reason), updating live while background work runs.
+- [x] **SRC-25** Security note under the status: credentials are encrypted and backups password-protected.
 
 **Refresh and scheduling**
 
-- [ ] **SRC-26** Playlist and EPG refresh interval in Settings › General: 1, 2, 4, 10 or 24 hours (default 24 hours).
-- [ ] **SRC-27** Automatic background refresh: playlists and guides on that interval, films and series every 24 hours, whenever a network is connected.
-- [ ] **SRC-28** Automatic refresh waits while the app is in use, except a source's very first import.
-- [ ] **SRC-29** One import of a kind per source at a time; a second request waits and then runs in full.
-- [ ] **SRC-30** An M3U address of the Xtream `get.php` form is imported through the Xtream API (channels, films, series, episodes; the guide too when no XMLTV address is given).
+- [x] **SRC-26** Playlist and EPG refresh interval in Settings › General: 1, 2, 4, 10 or 24 hours (default 24 hours).
+- [x] **SRC-27** Automatic background refresh: playlists and guides on that interval, films and series every 24 hours, whenever a network is connected.
+- [x] **SRC-28** Automatic refresh waits while the app is in use, except a source's very first import.
+- [x] **SRC-29** One import of a kind per source at a time; a second request waits and then runs in full.
+- [x] **SRC-30** An M3U address of the Xtream `get.php` form is imported through the Xtream API (channels, films, series, episodes; the guide too when no XMLTV address is given).
 
 **Import results the viewer sees**
 
-- [ ] **SRC-31** A refresh never replaces working data with nothing: an empty playlist, a web page or error text instead of M3U, an empty guide, or a guide matching none of the channels keeps the previous data and says so.
-- [ ] **SRC-32** A failed refresh keeps the previous data; the failure reason shows in the status, the source row and the guide's empty state.
-- [ ] **SRC-33** The guide keeps only programmes of the source's own channels, from 12 hours back to 8 days ahead (rebuild: past kept only for catch-up channels, SRC-FR-83).
-- [ ] **SRC-34** M3U entries bring names, groups, logos, EPG ids, channel numbers, catch-up settings, per-channel user agent and referrer; live, film and series entries are told apart; series episodes are recognised from "S01E02"/"1x02" names.
-- [ ] **SRC-35** XMLTV feeds may be gzip-compressed, start with a byte-order mark, use any declared encoding or UTF-16; a malformed programme is skipped, not fatal.
-- [ ] **SRC-36** Xtream brings live channels with categories, EPG ids, logos, numbers and catch-up archive length; films and series with categories, poster, backdrop, year, rating and plot; episodes are fetched when a series is opened.
-- [ ] **SRC-37** Stream quality and language markers are read off channel names (4K, FHD, HDR, 50 FPS, FI…) for the guide, player and Sohva Sport.
+- [x] **SRC-31** A refresh never replaces working data with nothing: an empty playlist, a web page or error text instead of M3U, an empty guide, or a guide matching none of the channels keeps the previous data and says so.
+- [x] **SRC-32** A failed refresh keeps the previous data; the failure reason shows in the status, the source row and the guide's empty state.
+- [x] **SRC-33** The guide keeps only programmes of the source's own channels, from 12 hours back to 8 days ahead (rebuild: past kept only for catch-up channels, SRC-FR-83).
+- [x] **SRC-34** M3U entries bring names, groups, logos, EPG ids, channel numbers, catch-up settings, per-channel user agent and referrer; live, film and series entries are told apart; series episodes are recognised from "S01E02"/"1x02" names.
+- [x] **SRC-35** XMLTV feeds may be gzip-compressed, start with a byte-order mark, use any declared encoding or UTF-16; a malformed programme is skipped, not fatal.
+- [x] **SRC-36** Xtream brings live channels with categories, EPG ids, logos, numbers and catch-up archive length; films and series with categories, poster, backdrop, year, rating and plot; episodes are fetched when a series is opened.
+- [x] **SRC-37** Stream quality and language markers are read off channel names (4K, FHD, HDR, 50 FPS, FI…) for the guide, player and Sohva Sport.
 - [ ] **SRC-38** The EPG time correction shifts every programme of the source on screen, immediately after saving.
 - [ ] **SRC-39** Sources are part of the encrypted backup ([Backup](../specs/71-backup-restore.md)).
 
 **Rebuild additions (owner-adopted ideas, [OwnTV study](../reference/owntv-study.md) items 2–11, 22)**
 
-- [ ] **SRC-40** Every import, from any screen or worker, goes through one import runner and survives leaving the screen that started it; the screen shows its progress.
-- [ ] **SRC-41** Xtream bulk lists that a provider truncates or refuses are fetched category by category instead.
+- [x] **SRC-40** Every import, from any screen or worker, goes through one import runner and survives leaving the screen that started it; the screen shows its progress.
+- [x] **SRC-41** Xtream bulk lists that a provider truncates or refuses are fetched category by category instead.
 - [ ] **SRC-42** Importing never makes playback stutter or a D-pad press late on the low-end box.
 
 ## Phone setup
 
 Spec: [specs/11-phone-setup.md](../specs/11-phone-setup.md) · Milestone: M1 · 14 items
 
-- [ ] **PHONE-01** "Set up from a phone" button in Settings › Playlists starts the setup page and opens the QR dialog; while it runs the button reads "Close the phone page".
-- [ ] **PHONE-02** QR dialog: title, QR code on a white square, help, the page address in bold, a privacy note, "Close the phone page" (focused).
-- [ ] **PHONE-03** No network address: the dialog says so in red instead of showing a code.
-- [ ] **PHONE-04** Setup page on the phone, in the TV's interface language: an Xtream account form, an M3U playlist form and an Optional keys form (TMDB token, API-Sports key).
-- [ ] **PHONE-05** A source sent from the phone is validated with the Settings rules, saved encrypted, and synced at once.
-- [ ] **PHONE-06** Keys sent from the phone are saved encrypted; a TMDB key also switches TMDB on.
-- [ ] **PHONE-07** The phone page answers every post with a result sentence (saved, keys saved, something missing, could not save).
-- [ ] **PHONE-08** The TV dialog shows "Received from the phone: <name>. Syncing it now."; the playlist list refreshes and its status line reports the receipt.
-- [ ] **PHONE-09** Several sources and keys can be sent in one session.
+- [x] **PHONE-01** "Set up from a phone" button in Settings › Playlists starts the setup page and opens the QR dialog; while it runs the button reads "Close the phone page".
+- [x] **PHONE-02** QR dialog: title, QR code on a white square, help, the page address in bold, a privacy note, "Close the phone page" (focused).
+- [x] **PHONE-03** No network address: the dialog says so in red instead of showing a code.
+- [x] **PHONE-04** Setup page on the phone, in the TV's interface language: an Xtream account form, an M3U playlist form and an Optional keys form (TMDB token, API-Sports key).
+- [x] **PHONE-05** A source sent from the phone is validated with the Settings rules, saved encrypted, and synced at once.
+- [x] **PHONE-06** Keys sent from the phone are saved encrypted; a TMDB key also switches TMDB on.
+- [x] **PHONE-07** The phone page answers every post with a result sentence (saved, keys saved, something missing, could not save).
+- [x] **PHONE-08** The TV dialog shows "Received from the phone: <name>. Syncing it now."; the playlist list refreshes and its status line reports the receipt.
+- [x] **PHONE-09** Several sources and keys can be sent in one session.
 - [ ] **PHONE-10** "Logo from phone" in Channel management: a page with one picture chooser; the phone shrinks the picture to at most 512 px and sends it; the TV stores it as that channel's logo (at most 256 px) and closes the page.
 - [ ] **PHONE-11** Addon URLs from a phone (Discover › Import): a one-use, ten-minute session; paste URLs or choose a `.txt` file on the phone; nothing installs until confirmed on the TV.
-- [ ] **PHONE-12** A request without the right token is refused with a page that says to scan the code again.
-- [ ] **PHONE-13** The page closes when its dialog closes (button or Back), when the TV leaves the screen that opened it, and after 15 minutes (sources/logo) or 10 minutes (addons).
-- [ ] **PHONE-14** Only the TV's own local IPv4 address is served; nothing is posted anywhere else; nothing posted is logged.
+- [x] **PHONE-12** A request without the right token is refused with a page that says to scan the code again.
+- [x] **PHONE-13** The page closes when its dialog closes (button or Back), when the TV leaves the screen that opened it, and after 15 minutes (sources/logo) or 10 minutes (addons).
+- [x] **PHONE-14** Only the TV's own local IPv4 address is served; nothing is posted anywhere else; nothing posted is logged.
 
 ## Live TV guide
 
@@ -1036,49 +1036,49 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 
 **Secrets at rest**
 
-- [ ] **SEC-01** IPTV source lists (addresses, user names, passwords), every stored stream address, the parental PIN, the TMDB token, the API-Sports key, Trakt tokens and pending scrobbles, and Discover addon URLs and payloads are stored encrypted (AES-256-GCM).
-- [ ] **SEC-02** One Android Keystore AES-256 key per store wraps a random 256-bit software data key (envelope encryption): the keystore is used once per process, values are encrypted in software.
-- [ ] **SEC-03** Values written in the older direct-keystore format (`v1:`) still decrypt; nothing needs a migration pass.
+- [x] **SEC-01** IPTV source lists (addresses, user names, passwords), every stored stream address, the parental PIN, the TMDB token, the API-Sports key, Trakt tokens and pending scrobbles, and Discover addon URLs and payloads are stored encrypted (AES-256-GCM).
+- [x] **SEC-02** One Android Keystore AES-256 key per store wraps a random 256-bit software data key (envelope encryption): the keystore is used once per process, values are encrypted in software.
+- [x] **SEC-03** Values written in the older direct-keystore format (`v1:`) still decrypt; nothing needs a migration pass.
 - [ ] **SEC-04** The single-source settings of StreamMate's first builds are migrated into the encrypted source list on first read and the old file is cleared.
 - [ ] **SEC-05** The parental PIN (4–8 digits) is stored encrypted and compared in constant time.
 - [ ] **SEC-06** A stream address is decrypted only when it is played, inside the playback data source; the media session and its notification see only a placeholder id.
 
 **Redaction**
 
-- [ ] **SEC-07** Every error text shown on screen, every diagnostics log line and the diagnostics file pass through one redactor: URLs keep only scheme, host and port; `key=value` secrets become `<redacted>`.
-- [ ] **SEC-08** Objects that hold secrets print `<redacted>` from `toString()` (sources, metadata and sports settings, stream requests, addon documents and endpoints).
-- [ ] **SEC-09** The Playlists list shows a source only by the name the viewer gave it; its address and credentials appear only on its own page, with the password masked.
+- [x] **SEC-07** Every error text shown on screen, every diagnostics log line and the diagnostics file pass through one redactor: URLs keep only scheme, host and port; `key=value` secrets become `<redacted>`.
+- [x] **SEC-08** Objects that hold secrets print `<redacted>` from `toString()` (sources, metadata and sports settings, stream requests, addon documents and endpoints).
+- [x] **SEC-09** The Playlists list shows a source only by the name the viewer gave it; its address and credentials appear only on its own page, with the password masked.
 
 **Input and network policy**
 
-- [ ] **SEC-10** A source address must be an `http` or `https` URL with a host.
-- [ ] **SEC-11** Keys are validated before storage: TMDB token ≤ 2,048 characters, API-Sports key ≤ 512, neither may contain a line break.
-- [ ] **SEC-12** Plain HTTP is permitted for the viewer's own IPTV hosts; the first-party service domains (API-Sports, TMDB, TVmaze) can only be reached over HTTPS.
-- [ ] **SEC-13** Only the system's certificate authorities are trusted; no user-added CAs, no pinning.
+- [x] **SEC-10** A source address must be an `http` or `https` URL with a host.
+- [x] **SEC-11** Keys are validated before storage: TMDB token ≤ 2,048 characters, API-Sports key ≤ 512, neither may contain a line break.
+- [x] **SEC-12** Plain HTTP is permitted for the viewer's own IPTV hosts; the first-party service domains (API-Sports, TMDB, TVmaze) can only be reached over HTTPS.
+- [x] **SEC-13** Only the system's certificate authorities are trusted; no user-added CAs, no pinning.
 - [ ] **SEC-14** Discover addons are HTTPS-only in practice (no UI path accepts HTTP).
-- [ ] **SEC-15** The phone setup page runs only while its dialog is open, on the LAN address, a random port and an 8-character one-time token ([Phone setup](../specs/11-phone-setup.md)).
+- [x] **SEC-15** The phone setup page runs only while its dialog is open, on the LAN address, a random port and an 8-character one-time token ([Phone setup](../specs/11-phone-setup.md)).
 
 **Platform**
 
-- [ ] **SEC-16** Android cloud backup and device-to-device transfer are disabled for all app data.
+- [x] **SEC-16** Android cloud backup and device-to-device transfer are disabled for all app data.
 - [ ] **SEC-17** A minimal permission set, each with a stated reason (§4.8).
 - [ ] **SEC-18** Only the launcher activity and the media-session service are exported by the app; the session accepts only this app, trusted system controllers and its own notification.
 - [ ] **SEC-19** The release build is not debuggable; it is profileable by the shell only.
 
 **Privacy**
 
-- [ ] **SEC-20** No developer account, analytics, advertising, telemetry, crash upload or first-party server.
+- [x] **SEC-20** No developer account, analytics, advertising, telemetry, crash upload or first-party server.
 - [ ] **SEC-21** Each third party receives only what its feature needs and only when the viewer has turned that feature on (§4.9 table).
 - [ ] **SEC-22** The update check sends GitHub nothing about the viewer beyond the request itself.
-- [ ] **SEC-23** Stream, playlist and guide requests identify the app as `Sohva TV/<version> (Android TV <release>)` unless the playlist sets its own user agent.
+- [x] **SEC-23** Stream, playlist and guide requests identify the app as `Sohva TV/<version> (Android TV <release>)` unless the playlist sets its own user agent.
 - [ ] **SEC-24** The in-app privacy summary, the "security note" under source settings, and the published privacy policy state these commitments; a security contact is published (SECURITY.md).
 
 **Release hygiene**
 
-- [ ] **SEC-25** A public-source content audit runs before every source publication.
+- [x] **SEC-25** A public-source content audit runs before every source publication.
 - [ ] **SEC-26** A release-document audit runs over the tester package.
 - [ ] **SEC-27** An APK safety audit checks package, version, label, non-debuggable, the permission allowlist, the signing certificate and secret-shaped content in every APK entry.
-- [ ] **SEC-28** Gitleaks scans the full public history, the staged commit and the release package.
+- [x] **SEC-28** Gitleaks scans the full public history, the staged commit and the release package.
 - [ ] **SEC-29** Build-time secrets (the Trakt client id and secret) are injected at build time and never appear in the public source.
 
 ## Localisation
