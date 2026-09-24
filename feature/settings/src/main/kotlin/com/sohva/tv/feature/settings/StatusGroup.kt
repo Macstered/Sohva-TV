@@ -1,13 +1,11 @@
 package com.sohva.tv.feature.settings
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.RefreshState
@@ -27,12 +25,14 @@ import com.sohva.tv.ui.design.theme.Sohva
 internal fun StatusGroup(parts: List<String>, securityNote: Boolean) {
     val line = parts.filter { it.isNotBlank() }.joinToString(" · ")
     SettingsGroup {
-        if (line.isNotEmpty()) {
-            Text(line, Modifier.testTag("settings-status"), style = Sohva.typography.label, color = Sohva.palette.focus)
-        }
-        if (securityNote) {
-            Spacer(Modifier.height(4.dp))
-            Text(stringResource(R.string.settings_security_subtitle), style = Sohva.typography.caption, color = Sohva.palette.textDim)
+        // The note sits right under the status line, as in beta 23: no group spacing between them.
+        Column {
+            if (line.isNotEmpty()) {
+                Text(line, Modifier.testTag("settings-status"), style = Sohva.typography.label, color = Sohva.palette.focus)
+            }
+            if (securityNote) {
+                Text(stringResource(R.string.settings_security_subtitle), style = Sohva.typography.caption, color = Sohva.palette.textDim)
+            }
         }
     }
 }

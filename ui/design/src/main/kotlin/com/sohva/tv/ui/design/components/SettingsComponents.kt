@@ -80,7 +80,11 @@ fun SettingsRow(
     }
 }
 
-/** A focusable row that opens a picker or editor: value in Bold, then a chevron. */
+/**
+ * A focusable row that opens a picker or editor: value in Bold, then a chevron. [divider] draws the
+ * hairline beta 23 puts between rows of a list, inset like the row's content; the focused fill
+ * covers it.
+ */
 @Composable
 fun SettingsValueRow(
     title: String,
@@ -90,14 +94,20 @@ fun SettingsValueRow(
     @DrawableRes icon: Int? = null,
     subtitle: String? = null,
     state: SurfaceState = SurfaceState(),
+    divider: Boolean = false,
 ) {
+    val line = Sohva.palette.divider
+    val drawn = if (!divider) modifier else modifier.drawBehind {
+        val inset = 14.dp.toPx()
+        drawLine(line, Offset(inset, 0f), Offset(size.width - inset, 0f), 1.dp.toPx())
+    }
     val style = SurfaceStyle(
         corner = Sohva.shapes.medium,
         restingContent = Sohva.palette.textPrimary,
         focusScale = 1f,
         padding = PaddingValues(14.dp, 10.dp),
     )
-    TvSurface(onClick, modifier.fillMaxWidth().heightIn(min = 74.dp), state, style) { colors ->
+    TvSurface(onClick, drawn.fillMaxWidth().heightIn(min = 74.dp), state, style) { colors ->
         Row(verticalAlignment = Alignment.CenterVertically) {
             RowText(title, icon, subtitle, colors.content, colors.secondaryContent, Modifier.weight(1f))
             Text(value, style = Sohva.typography.body.copy(fontWeight = FontWeight.Bold), maxLines = 1)
