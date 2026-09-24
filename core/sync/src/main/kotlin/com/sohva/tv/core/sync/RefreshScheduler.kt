@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.ListenableWorker
+import androidx.work.WorkerFactory
 import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -92,10 +94,18 @@ interface RefreshHost {
     fun nowMillis(): Long
 }
 
+/**
+ * Builds the refresh worker with its host (plan/03 §4.4: workers get their dependencies from a
+ * factory built from the graph, not from a cast of the application context).
+ */
+class RefreshWorkerFactory(private val host: RefreshHost) : WorkerFactory() {
+    override fun createWorker(appContext: Context, workerClassName: String, workerParameters: WorkerParameters): ListenableWorker? =
+        if (workerClassName == RefreshWorker::class.java.name) RefreshWorker(appContext, workerParameters, host) else null
+}
+
 /** Runs one scheduled or requested refresh through the runner (SRC-FR-98). */
-class RefreshWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+class RefreshWorker(context: Context, params: WorkerParameters, private val host: RefreshHost) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val host = applicationContext as? RefreshHost ?: return Result.failure()
         val kinds = inputData.getString(KEY_KINDS).orEmpty().split(',').mapNotNull(RefreshKind::fromId).toSet()
         val sourceId = inputData.getString(KEY_SOURCE)
         val now = inputData.getBoolean(KEY_NOW, false)

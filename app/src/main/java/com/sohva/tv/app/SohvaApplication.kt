@@ -8,6 +8,7 @@ import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.sync.ImportRunner
 import com.sohva.tv.core.sync.RefreshHost
+import com.sohva.tv.core.sync.RefreshWorkerFactory
 
 /**
  * Process entry. Builds lazy holders only: no disk, database, preferences, WorkManager,
@@ -29,7 +30,10 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost {
 
     // WorkManager initialises on first use, after the first frame (the manifest removes its start-up initializer).
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder().setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.INFO else Log.ERROR).build()
+        get() = Configuration.Builder()
+            .setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.INFO else Log.ERROR)
+            .setWorkerFactory(RefreshWorkerFactory(this))
+            .build()
 
     override val importRunner: ImportRunner get() = graph.sync.runner
 

@@ -1,7 +1,6 @@
 package com.sohva.tv.core.sync
 
 import android.content.Context
-import android.content.ContextWrapper
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
@@ -34,8 +33,7 @@ class RefreshSchedulerTest {
     fun close() = h.close()
 
     /** The application as the worker sees it, with the facts under test's control. */
-    private inner class Host(var foreground: Boolean, var neverImported: Int) : ContextWrapper(context), RefreshHost {
-        override fun getApplicationContext(): Context = this
+    private inner class Host(var foreground: Boolean, var neverImported: Int) : RefreshHost {
         override val importRunner: ImportRunner get() = h.runner
         override fun appInForeground(): Boolean = foreground
         override suspend fun everyLiveSourceImportedOnce(): Boolean = neverImported == 0
@@ -45,7 +43,10 @@ class RefreshSchedulerTest {
     }
 
     private fun worker(host: Host, kinds: Set<RefreshKind>, now: Boolean): RefreshWorker =
-        TestListenableWorkerBuilder<RefreshWorker>(host).setInputData(RefreshWorker.input(kinds, null, now)).build()
+        TestListenableWorkerBuilder<RefreshWorker>(context)
+            .setWorkerFactory(RefreshWorkerFactory(host))
+            .setInputData(RefreshWorker.input(kinds, null, now))
+            .build()
 
     @Test
     fun theIntervalSetsThePlaylistAndGuidePeriodAndTheCatalogueStaysDaily() {
