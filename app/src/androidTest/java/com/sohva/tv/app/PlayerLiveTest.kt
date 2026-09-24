@@ -1,6 +1,10 @@
 package com.sohva.tv.app
 
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.Window
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -8,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.feature.home.RailItem
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicInteger
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -101,6 +106,28 @@ class PlayerLiveTest {
         press(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists("screen-guide") }
         awaitFocus("guide-row-1", 10_000)
+    }
+
+    /**
+     * Spec 30 §9 "Nothing composed while hidden": with the box gone, a playing stream draws no UI
+     * frames at all (the video is a hardware overlay; the UI thread should be idle).
+     */
+    @Test
+    fun hiddenOverlaysDrawNoFramesWhilePlaying() {
+        openPlayerOnFirstChannel()
+        awaitRequest("/live/0.mp4")
+        compose.waitUntil(10_000) { !compose.onAllNodesWithTagExists("player-live-box") }
+        compose.waitForIdle()
+        SystemClock.sleep(1_000)
+        val frames = AtomicInteger()
+        val listener = Window.OnFrameMetricsAvailableListener { _, _, _ -> frames.incrementAndGet() }
+        val handler = Handler(Looper.getMainLooper())
+        compose.activityRule.scenario.onActivity { it.window.addOnFrameMetricsAvailableListener(listener, handler) }
+        // Wait by pumping the test's frame clock, not by sleeping: a sleep would stop Compose too and prove nothing.
+        val end = SystemClock.uptimeMillis() + 15_000
+        compose.waitUntil(20_000) { SystemClock.uptimeMillis() >= end }
+        compose.activityRule.scenario.onActivity { it.window.removeOnFrameMetricsAvailableListener(listener) }
+        assertTrue("UI frames drawn while overlays were hidden: ${frames.get()}", frames.get() <= 1)
     }
 
     @Test
