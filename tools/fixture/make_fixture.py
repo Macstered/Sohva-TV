@@ -2,9 +2,14 @@
 
 Live part (M0): 56,164 channels in 800 groups as an M3U playlist, 65 % with logos, and an XMLTV
 guide of 1,800 channels x 92 programmes of 45 minutes anchored to the time it runs (the importer
-keeps only recent history, so regenerate a fixture older than about two days). Films and series
-join in M1. Every name is fictional; addresses point at the loopback fixture server, which the
-emulator reaches as 10.0.2.2.
+keeps only recent history, so regenerate a fixture older than about two days).
+
+Catalogue part (M1): `vod.m3u` with 200,000 films in 200 groups and 1,500 series of 12 episodes
+in 40 groups, and an Xtream-shaped copy of everything under `xtream/`, which the fixture server
+answers `player_api.php` from (account `fixture` / `fixture`).
+
+Every name is fictional; addresses point at the loopback fixture server, which the emulator
+reaches as 10.0.2.2.
 
     python tools/fixture/make_fixture.py                      # into harness-out/fixture
     python tools/fixture/make_fixture.py --stress-descriptions   # 2,150-character descriptions
@@ -31,6 +36,13 @@ HISTORY_HOURS = 12
 LOGO_SHARE = 0.65
 LOGO_IMAGES = 40
 STRESS_DESCRIPTION_CHARS = 2_150
+FILMS = 200_000
+FILM_GROUPS = 200
+SERIES = 1_500
+SERIES_GROUPS = 40
+EPISODES_PER_SERIES = 12
+ARCHIVE_SHARE = 0.1
+XTREAM_ACCOUNT = "fixture"
 
 COUNTRIES = [
     "Aurelia", "Borealis", "Caldera", "Dunmore", "Estavia", "Fjordland", "Galvania", "Halcyon", "Isola", "Juniper",
@@ -106,6 +118,67 @@ def write_guide(out: Path, stress: bool) -> None:
         xml.write("</tv>\n")
 
 
+def film_title(i: int) -> str:
+    return f"{TITLE_A[i % len(TITLE_A)]} {TITLE_B[(i // len(TITLE_A)) % len(TITLE_B)]} {i + 1} ({1960 + i % 65})"
+
+
+def series_title(i: int) -> str:
+    return f"{TITLE_B[i % len(TITLE_B)]} of {COUNTRIES[(i // len(TITLE_B)) % len(COUNTRIES)]} {i + 1}"
+
+
+def write_vod(out: Path, base: str) -> None:
+    """Films and series as an M3U playlist, the shape an M3U VOD source imports (spec 10 SRC-FR-90)."""
+    with (out / "vod.m3u").open("w", encoding="utf-8", newline="\n") as m3u:
+        m3u.write("#EXTM3U\n")
+        for i in range(FILMS):
+            group = f"{COUNTRIES[i % len(COUNTRIES)]} Movies {i % FILM_GROUPS:03d}"
+            m3u.write(f'#EXTINF:-1 tvg-logo="{base}/logo/film{i}.png" group-title="{group}",{film_title(i)}\n')
+            m3u.write(f"{base}/movie/{i}.mkv\n")
+        for i in range(SERIES):
+            group = f"Series {i % SERIES_GROUPS:02d}"
+            for e in range(EPISODES_PER_SERIES):
+                season, number = e // 6 + 1, e % 6 + 1
+                m3u.write(f'#EXTINF:-1 tvg-logo="{base}/logo/series{i}.png" group-title="{group}",'
+                          f"{series_title(i)} S{season:02d}E{number:02d} - Part {number}\n")
+                m3u.write(f"{base}/series/{i}/{e}.mkv\n")
+
+
+def write_xtream(out: Path, base: str) -> None:
+    """The same catalogue as an Xtream panel's JSON answers, one file per action."""
+    folder = out / "xtream"
+    folder.mkdir(exist_ok=True)
+    rng = random.Random(4)
+
+    def dump(name: str, value: object) -> None:
+        with (folder / f"{name}.json").open("w", encoding="utf-8", newline="\n") as f:
+            json.dump(value, f, separators=(",", ":"))
+
+    names = groups()
+    dump("denied", {"user_info": {"auth": 0}})
+    dump("account", {"user_info": {"auth": 1, "username": XTREAM_ACCOUNT, "status": "Active", "max_connections": "2",
+                                   "active_cons": "0"}, "server_info": {"timezone": "Europe/Helsinki"}})
+    dump("get_live_categories", [{"category_id": str(n), "category_name": g} for n, g in enumerate(names)])
+    dump("get_live_streams", [
+        {"num": i + 1, "name": channel_name(i), "stream_id": i + 1, "stream_icon": f"{base}/logo/ch{i:05d}.png",
+         "epg_channel_id": f"ch{i:05d}", "category_id": str(i % GROUPS), "container_extension": "ts",
+         "tv_archive": 1 if rng.random() < ARCHIVE_SHARE else 0, "tv_archive_duration": "3"}
+        for i in range(CHANNELS)
+    ])
+    dump("get_vod_categories", [{"category_id": str(n), "category_name": f"Movies {n:03d}"} for n in range(FILM_GROUPS)])
+    dump("get_vod_streams", [
+        {"stream_id": i + 1, "name": film_title(i), "category_id": str(i % FILM_GROUPS), "container_extension": "mkv",
+         "stream_icon": f"{base}/logo/film{i}.png", "rating": f"{5 + i % 50 / 10:.1f}", "year": str(1960 + i % 65)}
+        for i in range(FILMS)
+    ])
+    dump("get_series_categories", [{"category_id": str(n), "category_name": f"Series {n:02d}"} for n in range(SERIES_GROUPS)])
+    dump("get_series", [
+        {"series_id": i + 1, "name": series_title(i), "category_id": str(i % SERIES_GROUPS),
+         "cover": f"{base}/logo/series{i}.png", "backdrop_path": [f"{base}/logo/backdrop{i}.png"], "rating": "7.5",
+         "releaseDate": f"{1990 + i % 35}-01-01"}
+        for i in range(SERIES)
+    ])
+
+
 def write_logos(out: Path) -> None:
     """40 real PNGs; the server maps every logo address onto one of them, so each is its own download."""
     from PIL import Image, ImageDraw
@@ -135,11 +208,14 @@ def main() -> None:
     t0 = time.monotonic()
     write_playlist(args.out, base)
     write_guide(args.out, args.stress_descriptions)
+    write_vod(args.out, base)
+    write_xtream(args.out, base)
     write_logos(args.out)
     info = {
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "channels": CHANNELS, "groups": GROUPS, "guide_channels": GUIDE_CHANNELS,
         "programmes": GUIDE_CHANNELS * PROGRAMMES_PER_CHANNEL, "stress_descriptions": args.stress_descriptions,
+        "films": FILMS, "series": SERIES, "episodes": SERIES * EPISODES_PER_SERIES,
         "base": base,
     }
     (args.out / "fixture.json").write_text(json.dumps(info, indent=2), encoding="utf-8")

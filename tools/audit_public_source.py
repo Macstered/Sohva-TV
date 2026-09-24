@@ -24,6 +24,8 @@ KIT_FILES = {"AGENTS.md", "CLAUDE.md"}
 # This script defines the machine-path rule, so its own patterns would match it.
 RULE_FILES = {"tools/audit_public_source.py"}
 RESERVED_HOST = re.compile(r"(?i)@[^/\s\"']*\.(?:example|test|invalid)\b")
+# The host of an address on a reserved domain (RFC 2606), for credential query parameters.
+RESERVED_URL_HOST = re.compile(r"(?i)://[^/\s\"'@:]*\.(?:example|test|invalid)(?=[:/?\s\"']|$)")
 
 FORBIDDEN_EXTENSIONS = {
     ".aab", ".apk", ".apks", ".bak", ".db", ".jks", ".keystore", ".log", ".m3u", ".m3u8", ".smbak",
@@ -82,8 +84,9 @@ def audit(path: str) -> list[str]:
         where = f"{path}:{number}"
         for label, pattern in RULES:
             if pattern.search(line):
-                # Tests may show credential URLs on reserved hosts, as redaction examples.
-                if label == "credential URL" and in_tests and RESERVED_HOST.search(line):
+                # Tests may show credentials on reserved hosts, as redaction and parsing examples.
+                reserved = RESERVED_HOST if label == "credential URL" else RESERVED_URL_HOST
+                if label in ("credential URL", "credential parameters") and in_tests and reserved.search(line):
                     continue
                 findings.append(f"{where}: {label}")
         if path not in KIT_FILES | RULE_FILES and MACHINE_PATH.search(line):

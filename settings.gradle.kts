@@ -19,9 +19,12 @@ rootProject.name = "SohvaTV"
 
 include(":app")
 include(":core:model")
+include(":core:net")
 include(":core:data")
+include(":core:sync")
 include(":ui:design")
 include(":feature:home")
+include(":feature:settings")
 include(":benchmark")
 include(":spike:guidegrid")
 include(":lint-checks")

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings the rebuild added; beta 23 had no sentence for these (docs/decisions.md). Not managed by tools/import_strings.py. -->
+<resources>
+    <plurals name="error_source_name_too_long">
+        <item quantity="one">Der Name der Quelle darf höchstens %1$d Zeichen lang sein</item>
+        <item quantity="other">Der Name der Quelle darf höchstens %1$d Zeichen lang sein</item>
+    </plurals>
+    <string name="error_import_interrupted">Die Aktualisierung wurde beim Schließen der App abgebrochen. Die bisherigen Daten wurden behalten.</string>
+    <string name="error_secrets_unreadable">Gespeicherte Quelladressen und Passwörter können auf diesem Gerät nicht mehr gelesen werden. Stelle eine Sicherung wieder her oder füge die Quellen erneut hinzu.</string>
+    <string name="error_source_response_too_large">Die Antwort der Quelle war zu groß</string>
+    <string name="error_source_limit_reached">Es können keine weiteren Quellen hinzugefügt werden (höchstens %1$d)</string>
+    <string name="action_cancel">Abbrechen</string>
+    <string name="source_delete_confirm">%1$s mit Sendern, Programmführer und Filmen entfernen? Das lässt sich nicht rückgängig machen.</string>
+</resources>

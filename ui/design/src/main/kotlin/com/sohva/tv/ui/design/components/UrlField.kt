@@ -55,7 +55,7 @@ data class FieldInput(
 
 /**
  * Every text entry: addresses, keys, PINs, names (design/02 §9). The box is a focusable button
- * that shows the value (or [label] as a hint); OK opens the edit dialog with the keyboard. The
+ * that shows the value (or [hint]); OK opens the edit dialog with the keyboard. The
  * focus flip is instant, with no scale.
  */
 @Composable
@@ -67,6 +67,8 @@ fun TvUrlField(
     @DrawableRes icon: Int? = null,
     input: FieldInput = FieldInput(),
     state: SurfaceState = SurfaceState(),
+    /** Shown in the empty box; [label] titles the edit dialog. */
+    hint: String = label,
 ) {
     var editing by remember { mutableStateOf(false) }
     // Set only when the dialog closes, so focus returns to the box and never lands on it unasked.
@@ -87,7 +89,7 @@ fun TvUrlField(
                 Icon(icon, size = 18.dp, tint = if (colors.focused) Sohva.palette.background.copy(alpha = 0.72f) else Sohva.palette.textMuted)
                 Spacer(Modifier.width(if (input.compact) 8.dp else 12.dp))
             }
-            val shown = if (value.isEmpty()) label else input.transformation.filter(AnnotatedString(value)).text.text
+            val shown = if (value.isEmpty()) hint else input.transformation.filter(AnnotatedString(value)).text.text
             val hintColor = if (colors.focused) colors.secondaryContent else Sohva.palette.textMuted
             Text(
                 shown,
@@ -161,8 +163,9 @@ private fun EditDialog(
                 )
             }
         }
-    }
-    LaunchedEffect(Unit) {
-        if (editor.requestFocusWhenAttached()) keyboard?.show()
+        // Inside the dialog: it starts with the dialog's own composition, not before its window exists.
+        LaunchedEffect(Unit) {
+            if (editor.requestFocusWhenAttached()) keyboard?.show()
+        }
     }
 }

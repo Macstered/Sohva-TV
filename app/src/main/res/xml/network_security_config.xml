@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spec 73 SEC-FR-23..25: viewers' playlist, guide and stream hosts are often plain HTTP, so the
+     base allows cleartext; every service the app contacts on its own behalf is HTTPS-only. Only
+     system certificate authorities are trusted. -->
+<network-security-config xmlns:tools="http://schemas.android.com/tools">
+    <!-- Deliberate (SEC-FR-24): without it most viewers' playlists would not load. -->
+    <base-config
+        cleartextTrafficPermitted="true"
+        tools:ignore="InsecureBaseConfiguration">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api-sports.io</domain>
+        <domain includeSubdomains="true">themoviedb.org</domain>
+        <domain includeSubdomains="true">tmdb.org</domain>
+        <domain includeSubdomains="true">tvmaze.com</domain>
+        <domain includeSubdomains="true">trakt.tv</domain>
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
+        <domain includeSubdomains="true">strem.io</domain>
+        <domain includeSubdomains="true">stremio.com</domain>
+    </domain-config>
+</network-security-config>

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.prefs.AppPreferences
 import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.security.AndroidKeystoreKeyProvider
@@ -12,7 +13,12 @@ import com.sohva.tv.core.data.security.EnvelopeCipher
 import com.sohva.tv.core.data.security.EnvelopeSpec
 import com.sohva.tv.core.data.security.PrefsWrappedKeyStore
 import com.sohva.tv.core.data.security.SecretStore
+import com.sohva.tv.core.data.source.RefreshFacts
+import com.sohva.tv.core.data.source.RefreshStatusStore
+import com.sohva.tv.core.data.source.ServiceKeys
+import com.sohva.tv.core.data.source.SourceStore
 import com.sohva.tv.core.model.concurrent.AppDispatchers
+import com.sohva.tv.core.model.time.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
@@ -37,13 +43,26 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     /** Synchronous by design: read in attachBaseContext below Android 13 (spec 01 FR-03). */
     val locale: LocaleStore by lazy { LocaleStore(app) }
 
-    val secrets: SecretStore by lazy {
+    /** The app's value cipher: secrets, and stream addresses sealed by imports (spec 73 §4.2). */
+    val cipher: EnvelopeCipher by lazy {
         val spec = EnvelopeSpec.MAIN
-        val cipher = EnvelopeCipher(
+        EnvelopeCipher(
             spec = spec,
             keyProvider = AndroidKeystoreKeyProvider(spec.keystoreAlias),
             wrappedKeyStore = PrefsWrappedKeyStore(app, spec),
         )
-        SecretStore(app, cipher, dispatchers.io)
     }
+
+    val secrets: SecretStore by lazy { SecretStore(app, cipher, dispatchers.io) }
+
+    val sources: SourceStore by lazy { SourceStore(database.sources(), secrets, SystemClock) }
+
+    val refreshFacts: RefreshFacts by lazy { RefreshFacts(database) }
+
+    val refreshStatus: RefreshStatusStore by lazy { RefreshStatusStore(database, dispatchers.io) }
+
+    val serviceKeys: ServiceKeys by lazy { ServiceKeys(secrets) }
+
+    /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
+    val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }
 }

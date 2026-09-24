@@ -88,7 +88,7 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
             // Test tags double as resource ids, so UiAutomator journeys (profiles, benchmarks) find them.
             Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
                 val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen) }
-                NavHost(stack) { route -> AppDestination(route, stack, graph.flags) }
+                NavHost(stack) { route -> AppDestination(route, stack, graph) }
             }
         }
     }

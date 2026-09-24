@@ -11,8 +11,9 @@ import org.junit.rules.ExternalResource
 /**
  * Resets every persisted setting that can change the first screen, through the stores
  * themselves, before and after each test (lessons 7.5). Extend it whenever a new persisted
- * setting can change start-up: language, theme, size and start screen today; profiles and the
- * last guide source join in their milestones. Refuses to run against anything but the debug app.
+ * setting can change start-up: language, theme, size and start screen, and the sources (removed
+ * through the import runner, so their rows and secrets go too); profiles and the last guide source
+ * join in their milestones. Refuses to run against anything but the debug app.
  */
 class ClearStateRule : ExternalResource() {
     override fun before() = reset()
@@ -27,6 +28,9 @@ class ClearStateRule : ExternalResource() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             app.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.getEmptyLocaleList()
         }
-        runBlocking { graph.data.preferences.resetToDefaults() }
+        runBlocking {
+            graph.data.preferences.resetToDefaults()
+            graph.data.sources.all().forEach { graph.sync.runner.remove(it.id) }
+        }
     }
 }

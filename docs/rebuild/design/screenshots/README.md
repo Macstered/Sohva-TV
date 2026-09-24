@@ -46,6 +46,9 @@ initials — the fixture's art, not the app's.
 | `movies-wall.png`, `movies-wall-moved.png` | Movies poster wall and group rail, before and after moving |
 | `series-wall.png`, `series-wall-moved.png` | Series wall, before and after moving |
 
+> **Not in the repository** (owner's decision, 24 September 2026): the `older-builds/` captures
+> below are kept on the build machine in `.local/older-builds/`, not in git.
+
 ## older-builds/2026-09-02-demo — demo build, 2 September 2026
 
 Fictional demo content (see `assets/flavors/demo/`). **Differences from beta 23:** the app was

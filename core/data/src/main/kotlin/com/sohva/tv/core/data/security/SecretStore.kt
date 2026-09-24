@@ -8,6 +8,13 @@ import java.security.GeneralSecurityException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
+/** Encrypted string values by key; `null` removes. What stores that keep secrets depend on. */
+interface SecretValues {
+    suspend fun read(key: String): Outcome<String?>
+
+    suspend fun write(key: String, value: String?): Outcome<Unit>
+}
+
 /**
  * Encrypted key/value settings: source credentials, PIN, API keys (spec 73 §4.3). Every call runs
  * on [io], never on the main thread (SEC-NFR-01); the UI observes derived flags instead.
@@ -16,15 +23,15 @@ class SecretStore(
     context: Context,
     private val cipher: EnvelopeCipher,
     private val io: CoroutineDispatcher,
-) {
+) : SecretValues {
     private val prefs: SharedPreferences = context.getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
 
-    suspend fun read(key: String): Outcome<String?> = withContext(io) {
+    override suspend fun read(key: String): Outcome<String?> = withContext(io) {
         val stored = prefs.getString(key, null) ?: return@withContext Outcome.Ok(null)
         guarded { cipher.decrypt(stored) }
     }
 
-    suspend fun write(key: String, value: String?): Outcome<Unit> = withContext(io) {
+    override suspend fun write(key: String, value: String?): Outcome<Unit> = withContext(io) {
         // Synchronous commits: we are already off the main thread, and a secret must be on disk
         // before the caller moves on.
         guarded {

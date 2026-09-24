@@ -16,14 +16,18 @@ class AndroidDispatchers : AppDispatchers {
 
     override val io: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(IO_THREADS)
 
-    override val bulk: CoroutineDispatcher = Executors.newSingleThreadExecutor { runnable ->
+    override val bulk: CoroutineDispatcher = backgroundThread("SohvaBulk")
+
+    override val bulkWrite: CoroutineDispatcher = backgroundThread("SohvaBulkWrite")
+
+    // Background priority: imports and passes give way to the UI and the decoder.
+    private fun backgroundThread(name: String): CoroutineDispatcher = Executors.newSingleThreadExecutor { runnable ->
         Thread(
             {
-                // Background priority: imports and passes give way to the UI and the decoder.
                 Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
                 runnable.run()
             },
-            "SohvaBulk",
+            name,
         )
     }.asCoroutineDispatcher()
 
