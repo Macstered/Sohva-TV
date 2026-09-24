@@ -86,7 +86,18 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:data"))
     implementation(project(":ui:design"))
+    implementation(project(":feature:home"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    testImplementation(libs.junit)
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

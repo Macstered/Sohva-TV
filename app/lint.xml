@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <lint>
-    <!-- The TV banner ships at xhdpi, xxhdpi and xxxhdpi only (spec 01 §7.1): TV screens are
-         xhdpi or denser, and lower densities would only add APK size. -->
+    <!-- The TV banner and the brand images ship at xhdpi and xxxhdpi only (spec 01 §7.1,
+         assets/README.md): TV screens are xhdpi or denser; other densities only add APK size. -->
     <issue id="IconMissingDensityFolder" severity="ignore" />
+    <issue id="IconDensities" severity="ignore" />
+    <!-- Releases are sideloaded APKs with every language inside, never Play bundles split by
+         language, so a per-app language change needs no language download. -->
+    <issue id="AppBundleLocaleChanges" severity="ignore" />
 </lint>

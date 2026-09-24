@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
@@ -105,10 +106,15 @@ object GroundCache {
 
 /**
  * A screen on the shared ground. Until the bitmap is ready (a few milliseconds, off the main
- * thread) the flat `background` colour is drawn, so nothing waits for it.
+ * thread) [whileRendering] is drawn, the flat `background` by default, so nothing waits for it.
+ * The launch screen passes transparent: the window's launch picture beneath is the same image.
  */
 @Composable
-fun ScreenBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+fun ScreenBackground(
+    modifier: Modifier = Modifier,
+    whileRendering: Color = Color.Unspecified,
+    content: @Composable BoxScope.() -> Unit,
+) {
     val palette = Sohva.palette
     val dispatcher = LocalRenderDispatcher.current
     var size by remember { mutableStateOf(IntSize.Zero) }
@@ -127,7 +133,8 @@ fun ScreenBackground(modifier: Modifier = Modifier, content: @Composable BoxScop
             .drawBehind {
                 val image = ground
                 if (image == null) {
-                    drawRect(palette.background)
+                    val fallback = whileRendering.takeOrElse { palette.background }
+                    if (fallback.alpha > 0f) drawRect(fallback)
                 } else {
                     drawImage(
                         image = image,

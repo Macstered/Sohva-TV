@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug builds only; never seen by viewers. -->
+    <string name="gallery_title" translatable="false">Sohva TV Gallery</string>
+</resources>

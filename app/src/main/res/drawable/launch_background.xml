@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    What Android paints while the process starts (spec 01 §5.1): the gradient, the mark (188 dp,
+    bottom inset 74) and the wordmark (273 × 56 dp, top inset 206), at the places the Compose launch
+    screen puts them, so the hand-over changes nothing on screen.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:centerColor="@color/sohva_window_background"
+                android:endColor="@color/sohva_window_background_bottom"
+                android:startColor="@color/sohva_window_background_top" />
+        </shape>
+    </item>
+    <item
+        android:width="188dp"
+        android:height="188dp"
+        android:bottom="74dp"
+        android:drawable="@drawable/sohva_mark"
+        android:gravity="center" />
+    <item
+        android:width="273dp"
+        android:height="56dp"
+        android:drawable="@drawable/sohva_wordmark"
+        android:gravity="center"
+        android:top="206dp" />
+</layer-list>

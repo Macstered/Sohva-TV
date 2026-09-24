@@ -45,6 +45,11 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         store.edit { it[STARTUP_SCREEN] = value.name }
     }
 
+    /** Every household setting back to its default (tests' clear-state rule; restore defaults later). */
+    suspend fun resetToDefaults() {
+        store.edit { it.clear() }
+    }
+
     private fun <T> key(key: Preferences.Key<String>, parse: (String?) -> T): Flow<T> =
         store.data.map { parse(it[key]) }.distinctUntilChanged()
 

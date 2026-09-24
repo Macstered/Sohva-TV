@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: the component gallery gets its own launcher entry. The TV features are
+     declared by the main manifest this overlay merges into. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="ImpliedTouchscreenHardware,MissingLeanbackSupport">
+
+    <application>
+        <activity
+            android:name="com.sohva.tv.app.gallery.GalleryActivity"
+            android:banner="@drawable/app_banner"
+            android:exported="true"
+            android:label="@string/gallery_title">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
