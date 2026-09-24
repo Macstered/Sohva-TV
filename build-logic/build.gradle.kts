@@ -9,4 +9,5 @@ dependencies {
     implementation(libs.ksp.gradle.plugin)
     implementation(libs.room.gradle.plugin)
     implementation(libs.roborazzi.gradle.plugin)
+    implementation(libs.baselineprofile.gradle.plugin)
 }

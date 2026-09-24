@@ -30,6 +30,7 @@ import com.sohva.tv.ui.design.navigation.rememberBackStack
 import com.sohva.tv.ui.design.theme.InterfaceScaled
 import com.sohva.tv.ui.design.theme.Palettes
 import com.sohva.tv.ui.design.theme.SohvaTheme
+import androidx.tracing.trace
 import kotlinx.coroutines.withContext
 
 /** What the first app frame needs, read once off the main thread (plan/03 §4.9). */
@@ -52,11 +53,19 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
     var start by remember { mutableStateOf<StartState?>(null) }
     LaunchedEffect(Unit) {
         start = withContext(graph.dispatchers.io) {
-            val snapshot = graph.data.preferences.startSnapshot()
-            val tier = DeviceTier.decide(DeviceTierReader(graph.app).read())
-            graph.diagnostics.info("startup", "tier=${tier.memory} reducedMotion=${tier.reducedMotion}")
+            // Timing marks: to the diagnostics log (counts and durations only) and as trace sections.
+            val t0 = graph.clock.monotonicNanos()
+            val snapshot = trace("Startup:Snapshot") { graph.data.preferences.startSnapshot() }
+            val t1 = graph.clock.monotonicNanos()
+            val tier = trace("Startup:Tier") { DeviceTier.decide(DeviceTierReader(graph.app).read()) }
+            val t2 = graph.clock.monotonicNanos()
             // The saved theme's ground is ready before its first frame.
             GroundCache.prepare(Palettes.of(snapshot.theme), screenSize, graph.dispatchers.ui)
+            val t3 = graph.clock.monotonicNanos()
+            graph.diagnostics.info(
+                "startup",
+                "snapshot=${ms(t0, t1)} tier=${ms(t1, t2)} ground=${ms(t2, t3)} ms; tier=${tier.memory} reducedMotion=${tier.reducedMotion}",
+            )
             StartState(snapshot, tier)
         }
     }
@@ -65,6 +74,8 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
         if (state == null) LaunchScreen() else App(graph, state, host)
     }
 }
+
+private fun ms(from: Long, to: Long): Long = (to - from) / 1_000_000
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

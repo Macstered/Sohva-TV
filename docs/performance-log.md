@@ -8,3 +8,9 @@ per measurement; compare CPU time per phase on the emulator, frame times only on
 | 2026-09-24 | M0 step 1 | release (debug-signed copy) | verify (`cmd package compile -m verify -f`) | emulator sohva_rebuild_tv30, API 30 TV x86, 1080p | none | cold start, empty shell (`am start -W`) | TotalTime | 181 ms | beta 23 emulator cold launch 562 ms (plan/07 §3.1) |
 | 2026-09-24 | M0 step 1 | release | – | – | – | size | APK bytes (unsigned) | 1,125,070 | beta 23: 7,841,731 |
 | 2026-09-24 | M0 step 1 | release | – | – | – | size | largest method, code units | 3,342 (library) of 8,777 methods | beta 23 app largest 8,949 |
+| 2026-09-24 | 067a182+ | benchmarkRelease (R8) | none (`CompilationMode.None`) | emulator sohva_rebuild_tv30, API 30 TV x86 | none | cold start, 10 iterations | time to initial display, median | 375 ms (357–405) | beta 23 emulator cold launch 562 ms |
+| 2026-09-24 | 067a182+ | benchmarkRelease (R8) | none | same | none | cold start, 10 iterations | time to full display (app drawn), median | 696 ms (659–724) | – |
+| 2026-09-24 | 067a182+ | benchmarkRelease (R8) | baseline profile required | same | none | cold start, 10 iterations | time to initial display, median | 357 ms (338–698) | – |
+| 2026-09-24 | 067a182+ | benchmarkRelease (R8) | baseline profile required | same | none | cold start, 10 iterations | time to full display, median | 653 ms (611–1,231) | – |
+| 2026-09-24 | 067a182+ | debug | JIT | same | none | start state off the main thread | snapshot / tier / ground | 30–62 / 1–3 / 0–15 ms | – |
+| 2026-09-24 | 067a182+ | – | – | – | – | generated baseline profile | rules (app packages: shell 205, Home 94, design 373, data 65, model 112) | 14,573; startup profile 14,183 | beta 23 hand-written: 45 wildcard rules |

@@ -4,6 +4,7 @@ plugins {
     id("sohva.android.application")
     id("sohva.android.compose")
     id("sohva.release-gates")
+    id("sohva.baselineprofile.consumer")
 }
 
 // The permanent release identity (plan/00 §6). The keystore and its passwords stay in the
@@ -91,6 +92,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.tracing)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     testImplementation(libs.junit)
