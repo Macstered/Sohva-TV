@@ -1,5 +1,6 @@
 package com.sohva.tv.measure.fixture
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Bundle
 import android.widget.TextView
@@ -18,6 +19,8 @@ import kotlinx.coroutines.runBlocking
  * names and reserved addresses only; streams are not playable.
  */
 class FixtureActivity : Activity() {
+    // The labels are markers the benchmark waits for, never shown to a viewer (measurement builds only).
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val label = TextView(this).apply { text = "fixture-busy" }
