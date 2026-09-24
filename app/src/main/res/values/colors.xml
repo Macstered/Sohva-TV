@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window colours used before Compose draws; the Compose palettes live in :ui:design. -->
+    <color name="sohva_window_background">#05070D</color>
+    <color name="sohva_focus">#2DE2E6</color>
+</resources>

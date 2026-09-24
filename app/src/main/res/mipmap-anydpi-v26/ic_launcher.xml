@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TV launchers show the banner and never theme the icon, so no monochrome layer (as beta 23). -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="MonochromeLauncherIcon">
+    <background android:drawable="@color/sohva_window_background" />
+    <foreground android:drawable="@mipmap/sohva_launcher_foreground" />
+</adaptive-icon>

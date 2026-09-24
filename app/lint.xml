@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- The TV banner ships at xhdpi, xxhdpi and xxxhdpi only (spec 01 §7.1): TV screens are
+         xhdpi or denser, and lower densities would only add APK size. -->
+    <issue id="IconMissingDensityFolder" severity="ignore" />
+</lint>

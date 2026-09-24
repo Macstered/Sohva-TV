@@ -29,3 +29,6 @@ Thumbs.db
 
 # Claude Code local settings (the shared ones live in .claude/settings.json)
 .claude/settings.local.json
+
+# Python
+__pycache__/

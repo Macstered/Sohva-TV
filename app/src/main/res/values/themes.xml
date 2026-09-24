@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launch picture replaces the flat window background in the shell step (spec 01 §5). -->
+    <style name="Theme.Sohva" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/sohva_window_background</item>
+        <item name="android:colorAccent">@color/sohva_focus</item>
+        <item name="android:navigationBarColor">@color/sohva_window_background</item>
+        <item name="android:statusBarColor">@color/sohva_window_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
