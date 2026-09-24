@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,6 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.os.ConfigurationCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.TvActionButton
@@ -66,6 +70,16 @@ fun SettingsScreen(model: SettingsModel, onBack: () -> Unit) {
                 SettingsRail(state, model::select, railSelected, Modifier.width(214.dp).fillMaxHeight())
                 SettingsPane(state, model, paneStart, Modifier.weight(1f).fillMaxHeight())
             }
+        }
+    }
+    // The phone page never outlives the screen or the app's visibility (spec 11 PHONE-FR-03, PHONE-FR-15).
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) model.closePhoneSetup() }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
+            model.closePhoneSetup()
         }
     }
     // Focus goes where the model says, once per command (SET-FR-02, SET-FR-12).

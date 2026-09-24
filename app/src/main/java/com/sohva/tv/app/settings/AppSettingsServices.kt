@@ -3,12 +3,16 @@ package com.sohva.tv.app.settings
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.core.model.concurrent.WorkOrigin
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.Source
 import com.sohva.tv.core.model.source.SourceConfig
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.source.XtreamAccount
+import com.sohva.tv.core.net.phone.LocalAddress
+import com.sohva.tv.core.net.phone.QrCodes
 import com.sohva.tv.core.sync.SourceChecks
 import com.sohva.tv.feature.settings.SettingsServices
 import kotlinx.coroutines.flow.Flow
@@ -55,4 +59,17 @@ class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
     override suspend fun testXtream(account: XtreamAccount): SourceChecks.Result = withContext(io) { graph.sync.checks.testXtream(account) }
 
     override suspend fun setRefreshInterval(interval: RefreshInterval) = withContext(io) { graph.data.preferences.setRefreshInterval(interval) }
+
+    override fun phoneSetup(): Flow<PhoneSetupState> = graph.phone.state()
+
+    // Opening a socket and reading the interfaces are io work; the server thread does the rest.
+    override fun openPhoneSetup() {
+        graph.appScope.launch { graph.phone.server.start(LocalAddress.current()) }
+    }
+
+    override fun closePhoneSetup() {
+        graph.appScope.launch { graph.phone.server.stop() }
+    }
+
+    override suspend fun qrCode(url: String): QrMatrix? = withContext(io) { QrCodes.of(url) }
 }

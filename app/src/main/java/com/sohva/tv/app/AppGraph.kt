@@ -2,6 +2,7 @@ package com.sohva.tv.app
 
 import android.app.Application
 import android.util.Log
+import com.sohva.tv.app.settings.PhoneSetup
 import com.sohva.tv.core.data.DataGraph
 import com.sohva.tv.core.data.diagnostics.RingDiagnosticsLog
 import com.sohva.tv.core.model.FeatureFlags
@@ -44,6 +45,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     val pauseGate: PauseGate by lazy { PauseGate(playbackActive, inForeground) }
 
     val sync: SyncGraph by lazy { SyncGraph(this) }
+
+    /** The phone setup page (spec 11); built on first use. */
+    val phone: PhoneSetup by lazy { PhoneSetup(this) }
 
     private val started = AtomicBoolean(false)
 

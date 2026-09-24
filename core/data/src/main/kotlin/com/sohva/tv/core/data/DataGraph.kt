@@ -14,6 +14,7 @@ import com.sohva.tv.core.data.security.PrefsWrappedKeyStore
 import com.sohva.tv.core.data.security.SecretStore
 import com.sohva.tv.core.data.source.RefreshFacts
 import com.sohva.tv.core.data.source.RefreshStatusStore
+import com.sohva.tv.core.data.source.ServiceKeys
 import com.sohva.tv.core.data.source.SourceStore
 import com.sohva.tv.core.model.concurrent.AppDispatchers
 import com.sohva.tv.core.model.time.SystemClock
@@ -58,4 +59,6 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val refreshFacts: RefreshFacts by lazy { RefreshFacts(database) }
 
     val refreshStatus: RefreshStatusStore by lazy { RefreshStatusStore(database, dispatchers.io) }
+
+    val serviceKeys: ServiceKeys by lazy { ServiceKeys(secrets) }
 }

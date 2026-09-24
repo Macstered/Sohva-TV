@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,6 +16,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.source.SourceType
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.SettingsOverline
@@ -61,6 +65,7 @@ internal fun PlaylistsList(state: SettingsState, model: SettingsModel, start: Fo
             compact = true,
         )
         TvActionButton(stringResource(R.string.source_add_xtream), { model.addSource(SourceType.XTREAM) }, Modifier.testTag("source-add-xtream"), compact = true)
+        PhoneButton(state, model)
     }
     val message = state.messages[SettingsSection.SOURCES]?.resolve()
         ?: stringResource(if (sources.isEmpty()) R.string.settings_add_first_source else R.string.settings_sources_loaded)
@@ -70,5 +75,29 @@ internal fun PlaylistsList(state: SettingsState, model: SettingsModel, start: Fo
     val target = state.focus.target
     LaunchedEffect(state.focus.serial) {
         if (target is FocusTarget.SourceRowOf) rows[target.sourceId]?.requestFocusWhenAttached()
+    }
+}
+
+/**
+ * "Set up from a phone" (spec 11 PHONE-01): opens the page and its dialog; reads "Close the phone
+ * page" while the page runs (PHONE-FR-01). Focus comes back here when the dialog goes, whether the
+ * viewer closed it or the 15-minute limit did (PHONE-FR-02).
+ */
+@Composable
+private fun PhoneButton(state: SettingsState, model: SettingsModel) {
+    val button = remember { FocusRequester() }
+    val open = state.phone != PhoneSetupState.Closed
+    TvActionButton(
+        stringResource(if (state.phone is PhoneSetupState.Open) R.string.phone_setup_stop else R.string.phone_setup_start),
+        { if (open) model.closePhoneSetup() else model.openPhoneSetup() },
+        Modifier.focusRequester(button).testTag("source-add-phone"),
+        icon = TvIcons.Link,
+        compact = true,
+    )
+    if (open) PhoneSetupDialog(state.phone, state.qr, model::closePhoneSetup)
+    var wasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(open) {
+        if (!open && wasOpen) button.requestFocusWhenAttached()
+        wasOpen = open
     }
 }

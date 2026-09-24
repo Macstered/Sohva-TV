@@ -2,6 +2,8 @@ package com.sohva.tv.feature.settings
 
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.source.RefreshKind
@@ -70,6 +72,15 @@ class SettingsModelTest {
         override suspend fun setRefreshInterval(interval: RefreshInterval) {
             this.interval.value = interval
         }
+        val phone = MutableStateFlow<PhoneSetupState>(PhoneSetupState.Closed)
+        override fun phoneSetup(): Flow<PhoneSetupState> = phone
+        override fun openPhoneSetup() {
+            phone.value = PhoneSetupState.Open("http://192.0.2.5:4321/#token", 0, null, false)
+        }
+        override fun closePhoneSetup() {
+            phone.value = PhoneSetupState.Closed
+        }
+        override suspend fun qrCode(url: String): QrMatrix? = QrMatrix(1, booleanArrayOf(true))
     }
 
     private val services = FakeServices()
@@ -199,6 +210,20 @@ class SettingsModelTest {
         model.closePage()
         assertEquals(FocusTarget.SourceRowOf(page.id), state.focus.target)
         assertEquals(AppError.EpgEmpty, state.sources!!.single().failure)
+    }
+
+    @Test
+    fun aPhoneReceiptShowsInThePlaylistsStatusLine() {
+        model.openPhoneSetup()
+        assertTrue(state.phone is PhoneSetupState.Open)
+        assertEquals(1, state.qr?.size)
+        services.phone.value = PhoneSetupState.Open("http://192.0.2.5:4321/#token", 1, "Living room", false)
+        assertEquals(SettingsMessage.Text(R.string.phone_setup_received, listOf("Living room")), status)
+        services.phone.value = PhoneSetupState.Open("http://192.0.2.5:4321/#token", 2, "Living room", true)
+        assertEquals(SettingsMessage.Text(R.string.phone_setup_received_keys), status)
+        model.closePhoneSetup()
+        assertEquals(PhoneSetupState.Closed, state.phone)
+        assertNull(state.qr)
     }
 
     @Test

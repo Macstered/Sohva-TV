@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.ImportRoute
 import com.sohva.tv.core.model.source.RefreshKind
@@ -52,6 +54,9 @@ data class SettingsState(
     val busy: Boolean = false,
     val messages: Map<SettingsSection, SettingsMessage> = emptyMap(),
     val refreshInterval: RefreshInterval = RefreshInterval.TWENTY_FOUR_HOURS,
+    val phone: PhoneSetupState = PhoneSetupState.Closed,
+    /** The phone page's code, once built for its current address. */
+    val qr: QrMatrix? = null,
     val focus: FocusCommand = FocusCommand(FocusTarget.SectionStart, 0),
 )
 
@@ -86,7 +91,46 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
             }
         }
         viewModelScope.launch { services.refreshInterval().collect { value -> state.update { it.copy(refreshInterval = value) } } }
+        viewModelScope.launch { services.phoneSetup().collect(::onPhoneSetup) }
     }
+
+    fun openPhoneSetup() = services.openPhoneSetup()
+
+    /** Back or "Close the phone page": the page stops and the dialog closes (PHONE-FR-02). */
+    fun closePhoneSetup() = services.closePhoneSetup()
+
+    private var qrFor: String? = null
+
+    private fun onPhoneSetup(phone: PhoneSetupState) {
+        val before = state.value.phone
+        state.update { it.copy(phone = phone) }
+        if (phone !is PhoneSetupState.Open) {
+            qrFor = null
+            state.update { it.copy(qr = null) }
+            return
+        }
+        if (qrFor != phone.url) {
+            qrFor = phone.url
+            state.update { it.copy(qr = null) }
+            viewModelScope.launch {
+                val qr = services.qrCode(phone.url)
+                if (qrFor == phone.url) state.update { it.copy(qr = qr) }
+            }
+        }
+        // A receipt: Playlists' status line says what came (PHONE-FR-34).
+        val count = (before as? PhoneSetupState.Open)?.received ?: 0
+        if (phone.received > count) {
+            val message = if (phone.lastWasKeys) {
+                SettingsMessage.Text(R.string.phone_setup_received_keys)
+            } else {
+                SettingsMessage.Text(R.string.phone_setup_received, listOf(phone.lastSource.orEmpty()))
+            }
+            state.update { it.withMessage(message, SettingsSection.SOURCES) }
+        }
+    }
+
+    /** The page never outlives Settings (PHONE-FR-03). */
+    override fun onCleared() = services.closePhoneSetup()
 
     /** OK on a rail row: closes the source page and moves focus into the section (SET-FR-12). */
     fun select(section: SettingsSection) = state.update {

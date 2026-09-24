@@ -1,6 +1,8 @@
 package com.sohva.tv.feature.settings
 
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.Source
@@ -43,4 +45,14 @@ interface SettingsServices {
     suspend fun testXtream(account: XtreamAccount): SourceChecks.Result
 
     suspend fun setRefreshInterval(interval: RefreshInterval)
+
+    /** The phone setup page (spec 11); it closes itself after 15 minutes. */
+    fun phoneSetup(): Flow<PhoneSetupState>
+
+    fun openPhoneSetup()
+
+    fun closePhoneSetup()
+
+    /** The page address as a QR code, built off the main thread (PHONE-FR-51); null when it cannot be. */
+    suspend fun qrCode(url: String): QrMatrix?
 }
