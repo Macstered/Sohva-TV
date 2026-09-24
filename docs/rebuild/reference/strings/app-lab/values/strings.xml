@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A distinct resource avoids translated production names winning locale selection. -->
+    <string name="lab_app_name" translatable="false">Sohva TV Lab</string>
+</resources>

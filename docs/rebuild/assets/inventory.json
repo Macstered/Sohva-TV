@@ -1,0 +1,1722 @@
+[
+ {
+  "path": "res/drawable/ic_sohva_nav_addon_home.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_addon_home.xml",
+  "bytes": 560,
+  "sha256": "d55b6b138e0c2dc9c3b6d2d3420d12edd811370a42286a06c265681fbebbdb62"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_addons.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_addons.xml",
+  "bytes": 634,
+  "sha256": "9cacafc92530ef5011f20c66f52ddae430257ef1c6604d3452674cb2119c9f2d"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_back_to_home.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_back_to_home.xml",
+  "bytes": 783,
+  "sha256": "00bb67be36a92066d07b583eef91efe4ec195d9c1b8a1deaf45bcc950433c309"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_discover.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_discover.xml",
+  "bytes": 1019,
+  "sha256": "07c36f4678604085ca0616a1835df1286d669ded089ef2906a7092fb5b198df1"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_explore.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_explore.xml",
+  "bytes": 772,
+  "sha256": "fb1e49346bda3a259b588f62bb7ba19c92b07562c78fcaeb9a770da7ef3f9152"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_front_page.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_front_page.xml",
+  "bytes": 1056,
+  "sha256": "c1cbaf80ef0886fb164418ac55841a24ae069e2447eaf576a70dbcef5b189cfb"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_library.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_library.xml",
+  "bytes": 1143,
+  "sha256": "2bf3d4d15c87d91921e2bb40c53d2972e9d5b628ef7f6326215dc3827defd65f"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_live_tv.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_live_tv.xml",
+  "bytes": 986,
+  "sha256": "bf5008f0250dca0233e4ff5b5ec94a48a38769301e67eb8a3c7c38ea7f38ebd8"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_movies.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_movies.xml",
+  "bytes": 851,
+  "sha256": "af5148a99d81493f8c7f60325cee9b6f417892b441885a9e51a9d0d8263623e0"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_search.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_search.xml",
+  "bytes": 774,
+  "sha256": "a4ea22dd04f7db0608491400087a8816e50cb8abe10b4d2eb9c2af801d5603eb"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_series.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_series.xml",
+  "bytes": 804,
+  "sha256": "da39da4353d3bc980f71677fc54f07cddd9816268a8bc2006321893728e8d121"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_settings.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_settings.xml",
+  "bytes": 1260,
+  "sha256": "660e105ea8745d1682a9710002898f5150fd4dd8d654108123a58efbd8c4350c"
+ },
+ {
+  "path": "res/drawable/ic_sohva_nav_sport.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/ic_sohva_nav_sport.xml",
+  "bytes": 797,
+  "sha256": "a4c6b43fec6ea13e13948ab631e2de3557234151d38bd48a4727a6c5c2d0cd02"
+ },
+ {
+  "path": "res/drawable/launch_background.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable/launch_background.xml",
+  "bytes": 1180,
+  "sha256": "ce54bc9717bd1bcac55825eae07feb30de9d3c0b500c9a89d1bb53d007da746f"
+ },
+ {
+  "path": "res/drawable-hdpi/sohva_mark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-hdpi/sohva_mark.png",
+  "bytes": 68230,
+  "sha256": "40fccd932bdcaf3bea6157585276b737f186d7332eb94f278abfac49dce0117d",
+  "pixels": "282x282",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-hdpi/sohva_wordmark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-hdpi/sohva_wordmark.png",
+  "bytes": 45872,
+  "sha256": "4877757a45ec6c29e2ee36a9843b4fba89a2f8e736c8f6e93139d8da25e8a86d",
+  "pixels": "409x84",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-mdpi/sohva_mark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-mdpi/sohva_mark.png",
+  "bytes": 35109,
+  "sha256": "0160583075df53941335c4a381043c3f6fc40cc5912eef51229a366ae0183931",
+  "pixels": "188x188",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-mdpi/sohva_wordmark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-mdpi/sohva_wordmark.png",
+  "bytes": 23722,
+  "sha256": "a5edea008ccd9f5635740fd90f2265aeb2c20753cf278cdb5113d15b4cebbd1a",
+  "pixels": "273x56",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-nodpi/home_backdrop_live_tv.webp",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-nodpi/home_backdrop_live_tv.webp",
+  "bytes": 24364,
+  "sha256": "c099b8b24e1e0de95dfb2ebe2c5dc89f6da4c2599e4321995d221732b5dcea1a",
+  "pixels": "1920x1080",
+  "mode": "RGB"
+ },
+ {
+  "path": "res/drawable-nodpi/home_backdrop_movies.webp",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-nodpi/home_backdrop_movies.webp",
+  "bytes": 8164,
+  "sha256": "e532a962deedae6758a89335674c8366aa814103a0c1c788911afe3052f90d6a",
+  "pixels": "384x384",
+  "mode": "RGB"
+ },
+ {
+  "path": "res/drawable-nodpi/home_backdrop_search.webp",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-nodpi/home_backdrop_search.webp",
+  "bytes": 22994,
+  "sha256": "a1c3cb606d4e7d895b4400318cceb7131464ff7a10a58ca60485510cef2dcb9a",
+  "pixels": "384x384",
+  "mode": "RGB"
+ },
+ {
+  "path": "res/drawable-nodpi/home_backdrop_series.webp",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-nodpi/home_backdrop_series.webp",
+  "bytes": 2966,
+  "sha256": "6af543b5913683d682b399c13214443e5c38bb985fd221cca46a52b9c06a2c2d",
+  "pixels": "384x384",
+  "mode": "RGB"
+ },
+ {
+  "path": "res/drawable-nodpi/home_backdrop_settings.webp",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-nodpi/home_backdrop_settings.webp",
+  "bytes": 18222,
+  "sha256": "b889b25cce67fc64b934f7c8d97423c2fc48e4f1a2da87d6eabdc0237ba37c15",
+  "pixels": "384x384",
+  "mode": "RGB"
+ },
+ {
+  "path": "res/drawable-nodpi/home_backdrop_sportmate.webp",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-nodpi/home_backdrop_sportmate.webp",
+  "bytes": 7858,
+  "sha256": "2485f1b5506ab0841b7fceafed50342f24e813c509ced611b0cd04ca89be78cb",
+  "pixels": "384x384",
+  "mode": "RGB"
+ },
+ {
+  "path": "res/drawable-xhdpi/app_banner.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xhdpi/app_banner.png",
+  "bytes": 26304,
+  "sha256": "4c690b0b2199c7faa0d9bfa8aa3775070d81797e787e3a453d783a360af0d2f1",
+  "pixels": "320x180",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xhdpi/sohva_mark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xhdpi/sohva_mark.png",
+  "bytes": 111032,
+  "sha256": "05de42f6d014a423fed7418003214c6255b188c70bd8aeeb636d38e6204615f9",
+  "pixels": "376x376",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xhdpi/sohva_wordmark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xhdpi/sohva_wordmark.png",
+  "bytes": 73406,
+  "sha256": "9334b70b9e756a633016bc05f9c10c3445309c5ed01ab5e7e95843f2799c4adf",
+  "pixels": "546x112",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xxhdpi/app_banner.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xxhdpi/app_banner.png",
+  "bytes": 49081,
+  "sha256": "f070307b2aa33d0a03141817e0ad34e3ec5b90a0722cdf1522393f75669c4c36",
+  "pixels": "480x270",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xxhdpi/sohva_mark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xxhdpi/sohva_mark.png",
+  "bytes": 228101,
+  "sha256": "ce553e420d2cbd51f123d3e4f6de725b27a0ec30ffb24af24fa940c11a9946f1",
+  "pixels": "564x564",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xxhdpi/sohva_wordmark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xxhdpi/sohva_wordmark.png",
+  "bytes": 142119,
+  "sha256": "488a98332c5c1ebe41817820dab81143066c65e3e7a642944028ffdd9b969d9a",
+  "pixels": "819x168",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xxxhdpi/app_banner.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xxxhdpi/app_banner.png",
+  "bytes": 77393,
+  "sha256": "8d697cfa456bfcfba39de46669bd17ba8eaa29b79a88bed19d30c8956230139b",
+  "pixels": "640x360",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xxxhdpi/sohva_mark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xxxhdpi/sohva_mark.png",
+  "bytes": 361013,
+  "sha256": "f4633bb06c4d0e28015f5e774b03f4b16b70f111eebb93899aad2f2604625d3e",
+  "pixels": "752x752",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/drawable-xxxhdpi/sohva_wordmark.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/drawable-xxxhdpi/sohva_wordmark.png",
+  "bytes": 220421,
+  "sha256": "8d17b914a0fb1b5ce2aaa86a6e97fdfd09df5337720a4e5b645131c8fe7c88af",
+  "pixels": "1092x224",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-anydpi-v26/ic_launcher.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+  "bytes": 269,
+  "sha256": "2e8702bdfdeae04fa0ea8f0ec16649406cb40054d3fdb76e46e880d078918c49"
+ },
+ {
+  "path": "res/mipmap-hdpi/ic_launcher.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+  "bytes": 9934,
+  "sha256": "cb8bdf5e603975e9c6d86937d9be0258f072dcb4d4e7bce8eee3ae3594693d4f",
+  "pixels": "120x120",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-hdpi/sohva_launcher_foreground.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-hdpi/sohva_launcher_foreground.png",
+  "bytes": 13437,
+  "sha256": "fbceaa3f5dfea353e13ab7c36f675559108cb9dee9013354becdda885faaf1c8",
+  "pixels": "162x162",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-mdpi/ic_launcher.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+  "bytes": 5355,
+  "sha256": "9a984de1bf84629c4b6f5624da3aa6b167d8432b0fc8a9adcd4cf09a5982c791",
+  "pixels": "80x80",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-mdpi/sohva_launcher_foreground.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-mdpi/sohva_launcher_foreground.png",
+  "bytes": 6892,
+  "sha256": "75d6ef9dee5d2d0a32694aab8f29d89c2ddaa6335396ad55ed70dfa56365489b",
+  "pixels": "108x108",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-xhdpi/ic_launcher.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+  "bytes": 15083,
+  "sha256": "a834550e120f710c33be35be6c48ac01334b8415ec6e9958df4c0213a8efcbb4",
+  "pixels": "160x160",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-xhdpi/sohva_launcher_foreground.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-xhdpi/sohva_launcher_foreground.png",
+  "bytes": 21015,
+  "sha256": "db072223446fe3392d1478896d0ab658db07bf2f41b7e15b963566c04739cd48",
+  "pixels": "216x216",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-xxhdpi/ic_launcher.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+  "bytes": 28510,
+  "sha256": "6e7248dbe27bd851a5bfa342889d97fcf4f0ab0f76b57e9a078a2e204f43f546",
+  "pixels": "240x240",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-xxhdpi/sohva_launcher_foreground.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-xxhdpi/sohva_launcher_foreground.png",
+  "bytes": 40835,
+  "sha256": "58602fc338a462ac25e9a4b97a941e5afa4eb3fb65645d5114e4325a051c1658",
+  "pixels": "324x324",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-xxxhdpi/ic_launcher.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+  "bytes": 45389,
+  "sha256": "750c9ee63bf63df9e9de2e4125158b9451cb776e84b94a6abfdd706f36e349c5",
+  "pixels": "320x320",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/mipmap-xxxhdpi/sohva_launcher_foreground.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/mipmap-xxxhdpi/sohva_launcher_foreground.png",
+  "bytes": 65561,
+  "sha256": "b580f82e7dd71c59891f375bebcd5a9aaf2eb785b76ca3c704caa8833c140235",
+  "pixels": "432x432",
+  "mode": "RGBA"
+ },
+ {
+  "path": "res/values/colors.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/values/colors.xml",
+  "bytes": 372,
+  "sha256": "2bdb430e72f2f4835361345160cda58a58b49080f4a414d1801ea8b348e377f1"
+ },
+ {
+  "path": "res/values/themes.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/main/res/values/themes.xml",
+  "bytes": 657,
+  "sha256": "d99cb3a1d432dce953de9e179a6f374ef8be2500fcd977eb1fde73fef636e632"
+ },
+ {
+  "path": "res/drawable/ic_tv_aspect.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_aspect.xml",
+  "bytes": 437,
+  "sha256": "5fd48725aa717940e0134b8f70af89ef6e316d4f50b11f4d447c828c6fbe5153"
+ },
+ {
+  "path": "res/drawable/ic_tv_audio.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_audio.xml",
+  "bytes": 491,
+  "sha256": "e3515222480be2d88652a4c7be42f0a3e3d55eda30e2bdd368dce23420ac700a"
+ },
+ {
+  "path": "res/drawable/ic_tv_back.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_back.xml",
+  "bytes": 362,
+  "sha256": "3bfec2d539697d11306dcef5f844f60933011bba454e3c1f297a6ed3c9fd2f67"
+ },
+ {
+  "path": "res/drawable/ic_tv_channels.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_channels.xml",
+  "bytes": 348,
+  "sha256": "4e1e67836f91cc31da21a24326a9c8e670881deaa39b5b506fdfc9b1fd1201da"
+ },
+ {
+  "path": "res/drawable/ic_tv_check.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_check.xml",
+  "bytes": 350,
+  "sha256": "e0b980cac717070b7eb7fd097f57193902422f813927fb5abf35716ad6edbd99"
+ },
+ {
+  "path": "res/drawable/ic_tv_chevron_down.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_chevron_down.xml",
+  "bytes": 360,
+  "sha256": "7a476cb02945472eff1a38f01c40d2c9dbfc11e360af336be945c93fcf6bc99c"
+ },
+ {
+  "path": "res/drawable/ic_tv_chevron_right.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_chevron_right.xml",
+  "bytes": 501,
+  "sha256": "61cf1f5f3eb477e56f794fdb9826f747b3fb8d15f7403ec1df7910b4f27c0a08"
+ },
+ {
+  "path": "res/drawable/ic_tv_close.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_close.xml",
+  "bytes": 401,
+  "sha256": "ecda0cca2c4ff3c60ea9e4f5ac08292dd7a52a26f68864ec783d1c2086fc3ac1"
+ },
+ {
+  "path": "res/drawable/ic_tv_delete.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_delete.xml",
+  "bytes": 383,
+  "sha256": "87a5b4b44234b13bc1c157e01fc9050e367f1389c1aaeffb9033aa2bd4c73e6b"
+ },
+ {
+  "path": "res/drawable/ic_tv_epg.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_epg.xml",
+  "bytes": 340,
+  "sha256": "e9d33a341bbedcbcf5dccf7165e1fdab9b675567edeff3b29bb0b5280b8fd45c"
+ },
+ {
+  "path": "res/drawable/ic_tv_forward.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_forward.xml",
+  "bytes": 341,
+  "sha256": "d8ff4109f96e62c18e2f2714e6d9776cad275b7c69ab59c6fce6e2ca64fa31aa"
+ },
+ {
+  "path": "res/drawable/ic_tv_guide.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_guide.xml",
+  "bytes": 362,
+  "sha256": "eca3fdf03236e08db84f27402b6d6d50c39e20c632f3a97a51cee04469540d41"
+ },
+ {
+  "path": "res/drawable/ic_tv_home.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_home.xml",
+  "bytes": 417,
+  "sha256": "42b4e570217341aae38bbfffaf588de1ab08c5634444c00b9c0777586460e38e"
+ },
+ {
+  "path": "res/drawable/ic_tv_info.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_info.xml",
+  "bytes": 400,
+  "sha256": "5163e61bec1ba28381741555ddec34173bb63eeef5963aa8c3488a54094a4c0d"
+ },
+ {
+  "path": "res/drawable/ic_tv_key.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_key.xml",
+  "bytes": 413,
+  "sha256": "07c659868136e666264af0978859c223a89b60cbe8876ad0b2c7ada17a69f291"
+ },
+ {
+  "path": "res/drawable/ic_tv_link.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_link.xml",
+  "bytes": 527,
+  "sha256": "3c88dfa0bc97d7d5a329d1e2c4dd3de9892f0cc6caf805c7c3b38ac3aaf4d296"
+ },
+ {
+  "path": "res/drawable/ic_tv_lock.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_lock.xml",
+  "bytes": 582,
+  "sha256": "4dafa93d7cb3d3de502d1b57e5a77ae4336d3ca69210edc3276284b40c3f7fa5"
+ },
+ {
+  "path": "res/drawable/ic_tv_pause.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_pause.xml",
+  "bytes": 326,
+  "sha256": "7ceaecbadc300971c0944343cb0ac9f9409b761cf1647f7810e9abe9cf208b88"
+ },
+ {
+  "path": "res/drawable/ic_tv_play.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_play.xml",
+  "bytes": 314,
+  "sha256": "9ffecdcbd912e994bf7e4b4b47d25ec69c5491733552901efc0fbca2b1a99c24"
+ },
+ {
+  "path": "res/drawable/ic_tv_refresh.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_refresh.xml",
+  "bytes": 512,
+  "sha256": "79eebbcbf907975e285e0ed6e1f8f69c4344a8eabf6059d99fac4837609b6ac0"
+ },
+ {
+  "path": "res/drawable/ic_tv_replay.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_replay.xml",
+  "bytes": 412,
+  "sha256": "3767148d08f0b397e0979d4c6faf80e79e4986d7c7318d6556bca050ba8c2a36"
+ },
+ {
+  "path": "res/drawable/ic_tv_rewind.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_rewind.xml",
+  "bytes": 346,
+  "sha256": "fccdc6b0f5598904fc18021a45b561b9910b5abf1513ba1e57af40d5158d997c"
+ },
+ {
+  "path": "res/drawable/ic_tv_save.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_save.xml",
+  "bytes": 459,
+  "sha256": "8723c2b25051866b37edccd3c5199d651dea413222fac8e2c5a147041a0fcfeb"
+ },
+ {
+  "path": "res/drawable/ic_tv_search.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_search.xml",
+  "bytes": 546,
+  "sha256": "3b5f848b702a87f218761843df07d683b57ed62ffbd80a4d45d18d2560cbca24"
+ },
+ {
+  "path": "res/drawable/ic_tv_settings.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_settings.xml",
+  "bytes": 1204,
+  "sha256": "aae3469a40e18e29cd03c874c3d10a11d488851ddee231d5ed146e0a1b10f2ad"
+ },
+ {
+  "path": "res/drawable/ic_tv_star.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_star.xml",
+  "bytes": 391,
+  "sha256": "62e4821024a39c469250dbd281315e1498869f0559f717a9846c59f57a6a36cf"
+ },
+ {
+  "path": "res/drawable/ic_tv_star_outline.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_star_outline.xml",
+  "bytes": 503,
+  "sha256": "01a3b33c2aaa2783675339e65867b8b0511e2fea891b73bd20e04286b30f240c"
+ },
+ {
+  "path": "res/drawable/ic_tv_stats.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_stats.xml",
+  "bytes": 333,
+  "sha256": "cce75b3e1869db2098365e6455e99a9495637a1a27c4a75fb38201c4d3ac684c"
+ },
+ {
+  "path": "res/drawable/ic_tv_subtitles.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_subtitles.xml",
+  "bytes": 452,
+  "sha256": "4b33c6fa3b6d2f460eb830f1bb93224dbc409db85535a702a900ce4a915d7679"
+ },
+ {
+  "path": "res/drawable/ic_tv_target.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/res/drawable/ic_tv_target.xml",
+  "bytes": 501,
+  "sha256": "800ada5fbeb05f47b1a6ab03f579377af0ea8be4854e3038fa2c763701cc0b87"
+ },
+ {
+  "path": "apk-assets/tmdb_attribution.svg",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/iptv/src/main/assets/tmdb_attribution.svg",
+  "bytes": 2064,
+  "sha256": "2e775bae20be579098dcd9f2c3a76d721a61fe4448d82e05b0316b05d5d92f2c"
+ },
+ {
+  "path": "apk-assets/theme-licenses.txt",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/core/src/main/assets/theme-licenses.txt",
+  "bytes": 1584,
+  "sha256": "5e4c597ca7c1ac3e2ebad7349516157a83f992d4450bfbef0b4ea586a428a704"
+ },
+ {
+  "path": "flavors/demo/res/drawable/demo_mark_meridian.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable/demo_mark_meridian.xml",
+  "bytes": 431,
+  "sha256": "a2620cc908792f75d7b367c1268ab4133f75b9993954b0320c2f3d4bddb327b5"
+ },
+ {
+  "path": "flavors/demo/res/drawable/demo_mark_northstar.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable/demo_mark_northstar.xml",
+  "bytes": 451,
+  "sha256": "0b7ad955766feace4c9c286c013411c950ced08e73c847a109a9d024cf791e29"
+ },
+ {
+  "path": "flavors/demo/res/drawable/demo_mark_pulse.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable/demo_mark_pulse.xml",
+  "bytes": 443,
+  "sha256": "3a9399f205dacccee0ed690b775bca2e07e46e63ff07d22974d0bf3d2a15df95"
+ },
+ {
+  "path": "flavors/demo/res/drawable/demo_mark_summit.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable/demo_mark_summit.xml",
+  "bytes": 540,
+  "sha256": "3b379f1f4ada05a96652ed97add9df223b90b3586e2814eefe8f49f9074440ec"
+ },
+ {
+  "path": "flavors/demo/res/drawable-nodpi/demo_live_football.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable-nodpi/demo_live_football.png",
+  "bytes": 2476323,
+  "sha256": "2088d16052043a67e04a247cc5afa41ceffbf22671e814013ff6f8f528c1358b",
+  "pixels": "1672x941",
+  "mode": "RGB"
+ },
+ {
+  "path": "flavors/demo/res/drawable-nodpi/demo_movie_lighthouse.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable-nodpi/demo_movie_lighthouse.png",
+  "bytes": 2378869,
+  "sha256": "8d2a6f4ed214482700757f8c49611a31758c014b3b8e0a74200ae2d205344dfe",
+  "pixels": "1024x1536",
+  "mode": "RGB"
+ },
+ {
+  "path": "flavors/demo/res/drawable-nodpi/demo_movie_signal.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable-nodpi/demo_movie_signal.png",
+  "bytes": 2346405,
+  "sha256": "9f2554cf3df65019fb625c3cabce61d40b175746cc2ea5ac9d4e735c645ef32d",
+  "pixels": "1024x1536",
+  "mode": "RGB"
+ },
+ {
+  "path": "flavors/demo/res/drawable-nodpi/demo_series_harbor.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable-nodpi/demo_series_harbor.png",
+  "bytes": 2567717,
+  "sha256": "e2f042bdd338ad74396e838b30044793c4b876f7eae523d0b4fe2e3bc361a887",
+  "pixels": "1024x1536",
+  "mode": "RGB"
+ },
+ {
+  "path": "flavors/demo/res/drawable-nodpi/demo_series_north.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/demo/res/drawable-nodpi/demo_series_north.png",
+  "bytes": 2683150,
+  "sha256": "2b3e16a0d1af4a60ede87621f8320390df2292a48d1c4343162b7543430c64d3",
+  "pixels": "1024x1536",
+  "mode": "RGB"
+ },
+ {
+  "path": "flavors/lab/res/drawable/lab_badge.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/lab/res/drawable/lab_badge.xml",
+  "bytes": 817,
+  "sha256": "a5dd8b378cab8056ca94fd0e7a7098df38f7e5be88e6478a7ebef468bbb1a414"
+ },
+ {
+  "path": "flavors/lab/res/drawable/lab_banner.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/lab/res/drawable/lab_banner.xml",
+  "bytes": 304,
+  "sha256": "4708b845fac36b5ef2af32f9fce078832dcab777c31543352c73e33da50725c8"
+ },
+ {
+  "path": "flavors/lab/res/drawable/lab_icon.xml",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source/app/src/lab/res/drawable/lab_icon.xml",
+  "bytes": 395,
+  "sha256": "f476fc840a91e395bc72dd8ddac29299544605925a7ee3fcd7fdce166a445ed5"
+ },
+ {
+  "path": "source/navigation-icons/README.md",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/README.md",
+  "bytes": 2400,
+  "sha256": "5d1247b230ddb48a0ce72b15175cf547566a5a24ade1cccd7d987a6ed344887b"
+ },
+ {
+  "path": "source/navigation-icons/manifest.json",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/manifest.json",
+  "bytes": 3063,
+  "sha256": "577187a9bcc72f2a56ccf118f03ac2139ade15822ab86d3f168ede1ce89935ad"
+ },
+ {
+  "path": "source/navigation-icons/preview.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/preview.png",
+  "bytes": 96720,
+  "sha256": "6adc5c34e421fadf1342b062811bf39a0837d08459a05be8ffbbddc7de1031d0",
+  "pixels": "1200x1012",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/sohva-icons.sprite.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/sohva-icons.sprite.svg",
+  "bytes": 4251,
+  "sha256": "7b6cc69de6f9accb3acba86e9a31874c5c730219ad03d275bf0d2dc7e80af6b7"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/inside-discover/addons-setup.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/inside-discover/addons-setup.png",
+  "bytes": 467,
+  "sha256": "1bf9645bab601dc09555317b490c3cbf7c799df1b3158e9a2193f8ddaae66d2d",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/inside-discover/back-to-home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/inside-discover/back-to-home.png",
+  "bytes": 463,
+  "sha256": "6de3e62ddc92f67b1514ebe1185628ab61daeb886e61c9912472b0d164824a46",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/inside-discover/explore.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/inside-discover/explore.png",
+  "bytes": 616,
+  "sha256": "8b4a965917d14023cd5b23d3d5e5ce4f2b0ea5ac63cc890d141817798cee0323",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/inside-discover/home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/inside-discover/home.png",
+  "bytes": 460,
+  "sha256": "91b46a5e5b4c3d3a4ecd296605a60e5298a7ac5bea08aedd9deee9a8479220a2",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/inside-discover/library.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/inside-discover/library.png",
+  "bytes": 616,
+  "sha256": "0d5a9ddd1f5db60edcdd54148c067007f680d20adca02b04bc67cdd6a5f3bbe0",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/inside-discover/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/inside-discover/search.png",
+  "bytes": 466,
+  "sha256": "fa43e6c587a750a78bef7d45a2717c9f8bf327b14c72593301836bcff2cf62ec",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/discover.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/discover.png",
+  "bytes": 680,
+  "sha256": "34907a3c57a12cb089116e1b23fddb8add12e10e63b1c5b92104e1da6dac672d",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/front-page.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/front-page.png",
+  "bytes": 435,
+  "sha256": "5451ee6b728a7e28655146b03238febc0b25079df9483c1250a2893e1a8e6423",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/live-tv.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/live-tv.png",
+  "bytes": 443,
+  "sha256": "7858b48900c906c5e20fd42e19e950e0ab322c1bbb07006b047c6c9b51c17611",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/movies.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/movies.png",
+  "bytes": 498,
+  "sha256": "0cd7513c0a4b11b83dbdb67c01ec74d6069e09f2cdff2e8e37b8e378d736f39d",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/search.png",
+  "bytes": 466,
+  "sha256": "fa43e6c587a750a78bef7d45a2717c9f8bf327b14c72593301836bcff2cf62ec",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/series.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/series.png",
+  "bytes": 324,
+  "sha256": "fe380227ff811411227f97409d9c4dbc4fadf15f06b74f511c51609ebd99c53d",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/settings.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/settings.png",
+  "bytes": 492,
+  "sha256": "27438b91a8ced310dafd62d0828d48d591c26266ade58e4c1275c4a0e1aca7db",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/24px/main-app/sohva-sport.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/24px/main-app/sohva-sport.png",
+  "bytes": 462,
+  "sha256": "bfbf3871e9f270471da99bfeefe62042ca861be4b7c478d491edc2034009f330",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/inside-discover/addons-setup.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/inside-discover/addons-setup.png",
+  "bytes": 678,
+  "sha256": "4aded4824ebada678d902f632d2693b09c6a8dba321ecc88e59179d138865388",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/inside-discover/back-to-home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/inside-discover/back-to-home.png",
+  "bytes": 678,
+  "sha256": "1f82bcc49369adad084759e2d205dab65dac2456d139735c4d6a395fcd225f1c",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/inside-discover/explore.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/inside-discover/explore.png",
+  "bytes": 1284,
+  "sha256": "a6ff29c7ee726b6ee2506fed2524dfddbd894fa520f16395f75e7a870979512d",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/inside-discover/home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/inside-discover/home.png",
+  "bytes": 618,
+  "sha256": "16e549bf0b4e301e1fed5aaa7903ed0f77f1e93b515e7834e6ce2a0311a67c28",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/inside-discover/library.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/inside-discover/library.png",
+  "bytes": 974,
+  "sha256": "f268154f1cfc5a87454299be0fda9daee2e7d9e241594584a0a844405b3aa6b1",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/inside-discover/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/inside-discover/search.png",
+  "bytes": 882,
+  "sha256": "7557cb06297bcfebb3b2016e23d5015f4ea4d21b82c2a847e00733f0f12b8b48",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/discover.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/discover.png",
+  "bytes": 1267,
+  "sha256": "8a02d74ebdf757a0d38c89cee711915d5caba793356f08d35b1ab700e789466b",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/front-page.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/front-page.png",
+  "bytes": 676,
+  "sha256": "869314db3e37455205e93464024fb37ba8e4fb97f0908d0c23b386e48eb2a3bc",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/live-tv.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/live-tv.png",
+  "bytes": 692,
+  "sha256": "45fc9effb19ad1ba28f213bbe0af2d27a01dbdb56c889a3fc5e901700644797e",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/movies.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/movies.png",
+  "bytes": 695,
+  "sha256": "61f66e6eab12c860dfd07de14f9f9fc6b3964ea18121dc9c8d7e019db84ec9ed",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/search.png",
+  "bytes": 882,
+  "sha256": "7557cb06297bcfebb3b2016e23d5015f4ea4d21b82c2a847e00733f0f12b8b48",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/series.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/series.png",
+  "bytes": 497,
+  "sha256": "f172938c091da3dc1cef0edeacd4141594932452be0bdcbc186267fdb6b76743",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/settings.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/settings.png",
+  "bytes": 962,
+  "sha256": "04ebf1b8e5b53ff5d1e6d30415cf6b99d30a4b329f97bbf47ff1bdc21a966e91",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/48px/main-app/sohva-sport.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/48px/main-app/sohva-sport.png",
+  "bytes": 702,
+  "sha256": "562965879410fa67ec799b3695c33737e81e0a86e123e9222c76504f28dc29a4",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/inside-discover/addons-setup.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/inside-discover/addons-setup.png",
+  "bytes": 1365,
+  "sha256": "b11693b34e36d44789a1c642b454bb2a1ae7d19c5fad0eb13ddbd801b54c2976",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/inside-discover/back-to-home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/inside-discover/back-to-home.png",
+  "bytes": 1130,
+  "sha256": "85e52d0f75bc816a9edf23196f23d2e929686d034cad9cb2f80cc660d482bb5b",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/inside-discover/explore.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/inside-discover/explore.png",
+  "bytes": 2496,
+  "sha256": "bb346054885ae5249ca9afc6990a70c6f5c98a2351f202d0d0aa4cb8ae956008",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/inside-discover/home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/inside-discover/home.png",
+  "bytes": 1075,
+  "sha256": "665db9f75dd7ce945daae0a91afe7326dd1f8214bc308902f6d2f88325c5a255",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/inside-discover/library.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/inside-discover/library.png",
+  "bytes": 1644,
+  "sha256": "34d4bf6059393e9821ee7958c6a2d4056073998b73ab346e173141793fde02fe",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/inside-discover/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/inside-discover/search.png",
+  "bytes": 1684,
+  "sha256": "881d806e47f376eb6af0254d30e85e949bd4216426f237760b228ff1885dbe0c",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/discover.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/discover.png",
+  "bytes": 2432,
+  "sha256": "fddef713acb6a3ff45f90960b6e5b0c53b194d943624b0bc5eb67def06c44ab5",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/front-page.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/front-page.png",
+  "bytes": 1278,
+  "sha256": "41250cf752e71b6148c89d2bd415487d09677778372912a2f55d5d1a93dd8e71",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/live-tv.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/live-tv.png",
+  "bytes": 1275,
+  "sha256": "9f531ec38263db7a6ae2606648193f6d41dba510325c428a43e37b9a903d0f7c",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/movies.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/movies.png",
+  "bytes": 1219,
+  "sha256": "0a6c323d47797bdf815b8b4c7ab313ce8fc8cb6acf5a721543bae8b8a3840b55",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/search.png",
+  "bytes": 1684,
+  "sha256": "881d806e47f376eb6af0254d30e85e949bd4216426f237760b228ff1885dbe0c",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/series.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/series.png",
+  "bytes": 969,
+  "sha256": "029d49c9af0020f95f2931518da7d4bc2d5ec157605bb1326e88745a56b4f659",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/settings.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/settings.png",
+  "bytes": 2022,
+  "sha256": "7afaf3b8ec36fdfad4165b175d6730c6301cabfc0465aa88cd6661dec46a0826",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/dark/96px/main-app/sohva-sport.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/dark/96px/main-app/sohva-sport.png",
+  "bytes": 1401,
+  "sha256": "67c4e8256ca395efcb6a30231ac2932d58ebe3f51bcba182a3ac5716a6b3ed55",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/inside-discover/addons-setup.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/inside-discover/addons-setup.png",
+  "bytes": 463,
+  "sha256": "3e4e4923da9c73149769d0623c6b7b3151e4d21b3dbae8ca03c227193c69696b",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/inside-discover/back-to-home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/inside-discover/back-to-home.png",
+  "bytes": 460,
+  "sha256": "7f951fd3ae3f227c7fce87be39a12591eb01cd086a977470b9a176ac4b9e1bc6",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/inside-discover/explore.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/inside-discover/explore.png",
+  "bytes": 586,
+  "sha256": "fb880c407d99920486367b7021b8d49ea42398cb4fe73a12808373cdfc15dd01",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/inside-discover/home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/inside-discover/home.png",
+  "bytes": 450,
+  "sha256": "102485629606ec271c0547683ef29aa5b9052e86c2ae232aa23e6297ddfed3d3",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/inside-discover/library.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/inside-discover/library.png",
+  "bytes": 585,
+  "sha256": "14def1e3337eac587d66b5582e210e894fb80f8258891bd7982e0b3000b66e15",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/inside-discover/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/inside-discover/search.png",
+  "bytes": 448,
+  "sha256": "35db96511e5922e62482d1594852ecffdd9c36c37ba76805387dd5c8ee6794d3",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/discover.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/discover.png",
+  "bytes": 664,
+  "sha256": "11e84d9e0a5eee915a631354863a05f24cc7ffe3701fe402bef308badeb6a2da",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/front-page.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/front-page.png",
+  "bytes": 433,
+  "sha256": "bb81aec894798f46a79c3d8c9a85ddd43a8bebe4dd1efc5fb9d91383c829d516",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/live-tv.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/live-tv.png",
+  "bytes": 432,
+  "sha256": "6e590eb7cf4aec4f7a40eb448b69de450aead11cec85fca2fefbf0d808ff52db",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/movies.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/movies.png",
+  "bytes": 472,
+  "sha256": "f940ad92add4a282742704534ecb7c31f30f2aafbcf96e4351e9047bc1497b44",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/search.png",
+  "bytes": 448,
+  "sha256": "35db96511e5922e62482d1594852ecffdd9c36c37ba76805387dd5c8ee6794d3",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/series.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/series.png",
+  "bytes": 312,
+  "sha256": "0dad6bc395c8d1fc085cdcec5515a856d41387c1792e53da8bd3904687d7d7e5",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/settings.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/settings.png",
+  "bytes": 476,
+  "sha256": "204ac5ab9ded3cfadeae2ce64a4300056cc30116046489f17ca7b77627840d40",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/24px/main-app/sohva-sport.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/24px/main-app/sohva-sport.png",
+  "bytes": 445,
+  "sha256": "3d0d827a70d175d0948c992246331558a2726d2af3cd00a5ed88246bda08c9fa",
+  "pixels": "24x24",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/inside-discover/addons-setup.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/inside-discover/addons-setup.png",
+  "bytes": 657,
+  "sha256": "03af0ccb3decd7d40eab22777a3d736ceede4af8cb9a31c2ebd68badb2ca9795",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/inside-discover/back-to-home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/inside-discover/back-to-home.png",
+  "bytes": 660,
+  "sha256": "0bb08d64cd51f2cf38168da8873cf4f0e87a62b4e0e887440159f593ee0a76ef",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/inside-discover/explore.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/inside-discover/explore.png",
+  "bytes": 1257,
+  "sha256": "a0b6a112e03d1b449df933a6e53b621ee3e2337749865c3a5b780a61069827ed",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/inside-discover/home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/inside-discover/home.png",
+  "bytes": 607,
+  "sha256": "4e932cc1f559c1fa6aa1af73acf0fcd3df26f37058319d4759c8ecf0352fd9f1",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/inside-discover/library.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/inside-discover/library.png",
+  "bytes": 952,
+  "sha256": "919c5e0c89af43ecb8e3bae917f9635115d09a8aeb149ba37f5df914fec9ccd5",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/inside-discover/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/inside-discover/search.png",
+  "bytes": 853,
+  "sha256": "e27b7ddcd8e2aa40b18daee59be8273cb8e1102a4e26f92f152a04082d2a7e70",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/discover.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/discover.png",
+  "bytes": 1228,
+  "sha256": "c93b069ad762f1316cfceb5e60b6d00da1b5aadc87b95413663fc2026cc004e6",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/front-page.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/front-page.png",
+  "bytes": 673,
+  "sha256": "6a806c1cbd2bf5784bd67f24a26ee91f59a12e88474f66c397ee49acf2d59fd7",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/live-tv.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/live-tv.png",
+  "bytes": 675,
+  "sha256": "38366f2af8d645e0d85388b9127e4b56bedeb49446c1525bcd55330cc2ffecc0",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/movies.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/movies.png",
+  "bytes": 677,
+  "sha256": "bdf283575472d2b38b2497e184b308294b8ba073bbde5815bc6e376c832b77bb",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/search.png",
+  "bytes": 853,
+  "sha256": "e27b7ddcd8e2aa40b18daee59be8273cb8e1102a4e26f92f152a04082d2a7e70",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/series.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/series.png",
+  "bytes": 489,
+  "sha256": "4629255bfc7a1644db36f07321111c78980610fdf1f9a5dfaa911155922c9962",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/settings.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/settings.png",
+  "bytes": 923,
+  "sha256": "e76975e607c820ac4427eef2cb1f990f326693746d7d6b7eb3170394bb72191b",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/48px/main-app/sohva-sport.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/48px/main-app/sohva-sport.png",
+  "bytes": 686,
+  "sha256": "57e68b9fd59670611ebdca305d6acbd22c774f760b0296ece613ff4b551f0a53",
+  "pixels": "48x48",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/inside-discover/addons-setup.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/inside-discover/addons-setup.png",
+  "bytes": 1338,
+  "sha256": "7182aaa1a743349d802bc34042af08c0eac8bae7a72a44f630d2468c4536fbb2",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/inside-discover/back-to-home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/inside-discover/back-to-home.png",
+  "bytes": 1111,
+  "sha256": "2ca9267eace7e275221a5e9eaccfadf9faf7a93c7347aec255e300cc57ee0f4d",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/inside-discover/explore.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/inside-discover/explore.png",
+  "bytes": 2467,
+  "sha256": "9fc35a6114ed420f15ab89a6fc93e0f7c618ff440c827cfda3275e08e3b07171",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/inside-discover/home.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/inside-discover/home.png",
+  "bytes": 1065,
+  "sha256": "8b0af48e9bac47e8a6317f7de36aada394593d7641f60444eb1235dc04392885",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/inside-discover/library.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/inside-discover/library.png",
+  "bytes": 1619,
+  "sha256": "7ac50e3522d119b67a97d282c249489c1f1052f5ea45f8ccef4c17dee948319f",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/inside-discover/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/inside-discover/search.png",
+  "bytes": 1626,
+  "sha256": "fa1dbce15425571aad53bea465148d21c8d97a26f89bc831e3a4d7e2d47f2c30",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/discover.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/discover.png",
+  "bytes": 2383,
+  "sha256": "93fe09c0231fdcfc09e7b4dcf95a10b673b7a69956e72ba8c6ae21536cc8b4b3",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/front-page.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/front-page.png",
+  "bytes": 1237,
+  "sha256": "d88e058ac48c8c1717ec8f682880799c965d2c979fbec4bb9c46b5e0afec7de1",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/live-tv.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/live-tv.png",
+  "bytes": 1230,
+  "sha256": "5b38cbbac00602fa05964a363ee8726ec88e9c8240c6e81a8fa49770f08c9031",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/movies.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/movies.png",
+  "bytes": 1209,
+  "sha256": "082b828a338b423043d8a6e0cee254eab555350d5c97ad6c05555fd8a54d24b3",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/search.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/search.png",
+  "bytes": 1626,
+  "sha256": "fa1dbce15425571aad53bea465148d21c8d97a26f89bc831e3a4d7e2d47f2c30",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/series.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/series.png",
+  "bytes": 973,
+  "sha256": "bdee29007bda666e059f14bf133d73ad78697c2bd451b0824c6567fb210642dd",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/settings.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/settings.png",
+  "bytes": 1980,
+  "sha256": "8d1b51212c012700cbe493b4675d02d344ff58518b68bf12a60997ad3eca7d26",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/png/light/96px/main-app/sohva-sport.png",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/png/light/96px/main-app/sohva-sport.png",
+  "bytes": 1334,
+  "sha256": "70ec7c7e908797d8e6123c14e8a29b61836730346b3eb9abe11710187c8b3dc2",
+  "pixels": "96x96",
+  "mode": "RGBA"
+ },
+ {
+  "path": "source/navigation-icons/svg/inside-discover/addons-setup.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/inside-discover/addons-setup.svg",
+  "bytes": 443,
+  "sha256": "99312315d138e787ddc7678d48315f2e8dc3a0997d39eafa7d4e302b49ade177"
+ },
+ {
+  "path": "source/navigation-icons/svg/inside-discover/back-to-home.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/inside-discover/back-to-home.svg",
+  "bytes": 376,
+  "sha256": "7a921f61aa2dfc66a2f738c7df24ff7d45751881e2c599df7b6dd54b185f4aa5"
+ },
+ {
+  "path": "source/navigation-icons/svg/inside-discover/explore.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/inside-discover/explore.svg",
+  "bytes": 336,
+  "sha256": "ae2d58fd5f4ebf5d487e6bc9042f7f5a056a047795af44283ceef6798d6a6d5d"
+ },
+ {
+  "path": "source/navigation-icons/svg/inside-discover/home.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/inside-discover/home.svg",
+  "bytes": 341,
+  "sha256": "8a4f80a1b202ebb50ae17193c0ce1e9e95921ecd484cfa888bc53838ce27ee2f"
+ },
+ {
+  "path": "source/navigation-icons/svg/inside-discover/library.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/inside-discover/library.svg",
+  "bytes": 408,
+  "sha256": "db22f892ae14fc60aa84c49552960250d47bb1f2968f85f117101cab2487cfb4"
+ },
+ {
+  "path": "source/navigation-icons/svg/inside-discover/search.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/inside-discover/search.svg",
+  "bytes": 316,
+  "sha256": "278f49543ab25c7546aac6b6ba993dc649ff6d92fa6ce144bfa3c9f56f09ab35"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/discover.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/discover.svg",
+  "bytes": 400,
+  "sha256": "f8d3e9984c0ea3d587d30dd85a7b1b557a0d8fec79001c67c2a985c643534f6c"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/front-page.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/front-page.svg",
+  "bytes": 441,
+  "sha256": "3aea8b36327006ca695baef427872135dd706c123ed5c5d6aca81c68723cae3d"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/live-tv.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/live-tv.svg",
+  "bytes": 422,
+  "sha256": "7c2c5b4e4550525d849ca9ea557271419655e8921394f55f4eae45a423a099db"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/movies.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/movies.svg",
+  "bytes": 382,
+  "sha256": "4b81b637d6e227128f5894f048d3c1ed31a50d1e0ea96730a620c64a6a138ff3"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/search.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/search.svg",
+  "bytes": 316,
+  "sha256": "278f49543ab25c7546aac6b6ba993dc649ff6d92fa6ce144bfa3c9f56f09ab35"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/series.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/series.svg",
+  "bytes": 345,
+  "sha256": "9911d430a7d268679dd5e3f6b4f09abf69972b789ba13c83680e10b7cb7b5e49"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/settings.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/settings.svg",
+  "bytes": 826,
+  "sha256": "f3344aecad6c060b0c42377d8d65e2596a0d63c52e2918f252d99936c380bc7a"
+ },
+ {
+  "path": "source/navigation-icons/svg/main-app/sohva-sport.svg",
+  "origin": "G:/SportMate_screens/icons/sohva-tv-icons/svg/main-app/sohva-sport.svg",
+  "bytes": 388,
+  "sha256": "beac7ce8f49823a66722a3ace2e3d7d7419dfb8b7da528b94012ee8ab10380e1"
+ },
+ {
+  "path": "source/logo/logo_2.png",
+  "origin": "G:/SportMate_screens/logo_2.png",
+  "bytes": 1179794,
+  "sha256": "75cf7b49d0442470ba37085078f95412281d3986029e1ce2ce26b3929362defb",
+  "pixels": "1254x1254",
+  "mode": "RGB"
+ },
+ {
+  "path": "source/historical-sportmate/Codex_Image_Aug_23_2026_10_16_24_PM.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/concept_images/Codex Image Aug 23, 2026, 10_16_24 PM.png",
+  "bytes": 1360570,
+  "sha256": "3c0306bd0ca463d5761e9ac3b6053f4a51363259838f6f62c5a8ce732b8a5111",
+  "pixels": "1672x941",
+  "mode": "RGB"
+ },
+ {
+  "path": "source/historical-sportmate/Codex_Image_Aug_23_2026_10_16_48_PM.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/concept_images/Codex Image Aug 23, 2026, 10_16_48 PM.png",
+  "bytes": 1413061,
+  "sha256": "db527dea0808fb60114ccd6c96638ab2b087ea5d1b43952e1f0dbb4c0cdf5ecb",
+  "pixels": "1672x941",
+  "mode": "RGB"
+ },
+ {
+  "path": "source/historical-sportmate/Codex_Image_Aug_23_2026_10_16_59_PM.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/concept_images/Codex Image Aug 23, 2026, 10_16_59 PM.png",
+  "bytes": 1343097,
+  "sha256": "e9a955dd7416d99b97424260e3ffeaccaf2945e54313757e7161544ba166f4a7",
+  "pixels": "1672x941",
+  "mode": "RGB"
+ },
+ {
+  "path": "source/historical-sportmate/Codex_Image_Aug_23_2026_10_17_04_PM.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/concept_images/Codex Image Aug 23, 2026, 10_17_04 PM.png",
+  "bytes": 1548461,
+  "sha256": "4b99d5d2a90adcd64f2eb4a5da05521b6e814bb00c48ac22d12e50127c269e7e",
+  "pixels": "1672x941",
+  "mode": "RGB"
+ },
+ {
+  "path": "source/historical-sportmate/logo.png",
+  "origin": "G:/SportMate/.local/sohva-sport-user-reports/concept_images/logo.png",
+  "bytes": 1198915,
+  "sha256": "1d342ce7b889c37cfaf4d92cf85092b71e89d525f599de226606178b27ff6c3b",
+  "pixels": "1448x1086",
+  "mode": "RGB"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_addon_home.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 288,
+  "sha256": "7f912ad1a1ccbc9e7b246468fb5987d7310a67f3794833d426401da199efda55"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_addons.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 362,
+  "sha256": "a36b87c806c81b7a4620ac375a18b28da6de11b47afa46ad8ff39587dfa79c05"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_back_to_home.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 407,
+  "sha256": "bfb8373670c1c8f5ee3e63b49ec03e5de1e284a4d457326d0023a16adb77289e"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_discover.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 539,
+  "sha256": "40329cd6079276f31d63a0965091ebc6b80c905e9fbf23e7c4fa99f5e6db1fe8"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_explore.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 396,
+  "sha256": "bbdc94511e6dfc9fa9f87ae33408892d471084f983dcc325fd7c2bcbf4ad6b7f"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_front_page.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 576,
+  "sha256": "22ac1f16c49538685bf712ac8d5cc6fd15dc1e682f86a143feb8ba4f8214bd52"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_library.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 663,
+  "sha256": "173e16e14e6c31e1163b3f35c0e0c31bf0813d5ce7ebf9f54f2008b3d7390e72"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_live_tv.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 578,
+  "sha256": "3815a385af202915b45c95594e12d78a797a6935e6430ef7ebf48463501c6bf5"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_movies.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 475,
+  "sha256": "d64e87e5d9ecc4e900873c99a4c6a3d947c7dcd75963a93d90ee3385f1180db9"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_search.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 398,
+  "sha256": "f932c8b50f40718c35f4a9270b294e5073ff8e37a2811a86d811a79446e2a6a5"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_series.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 428,
+  "sha256": "ad3d136bed413a893e82401f25c21e45d73cd81bbf31cdc3620b976739ce0e22"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_settings.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 884,
+  "sha256": "10c80f3f9edf797c5734783f350411abc729961cb138039e3a220072965dbc0b"
+ },
+ {
+  "path": "svg-exports/production/ic_sohva_nav_sport.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 421,
+  "sha256": "d8a1b1ff0c0f1b0caa8b95d8f172a9bdecaeb961287ef078ef07d35e31d76491"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_aspect.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 277,
+  "sha256": "49a697799f93aeb2cdd7d2f478ffef1cd88e21dd4b732f5d181830a72565cef0"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_audio.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 331,
+  "sha256": "e7576835110ee5f2d624b46bffafb1913e48c01e08931f0da8e17b3b55d88b93"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_back.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 186,
+  "sha256": "8137d0c6d11f85a09ff7e523cb72743aacfa715da5f2123ed5f9a21207ae5e67"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_channels.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 172,
+  "sha256": "41295f3d0f219a71104571a4d58b6db552fe8dd86743add39f76214b953d276c"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_check.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 174,
+  "sha256": "d8a96c9f0652c9e38761c4d81467adaad009e1c386e1ea4b2d307ff19fd5a83e"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_chevron_down.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 184,
+  "sha256": "9d59b371935f6903cf6448b195b5536a90087d330b9260d18e7dd46a6f2d8d49"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_chevron_right.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 325,
+  "sha256": "b73ed6e429c39b121ed195e8d053e1d77bb59efbf48d2d843a96ca3b3bac7dae"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_close.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 225,
+  "sha256": "e6e14b15352898d99f94a25694ba1a5e64604cfa825a274daa3f00e2f4c4e4d6"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_delete.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 207,
+  "sha256": "14aed844ef14e8ea0e6171e4ee9d2eb28b4ff92afc464c0fbc45cf216aa232aa"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_epg.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 164,
+  "sha256": "23c1ff4a9740415a6c14e58753d2de6a0c9b741354df9e09d0b9608544004347"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_forward.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 165,
+  "sha256": "4be7557eb3cf7204b60c2a8446fa67eae4c090d9aa9809c2ff2da5d40b92d29f"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_guide.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 186,
+  "sha256": "64e0e00fca2d5a898c583e478f28ce28405950f5e56e2004e32bb3efe3994b7a"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_home.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 241,
+  "sha256": "e69cf7e8e5715d2a5132108ec150ccdc045818e79cef49ae27e13beefc5d9294"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_info.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 224,
+  "sha256": "6b495f355fc29feaeb4b5217496b1666aacada6804d690e4c6a80f677f36250e"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_key.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 237,
+  "sha256": "7c1b9ec8b37760055d42fb764d3c81ed6feb06d6ccc8d5609288e0a0bfec99d5"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_link.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 351,
+  "sha256": "53a69db6fe543687ef793bc4354fe1f8b42f726f6f738b89a18ef984cd633c1b"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_lock.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 406,
+  "sha256": "9c60c81ac41c030461dad8610dcd5b2c7f19da8557b991cfa982acf96f972a73"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_pause.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 150,
+  "sha256": "f229c80f5c62ff0d85f0dcddd53809b4b2d2d7e6551e939e3754bc6c38c10cfd"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_play.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 138,
+  "sha256": "9a9339e6882580d5c2d31a093ffe50df9105ab23da117f7a04faf5a625b88bd2"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_refresh.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 336,
+  "sha256": "14ba787ee2d48d2bd9e81550bb98717cb7a87a4a76c0a7a6317d3f264cde2a1f"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_replay.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 236,
+  "sha256": "d929a179f2ef6f5702a2d331025174e1412f0cd80430e07d5a44785b3a86085f"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_rewind.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 170,
+  "sha256": "f361fa98b5bc7de3f12337530c55bc6aade28ae71acb345c692f29be62538c63"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_save.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 283,
+  "sha256": "8d162ecea2c8ae10ddfa980db190e8ec9e03b15686293e480d1e8869b31279db"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_search.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 370,
+  "sha256": "0a15fd4e466a873e0dff19dfe352acd68acb3152bb66355ef4bdeab68175c08b"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_settings.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 1028,
+  "sha256": "d436c66d56b90966dff25d970c25b38a65f3aacbc73388e8f30eb4617ba2c3e2"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_star.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 215,
+  "sha256": "011dbe1caaf6f3bbff710dddd4bde63299000d705f4f86091e4084625cc4ee16"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_star_outline.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 327,
+  "sha256": "10b4d92fbbb44f0edf210ef087edee998107bd27116b91d25e6c180ea488c873"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_stats.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 173,
+  "sha256": "66b38572aa0b3cd43b054dcb867451a677fb3b4b8cd5209d139c4c579829de50"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_subtitles.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 292,
+  "sha256": "e9cf10beb2df3c590ce021c1f7345661352e1893e090527e50975aec38fa1dd0"
+ },
+ {
+  "path": "svg-exports/production/ic_tv_target.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 325,
+  "sha256": "9f4a1b9b10caa60ac8f945c35adfab4c9b95f09fe4072fb0053fc374de2b24e9"
+ },
+ {
+  "path": "svg-exports/demo/demo_mark_meridian.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 233,
+  "sha256": "c0708439d58befbf690fa88d0c133f07abea642ae70ae346dcd40090ab85eeb3"
+ },
+ {
+  "path": "svg-exports/demo/demo_mark_northstar.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 253,
+  "sha256": "102dfb6ba452d2dd685f72c75d3bc2ad32f7cfd3534cfc2008ed9443f5f392a4"
+ },
+ {
+  "path": "svg-exports/demo/demo_mark_pulse.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 245,
+  "sha256": "d194dc4c5ea0a43c0b53d4a6bf6ea21eb71d21d4af76d5ce9b3b621f89b0d2fc"
+ },
+ {
+  "path": "svg-exports/demo/demo_mark_summit.svg",
+  "origin": "generated from the Android vector",
+  "bytes": 312,
+  "sha256": "5bb7f004ce4fa6d3ce687f39d816ffe58d10147da34cb0153ca8f5d03f801043"
+ }
+]

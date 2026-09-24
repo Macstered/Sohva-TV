@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="trakt_title" translatable="false">Trakt</string>
+    <string name="trakt_profile">Sohva profile: %1$s</string>
+    <string name="trakt_connect">Connect Trakt</string>
+    <string name="trakt_reconnect">Sign in again</string>
+    <string name="trakt_disconnect">Disconnect</string>
+    <string name="trakt_cancel">Cancel sign-in</string>
+    <string name="trakt_not_connected">Not connected</string>
+    <string name="trakt_connected">Connected as %1$s</string>
+    <string name="trakt_reauthorization">Trakt no longer accepts the saved sign-in. Sign in again to continue syncing.</string>
+    <string name="trakt_waiting">Approve Sohva TV on Trakt</string>
+    <string name="trakt_scan">Scan the code with your phone, or open the address and enter the code.</string>
+    <string name="trakt_qr_description">Trakt sign-in QR code</string>
+    <string name="trakt_unconfigured">This build has no Trakt application credentials, so accounts cannot be connected.</string>
+    <string name="trakt_help">Movies and episodes you play in VOD and Discover are recorded to your Trakt account, and your Trakt progress and watched marks show on titles here. Live TV and catch-up are not recorded.</string>
+    <string name="trakt_disconnect_help">Disconnecting removes the sign-in from this TV. Your Trakt history stays as it is.</string>
+    <string name="trakt_cancelled_background">Sign-in stopped because Sohva left the foreground. Start again when ready.</string>
+    <string name="trakt_denied">Authorization was declined. You can try again.</string>
+    <string name="trakt_expired">The code expired. Start sign-in again for a new code.</string>
+    <string name="trakt_code_unusable">This code is no longer usable. Start sign-in again.</string>
+    <string name="trakt_rate_limited">Trakt asked us to wait. Please try again later.</string>
+    <string name="trakt_connection_error">The connection could not be completed. Please try again.</string>
+    <string name="home_watch_next">Watch next</string>
+    <string name="home_recommended">Recommended for you</string>
+    <string name="trakt_title_loading">Looking for this title in your sources…</string>
+    <string name="trakt_title_unavailable">This title is not available from your sources right now.</string>
+</resources>

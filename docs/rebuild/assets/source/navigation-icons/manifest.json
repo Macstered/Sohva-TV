@@ -1,0 +1,123 @@
+{
+  "name": "Sohva TV navigation icons",
+  "viewBox": "0 0 24 24",
+  "strokeWidth": 1.75,
+  "linecap": "round",
+  "linejoin": "round",
+  "navigationItems": 14,
+  "uniqueSymbols": 13,
+  "icons": [
+    {
+      "group": "main-app",
+      "name": "Front Page",
+      "id": "front-page",
+      "concept": "Sofa",
+      "svg": "svg/main-app/front-page.svg",
+      "symbol": "sohva-front-page"
+    },
+    {
+      "group": "main-app",
+      "name": "Live TV",
+      "id": "live-tv",
+      "concept": "Television with live indicator",
+      "svg": "svg/main-app/live-tv.svg",
+      "symbol": "sohva-live-tv"
+    },
+    {
+      "group": "main-app",
+      "name": "Sohva Sport",
+      "id": "sohva-sport",
+      "concept": "Trophy",
+      "svg": "svg/main-app/sohva-sport.svg",
+      "symbol": "sohva-sohva-sport"
+    },
+    {
+      "group": "main-app",
+      "name": "Movies",
+      "id": "movies",
+      "concept": "Clapperboard",
+      "svg": "svg/main-app/movies.svg",
+      "symbol": "sohva-movies"
+    },
+    {
+      "group": "main-app",
+      "name": "Series",
+      "id": "series",
+      "concept": "Stacked episodes",
+      "svg": "svg/main-app/series.svg",
+      "symbol": "sohva-series"
+    },
+    {
+      "group": "main-app",
+      "name": "Search",
+      "id": "search",
+      "concept": "Magnifier",
+      "svg": "svg/main-app/search.svg",
+      "symbol": "sohva-search"
+    },
+    {
+      "group": "main-app",
+      "name": "Discover",
+      "id": "discover",
+      "concept": "Play with discovery sparkle",
+      "svg": "svg/main-app/discover.svg",
+      "symbol": "sohva-discover"
+    },
+    {
+      "group": "main-app",
+      "name": "Settings",
+      "id": "settings",
+      "concept": "Gear",
+      "svg": "svg/main-app/settings.svg",
+      "symbol": "sohva-settings"
+    },
+    {
+      "group": "inside-discover",
+      "name": "Home",
+      "id": "home",
+      "concept": "House",
+      "svg": "svg/inside-discover/home.svg",
+      "symbol": "sohva-home"
+    },
+    {
+      "group": "inside-discover",
+      "name": "Library",
+      "id": "library",
+      "concept": "Books on a shelf",
+      "svg": "svg/inside-discover/library.svg",
+      "symbol": "sohva-library"
+    },
+    {
+      "group": "inside-discover",
+      "name": "Search",
+      "id": "search",
+      "concept": "Magnifier",
+      "svg": "svg/inside-discover/search.svg",
+      "symbol": "sohva-search"
+    },
+    {
+      "group": "inside-discover",
+      "name": "Explore",
+      "id": "explore",
+      "concept": "Compass",
+      "svg": "svg/inside-discover/explore.svg",
+      "symbol": "sohva-explore"
+    },
+    {
+      "group": "inside-discover",
+      "name": "Addons & Setup",
+      "id": "addons-setup",
+      "concept": "Puzzle piece",
+      "svg": "svg/inside-discover/addons-setup.svg",
+      "symbol": "sohva-addons-setup"
+    },
+    {
+      "group": "inside-discover",
+      "name": "Back to Home",
+      "id": "back-to-home",
+      "concept": "House with return arrow",
+      "svg": "svg/inside-discover/back-to-home.svg",
+      "symbol": "sohva-back-to-home"
+    }
+  ]
+}

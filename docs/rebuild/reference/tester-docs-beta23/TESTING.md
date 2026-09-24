@@ -1,0 +1,370 @@
+# Sohva TV beta tester checklist
+
+Build: **0.1.0-beta.23 (57)**. Use only sources you are authorized to access.
+Test at your own pace; note failures rather than repeatedly resetting the app.
+
+## Beta 23: slower boxes, the guide's groups and finished playback
+
+1. On a slower TV box, move around Home, the Live TV guide and the film and
+   series walls, and compare with beta 22. Note your device model and anything
+   still slow, and use **Settings > About > Save diagnostics**.
+2. Open Live TV. It should open on your playlist's first group, or on the
+   group of the channel you came from, and **All channels** should still be on
+   the group list. Leave the guide and return within ten minutes: the channel
+   list should appear at once.
+3. With more than one playlist, press Left in the guide, choose **Options**,
+   switch playlist and press Back. Focus should be on the first channel of the
+   new playlist's first group. Closing the options without switching should
+   return focus to where you opened them.
+4. Start **Sync everything**, then press **Refresh channels** for one playlist
+   while it runs. When both finish, the playlist should still be in the guide
+   with all of its channels.
+5. Let a movie play to the end: it should return to its details page. In
+   Discover, with autoplay on, let an episode finish: the next episode should
+   start, also across seasons, and the last episode should return to the
+   series details.
+6. This is the first beta optimised with Android's R8. If anything that worked
+   in beta 22 fails, report the screen and the steps, with diagnostics.
+
+## Beta 22: large playlists, guide paging and memory
+
+1. Open Live TV with your largest playlist and choose **All channels**. Compare
+   the first opening with returning from a smaller group. Leave a large list
+   while it loads and check that the next selection responds promptly.
+2. Hold Left and Right through several time pages, including when new listings
+   load slowly. Focus should return to the timeline on the same channel; the
+   channel name may briefly highlight while the next page loads. Check Up/Down
+   navigation and deliberately opening the category drawer too.
+3. After a playlist or EPG refresh, browse Sohva Sport and play a stream for
+   at least 15 minutes. Check for increasing lag, audio/video stutter or a crash.
+   Return to the guide and save diagnostics if anything seems wrong.
+4. Confirm sports-channel matches and manual Confirm/Reject decisions remain
+   correct after matching completes and after restarting the app.
+5. If the guide is still slow, mention any enabled accessibility service, such
+   as a screen reader or button remapper, along with your device, build number
+   and **Settings > About > Save diagnostics**.
+
+## Beta 21: progressive guide loading and startup focus
+
+1. Open Live TV with your usual playlists. Channels should become usable before
+   programme information finishes loading. Compare first and repeated openings.
+2. Browse categories, favourites, recent channels and custom lists. Scroll well
+   down the channel list, page forwards/backwards through time, and search for
+   a programme on a channel you have not scrolled to yet.
+3. Check that programme arrivals preserve your focus. Open the category drawer
+   while a time page is loading and confirm focus stays in the drawer.
+4. Exit with Back and reopen several times. Home should focus its content when
+   loading finishes. Deliberately opening the side menu should still work.
+
+## Beta 20: provider times, startup and more themes
+
+1. Compare streams naming both teams with different provider clocks. A time
+   without a timezone should not weaken a clear match. Check named dates,
+   numeric dates such as `18/9`, AM/PM, and explicit timezones. Stale or ambiguous
+   dates should remain Possible. Saved manual decisions still take precedence.
+2. Allow matches to recalculate once after this update, then restart and verify
+   the refreshed results persist.
+3. Close the app with Back and reopen it several times. Home focus should land
+   on content without opening the side menu or briefly showing plain app-name
+   text. Deliberately opening the menu should still work.
+4. Try Nord, Everforest and Kanagawa in **Settings > General > Color theme**.
+   Check readability, remote focus, persistence after restart and backup restore.
+
+## Beta 19: sports matches and navigation
+
+1. Open a match with Available and Possible streams. Use the remote to reach
+   a Possible stream below the visible rows, then Confirm, Reject and Restore.
+   Each action should update promptly and retain focus in the same row.
+2. Compare channels naming the same teams and kickoff with different country
+   prefixes. Check any explicit timezone in the name. A saved manual decision
+   belongs to that stream and is labelled separately from automatic matches.
+3. Restart the app and return to Sohva Sport. Valid saved channel counts should
+   appear without waiting for a full scan. Playlist or EPG changes can require
+   recalculation; manual decisions should remain saved.
+4. Leave the hub open during a refresh. Its channel order and browsing position
+   should stay stable without touching the remote.
+5. Start on Home and check that focus remains on content. Also try deliberately
+   opening the side menu while Home loads; it should stay open.
+6. Set country/language priority in **Settings > Sohva Sport**, reopen a match,
+   and check the order within Available and Possible groups. Clear and save to
+   restore the default. Codes reflect channel-name tags, not verified audio.
+
+## Beta 18: color themes
+
+1. Open **Settings > General > Color theme** and try Nordic Slate, Cozy Hearth
+   and Cyber Plum. Colors should change immediately; Original remains available.
+2. Browse Home, Live TV, Movies, Series, Discover and Sohva Sport. Check text,
+   selected items, dialogs and player controls for readability on your TV.
+3. Use the D-pad in the theme picker. Choosing a theme or pressing Back should
+   return focus to the Color theme row. Back should leave the theme unchanged.
+4. Restart the app and confirm your selected theme remains. If you use settings
+   backups, confirm a backup restores its theme; an older backup uses Original.
+
+## Beta 17: EPG and navigation hotfix
+
+1. Refresh the EPG that previously failed with `PI must not start with xml`.
+   Check that programme listings load, including accented programme names.
+2. In Live TV, move right past the last programme on screen. Focus should stay
+   in the guide while the next time window loads. Repeat with a large playlist,
+   then move left again and try a time window without listings.
+3. Scroll down the category drawer, choose a category, then reopen the drawer
+   from the channel column. Its selected category should keep its position.
+4. Check the smooth background on Home, Live TV and Settings.
+5. If you use settings backups with a large catalogue, export a password-protected
+   backup and confirm it completes. Keep the file private; Discover data is
+   still excluded.
+
+## Beta 16: performance and Continue Watching
+
+1. Open Home with saved progress. Continue Watching should be available before
+   optional remote rows; press Down normally and check that later updates do
+   not move your browsing position. Return from playback and check the row again.
+2. If the same movie exists in Discover and several IPTV VOD sources, check
+   that it has one Continue Watching card and the expected resume position.
+3. Browse a large guide, search for a programme, then open movie and series
+   details. Report noticeable pauses with the screen and action involved.
+4. With several sports or Trakt sections enabled, check that available results
+   appear while slower sections are still loading.
+5. Start Discover playback with your usual subtitle preferences. A slow subtitle
+   provider should no longer hold automatic selection for twenty seconds. Check
+   the selected language and that manual selection still works.
+
+## Beta 15: every API-Sports sport
+
+1. Open **Settings > Sohva Sport > Choose followed sports and competitions**.
+   The tab row now ends with **American football**, **MMA**, **Formula 1** and
+   **NBA**. Include one or more and check the Sohva Sport screen gains a tab
+   for each.
+2. American football lists NFL and college leagues as competitions like any
+   other team sport. MMA, Formula 1 and NBA have no competition list; the
+   page says so and every event of the day is shown.
+3. On a day with events, check that a fight shows both fighters and the
+   weight class, that a Formula 1 session shows the Grand Prix, the circuit
+   and the session type (practice, qualifying, race) with the lap count while
+   live, and that an NBA game shows the score. Report a sport that stays
+   empty on a day the provider clearly has events, with the sport and time.
+4. Play a matched channel from one of the new sports' cards and check that
+   Back returns to the card.
+
+## Beta 14: Home and Trakt first session
+
+1. After upgrading, open Home. The top of the screen now describes whichever
+   card is focused; the rows below scroll under it. Check that Continue
+   watching, Today's sport and Recently watched channels show what you expect,
+   and that Back from the rail returns to the row you left.
+2. Optional: **Settings > Accounts > Connect Trakt**, scan the code with a
+   phone and approve. Connecting is per profile and needs a free Trakt account.
+3. Play a movie and a series episode in Movies/Series, and one title in
+   Discover, for a minute each. Leave the player normally. Within a minute
+   they should appear in your Trakt account's playback progress. Live TV and
+   catch-up are never sent.
+4. Pause a title on another Trakt-connected device or on trakt.tv. On Home,
+   Continue watching should show it with a bar; the series page shows Trakt
+   watched ticks and progress on episodes; Continue on the page resumes there.
+5. Check the **Watch next** and **Recommended for you** rows. A card opens the
+   title's own page when your library has it, otherwise a lookup over your
+   Discover addons. Report a card that opens the wrong title.
+6. Play a series with several episodes for a moment each: Continue watching
+   should show one card per series, the newest episode.
+7. **Disconnect** in Accounts removes the sign-in from the TV only; your Trakt
+   history stays. Restricted profiles never see Trakt rows.
+
+## Beta 13: Discover first session
+
+1. After upgrading, check your existing IPTV sources, favourites, settings and
+   resume points. Discover should start empty unless already configured in this app.
+2. Follow [Discover setup](ADDONS.md). Try a multi-URL file or phone import and
+   check the TV preview before confirming. Existing duplicates should be skipped.
+3. Browse catalog rows and Show all, use Search and required filters in Discover,
+   reorder/hide a catalog, then check focus and Back navigation.
+4. Open a movie and a series episode, select a source, stop and Continue watching.
+   Check primary/secondary subtitles and the bottom controls. Apply a timing
+   adjustment to an external subtitle and verify the actual displayed cues change.
+5. Add/remove a movie and series in Library. Restart the app and check saved
+   Library, catalog settings and resume points. Do not clear app storage.
+6. Try English/Finnish menus and your provider's metadata language. Report an
+   untranslated app label separately from a provider's untranslated description.
+7. If a provider fails or the TV loses its network, confirm Back/Cancel/retry
+   remain usable. Never post configured URLs, phone QR codes or raw logs.
+
+The existing `.smbak` backup excludes Discover data. Stremio/Nuvio copy is
+configuration-only; source accounts are not modified or kept synchronized.
+See [release compatibility limits](RELEASE_NOTES.md). An intermittent external
+subtitle-sync issue needs the title, subtitle provider and non-secret subtitle
+identifier if it recurs; do not send an authenticated subtitle URL.
+
+## Suggested first session
+
+1. **Install / update:** verify the version in Settings > About. If updating,
+   confirm that existing sources, settings and favourites are still present.
+2. **Setup:** import your playlist/channels and programme guide. If available,
+   import movies and series. Note the approximate library size and time taken
+   for the initial import separately from normal browsing.
+3. **Live TV:** open several channels; use Back, the guide and player controls.
+   Try available audio tracks and subtitles. Respect your provider's connection
+   limit when using another player or device at the same time. If a channel
+   fails, note the whole message on screen: from beta 9 it names the cause,
+   such as "Connection reset" or "Response code: 403", with addresses removed.
+4. **Movies:** browse several provider and genre groups, move quickly through
+   the poster wall, open a title, go Back, and check that focus returns sensibly.
+   Start playback, stop partway through, then reopen and resume.
+5. **Series:** open a series, choose a season and episode, play part of it,
+   stop and resume. If enabled, try continuing to the next episode.
+6. **Organization:** try favourites, group visibility/order and a small custom
+   group. Check that changes persist when leaving and returning to the screen.
+7. **Optional services:** test TMDB title matching/artwork and your selected
+   Sohva Sport competitions. Report missing data separately from navigation or
+   performance problems.
+8. **Network recovery:** if convenient, disconnect only the TV/emulator's
+   network briefly during Live TV, then reconnect. Note whether playback
+   recovers and whether manual retry was needed. Do not disrupt a shared router.
+9. **Restart:** exit and reopen the app; then restart the Android TV device
+   completely. Check sources, keys/settings, groups, favourites and resume
+   points again. Standby/sleep alone is not a cold-restart test.
+10. **Reminders:** in the guide, press OK on a programme that has not started
+    (or hold OK on any programme) and choose **Remind me**; on a Sohva Sport
+    match card use **Remind me**. The first reminder explains how a reminder
+    can open Sohva TV; try both answers. Then let one fire while watching
+    another channel, and one while another app is on screen. Note what
+    appeared and when, relative to the programme's start.
+11. **Score ticker:** while a followed match is on, open the player's quick
+    actions and switch the **Score ticker** on; check it updates and that it
+    does not cover the playback information panel.
+12. **Very large libraries:** if your provider has tens of thousands of films,
+    leave the app in the background for ten minutes after the first import and
+    then reopen it; note whether it came back where you left it or restarted.
+
+13. **Profiles:** in **Settings > General > Profiles**, add a second viewer,
+    restart the app and choose it at the who-is-watching screen. Check that
+    the first viewer's favourites, recent channels and resume points are
+    untouched, and that the new one starts empty. Remove the second viewer
+    afterwards if you would rather not be asked at every start.
+14. **Watched state:** finish a film or episode and check that it is marked
+    watched; try **Mark as watched** and **Mark season as watched** by hand,
+    and hold **OK** on a Continue watching card. Note anywhere a tick is
+    missing or wrong.
+15. **Skip step and subtitles:** set a skip step in **Settings > Playback**,
+    then hold an arrow during a film and watch the jump grow. Change subtitle
+    size and colour; if nothing changes, open **Playback info** and report the
+    subtitle format it names.
+16. **Keep watching in a corner:** switch it on in **Settings > Playback**,
+    press Home during playback, and report whether your television's home
+    screen lets you reach or close the corner. Opening Sohva TV again returns
+    it to full screen.
+17. **Another language:** switch the interface to Spanish, Portuguese, German,
+    Swedish or Italian. These are drafts: report wording that reads wrongly
+    and any label that overflows its space.
+18. **Test address:** on an M3U source's page, press **Test address** before
+    saving. Report what it says for a working address, for a mistyped one, and
+    for a link your provider has since disabled.
+19. **Hidden channels out of the way:** in Channel management, press **Show
+    hidden** to take hidden channels out of the list, then reorder with the
+    arrows; in the library manager, set the filter to **Enabled** and move a
+    group. Hidden rows should stay out of the way through the move.
+20. **Smaller interface:** **Settings > General > Interface size** now ends at
+    Smaller (70 %). Report whether it reads comfortably from your seat.
+21. **What changed:** after **Check for updates**, About should show what
+    changed in the installed beta, or in the newer one when there is one. It
+    is in English whatever the interface language, heading included.
+22. **A channel's own logo and number:** in Channel management, give a channel
+    a logo address or press **Logo from phone**, scan the code and choose a
+    picture on the phone; give it a channel number and save. The guide and the
+    player should show your logo, and the guide your number.
+23. **Channel numbers off:** **Settings > General > Channel numbers** hides
+    numbers in the guide; report whether the channel column reads better
+    without them on your screen.
+24. **Dial a channel:** in the guide, or while watching live TV, type a
+    channel's number on the remote. Two seconds after the last digit the guide
+    should land on that channel, or the picture switch to it; a number no
+    channel has should say so and change nothing.
+25. **What a profile may see:** with two or more profiles, open **Settings >
+    General > Profiles**, choose a profile under **What this profile may see**
+    and limit its live TV, film or series groups. That profile's guide,
+    libraries and search should show only those groups. Set a parental PIN as
+    well: switching to another profile, and opening Settings from the limited
+    profile, should then ask for it. With two profiles the home page's left
+    menu gains **Who is watching**, for changing profile without Settings.
+26. **Phone QR codes:** the source page's QR code and Channel management's
+    **Logo from phone** code now open in a box of their own. Report a code
+    that is cut off or that moves when you press down on the D-pad.
+27. **Opening a series:** the first open of a series fetches its episodes and
+    should say **Loading episodes…** in the top corner until they appear. The
+    cast is now one line of names under the synopsis, so the seasons and the
+    episodes should sit on screen from the start.
+28. **Group names in the libraries:** the group column of the film and series
+    libraries is wider and a long name may take two lines. Report a group
+    whose name still cannot be read, and whether the poster wall beside it
+    still looks right on your screen.
+
+For library performance, report the sequence of actions, approximate movie /
+series count, whether an import or metadata refresh was running, and whether
+the repeated "library not downloaded" message appeared. Do not send the
+playlist itself. A short first-load delay and persistent browsing stalls are
+different issues.
+
+## Known limitations
+
+- Some posters may remain missing despite having title information; selecting
+  the same correct TMDB match again on the title-information page can fill them.
+- Initial provider downloads and metadata matching take time and depend on
+  provider speed. Artwork coverage, episode details, catch-up and stream formats
+  vary by source.
+- A movie is assigned to its main genre rather than every reported genre.
+- Spanish, Portuguese, German, Swedish and Italian are drafted from the
+  English and not yet read by a native speaker; some labels overflow the
+  space they sit in.
+- A tick marks a watched film, episode and completed season, but there is no
+  tick yet on a series poster in the library.
+- A television home screen need not offer any way to reach or close the corner
+  view; open Sohva TV again for full screen, then press Back to stop it.
+- Live TV subtitles burned into the picture by the provider, and image
+  subtitle tracks in a film, cannot be resized or recoloured.
+- No recording, downloads, local timeshift or multiview. Catch-up needs provider
+  support; it is not local recording.
+- Newer betas are fetched from **Settings > About > Check for updates**; there
+  is no automatic crash-report upload. Diagnostics are saved only when you
+  choose to.
+- Android TV shows no popup for an app that is not on screen. Inside Sohva TV a
+  reminder appears as a dialog. For Sohva TV to come forward over another app,
+  allow it to **display over other apps** when the first reminder asks
+  (Settings > General shows the state). Without that, the reminder waits in the
+  TV's notification panel.
+- Menus inside a frame while the video fills the whole screen means the
+  device's own display settings have shrunk the interface, not the app: look
+  under Device Preferences > Display & Sound, or Display, for Screen position,
+  Adjust screen size, Display area or Overscan, and set it to full. The picture
+  is not affected because such devices scale the interface alone.
+- Shield and Android TV emulator testing does not establish compatibility with
+  every TV, remote, accessibility service or codec.
+
+## Report a problem
+
+Email [hello@luontra.fi](mailto:hello@luontra.fi). If the developer asks for
+diagnostics, **Settings > About > Save diagnostics** writes a text file of
+recent events and refresh states with addresses and keys removed; attach
+that file rather than logs of your own. If a public issue tracker is
+enabled later, you can use the same template there for non-sensitive reports.
+
+```text
+Version: 0.1.0-beta.17 (29)
+Device model:
+Android / Google TV version:
+Fresh install or update:
+Source type: M3U, Xtream or Discover addon name (no address or login)
+Approximate library size, if relevant:
+Steps to reproduce:
+Expected result:
+Actual result / exact error message:
+How often it happens:
+Approximate date/time and timezone:
+Did restarting the app help?:
+```
+
+Redact playlist and stream URLs, usernames, passwords, API keys, account IDs
+and anything private in screenshots, recordings and error messages. Do not
+attach raw logs or an encrypted backup. If diagnostics are needed, the
+developer will agree a safe, private way to collect them with you first.
+
+If settings disappear, stop before resetting or reinstalling and report what
+happened. If a credential was accidentally posted publicly, remove the post
+and revoke or change that credential with its provider.

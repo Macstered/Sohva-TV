@@ -1,0 +1,21 @@
+# Text is stored with LF; Windows scripts keep CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets: never diffed or normalised.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.apk binary
+*.dm binary
+*.prof binary
+*.zip binary
+*.gz binary

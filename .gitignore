@@ -1,0 +1,31 @@
+# Local secrets and machine state: signing keystore, Trakt credentials, private fixtures.
+# Never commit anything under .local/ (AGENTS.md section 6).
+.local/
+local.properties
+*.jks
+*.keystore
+keystore.properties
+trakt-credentials.properties
+
+# Gradle and Kotlin
+.gradle/
+.kotlin/
+build/
+captures/
+*.hprof
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs, traces and harness output
+*.log
+*.perfetto-trace
+*.trace
+/harness-out/
+
+# Claude Code local settings (the shared ones live in .claude/settings.json)
+.claude/settings.local.json

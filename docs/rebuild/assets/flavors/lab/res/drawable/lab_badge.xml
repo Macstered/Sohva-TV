@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp" android:height="40dp"
+    android:viewportWidth="96" android:viewportHeight="40">
+    <path android:fillColor="#FFBE42" android:pathData="M0,0H96V40H0Z" />
+    <!-- LAB as vector lettering: no font or locale dependency on the launcher. -->
+    <path android:fillColor="#151820" android:pathData="M10,8H16V26H28V32H10Z M33,32L41,8H49L57,32H51L49,26H41L39,32Z M43,20H47L45,13Z M62,8H76Q86,8 86,15Q86,19 82,20Q87,21 87,26Q87,32 77,32H62Z M68,13V18H76Q80,18 80,15Q80,13 76,13Z M68,23V27H77Q81,27 81,25Q81,23 77,23Z"
+        />
+    <path android:fillColor="#FFBE42" android:pathData="M43,20H47L45,13Z M68,13V18H76Q80,18 80,15Q80,13 76,13Z M68,23V27H77Q81,27 81,25Q81,23 77,23Z" />
+</vector>
