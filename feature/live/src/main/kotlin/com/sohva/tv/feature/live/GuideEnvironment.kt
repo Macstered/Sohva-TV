@@ -1,5 +1,7 @@
 package com.sohva.tv.feature.live
 
+import com.sohva.tv.core.data.live.ChannelList
+import com.sohva.tv.core.data.live.ListSpec
 import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
@@ -33,6 +35,11 @@ interface GuideEnvironment {
 
     /** Starts a background sync of every source (GUIDE-FR-101 "Sync now"). */
     fun syncAll()
+
+    /** The rows kept from the last visit (GUIDE-FR-120): a list index, only while still valid. */
+    fun keptList(spec: ListSpec): ChannelList?
+
+    fun keepList(list: ChannelList)
 }
 
 /** Where the guide sends the viewer; implemented by the app's router. */

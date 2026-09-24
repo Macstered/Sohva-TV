@@ -1,6 +1,8 @@
 package com.sohva.tv.app.live
 
 import com.sohva.tv.app.AppGraph
+import com.sohva.tv.core.data.live.ChannelList
+import com.sohva.tv.core.data.live.ListSpec
 import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
@@ -40,4 +42,8 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
     override fun syncAll() {
         graph.appScope.launch { graph.sync.scheduler.syncNow(null) }
     }
+
+    override fun keptList(spec: ListSpec): ChannelList? = graph.keptRows.get(spec)
+
+    override fun keepList(list: ChannelList) = graph.keptRows.keep(list)
 }

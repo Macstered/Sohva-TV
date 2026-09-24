@@ -72,6 +72,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
 
+    /** The guide's rows kept between visits (spec 20 GUIDE-FR-120). */
+    val keptRows: com.sohva.tv.app.live.KeptRows by lazy { com.sohva.tv.app.live.KeptRows({ liveReads }, clock, appScope) }
+
     /** Options that open screens of later milestones say so briefly (the shell's placeholder toast). */
     fun notYetAvailable() {
         android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()

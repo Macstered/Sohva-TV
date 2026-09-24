@@ -16,12 +16,12 @@ import com.sohva.tv.core.model.time.TimeLabels
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -222,7 +222,9 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
                 delay(READING_NOTICE_MS)
                 _reading.value = true
             }
-            val list = reads.open(spec ?: specOf(entry, source)())
+            val wanted = spec ?: specOf(entry, source)()
+            // A return within 10 minutes with nothing written gets the kept index: no read (GUIDE-FR-120).
+            val list = env.keptList(wanted) ?: reads.open(wanted).also { if (!searching) env.keepList(it) }
             val target = focusKey?.let { key -> reads.channel(key) }?.takeIf { it.sourceId == source.id }
                 ?.let { reads.indexOf(list, it) }?.takeIf { it >= 0 } ?: 0
             val view = ListView(entry, list, ++listSerial, searching)
@@ -257,6 +259,7 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         val entry = view.entry
         val selectedKey = _selection.value?.row?.key
         val list = reads.open(specOf(entry, source)())
+        env.keepList(list)
         val pages = RowPages(list.size, ChannelList.PAGE)
         val keep = selectedKey?.let { key -> reads.channel(key) }?.let { reads.indexOf(list, it) }?.takeIf { it >= 0 }
         val around = keep ?: lastVisible.first
