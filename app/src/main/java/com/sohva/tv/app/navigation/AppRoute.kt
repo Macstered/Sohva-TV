@@ -55,10 +55,12 @@ object AppRouteCodec : RouteCodec<AppRoute> {
 }
 
 /**
- * The stack a cold start opens (spec 01 SHELL-FR-11..12). Last channel needs the channel store
- * (M2); until then it opens the guide, which is also its fallback for a missing channel.
+ * The stack a cold start opens (spec 01 SHELL-FR-11..12): Last channel plays [lastChannel] over
+ * `[Home, Guide]`; without one it opens the guide, which is also the player's fallback when the
+ * channel is gone.
  */
-fun startRoutes(screen: StartupScreen): List<AppRoute> = when (screen) {
+fun startRoutes(screen: StartupScreen, lastChannel: String? = null): List<AppRoute> = when (screen) {
     StartupScreen.HOME -> listOf(AppRoute.Home)
-    StartupScreen.GUIDE, StartupScreen.LAST_CHANNEL -> listOf(AppRoute.Home, AppRoute.Guide)
+    StartupScreen.GUIDE -> listOf(AppRoute.Home, AppRoute.Guide)
+    StartupScreen.LAST_CHANNEL -> listOfNotNull(AppRoute.Home, AppRoute.Guide, lastChannel?.let { AppRoute.Player(it, returnToGuide = true) })
 }

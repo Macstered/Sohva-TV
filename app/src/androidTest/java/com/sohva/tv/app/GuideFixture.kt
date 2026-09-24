@@ -24,6 +24,8 @@ object GuideFixture {
         perGroup: Int = 40,
         stream: (sourceId: String, index: Int) -> String = { _, i -> "http://192.0.2.10/live/$i.ts" },
         withGuide: Boolean = true,
+        userAgent: String? = null,
+        referrer: String? = null,
     ) {
         val db = graph.data.database
         val now = System.currentTimeMillis()
@@ -47,7 +49,7 @@ object GuideFixture {
                         channels += ChannelEntity(
                             key = "$sourceId:c$index", sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
                             tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = graph.data.cipher.encrypt(stream(sourceId, index)),
-                            userAgent = null, referrer = null, playlistOrder = index, providerNumber = index + 1, number = index + 1,
+                            userAgent = userAgent, referrer = referrer, playlistOrder = index, providerNumber = index + 1, number = index + 1,
                             displayRank = index * 1024L, visible = true, catchupType = null, catchupSource = null, catchupDays = null,
                             catchupTz = null, xtreamStreamId = null, contentHash = 1, generation = 1,
                         )

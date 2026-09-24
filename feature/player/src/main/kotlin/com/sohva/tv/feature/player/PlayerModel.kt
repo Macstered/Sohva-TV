@@ -139,7 +139,8 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
         if (current != null && current != key) previousKey = current
         viewModelScope.launch {
             val channel = reads.channel(key) ?: run {
-                _banner.value = Banner(BannerReason.Unavailable, 0, 0, stopped = true)
+                // A channel gone before anything played (a stale "Last channel") falls back to the guide.
+                if (_playing.value == null) navigation.guide() else _banner.value = Banner(BannerReason.Unavailable, 0, 0, stopped = true)
                 return@launch
             }
             _playing.value = format(channel)
@@ -315,6 +316,7 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
         attempt++
         val delayMs = policy.delayBefore(attempt)
         _banner.value = Banner(BannerReason.Cause(failure.cause, failure.detail), attempt, policy.attempts, stopped = delayMs == null)
+        env.logFailure("${_playing.value?.channel?.key}: ${failure.detail}, attempt $attempt")
         if (delayMs != null) {
             reconnectJob?.cancel()
             reconnectJob = viewModelScope.launch {

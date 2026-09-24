@@ -14,7 +14,7 @@ import kotlinx.coroutines.runBlocking
 
 /**
  * Writes the owner-scale guide (plan/07 §6.1: 56,164 channels in 800 groups, about 165,000
- * programmes around now) once, then shows "fixture-ready" for the benchmark to wait on. Fictional
+ * programmes around now) once, shows "fixture-ready" and finishes. Fictional
  * names and reserved addresses only; streams are not playable.
  */
 class FixtureActivity : Activity() {
@@ -28,6 +28,8 @@ class FixtureActivity : Activity() {
             runOnUiThread {
                 label.text = "fixture-ready"
                 label.contentDescription = "fixture-ready $written in ${System.currentTimeMillis() - started} ms"
+                // Gone again, so the app's own launch shows Home rather than this screen.
+                label.postDelayed({ finish() }, FINISH_DELAY_MS)
             }
         }, "fixture-seed").apply { priority = Thread.MIN_PRIORITY }.start()
     }
@@ -95,6 +97,7 @@ class FixtureActivity : Activity() {
 
     private companion object {
         const val SOURCE = "owner-fixture"
+        const val FINISH_DELAY_MS = 300L
         const val CHANNELS = 56_164
         const val GROUPS = 800
         const val WITH_GUIDE = 4_140

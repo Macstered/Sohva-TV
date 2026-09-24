@@ -24,6 +24,9 @@ interface PlayerEnvironmentUi {
     /** Front of the profile's recents and the last channel (spec 30 PLAY-FR-57). */
     suspend fun recordWatched(channelKey: String)
 
+    /** A playback failure for the diagnostics log: ids, codes and redacted text only (PLAY-FR-90, spec 73). */
+    fun logFailure(line: String)
+
     /** The live stream's real address and headers for another player app (PLAY-FR-115), or null when gone. */
     suspend fun externalStream(channelKey: String): ExternalStream?
 }

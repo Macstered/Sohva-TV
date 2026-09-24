@@ -45,6 +45,40 @@ object TestMedia {
         return file
     }
 
+    /**
+     * [count] ADTS AAC segments of [seconds] each (packed audio, which HLS allows), for an HLS
+     * playlist served by the test: exercises the playlist-then-segments path of spec 30 L-23.
+     */
+    fun aacSegments(count: Int = 4, seconds: Int = 4): List<ByteArray> {
+        val audio = encodeAudio(count * seconds)
+        val perSegment = audio.samples.size / count
+        return (0 until count).map { s ->
+            val out = java.io.ByteArrayOutputStream()
+            for (sample in audio.samples.subList(s * perSegment, (s + 1) * perSegment)) {
+                out.write(adtsHeader(sample.data.size))
+                out.write(sample.data)
+            }
+            out.toByteArray()
+        }
+    }
+
+    /** A 7-byte ADTS header for one AAC-LC frame, 44.1 kHz, mono. */
+    private fun adtsHeader(payload: Int): ByteArray {
+        val length = payload + 7
+        val profile = 1 // AAC LC (object type 2) − 1
+        val rate = 4 // 44,100 Hz
+        val channels = 1
+        return byteArrayOf(
+            0xFF.toByte(),
+            0xF1.toByte(),
+            ((profile shl 6) or (rate shl 2) or (channels shr 2)).toByte(),
+            (((channels and 3) shl 6) or (length shr 11)).toByte(),
+            ((length shr 3) and 0xFF).toByte(),
+            (((length and 7) shl 5) or 0x1F).toByte(),
+            0xFC.toByte(),
+        )
+    }
+
     private class Sample(val data: ByteArray, val info: MediaCodec.BufferInfo)
 
     private class Encoded(val format: MediaFormat, val samples: List<Sample>)

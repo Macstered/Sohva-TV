@@ -77,6 +77,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
             theme = ColorThemeId.fromStored(prefs[THEME]),
             scale = InterfaceScale.fromStored(prefs[SCALE]),
             startupScreen = StartupScreen.fromStored(prefs[STARTUP_SCREEN]),
+            lastChannel = prefs[LAST_CHANNEL],
         )
     }
 

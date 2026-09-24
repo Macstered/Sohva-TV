@@ -88,7 +88,7 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
         InterfaceScaled(scale) {
             // Test tags double as resource ids, so UiAutomator journeys (profiles, benchmarks) find them.
             Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
-                val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen) }
+                val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen, start.snapshot.lastChannel) }
                 CompositionLocalProvider(LocalArtwork provides graph.artwork) {
                     NavHost(stack) { route -> AppDestination(route, stack, graph) }
                 }

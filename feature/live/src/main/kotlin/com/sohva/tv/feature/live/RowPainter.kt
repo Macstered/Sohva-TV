@@ -137,6 +137,13 @@ internal class RowPainter(private val measurer: TextMeasurer, val colors: GridCo
             return@trace
         }
         val programmes = schedule.programmes
+        // The white block follows the selection, not focus: on the channel column it is the live
+        // programme, else the first (GUIDE-FR-60, guide.md §2 "driven by the selection").
+        val selected = when {
+            state.column >= 0 -> state.column
+            state.column == GuideModel.CHANNEL -> programmes.indexOfFirst { it.isLive(now) }.let { if (it >= 0) it else 0 }
+            else -> -1
+        }
         var drawn = 0
         for (i in programmes.indices) {
             val p = programmes[i]
@@ -147,7 +154,7 @@ internal class RowPainter(private val measurer: TextMeasurer, val colors: GridCo
             val right = (clipEnd - windowStart) * perMs - BLOCK_GAP.toPx()
             if (right - left < 1f) continue
             drawn++
-            drawBlock(p, schedule.times[i], left, right, i == state.column, now, windowStart, perMs)
+            drawBlock(p, schedule.times[i], left, right, i == selected, now, windowStart, perMs)
         }
         if (drawn == 0) drawFiller(state.column == 0)
     }

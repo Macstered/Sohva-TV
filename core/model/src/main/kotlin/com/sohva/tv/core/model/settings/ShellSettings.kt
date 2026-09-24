@@ -50,6 +50,8 @@ data class StartSnapshot(
     val theme: ColorThemeId,
     val scale: InterfaceScale,
     val startupScreen: StartupScreen,
+    /** For the "Last channel" start screen (spec 01 SHELL-FR-11). */
+    val lastChannel: String? = null,
 )
 
 /** How often playlists and guides refresh in the background (spec 70 SET-26). Stored by [name]. */

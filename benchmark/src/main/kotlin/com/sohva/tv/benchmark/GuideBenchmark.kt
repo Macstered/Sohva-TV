@@ -51,12 +51,14 @@ class GuideBenchmark {
         compilationMode = CompilationMode.Full(),
         iterations = 5,
         setupBlock = {
+            // Every iteration starts cold on Home, whatever the last one left on screen.
+            killProcess()
             seedOwnerFixture()
             pressHome()
             startActivityAndWait()
-            device.wait(Until.hasObject(By.res("home-live")), WAIT_MS)
+            check(device.wait(Until.hasObject(By.res("home-live")), WAIT_MS)) { "Home did not open" }
             device.pressDPadCenter()
-            device.wait(Until.hasObject(By.res("guide-row-0")), WAIT_MS)
+            check(device.wait(Until.hasObject(By.res("guide-row-0")), WAIT_MS)) { "the guide did not open" }
             // Let the first rows' programmes arrive before measuring.
             Thread.sleep(2_000)
             device.waitForIdle()
@@ -84,5 +86,8 @@ class GuideBenchmark {
 /** Writes the owner-scale guide into the measured app once (the fixture activity skips a second time). */
 fun MacrobenchmarkScope.seedOwnerFixture() {
     startActivityAndWait(Intent().setClassName(TARGET_PACKAGE, "com.sohva.tv.measure.fixture.FixtureActivity"))
-    device.wait(Until.hasObject(By.text("fixture-ready")), 10 * 60_000L)
+    // The first run writes about 220,000 rows; later runs find them and finish at once.
+    val deadline = System.currentTimeMillis() + 10 * 60_000L
+    while (device.hasObject(By.textStartsWith("fixture-")) && System.currentTimeMillis() < deadline) Thread.sleep(500)
+    check(!device.hasObject(By.textStartsWith("fixture-"))) { "the owner-scale fixture did not finish" }
 }

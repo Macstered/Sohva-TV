@@ -70,6 +70,8 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
             graph.data.preferences.setLastChannel(channelKey)
         }
 
+        override fun logFailure(line: String) = graph.diagnostics.info("player", line)
+
         override suspend fun externalStream(channelKey: String): ExternalStream? {
             val stream = resolveLive(channelKey) ?: return null
             val headers = buildMap {
