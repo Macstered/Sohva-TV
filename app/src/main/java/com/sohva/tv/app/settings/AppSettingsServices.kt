@@ -19,6 +19,7 @@ import com.sohva.tv.core.model.source.XtreamAccount
 import com.sohva.tv.core.net.phone.LocalAddress
 import com.sohva.tv.core.net.phone.QrCodes
 import com.sohva.tv.core.sync.SourceChecks
+import com.sohva.tv.feature.settings.LibrarySettingsServices
 import com.sohva.tv.feature.settings.SettingsServices
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -34,6 +35,8 @@ import kotlinx.coroutines.withContext
  */
 class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
     private val io get() = graph.dispatchers.io
+
+    override val library: LibrarySettingsServices = AppLibrarySettings(graph)
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
 

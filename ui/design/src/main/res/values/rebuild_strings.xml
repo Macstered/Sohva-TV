@@ -22,4 +22,6 @@
     <string name="player_cause_other">The stream stopped playing.</string>
     <string name="player_archive_title">Archive · %1$s</string>
     <string name="player_archive_unavailable">This programme is not available from the archive.</string>
+    <!-- Spec 41 Q8 (decided 25 September 2026): the worker stops after three refusals. -->
+    <string name="metadata_key_refused">TMDB refused the key three times, so background lookups have stopped. Check the key, then press Save key.</string>
 </resources>

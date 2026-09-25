@@ -23,4 +23,5 @@
     <string name="player_cause_other">La riproduzione del flusso si è interrotta.</string>
     <string name="player_archive_title">Archivio · %1$s</string>
     <string name="player_archive_unavailable">Questo programma non è disponibile nell’archivio.</string>
+    <string name="metadata_key_refused">TMDB ha rifiutato la chiave tre volte, quindi le ricerche in background sono ferme. Controlla la chiave e premi Salva chiave.</string>
 </resources>

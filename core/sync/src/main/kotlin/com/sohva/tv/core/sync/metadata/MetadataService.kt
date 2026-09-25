@@ -5,7 +5,9 @@ import com.sohva.tv.core.data.database.MetadataPinEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.metadata.MetadataConfig
 import com.sohva.tv.core.data.metadata.MetadataSettings
+import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
+import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.metadata.Lookup
 import com.sohva.tv.core.model.metadata.MediaType
 import com.sohva.tv.core.model.metadata.Matcher
@@ -148,6 +150,22 @@ class MetadataService(
         }
         val s = Lookups.sanitise(request, config.language) ?: return@withContext
         synchronized(memory) { memory.remove(s.key) }
+    }
+
+    /**
+     * "Test TMDB" (META-FR-06): `configuration` with the typed credential, never the saved one.
+     * An unreadable credential is invalid; a network or HTTP failure is its plain-language error.
+     */
+    suspend fun testCredential(raw: String): Outcome<Unit> = withContext(io) {
+        val credential = TmdbCredential.of(raw.trim()) ?: return@withContext Outcome.Failed(AppError.TmdbKeyInvalid)
+        try {
+            tmdb.check(credential)
+            Outcome.Ok(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: AppException) {
+            Outcome.Failed(e.error)
+        }
     }
 
     suspend fun isPinned(contentKey: String): Boolean = withContext(io) { dao.pin(contentKey) != null }

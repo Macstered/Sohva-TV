@@ -23,4 +23,5 @@
     <string name="player_cause_other">A transmissão deixou de ser reproduzida.</string>
     <string name="player_archive_title">Arquivo · %1$s</string>
     <string name="player_archive_unavailable">Este programa não está disponível no arquivo.</string>
+    <string name="metadata_key_refused">O TMDB recusou a chave três vezes, por isso as pesquisas em segundo plano pararam. Verifique a chave e prima Salvar chave.</string>
 </resources>

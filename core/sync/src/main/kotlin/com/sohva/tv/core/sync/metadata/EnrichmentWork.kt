@@ -70,6 +70,11 @@ interface EnrichmentHost {
     fun appInForeground(): Boolean
 
     suspend fun metadataEnabled(): Boolean
+
+    /** TMDB refused the key three times in a row (spec 41 Q8): remembered until a key is saved. */
+    suspend fun keyRefused(): Boolean
+
+    suspend fun setKeyRefused()
 }
 
 /** Builds [EnrichmentWorker] for the app's delegating worker factory. */
@@ -81,13 +86,14 @@ class EnrichmentWorkerFactory(private val host: EnrichmentHost) : WorkerFactory(
 /** One enrichment run (META-FR-63): synchronise when asked or needed, then batches for up to 4 minutes. */
 class EnrichmentWorker(context: Context, params: WorkerParameters, private val host: EnrichmentHost) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        if (host.appInForeground() || !host.metadataEnabled()) return Result.success()
+        if (host.appInForeground() || !host.metadataEnabled() || host.keyRefused()) return Result.success()
         val enrichment = host.enrichment
         if (inputData.getBoolean(EnrichmentScheduler.SYNCHRONISE, false) || enrichment.needsSync()) enrichment.synchronise()
         when (enrichment.run()) {
             RunEnd.CONTINUE -> host.enrichmentScheduler.continueAfter(EnrichmentScheduler.CONTINUE_MS)
             RunEnd.BACK_OFF -> host.enrichmentScheduler.continueAfter(EnrichmentScheduler.BACK_OFF_MS)
-            RunEnd.DONE, RunEnd.STOPPED, RunEnd.KEY_REFUSED -> Unit
+            RunEnd.KEY_REFUSED -> host.setKeyRefused()
+            RunEnd.DONE, RunEnd.STOPPED -> Unit
         }
         return Result.success()
     }

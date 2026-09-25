@@ -140,9 +140,10 @@ private fun RowText(
  * The Settings switch: an outer surface (radius 15, padding 5) around a 52 × 30 track with a
  * 24 dp knob travelling 22 dp. Off: `surfaceRaised` track, `textMuted` knob; on: `focus` track,
  * `background` knob; disabled track `surface`. Track colour and knob move with the default spring.
+ * [keepsFocus] keeps a switch focusable while it is disabled for a moment (an action running).
  */
 @Composable
-fun SettingsSwitch(checked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun SettingsSwitch(checked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, keepsFocus: Boolean = false) {
     val p = Sohva.palette
     val track by animateColorAsState(
         when {
@@ -156,7 +157,7 @@ fun SettingsSwitch(checked: Boolean, onToggle: () -> Unit, modifier: Modifier = 
     val knobColor = if (checked) p.background else p.textMuted
     val offset by animateDpAsState(if (checked) 22.dp else 0.dp, Motion.focus(), label = "switch-knob")
     val style = SurfaceStyle(corner = 15.dp, focusScale = 1f, padding = PaddingValues(5.dp))
-    TvSurface(onToggle, modifier, SurfaceState(selected = checked, enabled = enabled), style) {
+    TvSurface(onToggle, modifier, SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus), style) {
         Box(
             Modifier.size(52.dp, 30.dp).drawBehind {
                 drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))

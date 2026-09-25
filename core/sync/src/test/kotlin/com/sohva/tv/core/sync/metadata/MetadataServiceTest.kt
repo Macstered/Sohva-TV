@@ -3,7 +3,7 @@ package com.sohva.tv.core.sync.metadata
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.sohva.tv.core.data.database.SohvaDatabase
-import com.sohva.tv.core.data.metadata.MetadataLanguageStore
+import com.sohva.tv.core.data.metadata.MetadataPreferences
 import com.sohva.tv.core.data.metadata.MetadataSettings
 import com.sohva.tv.core.data.security.SecretValues
 import com.sohva.tv.core.data.source.ServiceKeys
@@ -64,7 +64,7 @@ class MetadataServiceTest {
             return Outcome.Ok(Unit)
         }
     }
-    private val languages = object : MetadataLanguageStore {
+    private val languages = object : MetadataPreferences {
         var tag: String? = "en-US"
 
         override suspend fun metadataLanguage(): String? = tag

@@ -22,4 +22,5 @@
     <string name="player_cause_other">Lähetyksen toisto pysähtyi.</string>
     <string name="player_archive_title">Arkisto · %1$s</string>
     <string name="player_archive_unavailable">Tätä ohjelmaa ei saa arkistosta.</string>
+    <string name="metadata_key_refused">TMDB hylkäsi avaimen kolme kertaa, joten taustahaku on pysäytetty. Tarkista avain ja paina Tallenna avain.</string>
 </resources>

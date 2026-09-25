@@ -6,7 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
-import com.sohva.tv.core.data.metadata.MetadataLanguageStore
+import com.sohva.tv.core.data.metadata.MetadataPreferences
 import com.sohva.tv.core.model.player.BufferProfile
 import com.sohva.tv.core.model.player.Gesture
 import com.sohva.tv.core.model.player.PlaybackSettings
@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.map
  * beta 23 every zap wrote a recent channel and re-emitted all settings to every screen, the app
  * root included (plan/03 §2.4, §4.6).
  */
-class AppPreferences(private val store: DataStore<Preferences>) : MetadataLanguageStore {
+class AppPreferences(private val store: DataStore<Preferences>) : MetadataPreferences {
     val theme: Flow<ColorThemeId> = key(THEME) { ColorThemeId.fromStored(it) }
     val scale: Flow<InterfaceScale> = key(SCALE) { InterfaceScale.fromStored(it) }
     val startupScreen: Flow<StartupScreen> = key(STARTUP_SCREEN) { StartupScreen.fromStored(it) }
@@ -107,8 +107,21 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataLangua
         store.edit { it[METADATA_LANGUAGE] = tag }
     }
 
+    override suspend fun metadataKeyRefused(): Boolean = store.data.first()[METADATA_KEY_REFUSED] ?: false
+
+    override suspend fun setMetadataKeyRefused(refused: Boolean) {
+        store.edit { it[METADATA_KEY_REFUSED] = refused }
+    }
+
     /** "When a film has more than one version" (spec 40 VOD-FR-32); unknown → whichever comes first. */
     suspend fun preferredCopy(): PreferredCopy = PreferredCopy.of(store.data.first()[PREFERRED_COPY])
+
+    /** The same, observed by Settings. */
+    val preferredCopyChanges: Flow<PreferredCopy> get() = key(PREFERRED_COPY, PreferredCopy::of)
+
+    suspend fun setPreferredCopy(copy: PreferredCopy) {
+        store.edit { it[PREFERRED_COPY] = copy.name }
+    }
 
     /** "Continue to the next episode" (spec 70 SET-34, spec 30 PLAY-FR-132); on by default. */
     suspend fun autoPlayNextEpisode(): Boolean = store.data.first()[AUTO_PLAY_NEXT] ?: true
@@ -183,6 +196,7 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataLangua
         private val AUTO_PLAY_NEXT = booleanPreferencesKey("auto_play_next_episode")
         private val PREFERRED_COPY = stringPreferencesKey("preferred_catalogue_copy")
         private val METADATA_LANGUAGE = stringPreferencesKey("metadata_language")
+        private val METADATA_KEY_REFUSED = booleanPreferencesKey("metadata_key_refused")
         private val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         private val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
         private val SUBTITLE_SIZE = stringPreferencesKey("subtitle_text_size")

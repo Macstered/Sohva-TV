@@ -65,4 +65,8 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
     override val enrichmentScheduler: EnrichmentScheduler get() = graph.metadata.scheduler
 
     override suspend fun metadataEnabled(): Boolean = graph.flags.metadataWorker && graph.metadata.settings.current().enabled
+
+    override suspend fun keyRefused(): Boolean = graph.metadata.settings.keyRefused()
+
+    override suspend fun setKeyRefused() = graph.metadata.settings.setKeyRefused(true)
 }

@@ -5,7 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.SourceEntity
-import com.sohva.tv.core.data.metadata.MetadataLanguageStore
+import com.sohva.tv.core.data.metadata.MetadataPreferences
 import com.sohva.tv.core.data.metadata.MetadataSettings
 import com.sohva.tv.core.data.security.SecretValues
 import com.sohva.tv.core.data.source.ServiceKeys
@@ -62,7 +62,7 @@ class EnrichmentTest {
 
         override suspend fun write(key: String, value: String?): Outcome<Unit> = Outcome.Ok(Unit)
     }
-    private val languages = object : MetadataLanguageStore {
+    private val languages = object : MetadataPreferences {
         override suspend fun metadataLanguage(): String? = "en-US"
 
         override suspend fun setMetadataLanguage(tag: String) = Unit

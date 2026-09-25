@@ -38,11 +38,16 @@ data class MetadataConfig(
     }
 }
 
-/** Where the metadata language is kept (DataStore `metadata_language`, device-wide). */
-interface MetadataLanguageStore {
+/** Metadata's plain preferences (DataStore, device-wide): the language and the refused-key stop. */
+interface MetadataPreferences {
     suspend fun metadataLanguage(): String?
 
     suspend fun setMetadataLanguage(tag: String)
+
+    /** TMDB refused the key three times in a row: the worker stays stopped until a key is saved (spec 41 Q8). */
+    suspend fun metadataKeyRefused(): Boolean = false
+
+    suspend fun setMetadataKeyRefused(refused: Boolean) = Unit
 }
 
 /**
@@ -54,7 +59,7 @@ interface MetadataLanguageStore {
  */
 class MetadataSettings(
     private val secrets: SecretValues,
-    private val languages: MetadataLanguageStore,
+    private val languages: MetadataPreferences,
     private val interfaceLanguage: () -> String,
     private val io: CoroutineDispatcher,
 ) {
@@ -89,6 +94,8 @@ class MetadataSettings(
             secrets.write(TVMAZE_ENABLED, tvmazeOn.toString()),
         )
         if (writes.any { it is Outcome.Failed }) return@withContext Outcome.Failed(AppError.MetadataSaveFailed)
+        // A saved key may be a good one: the worker may try again (spec 41 Q8).
+        languages.setMetadataKeyRefused(false)
         reload()
         Outcome.Ok(before.credential.orEmpty().trim() != key)
     }
@@ -114,6 +121,11 @@ class MetadataSettings(
         reload()
         true
     }
+
+    /** Whether the worker stopped on a refused key (spec 41 Q8): shown as the Library status. */
+    suspend fun keyRefused(): Boolean = withContext(io) { languages.metadataKeyRefused() }
+
+    suspend fun setKeyRefused(refused: Boolean): Unit = withContext(io) { languages.setMetadataKeyRefused(refused) }
 
     companion object {
         const val TVMAZE_ENABLED: String = "metadata_tvmaze_enabled_v1"

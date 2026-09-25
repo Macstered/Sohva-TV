@@ -76,6 +76,9 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     private val state = MutableStateFlow(SettingsState(accounts = accounts))
     val ui: StateFlow<SettingsState> = state.asStateFlow()
 
+    /** Settings › Library: its own state and status line (spec 41 §5.1). */
+    val library: LibrarySettings = LibrarySettings(services.library, viewModelScope)
+
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
 

@@ -12,6 +12,7 @@ import com.sohva.tv.core.net.metadata.TvmazeClient
 import com.sohva.tv.core.sync.metadata.Enrichment
 import com.sohva.tv.core.sync.metadata.EnrichmentScheduler
 import com.sohva.tv.core.sync.metadata.MatchChoices
+import com.sohva.tv.core.sync.metadata.MetadataReset
 import com.sohva.tv.core.sync.metadata.MetadataService
 import java.util.Locale
 import okhttp3.HttpUrl
@@ -78,6 +79,9 @@ class MetadataGraph(private val graph: AppGraph) {
     val choices: MatchChoices by lazy {
         MatchChoices(graph.data.database, service, passes, graph.clock, graph.dispatchers.io) { graph.data.preferences.preferredCopy() }
     }
+
+    /** Language change and "Clear metadata cache" (spec 41 §4.15). */
+    val reset: MetadataReset by lazy { MetadataReset(graph.data.database, service, passes, graph.dispatchers.bulk) }
 
     val scheduler: EnrichmentScheduler by lazy { EnrichmentScheduler { WorkManager.getInstance(graph.app) } }
 }
