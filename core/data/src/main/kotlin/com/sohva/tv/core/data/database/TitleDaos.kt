@@ -17,6 +17,25 @@ data class FilmRecord(
     val plot: String?,
     @ColumnInfo(name = "quality_mask") val qualityMask: Int,
     @ColumnInfo(name = "work_key") val workKey: String?,
+    /** The metadata title, once the background enrichment matched the film (spec 41 META-FR-60). */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
+)
+
+/** A copy on the Versions row (VOD-FR-68): its claims are read off [name] off the main thread. */
+data class VersionRow(
+    val key: String,
+    val name: String,
+    @ColumnInfo(name = "source_name") val sourceName: String,
+)
+
+/** A film that may stand for one of TMDB's similar titles (VOD-FR-71). */
+data class SimilarRow(
+    val key: String,
+    @ColumnInfo(name = "source_id") val sourceId: String,
+    val year: Int?,
+    @ColumnInfo(name = "similar_key") val similarKey: String?,
+    @ColumnInfo(name = "replacement_key") val replacementKey: String?,
+    @ColumnInfo(name = "poster_url") val posterUrl: String?,
 )
 
 /** A series as its page opens it (VOD-FR-73), with the provider's backdrop. */
@@ -61,7 +80,27 @@ data class PlayableTitle(
 
 object TitleSql {
     const val FILM = "SELECT m.id, m.key, m.source_id, m.name, g.name AS group_name, m.poster_url, m.year, m.rating, m.plot, " +
-        "m.quality_mask, m.work_key FROM movie m LEFT JOIN content_group g ON g.id = m.group_id WHERE m.key = :key"
+        "m.quality_mask, m.work_key, m.replacement_title FROM movie m LEFT JOIN content_group g ON g.id = m.group_id WHERE m.key = :key"
+
+    /**
+     * The copies of one film identity (VOD-FR-68), by source priority, source name and title. The
+     * work key index bounds the read to the film's few copies, so the small sort is fine here.
+     */
+    const val VERSIONS = "SELECT m.key, m.name, src.name AS source_name FROM movie m CROSS JOIN source src ON src.id = m.source_id " +
+        "WHERE m.work_key = :workKey AND m.visible = 1 AND src.enabled = 1 ORDER BY src.priority, src.name, m.sort_name LIMIT 50"
+
+    /** Films whose provider or replacement comparison key is one of [keys] (VOD-FR-71): two index lookups. */
+    const val SIMILAR = "SELECT m.key, m.source_id, m.year, m.similar_key, m.replacement_key, m.poster_url FROM movie m " +
+        "CROSS JOIN source src ON src.id = m.source_id WHERE m.similar_key IN (:keys) AND m.visible = 1 AND src.enabled = 1 " +
+        "UNION ALL SELECT m.key, m.source_id, m.year, m.similar_key, m.replacement_key, m.poster_url FROM movie m " +
+        "CROSS JOIN source src ON src.id = m.source_id WHERE m.replacement_key IN (:keys) AND m.visible = 1 AND src.enabled = 1 LIMIT 400"
+    const val VISIBLE = "SELECT key FROM movie WHERE key IN (:keys) AND visible = 1"
+
+    /** A missing poster repaired from the details record (spec 41 META-FR-71); a no-op when one exists. */
+    const val REPAIR_FILM_POSTER = "UPDATE movie SET replacement_poster = :poster, replace_poster = 1 WHERE key = :key " +
+        "AND (poster_url IS NULL OR poster_url = '') AND (replacement_poster IS NULL OR replacement_poster = '')"
+    const val REPAIR_SERIES_POSTER = "UPDATE series SET replacement_poster = :poster, replace_poster = 1 WHERE key = :key " +
+        "AND (poster_url IS NULL OR poster_url = '') AND (replacement_poster IS NULL OR replacement_poster = '')"
     const val SERIES = "SELECT s.id, s.key, s.source_id, s.provider_id, s.name, g.name AS group_name, s.poster_url, s.backdrop_url, " +
         "s.year, s.rating, s.plot, s.quality_mask FROM series s LEFT JOIN content_group g ON g.id = s.group_id WHERE s.key = :key"
     const val EPISODES = "SELECT e.key, e.season, e.number, e.name, e.duration_s, e.thumbnail_url, e.plot " +
@@ -105,4 +144,19 @@ interface TitleDao {
 
     @Query(TitleSql.DELETE_EPISODES)
     fun deleteEpisodes(seriesId: Long)
+
+    @Query(TitleSql.VERSIONS)
+    fun versions(workKey: String): List<VersionRow>
+
+    @Query(TitleSql.SIMILAR)
+    fun similar(keys: List<String>): List<SimilarRow>
+
+    @Query(TitleSql.VISIBLE)
+    fun visible(keys: List<String>): List<String>
+
+    @Query(TitleSql.REPAIR_FILM_POSTER)
+    fun repairFilmPoster(key: String, poster: String): Int
+
+    @Query(TitleSql.REPAIR_SERIES_POSTER)
+    fun repairSeriesPoster(key: String, poster: String): Int
 }

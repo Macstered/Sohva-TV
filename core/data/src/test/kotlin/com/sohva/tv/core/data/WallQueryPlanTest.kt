@@ -3,6 +3,7 @@ package com.sohva.tv.core.data
 import com.sohva.tv.core.data.database.LibrarySql
 import com.sohva.tv.core.data.database.ProgressSql
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.database.TitleSql
 import com.sohva.tv.core.data.database.WallSql
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -76,6 +77,11 @@ class WallQueryPlanTest {
                 "film unsorted count" to LibrarySql.FILM_UNSORTED_COUNT,
                 "series genre count" to LibrarySql.SERIES_GENRE_COUNT,
                 "series unsorted count" to LibrarySql.SERIES_UNSORTED_COUNT,
+                "versions" to TitleSql.VERSIONS,
+                "similar" to TitleSql.SIMILAR,
+                "visible" to TitleSql.VISIBLE,
+                "repair film poster" to TitleSql.REPAIR_FILM_POSTER,
+                "repair series poster" to TitleSql.REPAIR_SERIES_POSTER,
             )
             for ((name, sql) in lookups) {
                 val plan = db.plan(sql).joinToString(" | ")

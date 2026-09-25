@@ -6,14 +6,27 @@ import com.sohva.tv.core.data.database.FilmRecord
 import com.sohva.tv.core.data.database.SeriesRecord
 import com.sohva.tv.core.data.vod.Progress
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.metadata.MediaType
+import com.sohva.tv.core.model.text.Initials
+import com.sohva.tv.core.model.vod.CopyClaimReader
+import com.sohva.tv.core.model.vod.SimilarReference
+import com.sohva.tv.core.net.metadata.Artwork
+import com.sohva.tv.core.net.metadata.MetadataRecord
+import com.sohva.tv.core.sync.metadata.MetadataRequest
+import com.sohva.tv.feature.library.CastCard
+import com.sohva.tv.feature.library.SimilarCard
 import com.sohva.tv.feature.library.TitleEnvironment
+import com.sohva.tv.feature.library.TitleMetadata
+import com.sohva.tv.feature.library.VersionCard
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
-/** The details pages' side of the graph (plan/03 §4.6): title reads, progress, marks, episodes and playback. */
+/** The details pages' side of the graph (plan/03 §4.6): title reads, progress, marks, episodes, metadata and playback. */
 class AppTitleEnvironment(private val graph: AppGraph, private val navigation: TitleNavigation) : TitleEnvironment {
     private val titles get() = graph.data.titles
     private val progress get() = graph.data.progress
+    private val metadata get() = graph.metadata.service
 
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
@@ -40,9 +53,62 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
     override fun play(key: String, startMs: Long) = navigation.play(key, startMs)
 
     override fun wrongDetails() = graph.notYetAvailable()
+
+    override fun cachedFilmMetadata(film: FilmRecord): TitleMetadata? = metadata.cached(request(film))?.let(::toMetadata)
+
+    override suspend fun filmMetadata(film: FilmRecord): TitleMetadata? {
+        val record = metadata.filmDetails(request(film)) ?: return null
+        // A missing library poster is repaired from the details record (VOD-FR-60, META-FR-71).
+        val poster = record.poster
+        if (film.posterUrl.isNullOrBlank() && poster != null) titles.repairPoster(film.key, poster)
+        return withContext(format) { toMetadata(record) }
+    }
+
+    override suspend fun versions(film: FilmRecord): List<VersionCard> {
+        val rows = titles.versions(film.workKey)
+        return withContext(format) {
+            rows.map { row ->
+                val claims = CopyClaimReader.read(row.name)
+                VersionCard(row.key, row.sourceName, claims.languages, claims.picture, row.name, row.key == film.key)
+            }
+        }
+    }
+
+    override suspend fun similar(film: FilmRecord, metadata: TitleMetadata): List<SimilarCard> =
+        titles.similar(film, metadata.similar).map { found ->
+            val reference = found.reference
+            SimilarCard(found.key, reference.title, reference.year, Artwork.url(reference.poster, Artwork.POSTER_WALL) ?: found.libraryPoster)
+        }
+
+    override fun openFilm(key: String) = navigation.openFilm(key)
+
+    override fun openUrl(url: String) = navigation.openUrl(url)
+
+    private fun request(film: FilmRecord) = MetadataRequest(MediaType.MOVIE, film.name, film.year, contentKey = film.key)
+
+    /** A record as the page draws it: artwork sized for where it is drawn (spec 41 §9.5). */
+    private fun toMetadata(record: MetadataRecord) = TitleMetadata(
+        title = record.title.ifBlank { null },
+        overview = record.overview,
+        backdropUrl = Artwork.url(record.backdrop, Artwork.BACKDROP),
+        posterUrl = Artwork.url(record.poster, Artwork.POSTER_WALL),
+        year = record.year,
+        runtimeMinutes = record.runtimeMinutes,
+        rating = record.rating,
+        cast = record.cast.map { CastCard(it.name, it.character?.ifBlank { null }, Artwork.url(it.profile, Artwork.PROFILE), Initials.of(it.name)) },
+        sourceName = record.provider.displayName,
+        sourceUrl = record.attributionUrl ?: record.provider.home,
+        detailsLoaded = record.detailsLoaded,
+        similar = record.similar.map { SimilarReference(it.externalId, it.title, it.alternativeTitles, it.year, it.poster) },
+    )
 }
 
-/** Where a details page goes: the player. */
-fun interface TitleNavigation {
+/** Where a details page goes: the player, another film page, a web page. */
+interface TitleNavigation {
     fun play(key: String, startMs: Long)
+
+    fun openFilm(key: String)
+
+    /** Opens [url] in whatever the TV has; nothing happens when it has nothing (VOD-FR-66). */
+    fun openUrl(url: String)
 }

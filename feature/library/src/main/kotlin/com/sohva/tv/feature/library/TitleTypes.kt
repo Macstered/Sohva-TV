@@ -7,6 +7,8 @@ import com.sohva.tv.core.data.database.SeriesRecord
 import com.sohva.tv.core.data.vod.Progress
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.vod.CopyLanguage
+import com.sohva.tv.core.model.vod.SimilarReference
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 
@@ -44,6 +46,79 @@ interface TitleEnvironment {
 
     /** "Wrong details?" (the match picker arrives with metadata, M4b). */
     fun wrongDetails()
+
+    /** What the metadata memory cache holds for the film, for the first frame (VOD-FR-60); never blocks. */
+    fun cachedFilmMetadata(film: FilmRecord): TitleMetadata?
+
+    /**
+     * The film page's details lookup (VOD-FR-60, spec 41 META-FR-37): null when metadata is off or
+     * nothing was found; failures are silent. A missing library poster is repaired from it.
+     */
+    suspend fun filmMetadata(film: FilmRecord): TitleMetadata?
+
+    /** The film's copies for the Versions row (VOD-FR-68). */
+    suspend fun versions(film: FilmRecord): List<VersionCard>
+
+    /** The library films that stand for TMDB's similar titles (VOD-FR-70, -71). */
+    suspend fun similar(film: FilmRecord, metadata: TitleMetadata): List<SimilarCard>
+
+    /** Pushes another film page (a Similar card, spec 40 §3). */
+    fun openFilm(key: String)
+
+    /** "Source: …" asks the platform to open the record's page; failure is ignored (VOD-FR-66). */
+    fun openUrl(url: String)
+}
+
+/**
+ * What metadata adds to a details page (spec 41 §4.9), formatted for drawing: artwork addresses
+ * already sized for where they are drawn (§9.5).
+ */
+@Immutable
+data class TitleMetadata(
+    val title: String?,
+    val overview: String?,
+    val backdropUrl: String?,
+    val posterUrl: String?,
+    val year: Int?,
+    val runtimeMinutes: Int?,
+    val rating: String?,
+    val cast: List<CastCard>,
+    /** "TMDB" or "TVmaze" for "Source: %1$s". */
+    val sourceName: String,
+    val sourceUrl: String,
+    /** True once the film details call answered: only then does Similar appear (VOD-FR-70). */
+    val detailsLoaded: Boolean,
+    val similar: List<SimilarReference>,
+)
+
+/** A cast member (VOD-FR-69): not focusable; initials under the photo. */
+@Immutable
+data class CastCard(val name: String, val character: String?, val photoUrl: String?, val initials: String)
+
+/** A copy on the Versions row (VOD-FR-68); the claims line is put together where it is drawn. */
+@Immutable
+data class VersionCard(
+    val key: String,
+    val sourceName: String,
+    val languages: List<CopyLanguage>,
+    val picture: List<String>,
+    /** The provider's full name, shown when the copy claims nothing. */
+    val name: String,
+    val current: Boolean,
+)
+
+/** A Similar card (VOD-FR-70): TMDB's title and year, TMDB's poster else the library's. */
+@Immutable
+data class SimilarCard(val key: String, val title: String, val year: Int?, val posterUrl: String?)
+
+/** The Similar row (VOD-FR-70): absent until the details lookup completes, then checking, then the cards. */
+sealed interface SimilarState {
+    data object Hidden : SimilarState
+
+    data object Checking : SimilarState
+
+    @Immutable
+    data class Ready(val cards: List<SimilarCard>) : SimilarState
 }
 
 /** The film page's local facts, computed once when it opens (VOD-FR-59…62). */
@@ -52,6 +127,8 @@ data class FilmPageState(
     val record: FilmRecord,
     val breadcrumbGroup: String?,
     val quality: List<String>,
+    /** The provider name cleaned by the matcher's search-title rule, the title before metadata (VOD-FR-61). */
+    val cleanTitle: String,
 )
 
 /** The series page's local facts (VOD-FR-73, -78). */

@@ -128,7 +128,7 @@ internal fun PosterCard(
  * as RGB_565 at the drawn size, no cross-fade; the request is cancelled when the card leaves.
  */
 @Composable
-private fun Poster(title: String, url: String?, px: IntSize) {
+internal fun Poster(title: String, url: String?, px: IntSize) {
     val loader = LocalArtwork.current
     var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
     var failed by remember(url) { mutableStateOf(url.isNullOrBlank()) }
@@ -162,7 +162,7 @@ private fun Chips(qualityMask: Int, modifier: Modifier) {
     }
 }
 
-private fun DrawScope.drawRing(color: Color) {
+internal fun DrawScope.drawRing(color: Color) {
     val stroke = 3.dp.toPx()
     drawRoundRect(
         color = color,
@@ -174,7 +174,7 @@ private fun DrawScope.drawRing(color: Color) {
 }
 
 /** Draws [bitmap] scaled to fill the box, cropped to its centre. */
-private fun DrawScope.drawCropped(bitmap: ImageBitmap) {
+internal fun DrawScope.drawCropped(bitmap: ImageBitmap) {
     val scale = maxOf(size.width / bitmap.width, size.height / bitmap.height)
     val srcW = (size.width / scale).toInt().coerceAtMost(bitmap.width)
     val srcH = (size.height / scale).toInt().coerceAtMost(bitmap.height)

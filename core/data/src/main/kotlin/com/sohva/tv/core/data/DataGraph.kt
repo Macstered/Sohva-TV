@@ -86,7 +86,7 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     /** Movie and series walls and progress (M4). Profiles arrive in M6; until then every row is the default profile's. */
     val walls: WallReads by lazy { WallReads(database, dispatchers.io) { DEFAULT_PROFILE } }
     val progress: ProgressStore by lazy { ProgressStore(database, dispatchers.io, SystemClock) { DEFAULT_PROFILE } }
-    val titles: TitleReads by lazy { TitleReads(database, dispatchers.io) }
+    val titles: TitleReads by lazy { TitleReads(database, dispatchers.io, SystemClock) }
 
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }

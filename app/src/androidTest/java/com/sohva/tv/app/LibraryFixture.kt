@@ -6,6 +6,7 @@ import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SeriesEntity
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
+import com.sohva.tv.core.model.metadata.TitleCleaner
 import com.sohva.tv.core.model.text.SortNames
 import kotlinx.coroutines.runBlocking
 
@@ -43,7 +44,7 @@ object LibraryFixture {
                     posterUrl = if (posters) "http://192.0.2.20/poster/$id.jpg" else null,
                     streamUrlEnc = graph.data.cipher.encrypt(stream(id)), plot = "A fictional film.",
                     providerOrder = n, genre = null, workKey = null, primaryCopy = true, visible = true, itemPosition = null,
-                    contentHash = 1, generation = 1,
+                    contentHash = 1, generation = 1, similarKey = TitleCleaner.normalizeTitle(name),
                 )
             }
             films.chunked(2_000).forEach { db.movieImport().insert(it) }

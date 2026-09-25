@@ -41,16 +41,17 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * The film page (spec 40 §4.10, layout §3): backdrop, breadcrumb, title, facts, synopsis, progress
- * and the action row, first focus on Resume or Watch. Versions, cast and Similar arrive with the
- * metadata stage (M4b). Back is the remote key; there is no on-screen Back.
+ * The film page (spec 40 §4.10, layout §3): backdrop, breadcrumb, title, facts, synopsis, progress,
+ * the action row (first focus on Resume or Watch), then Versions, Cast and Similar. Metadata
+ * replaces the provider's text where it has some. Back is the remote key; there is no on-screen Back.
  */
 @Composable
 fun FilmPage(model: FilmModel) = trace("Library:Film") {
     val page by model.page.collectAsStateWithLifecycle()
     val gone by model.gone.collectAsStateWithLifecycle()
+    val metadata by model.metadata.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize().testTag("screen-film")) {
-        DetailsBackdrop(null)
+        DetailsBackdrop(metadata?.backdropUrl)
         val state = page
         when {
             gone -> Text(
@@ -59,50 +60,63 @@ fun FilmPage(model: FilmModel) = trace("Library:Film") {
                 style = Sohva.typography.bodyLarge,
                 color = Sohva.palette.textMuted,
             )
-            state != null -> FilmColumn(model, state)
+            state != null -> FilmColumn(model, state, metadata)
         }
     }
 }
 
 @Composable
-private fun FilmColumn(model: FilmModel, page: FilmPageState) {
+private fun FilmColumn(model: FilmModel, page: FilmPageState, metadata: TitleMetadata?) {
     val progress by model.progress.collectAsStateWithLifecycle()
+    val versions by model.versions.collectAsStateWithLifecycle()
+    val similar by model.similar.collectAsStateWithLifecycle()
     val scroll = rememberScrollState()
     val record = page.record
+    // VOD-FR-61: the metadata title, else the background match's, else the cleaned provider name.
+    val title = metadata?.title ?: record.replacementTitle ?: page.cleanTitle
+    val runtime = metadata?.runtimeMinutes?.let { runtime(it * 60_000L) }
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 24.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SohvaTvBrand(fontSize = 22.sp)
             Spacer(Modifier.width(24.dp))
-            Breadcrumb(listOfNotNull(stringResource(R.string.catalogue_movies), page.breadcrumbGroup, record.name))
+            Breadcrumb(listOfNotNull(stringResource(R.string.catalogue_movies), page.breadcrumbGroup, title))
         }
         Spacer(Modifier.height(34.dp))
         Text(
-            record.name,
+            title,
             Modifier.fillMaxWidth(0.62f).testTag("details-title"),
             style = Sohva.typography.display.copy(fontWeight = FontWeight.Black),
             color = Sohva.palette.textPrimary,
             maxLines = 2,
         )
-        FactsRow(record.rating, listOfNotNull(record.year?.toString()), page.quality, Modifier.padding(top = 12.dp))
+        FactsRow(
+            metadata?.rating ?: record.rating,
+            listOfNotNull((metadata?.year ?: record.year)?.toString(), runtime),
+            page.quality,
+            Modifier.padding(top = 12.dp),
+        )
         Text(
-            record.plot?.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_details_available),
+            metadata?.overview ?: record.plot?.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_details_available),
             Modifier.fillMaxWidth(0.62f).padding(top = 16.dp),
             style = Sohva.typography.body,
             color = Sohva.palette.textMuted,
             maxLines = 4,
         )
         ProgressLine(progress, Modifier.padding(top = 18.dp))
-        FilmActions(model, progress, scroll)
+        FilmActions(model, progress, metadata?.sourceName, scroll)
+        VersionsRow(versions, model::playVersion)
+        CastRow(metadata?.cast.orEmpty())
+        SimilarRow(similar, model::openFilm)
     }
 }
 
 /**
  * Resume or Watch (first focus), Start from beginning with a position, Mark as watched or
- * unwatched, Wrong details? (VOD-FR-64…67). Focusing any of them scrolls the page to the top, one
+ * unwatched, "Source: …" with metadata, Wrong details? (VOD-FR-64…67). Focusing any of them scrolls the page to the top, one
  * frame after the platform's own bring-into-view (VOD-FR-72).
  */
 @Composable
-private fun FilmActions(model: FilmModel, progress: Progress?, scroll: ScrollState) {
+private fun FilmActions(model: FilmModel, progress: Progress?, source: String?, scroll: ScrollState) {
     val primary = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
     val toTop = Modifier.onFocusChanged { if (it.isFocused) scrollToTop(scope, scroll) }
@@ -124,6 +138,9 @@ private fun FilmActions(model: FilmModel, progress: Progress?, scroll: ScrollSta
             toTop.testTag("details-mark"),
             icon = TvIcons.Check,
         )
+        if (source != null) {
+            DetailsButton(stringResource(R.string.metadata_source, source), model::openSource, toTop.testTag("details-source"), icon = TvIcons.Info)
+        }
         DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.testTag("details-wrong"), icon = TvIcons.Search)
     }
     LaunchedEffect(Unit) { primary.requestFocusWhenAttached() }

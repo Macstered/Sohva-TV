@@ -1,0 +1,124 @@
+package com.sohva.tv.app
+
+import android.view.KeyEvent
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.sohva.tv.core.data.source.ServiceKeys
+import com.sohva.tv.feature.home.RailItem
+import kotlinx.coroutines.runBlocking
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.ExternalResource
+import org.junit.rules.RuleChain
+import org.junit.runner.RunWith
+
+/**
+ * Spec 40 §4.10 and spec 41 §11 "Film page": with TMDB on, the page takes the details' title,
+ * score, runtime and synopsis, shows "Source: TMDB", Versions, Cast and the Similar films the
+ * library has, repairs the missing poster, and a Similar card opens that film's page on top.
+ * TMDB is the test's own server.
+ */
+@RunWith(AndroidJUnit4::class)
+class FilmMetadataTest {
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val graph get() = (instrumentation.targetContext.applicationContext as SohvaApplication).graph
+    private val server = MockWebServer()
+    private val serverRule = object : ExternalResource() {
+        override fun before() {
+            server.dispatcher = object : Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse = when {
+                    request.url.encodedPath.endsWith("/search/movie") && request.url.queryParameter("query") == "Drama 0000" -> json(SEARCH)
+                    request.url.encodedPath.endsWith("/movie/949") -> json(DETAILS)
+                    else -> json("""{"results":[]}""")
+                }
+            }
+            server.start()
+            graph.metadata.useEndpoints(server.url("/3/"), server.url("/tvmaze/"))
+            LibraryFixture.seed(graph, perGroup = 6)
+            val db = graph.data.database.openHelper.writableDatabase
+            // Drama 0000 and Comedy 0000 are two copies of one film (VOD-FR-68).
+            db.execSQL("UPDATE movie SET work_key = 'tmdb:949' WHERE key IN ('${LibraryFixture.key(0)}', '${LibraryFixture.key(6)}')")
+            runBlocking {
+                graph.data.secrets.write(ServiceKeys.TMDB_TOKEN, "fictional-token")
+                graph.data.secrets.write(ServiceKeys.TMDB_ENABLED, "true")
+                graph.metadata.settings.reload()
+            }
+        }
+
+        override fun after() = server.close()
+    }
+    private val compose = createAndroidComposeRule<MainActivity>()
+
+    @get:Rule
+    val rules: RuleChain = RuleChain.outerRule(ClearStateRule()).around(serverRule).around(compose)
+
+    private fun json(body: String) = MockResponse.Builder().addHeader("Content-Type", "application/json").body(body).build()
+
+    private fun exists(tag: String) = compose.onAllNodesWithTagExists(tag)
+
+    private fun awaitFocus(tag: String, timeout: Long = 10_000) {
+        compose.waitUntil(timeout) { runCatching { compose.onNodeWithTag(tag).assertIsFocused() }.isSuccess }
+    }
+
+    private fun text(tag: String): String = runCatching {
+        compose.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
+    }.getOrDefault("")
+
+    private fun focusAndPress(tag: String) {
+        compose.waitUntil(10_000) { exists(tag) }
+        compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus(tag)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun theDetailsFillThePageAndSimilarOpensAnotherFilm() {
+        focusAndPress(RailItem.MOVIES.tag)
+        focusAndPress("library-row-group:drama")
+        focusAndPress("library-card-${LibraryFixture.key(0)}")
+        compose.waitUntil(10_000) { exists("screen-film") }
+        awaitFocus("details-watch")
+        compose.waitUntil(15_000) { text("details-title") == "Harbour Lights" }
+        assertTrue(text("details-source"), text("details-source").contains("TMDB"))
+        assertTrue(exists("details-cast"))
+        assertTrue(exists("details-version-${LibraryFixture.key(0)}") && exists("details-version-${LibraryFixture.key(6)}"))
+        // Data arriving never moves focus (AGENTS 5.2).
+        awaitFocus("details-watch")
+        // The film had no poster: the details' poster stands in for it (META-FR-71).
+        val repaired = graph.data.database.openHelper.readableDatabase
+            .query("SELECT replacement_poster, replace_poster FROM movie WHERE key = '${LibraryFixture.key(0)}'")
+            .use { it.moveToFirst(); it.getString(0) to it.getInt(1) }
+        assertEquals("/harbour.jpg" to 1, repaired)
+        // TMDB names Drama 0003 (2003) as similar; the library has it. Drama 0004 has another year.
+        val similar = "details-similar-${LibraryFixture.key(3)}"
+        compose.waitUntil(10_000) { exists(similar) }
+        assertTrue(!exists("details-similar-${LibraryFixture.key(4)}"))
+        focusAndPress(similar)
+        compose.waitUntil(10_000) { text("details-title") == "Drama 0003" }
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { text("details-title") == "Harbour Lights" }
+    }
+
+    private companion object {
+        const val SEARCH = """{"results":[{"id":949,"title":"Drama 0000","release_date":"2000-03-01","popularity":12.5,"genre_ids":[18]}]}"""
+        const val DETAILS = """{"id":949,"title":"Harbour Lights","overview":"A keeper waits for a ship that never comes.",""" +
+            """"poster_path":"/harbour.jpg","release_date":"2000-03-01","runtime":125,"vote_average":7.84,"genres":[{"id":18}],""" +
+            """"credits":{"cast":[{"name":"Aino Example","character":"Keeper"},{"name":"Otto Sample","character":"Captain"}]},""" +
+            """"similar":{"results":[{"id":1003,"title":"Drama 0003","release_date":"2003-06-01"},""" +
+            """{"id":1004,"title":"Drama 0004","release_date":"1990-06-01"}]}}"""
+    }
+}

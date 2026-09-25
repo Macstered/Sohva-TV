@@ -89,12 +89,12 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             ChannelsScreen(model, onBack = { back() })
         }
         is AppRoute.FilmDetails -> {
-            val play = remember(stack) { vodStarter(stack) }
+            val play = remember(stack, graph) { vodStarter(stack, graph) }
             val model = viewModel { FilmModel(AppTitleEnvironment(graph, play), route.key) }
             FilmPage(model)
         }
         is AppRoute.SeriesDetails -> {
-            val play = remember(stack) { vodStarter(stack) }
+            val play = remember(stack, graph) { vodStarter(stack, graph) }
             val model = viewModel { SeriesModel(AppTitleEnvironment(graph, play), route.key) }
             SeriesPage(model)
         }
@@ -178,8 +178,24 @@ private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>,
     }.exceptionOrNull()
 }
 
-/** Details pages open the VOD player over themselves (spec 30 §3.1). */
-private fun vodStarter(stack: BackStack<AppRoute>) = TitleNavigation { key, startMs -> stack.push(AppRoute.VodPlayer(key, startMs)) }
+/**
+ * Details pages open the VOD player over themselves (spec 30 §3.1), a Similar card another film
+ * page on top (spec 40 §3), and "Source: …" the record's web page in whatever the TV has.
+ */
+private fun vodStarter(stack: BackStack<AppRoute>, graph: AppGraph) = object : TitleNavigation {
+    override fun play(key: String, startMs: Long) {
+        stack.push(AppRoute.VodPlayer(key, startMs))
+    }
+
+    override fun openFilm(key: String) {
+        stack.push(AppRoute.FilmDetails(key))
+    }
+
+    override fun openUrl(url: String) {
+        // A TV without a browser has nothing to open it with; the page stays as it was (VOD-FR-66).
+        runCatching { graph.app.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+}
 
 /**
  * The VOD player's exits (spec 30 §3.2, PLAY-FR-132): Back pops to the page that started it. At
