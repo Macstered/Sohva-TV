@@ -2,6 +2,7 @@ package com.sohva.tv.feature.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tracing.Trace
 import com.sohva.tv.core.data.vod.RailGroup
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
@@ -190,6 +191,8 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         edgeJob?.cancel()
         _wall.update { if (it.destination == destination) it.copy(current = false, failed = false) else it.copy(destination = destination, current = false, failed = false) }
         loadJob = viewModelScope.launch {
+            // From the request to the published first page: the wall's open time in traces (spec 40 §9.1).
+            Trace.beginAsyncSection(LOAD_SECTION, mine)
             try {
                 val page = env.page(destination, _search.value, null, true, WallWindow.PAGE)
                 if (mine == serial) _wall.value = WallState(destination, WallWindow.of(page), current = true, failed = false)
@@ -198,6 +201,8 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
             } catch (e: Exception) {
                 // The detail goes to the diagnostics log; the screen says the plain sentence (VOD-FR-15).
                 if (mine == serial) _wall.update { it.copy(current = false, failed = true) }
+            } finally {
+                Trace.endAsyncSection(LOAD_SECTION, mine)
             }
         }
     }
@@ -286,5 +291,6 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         const val SEARCH_MAX: Int = 80
         const val SEARCH_DEBOUNCE_MS: Long = 250
         const val CHANGE_QUIET_MS: Long = 500
+        const val LOAD_SECTION: String = "Library:Load"
     }
 }
