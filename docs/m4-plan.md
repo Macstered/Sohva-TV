@@ -91,3 +91,30 @@ takes it and the owner can overrule it at the checkpoint:
 3. The pager and the wall screen (Movies and Series), the rail with groups and History.
 4. Film page, series page, episodes from `get_series_info`, progress, the VOD player path.
 5. Owner-scale measurement of the walls (200,000 films), then stage M4b.
+
+## Status (25 September 2026, end of the night session)
+
+M4a is mostly built and tested; M4b and M4c have not started.
+
+Done, with tests:
+- Pure rules (step 1): watched rule, claims and preference, quality chips, genres, groups of your
+  own, year / breadcrumb / episode title / rating rules (25 JVM tests).
+- Schema v5 (step 2): claim columns, wall indexes, `watch_progress`; migration test on API 30; plan
+  tests for every wall page, History, progress and tick reads.
+- The wall (step 3): History, provider groups merged across sources, search inside a group, the
+  Options sheet with Refresh, the window pager (5 × 120), left-to-rail, a held key that never
+  skips, watched ticks (`LibraryWallTest`, API 30 and 34).
+- Pages and playback (step 4): film and series pages, episodes from `get_series_info`, marks,
+  Mark season as watched, VOD playback with progress every 10 s and on stop, a finished film back
+  to its page, a finished episode on to the next (`LibraryPlaybackTest`, API 30 and 34).
+- Exit criterion 1 measured: 200,000 films, first page of the 40,000 group in 2.6 ms, 2.67 ms
+  main-thread CPU per press (budget 11), app heap 20 MB (docs/performance-log.md).
+- Exit criterion 4 met: a finished film returns to its details (`LibraryPlaybackTest`).
+
+Still open in M4a: the transient-empty guard (VOD-FR-16), copy folding and "×N" (needs the
+identity pass, M4b), Genre rows and counts (M4b), the Continue watching feed for Home (VOD-FR-99),
+VOD audio and subtitle language preferences (PLAY-19), the "Wrong details?" picker (M4b),
+Versions / cast / Similar (M4b), the next-episode setting's Settings row (M7).
+
+Owner questions still open for M4b and M4c: spec 41 Q1–Q10 and spec 42 Q1–Q8 (the specs'
+proposed answers will be taken as each stage starts unless the owner says otherwise).
