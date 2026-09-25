@@ -166,7 +166,7 @@ private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: Scroll
     val scope = rememberCoroutineScope()
     val toTop = Modifier.onFocusChanged { if (it.isFocused) scrollToTop(scope, scroll) }
     val resume = card?.progress?.resumeMs?.takeIf { it > 0 }
-    Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    ActionRow {
         if (card != null) {
             DetailsButton(
                 stringResource(if (resume != null) R.string.series_continue_episode else R.string.series_watch_episode),

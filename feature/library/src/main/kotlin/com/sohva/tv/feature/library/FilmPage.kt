@@ -1,7 +1,6 @@
 package com.sohva.tv.feature.library
 
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -108,7 +107,7 @@ private fun FilmActions(model: FilmModel, progress: Progress?, scroll: ScrollSta
     val scope = rememberCoroutineScope()
     val toTop = Modifier.onFocusChanged { if (it.isFocused) scrollToTop(scope, scroll) }
     val resume = progress?.resumeMs?.takeIf { it > 0 }
-    Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    ActionRow {
         DetailsButton(
             stringResource(if (resume != null) R.string.details_resume else R.string.action_watch),
             model::watch,

@@ -4,12 +4,15 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -192,9 +195,18 @@ internal fun DetailsButton(
                 Icon(icon, size = 18.dp, tint = colors.content)
                 Spacer(Modifier.width(10.dp))
             }
-            Text(label, style = Sohva.typography.body.copy(fontWeight = FontWeight.Bold), color = colors.content)
+            Text(label, style = Sohva.typography.body.copy(fontWeight = FontWeight.Bold), color = colors.content, maxLines = 1)
         }
     }
+}
+
+/**
+ * The action row (layout §3 "Actions"): 12 dp apart on one line, scrolling sideways when the
+ * buttons are wider than the page (a series with a started episode has six).
+ */
+@Composable
+internal fun ActionRow(modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(modifier.padding(top = 18.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp), content = content)
 }
 
 /** A section heading: headline Bold, 30 dp above and 14 below (layout §3). */
