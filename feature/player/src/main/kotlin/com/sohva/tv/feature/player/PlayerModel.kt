@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.player
 
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,12 +31,24 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * The live player's state holder (spec 30 §9 "a plain state holder class plus small
- * composables"): the controller, the playing channel, the overlays' flags and their timers.
- * Overlays are composed only while their flag is up; nothing here ticks while they are hidden.
+ * The player's state holder (spec 30 §9 "a plain state holder class plus small composables"):
+ * the controller, the playing channel, the overlays' flags and their timers. Overlays are
+ * composed only while their flag is up; nothing here ticks while they are hidden. With an
+ * [archive] window it plays that programme from the provider's archive (spec 22): the transport
+ * controls replace the live box and channels do not change.
  */
 @OptIn(UnstableApi::class)
-class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, val navigation: PlayerNavigation) : ViewModel() {
+class PlayerModel(
+    private val env: PlayerEnvironmentUi,
+    firstChannel: String,
+    val navigation: PlayerNavigation,
+    val archive: ArchiveWindow? = null,
+    /** False when a reminder or a notification started playback: not a recent channel (CHAN-FR-61). */
+    private val recordFirst: Boolean = true,
+) : ViewModel() {
+    /** Live TV, as opposed to catch-up ("timeshift" in spec 31). */
+    val live: Boolean get() = archive == null
+
     private val reads = env.reads
 
     private val _connection = MutableStateFlow(Connection.CONNECTING)
@@ -88,6 +101,7 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
     val channels = PlayerChannels(this, reads, viewModelScope)
     val dial = PlayerDial(this, reads, viewModelScope)
     val keys = PlayerKeys(this)
+    val transport = PlayerTransport(this, viewModelScope)
 
     /** The action row asks for focus when Up/Down step into the box (PLAY-FR-45); serial = a new request. */
     private val _boxFocus = MutableStateFlow(0)
@@ -115,12 +129,14 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
     private val listener = Listener()
 
     init {
+        viewModelScope.launch { env.remoteMapping.collect(keys::useMapping) }
         viewModelScope.launch {
             settings = env.settings()
+            transport.useStep(settings.skipStep)
             try {
                 controller = env.client.connect(listener).also { it.addListener(listener) }
                 _connection.value = Connection.READY
-                play(firstChannel, record = true)
+                play(firstChannel, record = recordFirst)
             } catch (e: Exception) {
                 _connection.value = Connection.FAILED
             }
@@ -150,13 +166,24 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
             _banner.value = null
             c.stop()
             c.clearMediaItems()
-            c.setMediaItem(MediaItem.Builder().setMediaId(key).build())
+            c.setMediaItem(itemFor(key))
             c.prepare()
             c.play()
             if (record) env.recordWatched(key)
             channels.onPlaying(channel)
             reveal()
         }
+    }
+
+    /** A catch-up item carries the programme's times for the service (spec 22 CATCH-FR-40). */
+    private fun itemFor(key: String): MediaItem {
+        val builder = MediaItem.Builder().setMediaId(key)
+        val window = archive ?: return builder.build()
+        val extras = Bundle().apply {
+            putLong(PlaybackService.EXTRA_ARCHIVE_START, window.start)
+            putLong(PlaybackService.EXTRA_ARCHIVE_STOP, window.stop)
+        }
+        return builder.setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build()
     }
 
     private suspend fun format(channel: LiveChannel): Playing = kotlinx.coroutines.withContext(env.format) {
@@ -175,8 +202,12 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
 
     // ---- Chrome ----------------------------------------------------------------------------------
 
-    /** Shows the live box for 5 s (PLAY-FR-43); not while the channel list is open. */
+    /** Shows the live box for 5 s (PLAY-FR-43), or in catch-up the transport controls; not while the channel list is open. */
     fun reveal() {
+        if (!live) {
+            transport.show(focusPlay = false)
+            return
+        }
         if (channels.open.value) return
         _box.value = true
         restartBoxTimer()
@@ -245,7 +276,7 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
 
     fun closePicker() {
         _picker.value = null
-        reveal()
+        afterOverlay()
     }
 
     fun openQuickActions() {
@@ -255,7 +286,12 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
 
     fun closeQuickActions() {
         _quick.value = false
-        reveal()
+        afterOverlay()
+    }
+
+    /** Closing an overlay reveals the chrome; in catch-up focus goes to Play/Pause (PLAY-FR-09). */
+    private fun afterOverlay() {
+        if (live) reveal() else transport.show(focusPlay = true)
     }
 
     // ---- Tracks (PLAY-FR-70..74) -----------------------------------------------------------------

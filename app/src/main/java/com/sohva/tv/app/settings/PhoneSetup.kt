@@ -6,6 +6,8 @@ import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.AppLocales
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.app.channels.ChannelLogoStore
+import com.sohva.tv.core.net.phone.LogoPageTexts
 import com.sohva.tv.core.net.phone.PhoneAnswers
 import com.sohva.tv.core.net.phone.PhonePageTexts
 import com.sohva.tv.core.net.phone.PhoneReceiver
@@ -25,11 +27,14 @@ import kotlinx.coroutines.runBlocking
 class PhoneSetup(private val graph: AppGraph) {
     val server: PhoneServer by lazy { PhoneServer(ResourceAnswers(graph.app), Receiver()) }
 
+    /** Phone-sent channel logos (spec 21 CHAN-FR-42). */
+    val logos: ChannelLogoStore by lazy { ChannelLogoStore(graph.app) }
+
     fun state(): Flow<PhoneSetupState> = server.state.map { state ->
         when (state) {
             PhoneState.Stopped -> PhoneSetupState.Closed
             PhoneState.NoNetwork -> PhoneSetupState.NoNetwork
-            is PhoneState.Running -> PhoneSetupState.Open(state.url, state.received, state.lastSource, state.lastWasKeys)
+            is PhoneState.Running -> PhoneSetupState.Open(state.url, state.received, state.lastSource, state.lastWasKeys, state.logoSaved)
         }
     }
 
@@ -49,6 +54,12 @@ class PhoneSetup(private val graph: AppGraph) {
                     val tmdb = submission.tmdbToken?.let { keys.saveTmdb(it) }
                     val sports = submission.apiSportsKey?.let { keys.saveApiSports(it) }
                     tmdb !is Outcome.Failed && sports !is Outcome.Failed
+                }
+                // A refused picture leaves the old logo (CHAN-FR-43).
+                is PhoneSubmission.Logo -> {
+                    val address = logos.save(submission.channelKey, submission.png)
+                    if (address != null) graph.data.channelEdits.setLogo(submission.channelKey, address)
+                    address != null
                 }
             }
         }
@@ -93,4 +104,18 @@ private class ResourceAnswers(private val app: Context) : PhoneAnswers {
     override fun forbidden(): String = context().getString(R.string.phone_setup_page_forbidden)
 
     override fun badRequest(): String = context().getString(R.string.phone_setup_page_bad_request)
+
+    override fun logoPage(channelName: String): LogoPageTexts {
+        val c = context()
+        return LogoPageTexts(
+            languageTag = (ConfigurationCompat.getLocales(c.resources.configuration)[0] ?: java.util.Locale.ENGLISH).toLanguageTag(),
+            title = c.getString(R.string.phone_setup_page_logo_title, channelName),
+            help = c.getString(R.string.phone_setup_page_logo_help),
+            choose = c.getString(R.string.phone_setup_page_logo_choose),
+            sending = c.getString(R.string.phone_setup_page_logo_sending),
+            invalid = c.getString(R.string.phone_setup_page_logo_invalid),
+        )
+    }
+
+    override fun logoSaved(channelName: String): String = context().getString(R.string.phone_setup_page_logo_saved, channelName)
 }

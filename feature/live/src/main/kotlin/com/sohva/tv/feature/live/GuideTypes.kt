@@ -19,9 +19,22 @@ data class GuideRowData(
     val numberValue: Int?,
     val feed: String,
     val initials: String,
+    /**
+     * How many days back the provider's archive reaches, 0 when the channel offers no catch-up that
+     * can play. Worked out once when the row is prepared (spec 22 CATCH-NFR-02).
+     */
+    val archiveDays: Int = 0,
 ) {
     val key: String get() = channel.key
     val name: String get() = channel.name
+
+    /** CATCH-FR-10's window: started, and no longer ago than the archive reaches. */
+    fun offersArchive(programme: GuideProgramme, now: Long): Boolean =
+        archiveDays > 0 && programme.start <= now && programme.start >= now - archiveDays * DAY_MS
+
+    private companion object {
+        const val DAY_MS = 24L * 60 * 60 * 1000
+    }
 }
 
 /**
@@ -59,6 +72,11 @@ sealed interface RailEntry {
 
     data class Group(val group: LiveGroup) : RailEntry {
         override val id: String = "group:" + group.groupKey
+    }
+
+    /** One of the household's channel lists (spec 21 CHAN-28), after Recently watched. */
+    data class CustomList(val listId: String, val name: String) : RailEntry {
+        override val id: String = "list:$listId"
     }
 }
 

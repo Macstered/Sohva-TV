@@ -6,16 +6,25 @@ import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.BuildConfig
 import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
+import com.sohva.tv.core.model.guide.CatchupRules
 import com.sohva.tv.core.model.player.PlaybackSettings
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.player.UserAgents
 import com.sohva.tv.core.model.time.Clock
+import com.sohva.tv.core.net.catchup.CatchupAddress
+import com.sohva.tv.core.net.catchup.CatchupRequest
+import com.sohva.tv.core.player.ArchiveResult
 import com.sohva.tv.core.player.PlaybackClient
 import com.sohva.tv.core.player.PlayerEnvironment
 import com.sohva.tv.core.player.ResolvedStream
 import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerEnvironmentUi
+import com.sohva.tv.ui.design.R
+import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 
@@ -49,6 +58,20 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         ResolvedStream(row.key, address, row.sourceId, row.sourceName, row.connectionLimit, row.name, row.userAgent, row.referrer)
     }
 
+    override suspend fun resolveArchive(channelKey: String, start: Long, stop: Long): ArchiveResult = withContext(io) {
+        val row = graph.data.live.playable(channelKey) ?: return@withContext ArchiveResult.Gone
+        val now = graph.clock.wallMillis()
+        // The guide offered it, but the clock may have moved past the archive's reach since (CATCH-FR-41).
+        if (!CatchupRules.offers(row.catchupType, row.catchupDays, !row.catchupSource.isNullOrBlank(), start, now)) {
+            return@withContext ArchiveResult.Unavailable
+        }
+        val live = runCatching { graph.data.cipher.decrypt(row.streamUrlEnc) }.getOrNull() ?: return@withContext ArchiveResult.Gone
+        val request = CatchupRequest(live, row.catchupType, row.catchupSource, row.xtreamStreamId, row.catchupTz, ZoneId.systemDefault(), start, stop, now)
+        val address = CatchupAddress.build(request) ?: return@withContext ArchiveResult.Unavailable
+        val title = graph.app.getString(R.string.player_archive_title, row.name)
+        ArchiveResult.Ready(ResolvedStream(row.key, address, row.sourceId, row.sourceName, row.connectionLimit, title, row.userAgent, row.referrer))
+    }
+
     override suspend fun settings(): PlaybackSettings = withContext(io) { graph.data.preferences.playback() }
 
     override fun setPlaybackActive(active: Boolean) {
@@ -64,6 +87,8 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
         override suspend fun settings(): PlaybackSettings = this@PlayerGraph.settings()
+
+        override val remoteMapping: Flow<RemoteMapping> = graph.data.preferences.remoteMapping.flowOn(io)
 
         override suspend fun recordWatched(channelKey: String) = withContext(io) {
             graph.data.live.recordWatched(channelKey)

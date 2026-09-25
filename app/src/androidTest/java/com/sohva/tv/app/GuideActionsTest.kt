@@ -78,8 +78,10 @@ class GuideActionsTest {
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(5_000) { exists("guide-actions") }
         awaitFocus("guide-actions-watch")
+        // Remind me sits between Watch and Favourite for a programme that has not started (GUIDE-FR-79).
+        assertTrue(exists("guide-actions-reminder"))
         // The favourite row toggles in place and the dialog stays.
-        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        press(KeyEvent.KEYCODE_DPAD_DOWN, 2)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("Favourite") }
         assertTrue(exists("guide-actions"))

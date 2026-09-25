@@ -3,6 +3,7 @@ package com.sohva.tv.feature.live
 import com.sohva.tv.core.data.live.ChannelList
 import com.sohva.tv.core.data.live.ListSpec
 import com.sohva.tv.core.data.live.LiveReads
+import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
 import java.util.Locale
@@ -40,13 +41,28 @@ interface GuideEnvironment {
     fun keptList(spec: ListSpec): ChannelList?
 
     fun keepList(list: ChannelList)
+
+    /** Whether this build has reminders at all (spec 22 REM-15: none in the Lab build). */
+    val remindersOn: Boolean
+
+    /** The stored reminder ids, for "Reminder set" (REM-NFR-03). */
+    val reminderIds: Flow<Set<String>>
+
+    /** Adds or removes the reminder (REM-FR-04); true when it was added. */
+    suspend fun toggleReminder(reminder: Reminder): Boolean
 }
 
 /** Where the guide sends the viewer; implemented by the app's router. */
 interface GuideNavigation {
     fun play(channelKey: String)
 
+    /** A programme from the provider's archive, from its start to its stop (spec 22 CATCH-02…04). */
+    fun playArchive(channelKey: String, start: Long, stop: Long)
+
     fun openSettings()
+
+    /** Options › Edit (channels): channel management (spec 21 CHAN-01). */
+    fun openChannels()
 
     /** Options › Sort, Edit (groups) and Edit (channels) until their milestones (M3, M4). */
     fun notYetAvailable()

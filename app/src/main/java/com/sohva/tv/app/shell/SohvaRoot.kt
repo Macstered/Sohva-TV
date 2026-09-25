@@ -21,6 +21,7 @@ import androidx.tracing.trace
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRouteCodec
 import com.sohva.tv.app.navigation.startRoutes
+import com.sohva.tv.app.reminder.ReminderLayer
 import com.sohva.tv.core.data.device.DeviceTierReader
 import com.sohva.tv.core.model.device.DeviceTier
 import com.sohva.tv.core.model.settings.StartSnapshot
@@ -92,6 +93,8 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
                 CompositionLocalProvider(LocalArtwork provides graph.artwork) {
                     NavHost(stack) { route -> AppDestination(route, stack, graph) }
                 }
+                // Due reminders and notification taps, over whatever screen is up (spec 22 REM-FR-21).
+                ReminderLayer(graph, stack)
             }
         }
     }

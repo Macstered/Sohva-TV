@@ -22,9 +22,24 @@ sealed interface PhoneState {
     /** No site-local IPv4 address to serve on. */
     data object NoNetwork : PhoneState
 
-    /** [url] carries the token in its fragment; show it only on the TV screen. */
-    data class Running(val url: String, val received: Int = 0, val lastSource: String? = null, val lastWasKeys: Boolean = false) : PhoneState {
+    /** [url] carries the token in its fragment; show it only on the TV screen. [logoSaved]: a logo arrived (logo mode). */
+    data class Running(
+        val url: String,
+        val received: Int = 0,
+        val lastSource: String? = null,
+        val lastWasKeys: Boolean = false,
+        val logoSaved: Boolean = false,
+    ) : PhoneState {
         override fun toString(): String = "Running(received=$received)"
+    }
+}
+
+/** What the page offers: the Sources forms, or one picture for one channel's logo (spec 21 CHAN-FR-40). */
+sealed interface PhoneMode {
+    data object Sources : PhoneMode
+
+    class Logo(val channelKey: String, val channelName: String) : PhoneMode {
+        override fun toString(): String = "Logo"
     }
 }
 
@@ -43,6 +58,11 @@ interface PhoneAnswers {
     fun forbidden(): String
 
     fun badRequest(): String
+
+    /** The logo page's texts for [channelName] (CHAN-FR-41). */
+    fun logoPage(channelName: String): LogoPageTexts
+
+    fun logoSaved(channelName: String): String
 }
 
 /** Saves what the phone sent; called on the server thread, blocking until done (PHONE-FR-31). */
@@ -69,10 +89,25 @@ class PhoneServer(
 
     @Volatile private var socket: ServerSocket? = null
 
-    /** Starts serving on [address]; a running page keeps running (PHONE-FR-05). Call off the main thread. */
+    @Volatile private var mode: PhoneMode = PhoneMode.Sources
+
+    private fun sameMode(other: PhoneMode): Boolean {
+        val current = mode
+        return when {
+            current is PhoneMode.Logo && other is PhoneMode.Logo -> current.channelKey == other.channelKey
+            else -> current::class == other::class
+        }
+    }
+
+    /**
+     * Starts serving [mode] on [address]; a running page in the same mode keeps running (PHONE-FR-05),
+     * another mode restarts it. Call off the main thread.
+     */
     @Synchronized
-    fun start(address: Inet4Address?) {
-        if (stateFlow.value is PhoneState.Running) return
+    fun start(address: Inet4Address?, mode: PhoneMode = PhoneMode.Sources) {
+        if (stateFlow.value is PhoneState.Running && sameMode(mode)) return
+        stop()
+        this.mode = mode
         if (address == null) {
             stateFlow.value = PhoneState.NoNetwork
             return
@@ -82,7 +117,7 @@ class PhoneServer(
         val host = "${address.hostAddress}:${server.localPort}"
         socket = server
         stateFlow.value = PhoneState.Running("http://$host/#$token")
-        val session = Session(server, host, token)
+        val session = Session(server, host, token, mode)
         thread(isDaemon = true, name = "sohva-phone-setup") { session.serve() }
     }
 
@@ -94,7 +129,7 @@ class PhoneServer(
         stateFlow.value = PhoneState.Stopped
     }
 
-    private inner class Session(private val server: ServerSocket, private val host: String, token: String) {
+    private inner class Session(private val server: ServerSocket, private val host: String, token: String, private val mode: PhoneMode) {
         private val bearer = "Bearer $token".toByteArray(Charsets.US_ASCII)
         private val origin = "http://$host"
         private val saved = HashSet<PhoneSubmission>()
@@ -121,13 +156,13 @@ class PhoneServer(
             client.soTimeout = READ_TIMEOUT_MS
             val out = client.getOutputStream()
             val request = try {
-                PhoneRequest.read(client.getInputStream(), MAX_BODY, System.nanoTime() + REQUEST_BUDGET_NANOS)
+                PhoneRequest.read(client.getInputStream(), if (mode is PhoneMode.Logo) MAX_LOGO_BODY else MAX_BODY, System.nanoTime() + REQUEST_BUDGET_NANOS)
             } catch (_: IOException) {
                 return respond(out, 400, answers.badRequest())
             }
             if (request.headers["host"] != host) return respond(out, 403, answers.forbidden())
             when {
-                request.path == "/" && request.method == "GET" -> respond(out, 200, PhonePage.sources(answers.page()), html = true)
+                request.path == "/" && request.method == "GET" -> respond(out, 200, page(), html = true)
                 request.path == "/submit" && request.method == "POST" -> submit(out, request)
                 request.path == "/" || request.path == "/submit" -> respond(out, 405, answers.badRequest())
                 else -> respond(out, 404, answers.badRequest())
@@ -141,6 +176,12 @@ class PhoneServer(
             val type = request.headers["content-type"].orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
             if (type != FORM) return respond(out, 400, answers.badRequest())
             val submission = PhoneSubmission.parse(PhoneRequest.form(request.body)) ?: return respond(out, 400, answers.invalid())
+            // Each mode takes only its own kind: a logo only for the channel the page was opened for (CHAN-FR-42).
+            val fits = when (mode) {
+                PhoneMode.Sources -> submission !is PhoneSubmission.Logo
+                is PhoneMode.Logo -> submission is PhoneSubmission.Logo && submission.channelKey == mode.channelKey
+            }
+            if (!fits) return respond(out, 403, answers.forbidden())
             // Sending the same thing twice in a session saves it once (PHONE-FR-31 rebuild rule).
             if (submission !in saved) {
                 if (!receiver.receive(submission)) return respond(out, 500, answers.failed())
@@ -152,6 +193,7 @@ class PhoneServer(
                         when (submission) {
                             is PhoneSubmission.NewSource -> s.copy(received = s.received + 1, lastSource = submission.config.source.name, lastWasKeys = false)
                             is PhoneSubmission.Keys -> s.copy(received = s.received + 1, lastWasKeys = true)
+                            is PhoneSubmission.Logo -> s.copy(received = s.received + 1, logoSaved = true)
                         }
                     }
                 }
@@ -159,8 +201,14 @@ class PhoneServer(
             val answer = when (submission) {
                 is PhoneSubmission.NewSource -> answers.saved(submission.config.source.name)
                 is PhoneSubmission.Keys -> answers.keysSaved()
+                is PhoneSubmission.Logo -> answers.logoSaved((mode as PhoneMode.Logo).channelName)
             }
             respond(out, 200, answer)
+        }
+
+        private fun page(): String = when (val m = mode) {
+            PhoneMode.Sources -> PhonePage.sources(answers.page())
+            is PhoneMode.Logo -> PhonePage.logo(answers.logoPage(m.channelName), m.channelKey)
         }
 
         private fun respond(out: OutputStream, code: Int, body: String, html: Boolean = false) {
@@ -184,6 +232,9 @@ class PhoneServer(
     companion object {
         const val LIFETIME_MILLIS: Long = 15 * 60 * 1_000L
         const val MAX_BODY: Int = 16_384
+
+        /** A picture posted as a PNG data URL, already shrunk by the phone (CHAN-FR-42). */
+        const val MAX_LOGO_BODY: Int = 1_500_000
         private const val BACKLOG = 4
         private const val ACCEPT_TIMEOUT_MS = 1_000
         private const val READ_TIMEOUT_MS = 5_000

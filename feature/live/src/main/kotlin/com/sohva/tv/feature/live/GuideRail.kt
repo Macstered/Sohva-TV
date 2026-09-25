@@ -129,5 +129,6 @@ private fun railLabel(entry: RailEntry): String = when (entry) {
     RailEntry.All -> stringResource(R.string.guide_all_channels)
     RailEntry.Recent -> stringResource(R.string.guide_filter_recent)
     is RailEntry.Group -> entry.group.name
+    is RailEntry.CustomList -> entry.name
 }
 

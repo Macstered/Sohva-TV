@@ -7,6 +7,10 @@ import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
+import com.sohva.tv.core.model.player.Gesture
+import com.sohva.tv.core.model.player.RemoteAction
+import com.sohva.tv.core.model.player.RemoteButton
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.ImportRoute
 import com.sohva.tv.core.model.source.RefreshKind
@@ -54,6 +58,9 @@ data class SettingsState(
     val busy: Boolean = false,
     val messages: Map<SettingsSection, SettingsMessage> = emptyMap(),
     val refreshInterval: RefreshInterval = RefreshInterval.TWENTY_FOUR_HOURS,
+    val remote: RemoteMapping = RemoteMapping.DEFAULTS,
+    /** "Reminders can open Sohva TV": null when the build has no reminders (REM-FR-34). */
+    val remindersCanOpen: Boolean? = null,
     val phone: PhoneSetupState = PhoneSetupState.Closed,
     /** The phone page's code, once built for its current address. */
     val qr: QrMatrix? = null,
@@ -91,6 +98,7 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
             }
         }
         viewModelScope.launch { services.refreshInterval().collect { value -> state.update { it.copy(refreshInterval = value) } } }
+        viewModelScope.launch { services.remoteMapping().collect { value -> state.update { it.copy(remote = value) } } }
         viewModelScope.launch { services.phoneSetup().collect(::onPhoneSetup) }
         viewModelScope.launch {
             // One plain sentence in Playlists when beta 23's sources could not be read.
@@ -100,6 +108,19 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     }
 
     fun openPhoneSetup() = services.openPhoneSetup()
+
+    /** Read again whenever the screen resumes, so coming back from the TV settings updates it (REM-FR-34). */
+    fun refreshReminderAccess() = state.update { it.copy(remindersCanOpen = services.remindersCanOpen()) }
+
+    fun openOverlaySettings() = services.openOverlaySettings()
+
+    fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) {
+        viewModelScope.launch { services.setRemoteAction(button, gesture, action) }
+    }
+
+    fun resetRemoteMapping() {
+        viewModelScope.launch { services.resetRemoteMapping() }
+    }
 
     /** Back or "Close the phone page": the page stops and the dialog closes (PHONE-FR-02). */
     fun closePhoneSetup() = services.closePhoneSetup()

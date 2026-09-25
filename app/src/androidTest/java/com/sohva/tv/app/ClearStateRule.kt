@@ -32,10 +32,15 @@ class ClearStateRule : ExternalResource() {
             graph.data.preferences.resetToDefaults()
             graph.data.sources.all().forEach { graph.sync.runner.remove(it.id) }
             // Favourites and recents outlive their channels by design; tests start without them.
-            graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM favourite_channel")
-            graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM recent_channel")
+            // So do the household's channel edits, lists, locks and reminders (M3).
+            for (table in listOf("favourite_channel", "recent_channel", "channel_custom", "channel_list", "channel_list_member", "locked_channel", "reminder")) {
+                graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM $table")
+            }
         }
         graph.guideFocusChannel = null
+        // The ringing queue lives in the process; the tables were emptied above, so this also cancels the alarm.
+        graph.reminders.resetForTests()
+        runBlocking { graph.reminders.reschedule() }
         graph.liveReadsOverride = null
     }
 }

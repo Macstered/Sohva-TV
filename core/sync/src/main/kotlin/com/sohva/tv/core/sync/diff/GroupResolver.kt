@@ -35,6 +35,11 @@ internal class GroupResolver(private val dao: GroupImportDao, private val source
         return id
     }
 
+    /** Moves one counted item out of [groupId] (a channel moved or hidden by the household's edits). */
+    fun uncount(groupId: Long) {
+        met.values.firstOrNull { it.id == groupId }?.let { if (it.count > 0) it.count-- }
+    }
+
     private fun insert(ref: GroupRef, order: Int): Long {
         val row = ContentGroupEntity(
             sourceId = sourceId, room = room.name, groupKey = ref.key, name = ref.name, providerOrder = order,

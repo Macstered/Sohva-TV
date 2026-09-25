@@ -5,6 +5,7 @@ import com.sohva.tv.core.model.source.SourceConfig
 import com.sohva.tv.core.model.source.SourceRules
 import com.sohva.tv.core.model.source.SourceSecrets
 import com.sohva.tv.core.model.source.SourceType
+import java.util.Base64
 import java.util.Locale
 
 /** What the phone page sent (spec 11 PHONE-FR-30). Prints without addresses, credentials or keys. */
@@ -27,7 +28,19 @@ sealed interface PhoneSubmission {
         override fun hashCode(): Int = (tmdbToken?.hashCode() ?: 0) * 31 + (apiSportsKey?.hashCode() ?: 0)
     }
 
+    /** A picture for one channel's logo (spec 21 CHAN-FR-42): the PNG bytes, 1…2,000,000 of them. */
+    class Logo(val channelKey: String, val png: ByteArray) : PhoneSubmission {
+        override fun toString(): String = "Logo(${png.size} bytes)"
+
+        override fun equals(other: Any?): Boolean = other is Logo && other.channelKey == channelKey && other.png.contentEquals(png)
+
+        override fun hashCode(): Int = channelKey.hashCode() * 31 + png.contentHashCode()
+    }
+
     companion object {
+        const val MAX_LOGO_BYTES: Int = 2_000_000
+        private const val PNG_DATA = "data:image/png;base64,"
+
         /**
          * A form of the Sources page as a submission, or null when it is invalid: an unknown type,
          * no name, an address the address rule refuses, missing Xtream credentials, or keys with
@@ -38,6 +51,7 @@ sealed interface PhoneSubmission {
             val tmdb = form["tmdb_token"]?.trim()?.ifEmpty { null }
             val sports = form["api_sports_key"]?.trim()?.ifEmpty { null }
             return when (form["type"]?.lowercase(Locale.ROOT)) {
+                "logo" -> logo(form)
                 "keys" -> if (tmdb == null && sports == null) null else Keys(tmdb, sports)
                 "m3u" -> source(form, SourceType.M3U, SourceSecrets(m3uUrl = form["m3u_url"].orEmpty(), xmlTvUrl = form["xmltv_url"]))
                 "xtream" -> source(
@@ -51,6 +65,13 @@ sealed interface PhoneSubmission {
                 )
                 else -> null
             }
+        }
+
+        private fun logo(form: Map<String, String>): PhoneSubmission? {
+            val channel = form["channel"]?.takeIf { it.isNotBlank() } ?: return null
+            val image = form["image"]?.takeIf { it.startsWith(PNG_DATA) } ?: return null
+            val bytes = runCatching { Base64.getDecoder().decode(image.substring(PNG_DATA.length)) }.getOrNull() ?: return null
+            return if (bytes.isEmpty() || bytes.size > MAX_LOGO_BYTES) null else Logo(channel, bytes)
         }
 
         private fun source(form: Map<String, String>, type: SourceType, secrets: SourceSecrets): PhoneSubmission? {

@@ -242,6 +242,14 @@ class ImportRunner(
         deleteRange(KeyRange.movies(sourceId), db.movieImport()::keysPage, db.movieImport()::delete)
         deleteRange(KeyRange.series(sourceId), db.seriesImport()::keysPage, db.seriesImport()::delete)
         guide.sweep(sourceId, GuideImport.NO_SNAPSHOT)
+        // The household's edits and list memberships of its channels go with it (spec 21 CHAN-30).
+        val channels = KeyRange.channels(sourceId)
+        do {
+            val deleted = db.runInTransaction<Int> { db.channelEdits().deleteCustomsOf(sourceId, KeyedDiff.DELETE_CHUNK) }
+        } while (deleted > 0)
+        do {
+            val deleted = db.runInTransaction<Int> { db.channelEdits().deleteMembersIn(channels.from, channels.until, KeyedDiff.DELETE_CHUNK) }
+        } while (deleted > 0)
         db.runInTransaction {
             for (room in Room.entries) {
                 db.groupImport().groups(sourceId, room.name).map { it.id }.chunked(KeyedDiff.DELETE_CHUNK).forEach(db.groupImport()::delete)

@@ -21,4 +21,6 @@
     <string name="player_cause_decoder">Esta TV não consegue descodificar o formato de imagem ou som da transmissão.</string>
     <string name="player_cause_too_heavy">Esta TV não consegue reproduzir a imagem desta transmissão sem falhas (%1$s).</string>
     <string name="player_cause_other">A transmissão deixou de ser reproduzida.</string>
+    <string name="player_archive_title">Arquivo · %1$s</string>
+    <string name="player_archive_unavailable">Este programa não está disponível no arquivo.</string>
 </resources>

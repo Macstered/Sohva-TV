@@ -20,4 +20,6 @@
     <string name="player_cause_decoder">Den här tv:n kan inte avkoda strömmens bild- eller ljudformat.</string>
     <string name="player_cause_too_heavy">Den här tv:n kan inte spela strömmens bild jämnt (%1$s).</string>
     <string name="player_cause_other">Strömmen slutade spelas.</string>
+    <string name="player_archive_title">Arkiv · %1$s</string>
+    <string name="player_archive_unavailable">Det här programmet finns inte i arkivet.</string>
 </resources>

@@ -5,9 +5,14 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.sohva.tv.core.model.player.BufferProfile
+import com.sohva.tv.core.model.player.Gesture
 import com.sohva.tv.core.model.player.PlaybackSettings
 import com.sohva.tv.core.model.player.ReconnectPolicy
+import com.sohva.tv.core.model.player.RemoteAction
+import com.sohva.tv.core.model.player.RemoteButton
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.player.SkipStep
 import com.sohva.tv.core.model.player.SubtitleBackground
 import com.sohva.tv.core.model.player.SubtitleColor
@@ -42,6 +47,40 @@ class AppPreferences(private val store: DataStore<Preferences>) {
 
     /** The profile's last channel (spec 30 PLAY-FR-57); profile-scoped keys arrive with profiles (M6). */
     val lastChannel: Flow<String?> = key(LAST_CHANNEL) { it }
+
+    /**
+     * The remote mapping (spec 31 REMOTE-FR-30…32), decoded once per change into the player's
+     * array form. Never written = the legacy channel-key setting decides; written empty = all Nothing.
+     */
+    val remoteMapping: Flow<RemoteMapping> =
+        store.data.map { RemoteMapping.decode(it[REMOTE_MAPPINGS], it[REMOTE_CHANNEL_KEY_MODE]) }.distinctUntilChanged()
+
+    /** Assigns one slot; the whole set is written, so the legacy setting no longer has a say (REMOTE-FR-33). */
+    suspend fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) {
+        store.edit { prefs ->
+            val current = RemoteMapping.decode(prefs[REMOTE_MAPPINGS], prefs[REMOTE_CHANNEL_KEY_MODE])
+            prefs[REMOTE_MAPPINGS] = current.with(button, gesture, action).encode()
+        }
+    }
+
+    /** `editors_show_hidden`, shared by channel management and the Library manager (spec 21 CHAN-FR-16). */
+    val editorsShowHidden: Flow<Boolean> = store.data.map { it[EDITORS_SHOW_HIDDEN] ?: true }.distinctUntilChanged()
+
+    suspend fun setEditorsShowHidden(value: Boolean) {
+        store.edit { it[EDITORS_SHOW_HIDDEN] = value }
+    }
+
+    /** Whether the "Let reminders open Sohva TV" prompt was shown; once per installation (REM-FR-05). */
+    suspend fun reminderOverlayAsked(): Boolean = store.data.first()[REMINDER_OVERLAY_ASKED] ?: false
+
+    suspend fun setReminderOverlayAsked() {
+        store.edit { it[REMINDER_OVERLAY_ASKED] = true }
+    }
+
+    /** Writes the defaults explicitly (REMOTE-FR-34). */
+    suspend fun resetRemoteMapping() {
+        store.edit { it[REMOTE_MAPPINGS] = RemoteMapping.DEFAULTS.encode() }
+    }
 
     /** The player's settings in one read, once per playback (spec 30 §6). */
     suspend fun playback(): PlaybackSettings {
@@ -118,6 +157,12 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val SHOW_CHANNEL_NUMBERS = booleanPreferencesKey("show_channel_numbers")
         private val TIME_ZONE = stringPreferencesKey("time_zone")
         private val LAST_CHANNEL = stringPreferencesKey("last_channel_id")
+        private val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
+        private val REMINDER_OVERLAY_ASKED = booleanPreferencesKey("reminder_overlay_asked")
+        private val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")
+
+        // Beta 23's "Remote channel browser" setting: read (never shown) until a mapping is written.
+        private val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")
         private val BUFFER_PROFILE = stringPreferencesKey("playback_buffer_profile")
         private val RECONNECT_POLICY = stringPreferencesKey("playback_reconnect_policy")
         private val SEEK_STEP = stringPreferencesKey("playback_seek_step")

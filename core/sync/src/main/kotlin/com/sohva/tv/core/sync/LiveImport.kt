@@ -2,6 +2,7 @@ package com.sohva.tv.core.sync
 
 import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.KeyRange
+import com.sohva.tv.core.data.live.ChannelEffects
 import com.sohva.tv.core.model.concurrent.WorkOrigin
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
@@ -102,6 +103,9 @@ internal class LiveImport(private val env: ImportEnvironment) {
 
     private suspend fun finish(target: Target, sourceId: String): Int = withContext(env.dispatchers.bulkWrite) {
         target.diff.sweep(env.db)
+        // The household's edits survive the import (spec 21 CHAN-FR-02); applied before the group
+        // counts are written, so moved and hidden channels are counted where they are shown.
+        EditsApplier(env.db, target.groups).apply(sourceId)
         env.db.runInTransaction { target.groups.finish(complete = true) }
         val range = KeyRange.channels(sourceId)
         env.db.channelImport().count(range.from, range.until)
@@ -117,9 +121,9 @@ internal class LiveImport(private val env: ImportEnvironment) {
         return Row(key, hash, group) { id, groupId ->
             ChannelEntity(
                 id = id, key = key, sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
-                tvgId = e.tvgId, epgId = e.tvgId, logoUrl = e.logoUrl, streamUrlEnc = env.sealer.seal(e.streamUrl),
+                providerName = name, providerGroupId = groupId, providerLogoUrl = e.logoUrl, tvgId = e.tvgId, epgId = e.tvgId, logoUrl = e.logoUrl, streamUrlEnc = env.sealer.seal(e.streamUrl),
                 userAgent = e.userAgent, referrer = e.referrer, playlistOrder = e.index, providerNumber = e.channelNumber,
-                number = e.channelNumber, displayRank = e.index.toLong() * RANK_STEP, visible = true, catchupType = e.catchupType,
+                number = e.channelNumber, displayRank = ChannelEffects.playlistRank(e.index), visible = true, catchupType = e.catchupType,
                 catchupSource = e.catchupSource, catchupDays = e.catchupDays, catchupTz = null, xtreamStreamId = null,
                 contentHash = hash, generation = job.generation,
             )
@@ -146,9 +150,9 @@ internal class LiveImport(private val env: ImportEnvironment) {
         return Row(key, hash, group) { id, groupId ->
             ChannelEntity(
                 id = id, key = key, sourceId = sourceId, groupId = groupId, name = s.name, sortName = SortNames.of(s.name),
-                tvgId = s.epgChannelId, epgId = s.epgChannelId, logoUrl = s.iconUrl, streamUrlEnc = env.sealer.seal(address),
+                providerName = s.name, providerGroupId = groupId, providerLogoUrl = s.iconUrl, tvgId = s.epgChannelId, epgId = s.epgChannelId, logoUrl = s.iconUrl, streamUrlEnc = env.sealer.seal(address),
                 userAgent = null, referrer = null, playlistOrder = order, providerNumber = number, number = number,
-                displayRank = order.toLong() * RANK_STEP, visible = true, catchupType = catchupType, catchupSource = null,
+                displayRank = ChannelEffects.playlistRank(order), visible = true, catchupType = catchupType, catchupSource = null,
                 catchupDays = s.catchupDays, catchupTz = zone, xtreamStreamId = s.streamId, contentHash = hash,
                 generation = job.generation,
             )
@@ -157,8 +161,5 @@ internal class LiveImport(private val env: ImportEnvironment) {
 
     companion object {
         const val BATCH = 250
-
-        /** Sparse ranks, so a later move renumbers one gap, not the source (plan/04 §15.3). */
-        const val RANK_STEP = 1_024L
     }
 }

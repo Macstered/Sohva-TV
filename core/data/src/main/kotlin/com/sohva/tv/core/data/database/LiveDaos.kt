@@ -157,6 +157,8 @@ data class LiveChannel(
     @ColumnInfo(name = "display_rank") val rank: Long,
     @ColumnInfo(name = "catchup_type") val catchupType: String?,
     @ColumnInfo(name = "catchup_days") val catchupDays: Int?,
+    /** Whether the playlist gave a catch-up template; the template itself stays in the row (spec 22 §4.3). */
+    @ColumnInfo(name = "has_catchup_template") val hasCatchupTemplate: Boolean,
 )
 
 /** What the player needs to open a live stream (spec 30 PLAY-FR-14). The address stays sealed. */
@@ -170,7 +172,15 @@ data class PlayableChannel(
     @ColumnInfo(name = "stream_url_enc") val streamUrlEnc: String,
     @ColumnInfo(name = "user_agent") val userAgent: String?,
     val referrer: String?,
-)
+    @ColumnInfo(name = "catchup_type") val catchupType: String?,
+    @ColumnInfo(name = "catchup_source") val catchupSource: String?,
+    @ColumnInfo(name = "catchup_days") val catchupDays: Int?,
+    @ColumnInfo(name = "catchup_tz") val catchupTz: String?,
+    @ColumnInfo(name = "xtream_stream_id") val xtreamStreamId: String?,
+) {
+    // The template can carry the provider's own tokens; it never reaches a log line.
+    override fun toString(): String = "PlayableChannel(key=$key, source=$sourceId)"
+}
 
 data class EpgState(
     @ColumnInfo(name = "epg_snapshot") val snapshot: Long?,
@@ -207,7 +217,8 @@ object LiveSql {
     private const val ORDER = "ORDER BY c.display_rank, c.id LIMIT :limit"
     private const val COLUMNS =
         "c.id, c.key, c.source_id, c.group_id, g.name AS group_name, c.name, c.epg_id, c.logo_url, c.number, " +
-            "c.display_rank, c.catchup_type, c.catchup_days"
+            "c.display_rank, c.catchup_type, c.catchup_days, " +
+            "(c.catchup_source IS NOT NULL AND c.catchup_source != '') AS has_catchup_template"
 
     // `INDEXED BY` pins each walk to its index: the planner may otherwise prefer the primary key for
     // `ORDER BY …, id`, which would read the whole table (AGENTS.md §4 rule 3).
@@ -255,7 +266,8 @@ object LiveSql {
 
     const val PLAYABLE: String =
         "SELECT c.id, c.key, c.source_id, s.name AS source_name, s.connection_limit, c.name, c.stream_url_enc, " +
-            "c.user_agent, c.referrer FROM channel c CROSS JOIN source s ON s.id = c.source_id " +
+            "c.user_agent, c.referrer, c.catchup_type, c.catchup_source, c.catchup_days, c.catchup_tz, c.xtream_stream_id " +
+            "FROM channel c CROSS JOIN source s ON s.id = c.source_id " +
             "WHERE c.key = :key AND c.visible = 1 AND s.enabled = 1"
 
     const val EPG_STATE: String =

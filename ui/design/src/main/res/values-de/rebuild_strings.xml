@@ -20,4 +20,6 @@
     <string name="player_cause_decoder">Dieser Fernseher kann das Bild- oder Tonformat des Streams nicht decodieren.</string>
     <string name="player_cause_too_heavy">Dieser Fernseher kann das Bild dieses Streams nicht flüssig abspielen (%1$s).</string>
     <string name="player_cause_other">Der Stream wurde nicht mehr abgespielt.</string>
+    <string name="player_archive_title">Archiv · %1$s</string>
+    <string name="player_archive_unavailable">Diese Sendung ist im Archiv nicht verfügbar.</string>
 </resources>

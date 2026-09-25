@@ -29,7 +29,8 @@ class ImportDaoTest {
     fun close() = db.close()
 
     private fun channel(source: String, local: String, epg: String? = null, hash: Long = 1) = ChannelEntity(
-        key = "$source:$local", sourceId = source, groupId = null, name = local, sortName = local, tvgId = epg, epgId = epg,
+        key = "$source:$local", sourceId = source, groupId = null, name = local, sortName = local, providerName = local, providerGroupId = null, providerLogoUrl = null,
+        tvgId = epg, epgId = epg,
         logoUrl = null, streamUrlEnc = "enc", userAgent = null, referrer = null, playlistOrder = 0, providerNumber = null,
         number = null, displayRank = 0, visible = true, catchupType = null, catchupSource = null, catchupDays = null,
         catchupTz = null, xtreamStreamId = null, contentHash = hash, generation = 1,

@@ -34,6 +34,12 @@ interface LiveReads {
 
     fun favouriteKeys(profileId: String = DEFAULT_PROFILE): Flow<Set<String>>
 
+    /** The household's channel lists for the rail, in their order (spec 21 CHAN-28). */
+    fun customLists(): Flow<List<CustomListRef>>
+
+    /** A list's channels of [sourceId], in the list's own order (GUIDE-FR-35). */
+    suspend fun customList(listId: String, sourceId: String): ListSpec.Named
+
     suspend fun toggleFavourite(key: String, profileId: String = DEFAULT_PROFILE): Boolean
 
     suspend fun recordWatched(key: String, profileId: String = DEFAULT_PROFILE)
@@ -46,3 +52,6 @@ interface LiveReads {
 
     suspend fun dial(list: ChannelList, number: Int): Int
 }
+
+/** A channel list as the guide's rail names it. */
+data class CustomListRef(val id: String, val name: String)

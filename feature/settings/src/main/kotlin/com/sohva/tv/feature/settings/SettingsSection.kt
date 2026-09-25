@@ -10,7 +10,7 @@ enum class SettingsSection(@StringRes val label: Int, @DrawableRes val icon: Int
     GENERAL(R.string.settings_section_general, TvIcons.Settings, "general", built = true),
     SOURCES(R.string.settings_section_sources, TvIcons.Channels, "sources", built = true),
     PLAYBACK(R.string.settings_section_playback, TvIcons.Play, "playback", built = false),
-    REMOTE(R.string.settings_section_remote, TvIcons.Aspect, "remote", built = false),
+    REMOTE(R.string.settings_section_remote, TvIcons.Aspect, "remote", built = true),
     METADATA(R.string.settings_section_metadata, TvIcons.Info, "metadata", built = false),
     ACCOUNTS(R.string.settings_section_accounts, TvIcons.Link, "accounts", built = false),
     SPORT(R.string.settings_section_sport, TvIcons.Target, "sport", built = false),

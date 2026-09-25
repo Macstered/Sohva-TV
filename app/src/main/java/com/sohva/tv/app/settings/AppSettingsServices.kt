@@ -6,6 +6,10 @@ import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
+import com.sohva.tv.core.model.player.Gesture
+import com.sohva.tv.core.model.player.RemoteAction
+import com.sohva.tv.core.model.player.RemoteButton
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.Source
@@ -43,7 +47,13 @@ class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
 
     override suspend fun save(config: SourceConfig): Outcome<SourceConfig> = withContext(io) { graph.data.sources.save(config) }
 
-    override suspend fun remove(sourceId: String): Outcome<Unit> = withContext(io) { graph.sync.runner.remove(sourceId) }
+    /** The source's phone-sent logo files go with it (spec 21 §6 rebuild rule; beta 23 left them behind). */
+    override suspend fun remove(sourceId: String): Outcome<Unit> = withContext(io) {
+        val logos = graph.data.channelManager.phoneLogoKeys(sourceId)
+        val result = graph.sync.runner.remove(sourceId)
+        if (result is Outcome.Ok) logos.forEach(graph.phone.logos::delete)
+        result
+    }
 
     override fun syncNow(sourceId: String) {
         // WorkManager starts on first use and reads its database then.
@@ -62,6 +72,17 @@ class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
     override suspend fun testXtream(account: XtreamAccount): SourceChecks.Result = withContext(io) { graph.sync.checks.testXtream(account) }
 
     override suspend fun setRefreshInterval(interval: RefreshInterval) = withContext(io) { graph.data.preferences.setRefreshInterval(interval) }
+
+    override fun remindersCanOpen(): Boolean? = if (graph.flags.reminders) graph.reminders.mayOpenOverOtherApps() else null
+
+    override fun openOverlaySettings() = graph.reminders.openOverlaySettings()
+
+    override fun remoteMapping(): Flow<RemoteMapping> = flow { emitAll(graph.data.preferences.remoteMapping) }.flowOn(io)
+
+    override suspend fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) =
+        withContext(io) { graph.data.preferences.setRemoteAction(button, gesture, action) }
+
+    override suspend fun resetRemoteMapping() = withContext(io) { graph.data.preferences.resetRemoteMapping() }
 
     override fun phoneSetup(): Flow<PhoneSetupState> = graph.phone.state()
 

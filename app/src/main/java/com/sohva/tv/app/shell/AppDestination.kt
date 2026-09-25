@@ -9,16 +9,20 @@ import androidx.core.net.toUri
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
+import com.sohva.tv.app.channels.AppChannelsEnvironment
 import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.core.model.FeatureFlags
+import com.sohva.tv.feature.channels.ChannelsModel
+import com.sohva.tv.feature.channels.ChannelsScreen
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
+import com.sohva.tv.feature.player.ArchiveWindow
 import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerModel
 import com.sohva.tv.feature.player.PlayerNavigation
@@ -50,7 +54,7 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             // One model per player session: zaps happen inside it, so the controller, the picture
             // shape and the previous channel carry across them (spec 30 PLAY-FR-23, -58, -81).
             val navigation = remember(stack, graph, route) { playerNavigation(route, stack, graph) }
-            val model = viewModel { PlayerModel(graph.player.screen(locale), route.channelKey, navigation) }
+            val model = viewModel { PlayerModel(graph.player.screen(locale), route.channelKey, navigation, route.archive, route.recordWatched) }
             PlayerScreen(model)
         }
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
@@ -61,6 +65,11 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
         AppRoute.Search -> PlaceholderScreen(R.string.home_search, { back() }, "screen-search")
         AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
         AppRoute.ProfilePicker -> PlaceholderScreen(R.string.profile_active_title, { back() }, "screen-profiles")
+        AppRoute.Channels -> {
+            // Scoped to this stack entry: popped with the screen (plan/03 §4.5).
+            val model = viewModel { ChannelsModel(AppChannelsEnvironment(graph)) }
+            ChannelsScreen(model, onBack = { back() })
+        }
         AppRoute.Settings -> {
             // Scoped to this stack entry: popped with Settings (plan/03 §4.5). Accounts waits for Trakt (M6).
             val model = viewModel { SettingsModel(AppSettingsServices(graph), accounts = false) }
@@ -75,8 +84,18 @@ private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = objec
         stack.push(AppRoute.Player(channelKey, returnToGuide = true))
     }
 
+    /** Catch-up opens the player over the guide; Back pops to it (spec 22 §3). */
+    override fun playArchive(channelKey: String, start: Long, stop: Long) {
+        graph.guideFocusChannel = channelKey
+        stack.push(AppRoute.Player(channelKey, returnToGuide = false, archive = ArchiveWindow(start, stop)))
+    }
+
     override fun openSettings() {
         stack.push(AppRoute.Settings)
+    }
+
+    override fun openChannels() {
+        stack.push(AppRoute.Channels)
     }
 
     override fun notYetAvailable() {

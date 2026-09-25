@@ -68,7 +68,8 @@ class LiveStoreTest {
 
     private fun channel(local: String, name: String, group: Long?, rank: Long, number: Int?, epg: String?, visible: Boolean = true) =
         ChannelEntity(
-            key = "s:$local", sourceId = "s", groupId = group, name = name, sortName = SortNames.of(name), tvgId = epg, epgId = epg,
+            key = "s:$local", sourceId = "s", groupId = group, name = name, sortName = SortNames.of(name), providerName = name, providerGroupId = group,
+            providerLogoUrl = null, tvgId = epg, epgId = epg,
             logoUrl = null, streamUrlEnc = "enc", userAgent = null, referrer = null, playlistOrder = 0, providerNumber = number,
             number = number, displayRank = rank, visible = visible, catchupType = null, catchupSource = null, catchupDays = null,
             catchupTz = null, xtreamStreamId = null, contentHash = 1, generation = 1,

@@ -6,10 +6,12 @@ import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.player.PlaybackCause
 import com.sohva.tv.core.model.player.PlaybackSettings
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.player.PlaybackClient
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
 
 /** What the player screen needs from the app (plan/03 §4.6). */
 interface PlayerEnvironmentUi {
@@ -20,6 +22,9 @@ interface PlayerEnvironmentUi {
     val format: CoroutineDispatcher
 
     suspend fun settings(): PlaybackSettings
+
+    /** The remote mapping; a change applies from the next key press (spec 31 REMOTE-FR-36). */
+    val remoteMapping: Flow<RemoteMapping>
 
     /** Front of the profile's recents and the last channel (spec 30 PLAY-FR-57). */
     suspend fun recordWatched(channelKey: String)
@@ -54,6 +59,10 @@ interface PlayerNavigation {
 }
 
 enum class Connection { CONNECTING, READY, FAILED }
+
+/** A programme to play from the provider's archive: its guide times, epoch ms (spec 22 CATCH-FR-11). */
+@Immutable
+data class ArchiveWindow(val start: Long, val stop: Long)
 
 /** The channel on screen, formatted once per zap. */
 @Immutable

@@ -7,9 +7,13 @@ import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.data.database.LiveSource
 import com.sohva.tv.core.data.live.ChannelList
 import com.sohva.tv.core.data.live.ListSpec
+import com.sohva.tv.core.model.guide.CatchupRules
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.guide.GuideRules
 import com.sohva.tv.core.model.guide.GuideWindow
+import com.sohva.tv.core.model.reminder.Reminder
+import com.sohva.tv.core.model.reminder.ReminderIds
+import com.sohva.tv.core.model.reminder.ReminderKind
 import com.sohva.tv.core.model.text.Initials
 import com.sohva.tv.core.model.text.StreamTags
 import com.sohva.tv.core.model.time.TimeLabels
@@ -76,6 +80,8 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     val showNumbers: StateFlow<Boolean> = env.showChannelNumbers.stateIn(viewModelScope, SharingStarted.Eagerly, true)
     val favourites: StateFlow<Set<String>> = env.reads.favouriteKeys().stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
     val savedSources: StateFlow<List<SavedSource>> = env.savedSources.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val reminders: StateFlow<Set<String>> = env.reminderIds.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+    val remindersOn: Boolean get() = env.remindersOn
     val health = env.health.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _labels = MutableStateFlow(TimeLabels(TimeLabels.zoneOf(null), env.locale))
@@ -170,10 +176,12 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         val ungrouped = reads.open(ListSpec.Ungrouped(source.id)).size
         val all = groups.sumOf { it.itemCount } + ungrouped
         val favouriteCount = favourites.value.size
+        val lists = reads.customLists().first()
         _rail.value = buildList {
             add(RailItem(RailEntry.Favourites, favouriteCount.takeIf { it > 0 }))
             add(RailItem(RailEntry.All, all.takeIf { it > 0 }))
             add(RailItem(RailEntry.Recent, null))
+            lists.forEach { add(RailItem(RailEntry.CustomList(it.id, it.name), null)) }
             groups.forEach { add(RailItem(RailEntry.Group(it), it.itemCount)) }
         }
         // A selected group that disappeared (GUIDE-FR-15).
@@ -207,6 +215,7 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         RailEntry.Favourites -> { { reads.favourites(source.id) } }
         RailEntry.Recent -> { { reads.recents(source.id) } }
         is RailEntry.Group -> { { ListSpec.Group(source.id, entry.group.id) } }
+        is RailEntry.CustomList -> { { reads.customList(entry.listId, source.id) } }
     }
 
     /**
@@ -288,7 +297,12 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         val shown = channel.number ?: (index + 1)
         val tags = StreamTags.of(channel.name).joinToString(" · ")
         val feed = tags.ifEmpty { channel.groupName?.takeIf { it.isNotBlank() } ?: sourceName }
-        return GuideRowData(index, channel, if (numbers) shown.toString() else null, shown, feed, Initials.of(channel.name))
+        val archive = if (CatchupRules.supported(channel.catchupType, channel.hasCatchupTemplate)) {
+            channel.catchupDays?.coerceAtMost(CatchupRules.MAX_DAYS) ?: 0
+        } else {
+            0
+        }
+        return GuideRowData(index, channel, if (numbers) shown.toString() else null, shown, feed, Initials.of(channel.name), archive)
     }
 
     // ---- Viewport, pages and programmes ------------------------------------------------------
@@ -472,6 +486,20 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
             }
         }
     }
+
+    /**
+     * Remind me / Reminder set on a programme that has not started (REM-FR-02): kind programme,
+     * the row's channel, the programme's title, the channel's shown name, the guide's start time.
+     */
+    fun toggleReminder(row: GuideRowData, programme: GuideProgramme) {
+        val reminder = Reminder(
+            ReminderIds.programme(row.key, programme.key), ReminderKind.PROGRAMME, null, row.key,
+            programme.title, row.name, programme.start, env.clock.wallMillis(),
+        )
+        viewModelScope.launch { env.toggleReminder(reminder) }
+    }
+
+    fun reminderId(row: GuideRowData, programme: GuideProgramme): String = ReminderIds.programme(row.key, programme.key)
 
     fun toggleFavourite(key: String) {
         viewModelScope.launch {

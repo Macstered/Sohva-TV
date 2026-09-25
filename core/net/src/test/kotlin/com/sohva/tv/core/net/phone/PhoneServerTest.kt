@@ -32,6 +32,8 @@ class PhoneServerTest {
         override fun failed() = "The TV could not save that."
         override fun forbidden() = "Scan it again."
         override fun badRequest() = "That request could not be read."
+        override fun logoPage(channelName: String) = LogoPageTexts("fi", "Logo for $channelName", "Choose one", "Choose a picture", "Sending", "Not a picture")
+        override fun logoSaved(channelName: String) = "Logo saved for $channelName."
     }
     private val received = CopyOnWriteArrayList<PhoneSubmission>()
     private var accept = true
@@ -87,6 +89,35 @@ class PhoneServerTest {
         assertTrue(page.headers["content-security-policy"].orEmpty().contains("'sha256-$hash'"))
         assertEquals("the token is 128 bits of hex", 32, state.url.substringAfter('#').length)
         assertFalse(state.toString().contains(state.url.substringAfter('#')))
+    }
+
+    /** Spec 21 CHAN-FR-41/42: one picture, only for the channel the page was opened for. */
+    @Test
+    fun logoModeTakesOnePictureForItsChannelOnly() {
+        server.start(InetAddress.getLoopbackAddress() as Inet4Address, PhoneMode.Logo("src:c1", "Northstar <1>"))
+        val state = server.state.value as PhoneState.Running
+        val host = state.url.removePrefix("http://").substringBefore('/')
+        val page = send(state.url, "GET / HTTP/1.1\r\nHost: $host\r\n\r\n")
+        assertEquals(200, page.code)
+        assertTrue(page.body.contains("Logo for Northstar &lt;1&gt;"))
+        assertTrue(page.body.contains("value=\"src:c1\""))
+        val script = page.body.substringAfter("<script>").substringBefore("</script>")
+        val hash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray()))
+        assertTrue(page.headers["content-security-policy"].orEmpty().contains("'sha256-$hash'"))
+        val png = "data:image/png;base64," + Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))
+        val image = java.net.URLEncoder.encode(png, "UTF-8")
+        // Another channel, a source form, or no picture: refused, nothing received.
+        assertEquals(403, post(state, "type=logo&channel=src%3Ac2&image=$image").code)
+        assertEquals(403, post(state, "type=keys&tmdb_token=abc").code)
+        assertEquals(400, post(state, "type=logo&channel=src%3Ac1&image=data%3Aimage%2Fjpeg%3Bbase64%2CAAAA").code)
+        assertTrue(received.isEmpty())
+        val ok = post(state, "type=logo&channel=src%3Ac1&image=$image")
+        assertEquals(200, ok.code)
+        assertEquals("Logo saved for Northstar <1>.", ok.body)
+        val logo = received.single() as PhoneSubmission.Logo
+        assertEquals("src:c1", logo.channelKey)
+        assertTrue(logo.png.contentEquals(byteArrayOf(1, 2, 3)))
+        assertTrue((server.state.value as PhoneState.Running).logoSaved)
     }
 
     @Test

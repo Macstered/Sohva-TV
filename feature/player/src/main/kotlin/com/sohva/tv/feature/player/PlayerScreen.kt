@@ -40,7 +40,7 @@ import com.sohva.tv.ui.design.components.FullScreenMessage
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
 
 /**
- * The live player (spec 30 §5): a black ground, the video, and overlays composed only while shown
+ * The player (spec 30 §5): a black ground, the video, and overlays composed only while shown
  * (§9 "nothing composed while hidden"). The key host is a sibling of the overlays, not their
  * parent, so a focused button receives its own keys.
  */
@@ -72,15 +72,19 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     val buffering by model.buffering.collectAsStateWithLifecycle()
     val banner by model.banner.collectAsStateWithLifecycle()
     val dial by model.dial.state.collectAsStateWithLifecycle()
+    val controls by model.transport.visible.collectAsStateWithLifecycle()
+    val skipped by model.transport.feedback.collectAsStateWithLifecycle()
     VideoSurface(model)
     // The clean screen's key handler (PLAY-FR-30).
     Box(
         Modifier.fillMaxSize().focusRequester(host).onKeyEvent { model.keys.onKey(it.nativeKeyEvent) }.focusable().testTag("player-video"),
     )
-    if (box || listOpen) ChromeScrim()
+    if (box || listOpen || controls) ChromeScrim()
     if (stats) InfoLine(model)
     DialReadout(dial, stats)
     if (box) LiveInfoBox(model, Modifier.align(Alignment.BottomStart))
+    if (controls) TransportControls(model, Modifier.align(Alignment.BottomStart))
+    skipped?.let { SkipFeedbackLabel(it, Modifier.align(Alignment.BottomCenter)) }
     if (buffering) BufferingIndicator(Modifier.align(Alignment.Center))
     if (listOpen) ChannelListPanel(model, Modifier.align(Alignment.CenterEnd))
     picker?.let { TrackPicker(model, it) }
@@ -92,12 +96,14 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
             picker != null -> model.closePicker()
             quick -> model.closeQuickActions()
             box -> model.hideBox()
+            controls -> model.transport.hide()
             else -> model.playing.value?.channel?.key?.let { model.navigation.leave(it) }
         }
     }
     // Closing any overlay returns focus to the video (PLAY-FR-09).
-    LaunchedEffect(box, picker, quick, banner?.stopped) {
-        if (!box && picker == null && !quick && banner?.stopped != true) host.requestFocusWhenAttached()
+    // The transport controls open unfocused (PLAY-FR-08); when they go, so does any focus in them.
+    LaunchedEffect(box, controls, picker, quick, banner?.stopped) {
+        if (!box && !controls && picker == null && !quick && banner?.stopped != true) host.requestFocusWhenAttached()
     }
 }
 

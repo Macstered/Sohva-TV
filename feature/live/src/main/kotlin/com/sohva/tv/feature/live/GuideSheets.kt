@@ -59,7 +59,7 @@ internal fun GuideOptions(model: GuideModel, navigation: GuideNavigation, onClos
             icon = TvIcons.Guide,
         )
         TvActionButton(stringResource(R.string.category_edit), { navigation.notYetAvailable() }, full, icon = TvIcons.Check)
-        TvActionButton(stringResource(R.string.guide_channels), { navigation.notYetAvailable() }, full, icon = TvIcons.Channels)
+        TvActionButton(stringResource(R.string.guide_channels), { navigation.openChannels() }, full.testTag("guide-options-channels"), icon = TvIcons.Channels)
         TvActionButton(stringResource(R.string.guide_settings), {
             model.overlays.closeOptions()
             navigation.openSettings()
@@ -74,12 +74,14 @@ internal fun GuideOptions(model: GuideModel, navigation: GuideNavigation, onClos
 }
 
 /**
- * The programme actions dialog (GUIDE-FR-79, guide.md §6). Catch-up and reminder rows arrive with
- * spec 22 (M3). On close, focus returns to the block it came from.
+ * The programme actions dialog (GUIDE-FR-79, guide.md §6): Watch, the archive row when the
+ * programme can be played from it, Remind me for one that has not started, then Favourite. On
+ * close, focus returns to the block it came from.
  */
 @Composable
 internal fun GuideActionsDialog(model: GuideModel, target: ActionsTarget, actions: RowActions, onDismiss: () -> Unit) {
     val favourites by model.favourites.collectAsStateWithLifecycle()
+    val reminders by model.reminders.collectAsStateWithLifecycle()
     val labels by model.labels.collectAsStateWithLifecycle()
     val watch = remember { FocusRequester() }
     val programme = target.programme
@@ -106,6 +108,32 @@ internal fun GuideActionsDialog(model: GuideModel, target: ActionsTarget, action
                 icon = TvIcons.Play,
                 layout = ListRowLayout(dense = true),
             )
+            if (target.row.offersArchive(programme, model.nowState.longValue)) {
+                TvListRow(
+                    stringResource(if (live) R.string.guide_watch_from_start else R.string.guide_watch_recording),
+                    {
+                        onDismiss()
+                        actions.playArchive(target.row, programme)
+                    },
+                    Modifier.testTag("guide-actions-archive"),
+                    icon = TvIcons.Replay,
+                    layout = ListRowLayout(dense = true),
+                )
+            }
+            if (model.remindersOn && programme.start > model.nowState.longValue) {
+                val set = model.reminderId(target.row, programme) in reminders
+                TvListRow(
+                    stringResource(if (set) R.string.guide_reminder_set else R.string.guide_remind),
+                    {
+                        model.toggleReminder(target.row, programme)
+                        onDismiss()
+                    },
+                    Modifier.testTag("guide-actions-reminder"),
+                    icon = TvIcons.Epg,
+                    state = SurfaceState(selected = set),
+                    layout = ListRowLayout(dense = true),
+                )
+            }
             val favourite = target.row.key in favourites
             TvListRow(
                 stringResource(if (favourite) R.string.guide_favourite else R.string.guide_add_favourite),

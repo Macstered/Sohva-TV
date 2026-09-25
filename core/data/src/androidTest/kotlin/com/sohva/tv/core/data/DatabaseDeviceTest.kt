@@ -72,6 +72,34 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom3To4CopyingTheProviderValues() {
+        helper.createDatabase(name, 3).use {
+            it.execSQL(
+                "INSERT INTO channel (id, key, source_id, group_id, name, sort_name, tvg_id, epg_id, logo_url, stream_url_enc, " +
+                    "user_agent, referrer, playlist_order, provider_number, number, display_rank, visible, catchup_type, " +
+                    "catchup_source, catchup_days, catchup_tz, xtream_stream_id, content_hash, generation) VALUES " +
+                    "(1, 's1:a', 's1', 7, 'Northstar 1', 'northstar 1', 'n1', 'n1', 'https://provider.example/n1.png', 'sealed', " +
+                    "NULL, NULL, 0, 1, 1, 1024, 1, NULL, NULL, NULL, NULL, NULL, 42, 1)",
+            )
+            it.execSQL("INSERT INTO favourite_channel (profile_id, channel_key, added_at) VALUES ('default', 's1:a', 5)")
+        }
+        helper.runMigrationsAndValidate(name, 4, true).use { db ->
+            db.query("SELECT display_rank FROM channel WHERE id = 1").use { it.moveToFirst(); assertEquals(1L shl 40, it.getLong(0)) }
+            db.query("SELECT provider_name, provider_group_id, provider_logo_url, name FROM channel WHERE id = 1").use {
+                it.moveToFirst()
+                assertEquals("Northstar 1", it.getString(0))
+                assertEquals(7L, it.getLong(1))
+                assertEquals("https://provider.example/n1.png", it.getString(2))
+                assertEquals("Northstar 1", it.getString(3))
+            }
+            db.query("SELECT COUNT(*) FROM favourite_channel").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+            for (table in listOf("channel_custom", "channel_list", "channel_list_member", "locked_channel", "reminder")) {
+                db.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); assertEquals(table, 0, it.getInt(0)) }
+            }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.
