@@ -201,4 +201,6 @@ data class PlaybackSettings(
     val subtitleBackground: SubtitleBackground = SubtitleBackground.FOLLOW_TV,
     val showChannelNumbers: Boolean = true,
     val timeZone: String? = null,
+    /** VOD audio and subtitle languages (PLAY-FR-75); all Automatic until Settings offers them (M7). */
+    val vodLanguages: VodLanguages = VodLanguages(),
 )

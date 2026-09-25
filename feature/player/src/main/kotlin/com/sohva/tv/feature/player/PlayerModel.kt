@@ -18,6 +18,8 @@ import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.model.guide.GuideWindow
 import com.sohva.tv.core.model.player.PictureShape
 import com.sohva.tv.core.model.player.PlaybackSettings
+import com.sohva.tv.core.model.player.SubtitleChoice
+import com.sohva.tv.core.model.player.TrackLanguages
 import com.sohva.tv.core.model.text.Initials
 import com.sohva.tv.core.model.text.StreamTags
 import com.sohva.tv.core.player.PlaybackErrors
@@ -58,6 +60,11 @@ class PlayerModel(
 
     /** The end of a film or an episode is handled once per item (PLAY-FR-132). */
     private var finished = false
+
+    /** VOD language preferences are applied once per item (PLAY-FR-75), never over the viewer's own choice. */
+    private var languagesApplied = false
+    private var audioByHand = false
+    private var textByHand = false
 
     private val reads = env.reads
 
@@ -325,6 +332,12 @@ class PlayerModel(
     // ---- Tracks (PLAY-FR-70..74) -----------------------------------------------------------------
 
     fun chooseTrack(item: TrackItem?, type: Int) {
+        if (type == C.TRACK_TYPE_AUDIO) audioByHand = true else textByHand = true
+        select(item, type)
+        closePicker()
+    }
+
+    private fun select(item: TrackItem?, type: Int) {
         val c = controller ?: return
         val builder = c.trackSelectionParameters.buildUpon().clearOverridesOfType(type)
         if (item == null) {
@@ -334,7 +347,22 @@ class PlayerModel(
             builder.setTrackTypeDisabled(type, false).setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, item.index))
         }
         c.trackSelectionParameters = builder.build()
-        closePicker()
+    }
+
+    /** Once the audio tracks of a film or episode are known (PLAY-FR-75); live and catch-up keep the stream's own. */
+    private fun applyLanguages(tracks: Tracks) {
+        if (vod == null || languagesApplied || tracks.audio.isEmpty()) return
+        languagesApplied = true
+        viewModelScope.launch {
+            val prefs = env.settings().vodLanguages
+            val choice = TrackLanguages.choose(prefs, tracks.audio.map { it.language }, tracks.text.map { it.language }, audioByHand, textByHand)
+            choice.audio?.let { select(tracks.audio[it], C.TRACK_TYPE_AUDIO) }
+            when (val subtitles = choice.subtitles) {
+                SubtitleChoice.Keep -> Unit
+                SubtitleChoice.Off -> select(null, C.TRACK_TYPE_TEXT)
+                is SubtitleChoice.Track -> select(tracks.text[subtitles.index], C.TRACK_TYPE_TEXT)
+            }
+        }
     }
 
     /** Next audio track (mapped action): needs two or more (PLAY-FR-73). */
@@ -473,6 +501,7 @@ class PlayerModel(
 
         override fun onTracksChanged(tracks: MediaTracks) {
             _tracks.value = tracksOf(tracks)
+            applyLanguages(_tracks.value)
             _frameRate.value = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
                 ?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).frameRate } }
                 ?.takeIf { it > 0f }

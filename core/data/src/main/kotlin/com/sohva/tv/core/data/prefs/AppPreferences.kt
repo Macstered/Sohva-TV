@@ -18,6 +18,7 @@ import com.sohva.tv.core.model.player.SkipStep
 import com.sohva.tv.core.model.player.SubtitleBackground
 import com.sohva.tv.core.model.player.SubtitleColor
 import com.sohva.tv.core.model.player.SubtitleSize
+import com.sohva.tv.core.model.player.VodLanguages
 import com.sohva.tv.core.model.settings.ColorThemeId
 import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
@@ -98,6 +99,12 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
             subtitleBackground = SubtitleBackground.fromStored(p[SUBTITLE_BACKGROUND]),
             showChannelNumbers = p[SHOW_CHANNEL_NUMBERS] ?: true,
             timeZone = p[TIME_ZONE],
+            vodLanguages = VodLanguages(
+                audio = VodLanguages.stored(p[AUDIO_PRIMARY]),
+                audioSecond = VodLanguages.stored(p[AUDIO_SECONDARY]),
+                subtitles = VodLanguages.stored(p[SUBTITLE_PRIMARY]),
+                subtitlesSecond = VodLanguages.stored(p[SUBTITLE_SECONDARY]),
+            ),
         )
     }
 
@@ -196,6 +203,12 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         private val AUTO_PLAY_NEXT = booleanPreferencesKey("auto_play_next_episode")
         private val PREFERRED_COPY = stringPreferencesKey("preferred_catalogue_copy")
         private val METADATA_LANGUAGE = stringPreferencesKey("metadata_language")
+
+        // Spec 70 SET-39 under beta 23's names; Settings offers them in M7.
+        private val AUDIO_PRIMARY = stringPreferencesKey("preferred_audio_language")
+        private val AUDIO_SECONDARY = stringPreferencesKey("secondary_audio_language")
+        private val SUBTITLE_PRIMARY = stringPreferencesKey("preferred_subtitle_language")
+        private val SUBTITLE_SECONDARY = stringPreferencesKey("secondary_subtitle_language")
         private val METADATA_KEY_REFUSED = booleanPreferencesKey("metadata_key_refused")
         private val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         private val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
