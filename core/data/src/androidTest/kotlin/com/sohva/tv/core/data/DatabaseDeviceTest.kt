@@ -100,6 +100,30 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom4To5KeepingFilmsWithEmptyClaims() {
+        helper.createDatabase(name, 4).use {
+            it.execSQL(
+                "INSERT INTO movie (id, key, source_id, provider_id, group_id, name, sort_name, year, rating, rating_x10, poster_url, " +
+                    "stream_url_enc, plot, provider_order, genre, work_key, primary_copy, visible, item_position, content_hash, generation) " +
+                    "VALUES (1, 'vod:movie:s1:9', 's1', '9', 3, 'FIN | Quiet Harbour 4K', 'fin quiet harbour 4k', 2020, '7.5', 75, NULL, " +
+                    "'sealed', NULL, 0, NULL, NULL, 1, 1, NULL, 42, 1)",
+            )
+        }
+        helper.runMigrationsAndValidate(name, 5, true).use { db ->
+            db.query("SELECT name, quality_mask, claim_mask, picture_rank, content_hash FROM movie WHERE id = 1").use {
+                it.moveToFirst()
+                assertEquals("FIN | Quiet Harbour 4K", it.getString(0))
+                // The next import fills the claims: its hash carries a keys version, so 42 no longer matches.
+                assertEquals(0, it.getInt(1))
+                assertEquals(0, it.getInt(2))
+                assertEquals(0, it.getInt(3))
+                assertEquals(42L, it.getLong(4))
+            }
+            db.query("SELECT COUNT(*) FROM watch_progress").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

@@ -37,16 +37,21 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ChannelListMemberEntity::class,
         LockedChannelEntity::class,
         ReminderEntity::class,
+        WatchProgressEntity::class,
     ],
     version = SohvaDatabase.VERSION,
     exportSchema = true,
     // 1 -> 2 (M1) and 2 -> 3 (M2: favourites, recents) only add tables, which Room's generated
     // migrations do exactly. 3 -> 4 (M3) adds the edit tables and the channel's provider columns,
     // which [ProviderColumns] fills from the effective ones (nothing was editable before M3).
+    // 4 -> 5 (M4) adds the films' claim columns with defaults, the wall indexes and watch_progress;
+    // the next import fills the claims (the import hash carries a keys version), so opening the
+    // database runs no data migration.
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4, spec = SohvaDatabase.ProviderColumns::class),
+        AutoMigration(from = 4, to = 5),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -78,6 +83,10 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun channelLists(): ChannelListDao
 
+    abstract fun walls(): WallDao
+
+    abstract fun progress(): ProgressDao
+
     abstract fun manager(): ManagerDao
 
     /**
@@ -93,7 +102,7 @@ abstract class SohvaDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION: Int = 4
+        const val VERSION: Int = 5
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"
