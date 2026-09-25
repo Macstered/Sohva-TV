@@ -7,6 +7,8 @@ import com.sohva.tv.core.data.database.WatchProgressEntity
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.model.vod.WatchedRule
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** A title's saved place for the active profile. */
@@ -30,6 +32,9 @@ class ProgressStore(
     private val profile: () -> String,
 ) {
     private val dao get() = db.progress()
+
+    /** Any progress write, and once at the start. */
+    fun changes(): Flow<Unit> = db.invalidationTracker.createFlow("watch_progress").map { }
 
     /**
      * The one write call (VOD-FR-89): ignored under 5 s or without a duration, clamped to the

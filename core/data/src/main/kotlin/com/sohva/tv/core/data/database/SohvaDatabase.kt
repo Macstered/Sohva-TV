@@ -87,6 +87,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun progress(): ProgressDao
 
+    abstract fun titles(): TitleDao
+
     abstract fun manager(): ManagerDao
 
     /**

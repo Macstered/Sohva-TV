@@ -21,6 +21,18 @@ sealed interface AppRoute {
     /** Channel management (spec 21), over the guide. */
     data object Channels : AppRoute
 
+    /** A film's page (spec 40 §3), by content key. */
+    data class FilmDetails(val key: String) : AppRoute
+
+    /** A series' page (spec 40 §3), by series key. */
+    data class SeriesDetails(val key: String) : AppRoute
+
+    /**
+     * A film or an episode from [startMs] (spec 30 §3.1). Never restored after process death:
+     * it restores to the page underneath.
+     */
+    data class VodPlayer(val contentKey: String, val startMs: Long) : AppRoute
+
     /**
      * Playback of a channel (spec 30 §3.1): live, or with [archive] a programme from the
      * provider's archive (spec 22). [returnToGuide]: Back from the bare picture leaves to
@@ -48,10 +60,19 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
         AppRoute.Channels -> "channels"
+        is AppRoute.FilmDetails -> "film:${route.key}"
+        is AppRoute.SeriesDetails -> "seriespage:${route.key}"
         is AppRoute.Player -> "player"
+        is AppRoute.VodPlayer -> "player"
     }
 
-    override fun decode(value: String): AppRoute? = when (value) {
+    override fun decode(value: String): AppRoute? = when {
+        value.startsWith("film:") -> AppRoute.FilmDetails(value.removePrefix("film:"))
+        value.startsWith("seriespage:") -> AppRoute.SeriesDetails(value.removePrefix("seriespage:"))
+        else -> decodePlain(value)
+    }
+
+    private fun decodePlain(value: String): AppRoute? = when (value) {
         "home" -> AppRoute.Home
         "guide" -> AppRoute.Guide
         "today" -> AppRoute.Today

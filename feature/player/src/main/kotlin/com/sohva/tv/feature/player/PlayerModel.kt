@@ -45,9 +45,19 @@ class PlayerModel(
     val archive: ArchiveWindow? = null,
     /** False when a reminder or a notification started playback: not a recent channel (CHAN-FR-61). */
     private val recordFirst: Boolean = true,
+    /** A film or an episode instead of a channel (spec 30 §3.1): transport controls, no channels. */
+    val vod: VodPlay? = null,
 ) : ViewModel() {
-    /** Live TV, as opposed to catch-up ("timeshift" in spec 31). */
-    val live: Boolean get() = archive == null
+    /** Live TV, as opposed to catch-up and VOD ("timeshift" in spec 31). */
+    val live: Boolean get() = archive == null && vod == null
+
+    private val _title = MutableStateFlow<String?>(null)
+
+    /** The session's title (spec 30 PLAY-FR-47): the film or episode as the service resolved it. */
+    val title: StateFlow<String?> = _title.asStateFlow()
+
+    /** The end of a film or an episode is handled once per item (PLAY-FR-132). */
+    private var finished = false
 
     private val reads = env.reads
 
@@ -136,7 +146,7 @@ class PlayerModel(
             try {
                 controller = env.client.connect(listener).also { it.addListener(listener) }
                 _connection.value = Connection.READY
-                play(firstChannel, record = recordFirst)
+                if (vod != null) playVod(vod) else play(firstChannel, record = recordFirst)
             } catch (e: Exception) {
                 _connection.value = Connection.FAILED
             }
@@ -174,6 +184,24 @@ class PlayerModel(
             reveal()
         }
     }
+
+    /** A film or an episode from its resume position (PLAY-FR-01, spec 40 VOD-FR-64). */
+    private fun playVod(request: VodPlay) {
+        val c = controller ?: return
+        finished = false
+        c.stop()
+        c.clearMediaItems()
+        val extras = Bundle().apply { putBoolean(PlaybackService.EXTRA_VOD, true) }
+        val item = MediaItem.Builder().setMediaId(request.contentKey)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build()
+        c.setMediaItem(item, request.startMs)
+        c.prepare()
+        c.play()
+        reveal()
+    }
+
+    /** The channel or the film playing: what Back and Leave report to the app. */
+    fun currentKey(): String? = _playing.value?.channel?.key ?: vod?.contentKey
 
     /** A catch-up item carries the programme's times for the service (spec 22 CATCH-FR-40). */
     private fun itemFor(key: String): MediaItem {
@@ -426,6 +454,15 @@ class PlayerModel(
                 attempt = 0
                 _banner.value = null
             }
+            val request = vod
+            if (playbackState == Player.STATE_ENDED && request != null && !finished) {
+                finished = true
+                navigation.finished(request.contentKey)
+            }
+        }
+
+        override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
+            _title.value = mediaMetadata.title?.toString()
         }
 
         override fun onPlayerError(error: PlaybackException) = onError(error)

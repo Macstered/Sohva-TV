@@ -86,6 +86,9 @@ sealed interface AppError {
     data object XtreamResponseInvalid : AppError { override val code = "xtream_response_invalid" }
     data object SeriesIdInvalid : AppError { override val code = "series_id_invalid" }
 
+    // Movies and series (spec 40 VOD-FR-75)
+    data object SourceDisabled : AppError { override val code = "source_disabled" }
+
     // Playback (SRC-FR-101)
     data class ConnectionLimit(val sourceName: String, val limit: Int) : AppError {
         override val code = "connection_limit"
@@ -101,7 +104,7 @@ object AppErrors {
         AppError.SourceNoLiveTv, AppError.SourceNoVod, AppError.PlaylistEmpty, AppError.PlaylistNotM3u,
         AppError.EpgEmpty, AppError.EpgUnmatched, AppError.CatalogueEmpty, AppError.XtreamAuthFailed,
         AppError.XtreamNoUserInfo, AppError.XtreamResponseTooLarge, AppError.XtreamResponseInvalid,
-        AppError.SeriesIdInvalid,
+        AppError.SeriesIdInvalid, AppError.SourceDisabled,
     ).associateBy { it.code }
 
     fun restore(code: String, args: List<String>): AppError {

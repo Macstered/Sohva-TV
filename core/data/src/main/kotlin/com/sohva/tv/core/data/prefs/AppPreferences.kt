@@ -99,6 +99,9 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         )
     }
 
+    /** "Continue to the next episode" (spec 70 SET-34, spec 30 PLAY-FR-132); on by default. */
+    suspend fun autoPlayNextEpisode(): Boolean = store.data.first()[AUTO_PLAY_NEXT] ?: true
+
     /** Trimmed, cut to 128 characters; blank removes the key (GUIDE-FR-12). */
     suspend fun setLastGuideSource(id: String?) {
         val value = id?.trim()?.take(128)
@@ -166,6 +169,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val BUFFER_PROFILE = stringPreferencesKey("playback_buffer_profile")
         private val RECONNECT_POLICY = stringPreferencesKey("playback_reconnect_policy")
         private val SEEK_STEP = stringPreferencesKey("playback_seek_step")
+        private val AUTO_PLAY_NEXT = booleanPreferencesKey("auto_play_next_episode")
         private val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         private val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
         private val SUBTITLE_SIZE = stringPreferencesKey("subtitle_text_size")

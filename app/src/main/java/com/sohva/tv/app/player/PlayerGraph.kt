@@ -72,6 +72,22 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         ArchiveResult.Ready(ResolvedStream(row.key, address, row.sourceId, row.sourceName, row.connectionLimit, title, row.userAgent, row.referrer))
     }
 
+    override suspend fun resolveVod(contentKey: String): ResolvedStream? = withContext(io) {
+        val title = graph.data.titles.playable(contentKey) ?: return@withContext null
+        val address = runCatching { graph.data.cipher.decrypt(title.streamUrlEnc) }.getOrNull() ?: return@withContext null
+        // An episode reads "Series · S1 E2 · Title"; a film its own name.
+        val name = if (title.seriesName == null) {
+            title.title
+        } else {
+            listOf(title.seriesName, graph.app.getString(R.string.series_episode_label, title.season ?: 0, title.number ?: 0), title.title)
+                .filter { !it.isNullOrBlank() }.joinToString(" · ")
+        }
+        ResolvedStream(title.key, address, title.sourceId, title.sourceName, title.connectionLimit, name, null, null)
+    }
+
+    override suspend fun saveProgress(contentKey: String, positionMs: Long, durationMs: Long) =
+        graph.data.progress.save(contentKey, positionMs, durationMs)
+
     override suspend fun settings(): PlaybackSettings = withContext(io) { graph.data.preferences.playback() }
 
     override fun setPlaybackActive(active: Boolean) {

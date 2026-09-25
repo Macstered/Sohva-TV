@@ -100,6 +100,9 @@ interface EpisodeImportDao {
     @Query(ImportSql.EPISODE_DELETE)
     fun delete(ids: List<Long>)
 
+    @Query("DELETE FROM episode WHERE key IN (:keys)")
+    fun deleteKeys(keys: List<String>)
+
     /** Episodes whose series is gone (a series removed by the sweep). */
     @Query(ImportSql.EPISODE_ORPHANS_DELETE)
     fun deleteOrphans(from: String, until: String, limit: Int): Int

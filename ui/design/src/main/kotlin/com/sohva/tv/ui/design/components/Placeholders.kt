@@ -85,6 +85,7 @@ fun errorMessage(error: AppError): String = when (error) {
     AppError.XtreamResponseTooLarge -> stringResource(R.string.error_xtream_response_too_large)
     AppError.XtreamResponseInvalid -> stringResource(R.string.error_xtream_response_invalid)
     AppError.SeriesIdInvalid -> stringResource(R.string.error_series_id_invalid)
+    AppError.SourceDisabled -> stringResource(R.string.catalogue_source_disabled)
     is AppError.ConnectionLimit -> stringResource(R.string.error_source_connection_limit, error.sourceName, error.limit)
 }
 

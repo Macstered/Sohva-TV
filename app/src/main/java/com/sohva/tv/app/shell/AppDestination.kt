@@ -11,11 +11,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.channels.AppChannelsEnvironment
 import com.sohva.tv.app.library.AppLibraryEnvironment
+import com.sohva.tv.app.library.AppTitleEnvironment
 import com.sohva.tv.app.library.LibraryNavigation
+import com.sohva.tv.app.library.TitleNavigation
 import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.app.settings.AppSettingsServices
+import com.sohva.tv.core.data.vod.ContentKeys
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.FeatureFlags
@@ -23,8 +26,12 @@ import com.sohva.tv.feature.channels.ChannelsModel
 import com.sohva.tv.feature.channels.ChannelsScreen
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
+import com.sohva.tv.feature.library.FilmModel
+import com.sohva.tv.feature.library.FilmPage
 import com.sohva.tv.feature.library.LibraryModel
 import com.sohva.tv.feature.library.LibraryScreen
+import com.sohva.tv.feature.library.SeriesModel
+import com.sohva.tv.feature.library.SeriesPage
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
@@ -33,10 +40,12 @@ import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerModel
 import com.sohva.tv.feature.player.PlayerNavigation
 import com.sohva.tv.feature.player.PlayerScreen
+import com.sohva.tv.feature.player.VodPlay
 import com.sohva.tv.feature.settings.SettingsModel
 import com.sohva.tv.feature.settings.SettingsScreen
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.navigation.BackStack
+import kotlinx.coroutines.launch
 
 /** The route table: the only place that knows every screen (plan/03 §4.3 rule 2). */
 @Composable
@@ -78,6 +87,24 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             // Scoped to this stack entry: popped with the screen (plan/03 §4.5).
             val model = viewModel { ChannelsModel(AppChannelsEnvironment(graph)) }
             ChannelsScreen(model, onBack = { back() })
+        }
+        is AppRoute.FilmDetails -> {
+            val play = remember(stack) { vodStarter(stack) }
+            val model = viewModel { FilmModel(AppTitleEnvironment(graph, play), route.key) }
+            FilmPage(model)
+        }
+        is AppRoute.SeriesDetails -> {
+            val play = remember(stack) { vodStarter(stack) }
+            val model = viewModel { SeriesModel(AppTitleEnvironment(graph, play), route.key) }
+            SeriesPage(model)
+        }
+        is AppRoute.VodPlayer -> {
+            val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
+            val navigation = remember(stack, graph, route) { vodNavigation(route, stack, graph) }
+            val model = viewModel {
+                PlayerModel(graph.player.screen(locale), route.contentKey, navigation, vod = VodPlay(route.contentKey, route.startMs))
+            }
+            PlayerScreen(model)
         }
         AppRoute.Settings -> {
             // Scoped to this stack entry: popped with Settings (plan/03 §4.5). Accounts waits for Trakt (M6).
@@ -137,6 +164,9 @@ private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>,
 
     override fun sport() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Today))
 
+    // Live and catch-up have no completion (spec 30 Q-06).
+    override fun finished(contentKey: String) = Unit
+
     /** `ACTION_VIEW` with the address, any video type, a new task and the headers both ways players read them (PLAY-FR-115). */
     override fun openExternal(stream: ExternalStream): Throwable? = runCatching {
         val intent = Intent(Intent.ACTION_VIEW).setDataAndType(stream.address.toUri(), "video/*").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -148,9 +178,52 @@ private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>,
     }.exceptionOrNull()
 }
 
+/** Details pages open the VOD player over themselves (spec 30 §3.1). */
+private fun vodStarter(stack: BackStack<AppRoute>) = TitleNavigation { key, startMs -> stack.push(AppRoute.VodPlayer(key, startMs)) }
+
+/**
+ * The VOD player's exits (spec 30 §3.2, PLAY-FR-132): Back pops to the page that started it. At
+ * the end, the next episode replaces the player when "Continue to the next episode" is on;
+ * otherwise the player pops and, when the screen underneath is not a details page, the title's page
+ * is pushed. A completion after the viewer left changes nothing (SHELL-FR-29).
+ */
+private fun vodNavigation(route: AppRoute.VodPlayer, stack: BackStack<AppRoute>, graph: AppGraph) = object : PlayerNavigation {
+    override fun leave(channelKey: String) {
+        stack.pop()
+    }
+
+    override fun guideAt(channelKey: String) = Unit
+
+    override fun home() = stack.resetTo(listOf(AppRoute.Home))
+
+    override fun guide() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
+
+    override fun sport() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Today))
+
+    override fun openExternal(stream: ExternalStream): Throwable? = UnsupportedOperationException("live only")
+
+    override fun finished(contentKey: String) {
+        graph.appScope.launch(graph.dispatchers.main) {
+            if (stack.top.route != route) return@launch
+            val episode = ContentKeys.isEpisode(contentKey)
+            val next = if (episode && graph.data.preferences.autoPlayNextEpisode()) graph.data.titles.nextEpisode(contentKey) else null
+            val details = if (episode) graph.data.titles.seriesOfEpisode(contentKey)?.let(AppRoute::SeriesDetails) else AppRoute.FilmDetails(contentKey)
+            if (stack.top.route != route) return@launch
+            if (next != null) {
+                stack.replaceTop(AppRoute.VodPlayer(next, 0))
+                return@launch
+            }
+            stack.pop()
+            val under = stack.top.route
+            if (details != null && under !is AppRoute.FilmDetails && under !is AppRoute.SeriesDetails) stack.push(details)
+        }
+    }
+}
+
 private fun libraryNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = object : LibraryNavigation {
-    // Details pages arrive with the next step of M4; until then a card says so.
-    override fun open(room: WallRoom, item: WallItem) = graph.notYetAvailable()
+    override fun open(room: WallRoom, item: WallItem) {
+        stack.push(if (room == WallRoom.MOVIES) AppRoute.FilmDetails(item.row.key) else AppRoute.SeriesDetails(item.row.key))
+    }
 
     // The library manager arrives with spec 42 (M4c).
     override fun openManager(room: WallRoom) = graph.notYetAvailable()
