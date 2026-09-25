@@ -1,87 +1,50 @@
 package com.sohva.tv.feature.player
 
 import android.view.KeyEvent
-import com.sohva.tv.core.model.player.Gesture
-import com.sohva.tv.core.model.player.PressHoldResolver
+import com.sohva.tv.core.model.player.CleanScreen
 import com.sohva.tv.core.model.player.RemoteAction
-import com.sohva.tv.core.model.player.RemoteButton
+import com.sohva.tv.core.model.player.RemoteDispatcher
 import com.sohva.tv.core.model.player.RemoteMapping
 
 /**
- * The clean screen's key dispatch (spec 31 §4.6, spec 30 §4.3) for live playback. One resolver for
- * the whole player session (REMOTE-FR-09), so a held channel key zaps exactly once. Returns whether
- * the event is consumed; an unconsumed Back travels the window's Back route (spec 30 §3.2).
+ * The player's keys (spec 31 §4.6, spec 30 §4.3) for live playback: the channel list's own keys,
+ * and the clean screen through the shared [RemoteDispatcher], which lives for the whole player
+ * session (REMOTE-FR-09) so a held channel key zaps exactly once. Returns whether the event is
+ * consumed; an unconsumed Back travels the window's Back route (spec 30 §3.2).
  */
-class PlayerKeys internal constructor(private val model: PlayerModel) {
-    private val resolver = PressHoldResolver()
-    private val mapping = RemoteMapping.DEFAULTS
-    private var boxAtDown = false
-    private val live = true
+class PlayerKeys internal constructor(private val model: PlayerModel, mapping: RemoteMapping = RemoteMapping.DEFAULTS) : CleanScreen {
+    private val dispatcher = RemoteDispatcher(mapping)
+
+    override val live: Boolean = true
+
+    override val boxVisible: Boolean get() = model.boxVisible.value
+
+    /** Applies from the next key press (REMOTE-FR-36). */
+    fun useMapping(mapping: RemoteMapping) {
+        dispatcher.mapping = mapping
+    }
 
     fun onKey(event: KeyEvent): Boolean {
         val down = event.action == KeyEvent.ACTION_DOWN
-        val code = event.keyCode
         if (model.channels.open.value) {
-            resolver.reset()
+            dispatcher.reset()
             // The list owns its keys, down and up alike, so exactly one layer closes per Back (PLAY-FR-04).
-            return if (down) listKey(code) else code in LIST_KEYS
+            return if (down) listKey(event.keyCode) else event.keyCode in LIST_KEYS
         }
-        digit(code)?.let { d ->
-            // Live: the first key-down appends; every event is consumed (REMOTE-FR-18).
-            if (down && event.repeatCount == 0) model.dial.digit(d)
-            return true
-        }
-        val button = RemoteButton.of(code)
-        if (button == null) {
-            // Outside the grid: reveal on the first down, leave the key to Android (REMOTE-FR-19).
-            if (down && event.repeatCount == 0) model.reveal()
-            return false
-        }
-        if (button == RemoteButton.BACK) return backKey(event)
-        if (down) {
-            if (event.repeatCount == 0) boxAtDown = model.boxVisible.value
-            val result = resolver.down(button, event.repeatCount)
-            if (result is PressHoldResolver.Result.Hold) perform(mapping.action(button, Gesture.HOLD))
-            return true
-        }
-        when (val result = resolver.up(button)) {
-            is PressHoldResolver.Result.Press -> press(result.button)
-            else -> Unit
-        }
-        return true
+        return dispatcher.onKey(event.keyCode, down, event.repeatCount, this)
     }
 
-    /** Back hold = the mapped hold action when it applies; a press goes through the window (REMOTE-FR-20). */
-    private fun backKey(event: KeyEvent): Boolean {
-        val hold = mapping.action(RemoteButton.BACK, Gesture.HOLD)
-        if (!hold.appliesTo(live) || hold == RemoteAction.NOTHING) {
-            resolver.reset()
-            return false
-        }
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            if (event.repeatCount == 0) {
-                resolver.down(RemoteButton.BACK, 0)
-                return false
-            }
-            if (resolver.down(RemoteButton.BACK, event.repeatCount) is PressHoldResolver.Result.Hold) perform(hold)
-            return true
-        }
-        val holding = resolver.isHolding(RemoteButton.BACK)
-        resolver.up(RemoteButton.BACK)
-        return holding
-    }
+    override fun reveal(focusPlayPause: Boolean) = model.reveal()
 
-    private fun press(button: RemoteButton) {
-        // Up/Down step into an open box first (REMOTE-FR-22).
-        if ((button == RemoteButton.UP || button == RemoteButton.DOWN) && boxAtDown) {
-            model.focusBox()
-            return
-        }
-        if (!perform(mapping.action(button, Gesture.PRESS))) model.reveal()
-    }
+    override fun focusBox() = model.focusBox()
+
+    // Live playback has no transport controls; the dispatcher never asks for them here.
+    override fun showControls() = model.reveal()
+
+    override fun dial(digit: Int) = model.dial.digit(digit)
 
     /** Performs [action]; false when it does not apply here or has nothing to act on (REMOTE-FR-23..24). */
-    fun perform(action: RemoteAction): Boolean {
+    override fun perform(action: RemoteAction): Boolean {
         if (!action.appliesTo(live)) return false
         val playing = model.playing.value?.channel?.key
         return when (action) {
@@ -158,11 +121,5 @@ class PlayerKeys internal constructor(private val model: PlayerModel) {
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_BACK,
         )
-    }
-
-    private fun digit(code: Int): Int? = when (code) {
-        in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> code - KeyEvent.KEYCODE_0
-        in KeyEvent.KEYCODE_NUMPAD_0..KeyEvent.KEYCODE_NUMPAD_9 -> code - KeyEvent.KEYCODE_NUMPAD_0
-        else -> null
     }
 }
