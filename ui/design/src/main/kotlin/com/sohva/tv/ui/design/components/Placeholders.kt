@@ -86,6 +86,11 @@ fun errorMessage(error: AppError): String = when (error) {
     AppError.XtreamResponseInvalid -> stringResource(R.string.error_xtream_response_invalid)
     AppError.SeriesIdInvalid -> stringResource(R.string.error_series_id_invalid)
     AppError.SourceDisabled -> stringResource(R.string.catalogue_source_disabled)
+    is AppError.MetadataHttp -> stringResource(R.string.error_metadata_http, error.provider, error.status)
+    is AppError.MetadataTooLarge -> stringResource(R.string.error_metadata_response_too_large, error.provider)
+    AppError.TmdbKeyInvalid -> stringResource(R.string.error_tmdb_key_invalid)
+    AppError.TmdbKeyRequired -> stringResource(R.string.error_tmdb_key_required)
+    AppError.MetadataSaveFailed -> stringResource(R.string.error_metadata_settings_save)
     is AppError.ConnectionLimit -> stringResource(R.string.error_source_connection_limit, error.sourceName, error.limit)
 }
 
