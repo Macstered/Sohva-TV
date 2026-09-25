@@ -22,6 +22,8 @@ import androidx.room.PrimaryKey
         Index(value = ["source_id", "display_rank"]),
         Index(value = ["source_id", "number"]),
         Index(value = ["source_id", "epg_id"]),
+        // Channel management's A–Z pages (spec 21 CHAN-NFR-01), per source like its Playlist order.
+        Index(value = ["source_id", "sort_name"]),
     ],
 )
 data class ChannelEntity(

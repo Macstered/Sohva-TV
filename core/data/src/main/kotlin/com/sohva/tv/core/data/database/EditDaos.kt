@@ -75,7 +75,35 @@ interface ChannelEditDao {
 
     @Query(EditSql.RECOUNT_GROUP)
     fun recountGroup(groupId: Long)
+
+    @Query("SELECT IFNULL(MAX(position), 0) FROM content_group WHERE source_id = :sourceId AND room = 'LIVE'")
+    fun maxGroupPosition(sourceId: String): Int
+
+    /** Whether the viewer ever reordered this source: then every channel of it has a position. */
+    @Query("SELECT COUNT(*) FROM channel_custom WHERE source_id = :sourceId AND position IS NOT NULL")
+    fun positioned(sourceId: String): Int
+
+    /** A source's channels in their current order, a bulk page (≤ 2,000) at a time. */
+    @Query(EditSql.RANK_PAGE)
+    fun rankPage(sourceId: String, afterRank: Long, afterId: Long, limit: Int): List<RankedChannel>
+
+    /** The channel just before (rank, id) in the source's full order, [exclude] left out. */
+    @Query(EditSql.BEFORE)
+    fun before(sourceId: String, rank: Long, id: Long, exclude: String): RankedChannel?
+
+    /** The channel just after (rank, id) in the source's full order, [exclude] left out. */
+    @Query(EditSql.AFTER)
+    fun after(sourceId: String, rank: Long, id: Long, exclude: String): RankedChannel?
+
+    @Query("UPDATE channel SET display_rank = :rank WHERE id = :id")
+    fun setRank(id: Long, rank: Long)
+
+    @Query("SELECT * FROM channel_custom WHERE channel_key IN (:keys)")
+    fun customs(keys: List<String>): List<ChannelCustomEntity>
 }
+
+/** A channel's place in its source's order. */
+data class RankedChannel(val id: Long, val key: String, @ColumnInfo(name = "display_rank") val rank: Long)
 
 object EditSql {
     // CROSS JOIN pins the walk to channel_custom's (source_id, channel_key) index, then looks each
@@ -100,6 +128,18 @@ object EditSql {
     const val GROUP_BY_KEY: String = "SELECT id FROM content_group WHERE source_id = :sourceId AND room = 'LIVE' AND group_key = :groupKey"
 
     // One group's shown channels, through the (group_id, display_rank) index: a single edit only.
+    const val RANK_PAGE: String =
+        "SELECT id, key, display_rank FROM channel INDEXED BY index_channel_source_id_display_rank WHERE source_id = :sourceId " +
+            "AND (display_rank > :afterRank OR (display_rank = :afterRank AND id > :afterId)) ORDER BY display_rank, id LIMIT :limit"
+
+    const val BEFORE: String =
+        "SELECT id, key, display_rank FROM channel INDEXED BY index_channel_source_id_display_rank WHERE source_id = :sourceId " +
+            "AND key != :exclude AND (display_rank < :rank OR (display_rank = :rank AND id < :id)) ORDER BY display_rank DESC, id DESC LIMIT 1"
+
+    const val AFTER: String =
+        "SELECT id, key, display_rank FROM channel INDEXED BY index_channel_source_id_display_rank WHERE source_id = :sourceId " +
+            "AND key != :exclude AND (display_rank > :rank OR (display_rank = :rank AND id > :id)) ORDER BY display_rank, id LIMIT 1"
+
     const val RECOUNT_GROUP: String =
         "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId AND visible = 1) WHERE id = :groupId"
 }
