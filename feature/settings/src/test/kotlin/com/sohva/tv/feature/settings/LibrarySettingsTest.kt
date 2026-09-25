@@ -19,6 +19,14 @@ import org.junit.Test
 internal class FakeLibrary : LibrarySettingsServices {
     override fun openManager() = Unit
 
+    override fun customGroups(): kotlinx.coroutines.flow.Flow<List<com.sohva.tv.core.model.vod.CustomGroup>> = kotlinx.coroutines.flow.flowOf(emptyList())
+
+    override suspend fun saveCustomGroup(group: com.sohva.tv.core.model.vod.CustomGroup) = Unit
+
+    override suspend fun deleteCustomGroup(id: String) = Unit
+
+    override suspend fun libraryGenres(): List<com.sohva.tv.core.model.vod.Genre> = emptyList()
+
     val view = MutableStateFlow(MetadataSettingsView(tmdbSwitch = false, credential = "", tvmaze = false, language = "en-US", keyRefused = false))
     val calls = mutableListOf<String>()
     var testResult: Outcome<Unit> = Outcome.Ok(Unit)

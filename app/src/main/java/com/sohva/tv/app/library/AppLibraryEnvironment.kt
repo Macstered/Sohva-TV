@@ -10,10 +10,12 @@ import com.sohva.tv.core.model.metadata.MediaType
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.RefreshState
+import com.sohva.tv.core.model.vod.CustomGroup
 import com.sohva.tv.core.sync.metadata.VisibleTitle
 import com.sohva.tv.feature.library.LibraryEnvironment
 import com.sohva.tv.feature.library.RefreshNote
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 
 /** Where a wall goes: details pages, the library manager, back (spec 40 §3). */
@@ -38,6 +40,8 @@ class AppLibraryEnvironment(
     override suspend fun rail(): Rail = reads.rail(room)
 
     override suspend fun genreCounts(): Map<String, Int> = reads.genreCounts(room)
+
+    override fun customGroups(): Flow<List<CustomGroup>> = graph.data.preferences.customGroups.flowOn(graph.dispatchers.io)
 
     /** Series walls with TVmaze on (films never come from TVmaze, META-FR-13). */
     override suspend fun tvmazeCredit(): Boolean =

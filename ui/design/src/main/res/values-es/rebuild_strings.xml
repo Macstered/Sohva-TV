@@ -25,4 +25,5 @@
     <string name="player_archive_unavailable">Este programa no está disponible en el archivo.</string>
     <string name="metadata_key_refused">TMDB rechazó la clave tres veces, así que las búsquedas en segundo plano se han detenido. Revisa la clave y pulsa Guardar clave.</string>
     <string name="metadata_tvmaze_credit">Algunos datos de series de TVmaze (CC BY-SA)</string>
+    <string name="custom_group_limit">Hasta 24 grupos</string>
 </resources>

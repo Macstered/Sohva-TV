@@ -102,6 +102,19 @@ object WallSql {
     private const val SERIES_UNSORTED = "SELECT $COLUMNS FROM series INDEXED BY index_series_genre_visible_primary_copy_sort_name " +
         "WHERE genre IS NULL AND visible = 1 AND primary_copy = 1"
 
+    // A group of your own (VOD-FR-11): a genre index or the all-titles index, in wall order, with the
+    // year and rating bounds as filters; a missing year or rating fails a bound.
+    private const val BOUNDS = "AND (:fromYear IS NULL OR year >= :fromYear) AND (:toYear IS NULL OR year <= :toYear) " +
+        "AND (:minTenths IS NULL OR rating_x10 >= :minTenths)"
+    const val FILM_GENRE_BOUNDED_AFTER = "$FILM_GENRE $BOUNDS $AFTER"
+    const val FILM_GENRE_BOUNDED_BEFORE = "$FILM_GENRE $BOUNDS $BEFORE"
+    const val FILM_ALL_BOUNDED_AFTER = "$FILM_ALL $BOUNDS $AFTER"
+    const val FILM_ALL_BOUNDED_BEFORE = "$FILM_ALL $BOUNDS $BEFORE"
+    const val SERIES_GENRE_BOUNDED_AFTER = "$SERIES_GENRE $BOUNDS $AFTER"
+    const val SERIES_GENRE_BOUNDED_BEFORE = "$SERIES_GENRE $BOUNDS $BEFORE"
+    const val SERIES_ALL_BOUNDED_AFTER = "$SERIES_ALL $BOUNDS $AFTER"
+    const val SERIES_ALL_BOUNDED_BEFORE = "$SERIES_ALL $BOUNDS $BEFORE"
+
     const val FILM_GROUP_AFTER = "$FILM_GROUP $AFTER"
     const val FILM_GROUP_BEFORE = "$FILM_GROUP $BEFORE"
     const val FILM_ALL_AFTER = "$FILM_ALL $AFTER"
@@ -212,6 +225,30 @@ interface WallDao {
 
     @Query(WallSql.SERIES_UNSORTED_BEFORE)
     fun seriesUnsortedBefore(name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.FILM_GENRE_BOUNDED_AFTER)
+    fun filmGenreBoundedAfter(genre: String, fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.FILM_GENRE_BOUNDED_BEFORE)
+    fun filmGenreBoundedBefore(genre: String, fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.FILM_ALL_BOUNDED_AFTER)
+    fun filmAllBoundedAfter(fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.FILM_ALL_BOUNDED_BEFORE)
+    fun filmAllBoundedBefore(fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.SERIES_GENRE_BOUNDED_AFTER)
+    fun seriesGenreBoundedAfter(genre: String, fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.SERIES_GENRE_BOUNDED_BEFORE)
+    fun seriesGenreBoundedBefore(genre: String, fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.SERIES_ALL_BOUNDED_AFTER)
+    fun seriesAllBoundedAfter(fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
+
+    @Query(WallSql.SERIES_ALL_BOUNDED_BEFORE)
+    fun seriesAllBoundedBefore(fromYear: Int?, toYear: Int?, minTenths: Int?, name: String, id: Long, sources: List<String>, search: String?, limit: Int): List<WallRow>
 
     @Query(WallSql.GROUPS)
     fun groups(room: String, sources: List<String>): List<WallGroupRow>

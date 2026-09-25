@@ -26,4 +26,6 @@
     <string name="metadata_key_refused">TMDB refused the key three times, so background lookups have stopped. Check the key, then press Save key.</string>
     <!-- Spec 41 Q9 (decided 25 September 2026): a small credit wherever TVmaze data shows. -->
     <string name="metadata_tvmaze_credit">Some series details from TVmaze (CC BY-SA)</string>
+    <!-- Spec 42 ORG-FR-64 (rebuild): "Add a group" is disabled at 24 groups with this note. -->
+    <string name="custom_group_limit">Up to 24 groups</string>
 </resources>

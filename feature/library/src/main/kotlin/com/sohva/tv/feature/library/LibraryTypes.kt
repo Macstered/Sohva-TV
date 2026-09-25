@@ -6,7 +6,9 @@ import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.error.AppError
+import com.sohva.tv.core.model.vod.CustomGroup
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /** The rail's two views (spec 40 VOD-FR-03/04). */
 enum class RailView { GROUPS, GENRES }
@@ -54,6 +56,9 @@ interface LibraryEnvironment {
 
     /** The shown groups in the room's order and History's shortcut rule (spec 42 ORG-FR-19, ORG-11). */
     suspend fun rail(): Rail
+
+    /** Groups of your own in their saved order (VOD-FR-04, -11); device-wide. */
+    fun customGroups(): Flow<List<CustomGroup>> = flowOf(emptyList())
 
     /** Titles per genre wire value, `""` for Unsorted (VOD-FR-04). */
     suspend fun genreCounts(): Map<String, Int>

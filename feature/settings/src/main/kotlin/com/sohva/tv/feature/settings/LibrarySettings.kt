@@ -3,6 +3,8 @@ package com.sohva.tv.feature.settings
 import androidx.compose.runtime.Immutable
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.vod.CustomGroup
+import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.model.vod.PreferredCopy
 import com.sohva.tv.ui.design.R
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +57,16 @@ interface LibrarySettingsServices {
 
     /** "Manage groups & content": the library manager's Live room (spec 42 §3). */
     fun openManager()
+
+    /** Groups of your own (spec 42 ORG-FR-60), in their saved order. */
+    fun customGroups(): Flow<List<CustomGroup>>
+
+    suspend fun saveCustomGroup(group: CustomGroup)
+
+    suspend fun deleteCustomGroup(id: String)
+
+    /** The genres the library's films and series have, in vocabulary order (ORG-FR-63). */
+    suspend fun libraryGenres(): List<Genre>
 }
 
 /** Settings › Library's state (spec 41 §5.1): the typed key is the viewer's until they save it. */
@@ -77,6 +89,11 @@ class LibrarySettings internal constructor(private val services: LibrarySettings
     private val _state = MutableStateFlow(LibrarySettingsState())
     val state: StateFlow<LibrarySettingsState> = _state.asStateFlow()
 
+    private val _customGroups = MutableStateFlow<List<CustomGroup>>(emptyList())
+
+    /** Groups of your own (spec 42 ORG-FR-61), in their saved order. */
+    val customGroups: StateFlow<List<CustomGroup>> = _customGroups.asStateFlow()
+
     init {
         scope.launch {
             services.metadata().collect { view ->
@@ -85,7 +102,19 @@ class LibrarySettings internal constructor(private val services: LibrarySettings
             }
         }
         scope.launch { services.preferredCopy().collect { copy -> _state.update { it.copy(preferredCopy = copy) } } }
+        scope.launch { services.customGroups().collect { _customGroups.value = it } }
     }
+
+    fun saveCustomGroup(group: CustomGroup) {
+        scope.launch { services.saveCustomGroup(group) }
+    }
+
+    fun deleteCustomGroup(id: String) {
+        scope.launch { services.deleteCustomGroup(id) }
+    }
+
+    /** The genres the editor offers: those present in the library (ORG-FR-63). */
+    suspend fun libraryGenres(): List<Genre> = runCatching { services.libraryGenres() }.getOrDefault(emptyList())
 
     fun type(value: String) = _state.update { it.copy(typed = value.take(KEY_MAX)) }
 

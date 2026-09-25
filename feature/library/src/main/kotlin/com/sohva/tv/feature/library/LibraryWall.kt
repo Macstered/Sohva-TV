@@ -35,6 +35,7 @@ import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.roundFill
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
 import com.sohva.tv.ui.design.text.Text
+import com.sohva.tv.ui.design.text.genreLabel
 import com.sohva.tv.ui.design.theme.Sohva
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -230,6 +231,7 @@ internal fun destinationLabel(destination: WallDestination?): String? = when (de
     WallDestination.AllGroups -> stringResource(R.string.catalogue_all)
     is WallDestination.OfGenre -> stringResource(genreLabel(destination.genre))
     WallDestination.Unsorted -> stringResource(R.string.catalogue_genre_unsorted)
+    is WallDestination.Custom -> destination.group.name
 }
 
 internal val MIN_CELL = 88.dp

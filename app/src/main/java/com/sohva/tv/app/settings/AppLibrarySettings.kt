@@ -4,7 +4,10 @@ import android.content.Intent
 import androidx.core.net.toUri
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.core.data.metadata.MetadataConfig
+import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.vod.CustomGroup
+import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.model.vod.PreferredCopy
 import com.sohva.tv.feature.settings.LibrarySettingsServices
 import com.sohva.tv.feature.settings.MetadataSettingsView
@@ -25,6 +28,17 @@ class AppLibrarySettings(private val graph: AppGraph, private val onOpenManager:
     private val io get() = graph.dispatchers.io
 
     override fun openManager() = onOpenManager()
+
+    override fun customGroups(): Flow<List<CustomGroup>> = graph.data.preferences.customGroups.flowOn(io)
+
+    override suspend fun saveCustomGroup(group: CustomGroup) = withContext(io) { graph.data.preferences.saveCustomGroup(group) }
+
+    override suspend fun deleteCustomGroup(id: String) = withContext(io) { graph.data.preferences.deleteCustomGroup(id) }
+
+    override suspend fun libraryGenres(): List<Genre> = withContext(io) {
+        val present = WallRoom.entries.flatMap { graph.data.walls.genreCounts(it).filterValues { n -> n > 0 }.keys }.toSet()
+        Genre.entries.filter { it.wire in present }
+    }
     private val metadata get() = graph.metadata
 
     override fun metadata(): Flow<MetadataSettingsView> = flow {

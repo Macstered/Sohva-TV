@@ -4,10 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tracing.Trace
 import com.sohva.tv.core.data.vod.Rail
-import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
+import com.sohva.tv.core.model.vod.CustomGroup
+import com.sohva.tv.core.model.vod.Genre
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.FlowPreview
@@ -91,8 +92,17 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     /** Genre counts are read only once the Genres view has been used (VOD-FR-04). */
     private var genresUsed = false
 
+    /** Groups of your own, as last read; their rows need no counts (VOD-FR-04). */
+    private var lastCustom: List<CustomGroup> = emptyList()
+
     init {
         viewModelScope.launch { readRail() }
+        viewModelScope.launch {
+            env.customGroups().collect {
+                lastCustom = it
+                if (lastRailRead) applyRows()
+            }
+        }
         viewModelScope.launch { _tvmazeCredit.value = runCatching { env.tvmazeCredit() }.getOrDefault(false) }
         select(HISTORY_KEY)
         watchChanges()
@@ -318,7 +328,18 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
 
     private suspend fun readRail() {
         lastRail = runCatching { env.rail() }.getOrElse { return }
+        lastRailRead = true
         if (genresUsed) lastCounts = runCatching { env.genreCounts() }.getOrDefault(lastCounts)
+        applyRows()
+    }
+
+    private var lastRailRead = false
+
+    /**
+     * New rows (a read of the rail, or groups of your own saved or deleted): a selection that is
+     * gone → the first row; a selected group whose order or conditions changed reads again.
+     */
+    private fun applyRows() {
         val rows = rows(_view.value, lastRail)
         _rail.value = rows
         // The selected row disappeared → the first row (VOD-FR-08, -09); hidden History included.
@@ -328,10 +349,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
             if (!focusOnWall) _railRefocus.value++
             return
         }
-        // The selected group's order changed (library manager): the wall reads again in the new order.
+        // The selected group's order changed (library manager), or a group of your own was edited
+        // (VOD-FR-11): the wall reads again.
         val now = rows.firstOrNull { it.key == selected }?.destination
         val shown = _wall.value.destination
-        if (now is WallDestination.Group && shown is WallDestination.Group && now != shown && loadJob?.isActive != true) load(now)
+        val changed = (now is WallDestination.Group && shown is WallDestination.Group) || (now is WallDestination.Custom && shown is WallDestination.Custom)
+        if (changed && now != shown && loadJob?.isActive != true) load(now)
     }
 
     private suspend fun refreshWindow() {
@@ -390,8 +413,9 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
                 }
                 if (history && historyAt > 0 && historyAt == rail.groups.size) add(historyRow())
             }
-            // The 22 genres in their fixed order, then Unsorted, each only with titles (VOD-FR-04).
+            // Groups of your own, the 22 genres in their fixed order, then Unsorted, each genre only with titles (VOD-FR-04).
             RailView.GENRES -> {
+                lastCustom.forEach { g -> add(RailRow(CUSTOM_PREFIX + g.id, WallDestination.Custom(g), g.name, null)) }
                 Genre.entries.forEach { g -> lastCounts[g.wire]?.takeIf { it > 0 }?.let { add(genreRow(g, it)) } }
                 lastCounts[""]?.takeIf { it > 0 }?.let { add(RailRow(UNSORTED_KEY, WallDestination.Unsorted, null, it)) }
             }
@@ -407,6 +431,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         const val ALL_KEY: String = "all"
         const val UNSORTED_KEY: String = "unsorted"
         const val GENRE_PREFIX: String = "genre:"
+        const val CUSTOM_PREFIX: String = "custom:"
         const val SEARCH_MAX: Int = 80
         const val SEARCH_DEBOUNCE_MS: Long = 250
         const val CHANGE_QUIET_MS: Long = 500

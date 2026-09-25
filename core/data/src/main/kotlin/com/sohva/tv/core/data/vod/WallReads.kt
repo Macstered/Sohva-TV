@@ -10,7 +10,9 @@ import com.sohva.tv.core.model.org.OrgResolver
 import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.core.model.org.OrgSort
 import com.sohva.tv.core.model.text.SortNames
+import com.sohva.tv.core.model.vod.CustomGroup
 import com.sohva.tv.core.model.vod.Genre
+import com.sohva.tv.core.model.vod.VodText
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +38,9 @@ sealed interface WallDestination {
     data class OfGenre(val genre: Genre) : WallDestination
 
     data object Unsorted : WallDestination
+
+    /** A group of your own (VOD-FR-11): its genres' walls merged, with the year and rating bounds. */
+    data class Custom(val group: CustomGroup) : WallDestination
 }
 
 /** A rail row for a provider group: its label, its sources' group ids, the title count and its manual place. */
@@ -151,6 +156,7 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
                     WallRoom.MOVIES -> if (forward) dao.filmUnsortedAfter(name, id, sources, query, limit) else dao.filmUnsortedBefore(name, id, sources, query, limit)
                     WallRoom.SERIES -> if (forward) dao.seriesUnsortedAfter(name, id, sources, query, limit) else dao.seriesUnsortedBefore(name, id, sources, query, limit)
                 }
+                is WallDestination.Custom -> custom(room, destination.group, name, id, sources, query, forward, limit)
                 WallDestination.History -> error("handled above")
             }
             val ordered = if (forward) rows else rows.asReversed()
@@ -176,7 +182,31 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
         is WallDestination.Group -> groupId in destination.groupIds
         is WallDestination.OfGenre -> genre == destination.genre.wire
         WallDestination.Unsorted -> genre == null
+        is WallDestination.Custom -> destination.group.matches(Genre.ofWire(genre), year, VodText.ratingNumber(rating))
         WallDestination.AllGroups, WallDestination.History -> true
+    }
+
+    /**
+     * A group of your own: each genre index walked with the bounds and merged (a title has one
+     * genre, so the walks never overlap); without genres, the all-titles index with the bounds.
+     */
+    private fun custom(room: WallRoom, g: CustomGroup, name: String, id: Long, sources: List<String>, query: String?, forward: Boolean, limit: Int): List<WallRow> {
+        val (from, to, min) = Triple(g.fromYear, g.toYear, g.minRatingTenths)
+        if (g.genres.isEmpty()) {
+            return when (room) {
+                WallRoom.MOVIES -> if (forward) dao.filmAllBoundedAfter(from, to, min, name, id, sources, query, limit) else dao.filmAllBoundedBefore(from, to, min, name, id, sources, query, limit)
+                WallRoom.SERIES -> if (forward) dao.seriesAllBoundedAfter(from, to, min, name, id, sources, query, limit) else dao.seriesAllBoundedBefore(from, to, min, name, id, sources, query, limit)
+            }
+        }
+        val walks = g.genres.sortedBy { it.ordinal }.map { genre ->
+            val w = genre.wire
+            when (room) {
+                WallRoom.MOVIES -> if (forward) dao.filmGenreBoundedAfter(w, from, to, min, name, id, sources, query, limit) else dao.filmGenreBoundedBefore(w, from, to, min, name, id, sources, query, limit)
+                WallRoom.SERIES -> if (forward) dao.seriesGenreBoundedAfter(w, from, to, min, name, id, sources, query, limit) else dao.seriesGenreBoundedBefore(w, from, to, min, name, id, sources, query, limit)
+            }
+        }
+        val order = compareBy<WallRow>({ it.sortName }, { it.id })
+        return walks.flatten().sortedWith(if (forward) order else order.reversed()).take(limit)
     }
 
     private fun filled(row: WallRow, others: List<CopyFacts>): WallRow {

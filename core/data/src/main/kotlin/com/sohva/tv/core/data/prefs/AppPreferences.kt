@@ -24,6 +24,8 @@ import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
+import com.sohva.tv.core.model.vod.CustomGroup
+import com.sohva.tv.core.model.vod.CustomGroups
 import com.sohva.tv.core.model.vod.PreferredCopy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -64,6 +66,18 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
             val current = RemoteMapping.decode(prefs[REMOTE_MAPPINGS], prefs[REMOTE_CHANNEL_KEY_MODE])
             prefs[REMOTE_MAPPINGS] = current.with(button, gesture, action).encode()
         }
+    }
+
+    /** Groups of your own (spec 42 ORG-FR-60): device-wide, in their saved order. Parsed where collected (off the main thread). */
+    val customGroups: Flow<List<CustomGroup>> = store.data.map { it[CUSTOM_GROUPS] }.distinctUntilChanged().map(CustomGroupCodec::decode)
+
+    /** Saves or replaces [group] by id (ORG-FR-60); an unusable group or a 25th changes nothing. */
+    suspend fun saveCustomGroup(group: CustomGroup) {
+        store.edit { it[CUSTOM_GROUPS] = CustomGroupCodec.encode(CustomGroups.save(CustomGroupCodec.decode(it[CUSTOM_GROUPS]), group)) }
+    }
+
+    suspend fun deleteCustomGroup(id: String) {
+        store.edit { it[CUSTOM_GROUPS] = CustomGroupCodec.encode(CustomGroups.delete(CustomGroupCodec.decode(it[CUSTOM_GROUPS]), id)) }
     }
 
     /** `editors_show_hidden`, shared by channel management and the Library manager (spec 21 CHAN-FR-16). */
@@ -209,6 +223,7 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         private val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
         private val REMINDER_OVERLAY_ASKED = booleanPreferencesKey("reminder_overlay_asked")
         private val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")
+        private val CUSTOM_GROUPS = stringPreferencesKey("custom_catalogue_groups")
 
         // Beta 23's "Remote channel browser" setting: read (never shown) until a mapping is written.
         private val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")

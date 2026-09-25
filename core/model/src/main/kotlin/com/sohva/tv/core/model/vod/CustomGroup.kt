@@ -27,6 +27,12 @@ data class CustomGroup(
         return true
     }
 
+    /**
+     * The minimum as the stored `rating_x10` (the provider's rating in tenths, rounded), for the
+     * wall's index walk; a hundredth below the minimum can round into it.
+     */
+    val minRatingTenths: Int? get() = minRating?.let { kotlin.math.ceil(it * 10 - 1e-9).toInt() }
+
     companion object {
         const val MAX: Int = 24
     }

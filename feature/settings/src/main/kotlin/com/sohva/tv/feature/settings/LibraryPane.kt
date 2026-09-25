@@ -15,7 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -64,7 +63,8 @@ internal fun LibraryPane(library: LibrarySettings, start: FocusRequester) {
     val fromManager = remember { library.takeManagerReturn() }
     val unused = remember { FocusRequester() }
     MetadataGroup(library, state, stored, if (fromManager) unused else start)
-    ChoicesGroup(library, state, stored, clearCache, managerRow = if (fromManager) start else unused)
+    ChoicesGroup(library, state, stored, managerRow = if (fromManager) start else unused)
+    CustomGroupsSection(library, below = clearCache)
     SettingsGroup {
         SettingsOverline(stringResource(R.string.maintenance_title))
         Row(Modifier.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -132,7 +132,7 @@ private fun MetadataGroup(library: LibrarySettings, state: LibrarySettingsState,
 
 /** The metadata language (META-FR-09) and the preferred copy (spec 40 VOD-FR-32), each with its picker. */
 @Composable
-private fun ChoicesGroup(library: LibrarySettings, state: LibrarySettingsState, stored: MetadataSettingsView, below: FocusRequester, managerRow: FocusRequester) {
+private fun ChoicesGroup(library: LibrarySettings, state: LibrarySettingsState, stored: MetadataSettingsView, managerRow: FocusRequester) {
     var picking by remember { mutableStateOf<Picking?>(null) }
     // Set only when a picker closes, so focus returns to its row and never lands there unasked.
     var returnTo by remember { mutableStateOf<Picking?>(null) }
@@ -161,8 +161,7 @@ private fun ChoicesGroup(library: LibrarySettings, state: LibrarySettingsState, 
             title = stringResource(R.string.manager_title),
             value = "",
             onClick = library::openManager,
-            // Down goes to the first button under the row, not the one nearest its middle.
-            modifier = Modifier.focusRequester(managerRow).focusProperties { down = below }.testTag("settings-manage-groups"),
+            modifier = Modifier.focusRequester(managerRow).testTag("settings-manage-groups"),
             icon = TvIcons.Settings,
             subtitle = stringResource(R.string.manager_row_help),
         )

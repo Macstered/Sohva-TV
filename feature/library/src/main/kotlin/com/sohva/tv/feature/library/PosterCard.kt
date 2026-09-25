@@ -1,6 +1,5 @@
 package com.sohva.tv.feature.library
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -50,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import com.sohva.tv.core.data.database.WallRow
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.model.metadata.TmdbImages
-import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.model.vod.QualityChips
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.InitialsTile
@@ -201,30 +199,4 @@ internal fun DrawScope.drawCropped(bitmap: ImageBitmap) {
         srcSize = IntSize(srcW, srcH),
         dstSize = IntSize(size.width.toInt(), size.height.toInt()),
     )
-}
-
-@StringRes
-internal fun genreLabel(genre: Genre): Int = when (genre) {
-    Genre.ACTION -> R.string.genre_action
-    Genre.ADVENTURE -> R.string.genre_adventure
-    Genre.ANIMATION -> R.string.genre_animation
-    Genre.COMEDY -> R.string.genre_comedy
-    Genre.CRIME -> R.string.genre_crime
-    Genre.DOCUMENTARY -> R.string.genre_documentary
-    Genre.DRAMA -> R.string.genre_drama
-    Genre.FAMILY -> R.string.genre_family
-    Genre.FANTASY -> R.string.genre_fantasy
-    Genre.HISTORY -> R.string.genre_history
-    Genre.HORROR -> R.string.genre_horror
-    Genre.MUSIC -> R.string.genre_music
-    Genre.MYSTERY -> R.string.genre_mystery
-    Genre.NEWS -> R.string.genre_news
-    Genre.REALITY -> R.string.genre_reality
-    Genre.ROMANCE -> R.string.genre_romance
-    Genre.SCIENCE_FICTION -> R.string.genre_science_fiction
-    Genre.SOAP -> R.string.genre_soap
-    Genre.TALK -> R.string.genre_talk
-    Genre.THRILLER -> R.string.genre_thriller
-    Genre.WAR -> R.string.genre_war
-    Genre.WESTERN -> R.string.genre_western
 }
