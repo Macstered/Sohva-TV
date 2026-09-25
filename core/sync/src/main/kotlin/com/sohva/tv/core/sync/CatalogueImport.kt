@@ -154,6 +154,7 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
             val passes = LibraryPasses(env.db)
             passes.refreshSource(sourceId, preferred)
             passes.recountGenres()
+            env.onCatalogueImported()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
                 KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }
         }

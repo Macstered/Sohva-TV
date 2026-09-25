@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.StrictMode
 import android.util.Log
 import androidx.work.Configuration
+import androidx.work.DelegatingWorkerFactory
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.player.PlayerEnvironment
@@ -11,12 +12,16 @@ import com.sohva.tv.core.player.PlayerHost
 import com.sohva.tv.core.sync.ImportRunner
 import com.sohva.tv.core.sync.RefreshHost
 import com.sohva.tv.core.sync.RefreshWorkerFactory
+import com.sohva.tv.core.sync.metadata.Enrichment
+import com.sohva.tv.core.sync.metadata.EnrichmentHost
+import com.sohva.tv.core.sync.metadata.EnrichmentScheduler
+import com.sohva.tv.core.sync.metadata.EnrichmentWorkerFactory
 
 /**
  * Process entry. Builds lazy holders only: no disk, database, preferences, WorkManager,
  * Keystore, network or image loader before the first frame (plan/03 §4.9).
  */
-class SohvaApplication : Application(), Configuration.Provider, RefreshHost, PlayerHost {
+class SohvaApplication : Application(), Configuration.Provider, RefreshHost, PlayerHost, EnrichmentHost {
     lateinit var graph: AppGraph
         private set
 
@@ -34,7 +39,12 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.INFO else Log.ERROR)
-            .setWorkerFactory(RefreshWorkerFactory(this))
+            .setWorkerFactory(
+                DelegatingWorkerFactory().apply {
+                    addFactory(RefreshWorkerFactory(this@SohvaApplication))
+                    addFactory(EnrichmentWorkerFactory(this@SohvaApplication))
+                },
+            )
             .build()
 
     override val importRunner: ImportRunner get() = graph.sync.runner
@@ -49,4 +59,10 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
     override fun nowMillis(): Long = graph.clock.wallMillis()
 
     override fun playerEnvironment(): PlayerEnvironment = graph.player
+
+    override val enrichment: Enrichment get() = graph.metadata.enrichment
+
+    override val enrichmentScheduler: EnrichmentScheduler get() = graph.metadata.scheduler
+
+    override suspend fun metadataEnabled(): Boolean = graph.flags.metadataWorker && graph.metadata.settings.current().enabled
 }

@@ -35,6 +35,9 @@ class SyncGraph(private val graph: AppGraph) {
             log = graph.diagnostics,
             names = ResourceFallbackNames(graph.app),
             preferredCopy = { data.preferences.preferredCopy() },
+            onCatalogueImported = {
+                if (graph.flags.metadataWorker) graph.metadata.scheduler.afterImport(graph.inForeground.value)
+            },
         )
     }
 

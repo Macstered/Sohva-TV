@@ -143,4 +143,7 @@ interface MetadataDao {
 
     @Query("SELECT work_key FROM movie WHERE key = :key")
     fun workKeyOf(key: String): String?
+
+    @Query("SELECT COALESCE((SELECT poster_url FROM movie WHERE key = :key), (SELECT poster_url FROM series WHERE key = :key))")
+    fun providerPoster(key: String): String?
 }

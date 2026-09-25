@@ -36,4 +36,6 @@ class ImportEnvironment(
     val names: FallbackNames,
     /** The copy preference that decides which copy stands for a film (spec 40 VOD-FR-29). */
     val preferredCopy: suspend () -> PreferredCopy = { PreferredCopy.NONE },
+    /** A catalogue import finished: the metadata enrichment synchronises and runs (spec 41 META-FR-62). */
+    val onCatalogueImported: () -> Unit = {},
 )

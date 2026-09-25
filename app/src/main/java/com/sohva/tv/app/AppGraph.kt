@@ -47,6 +47,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val sync: SyncGraph by lazy { SyncGraph(this) }
 
+    /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
+    val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }
+
     /** The playback engine's and player screen's view of the graph; built on first playback. */
     val player: com.sohva.tv.app.player.PlayerGraph by lazy { com.sohva.tv.app.player.PlayerGraph(this) }
 
