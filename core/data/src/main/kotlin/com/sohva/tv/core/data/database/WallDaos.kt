@@ -88,25 +88,32 @@ object WallSql {
      * History, newest first (spec 40 VOD-FR-93): the profile's progress rows in index order, each
      * kept only when it is the newest of its film (copies fold by work key) and its title is on a
      * wall. The progress table leads the join (`CROSS JOIN`) so titles are reached by their key.
+     * "Older" pages continue down the list; "newer" pages come back up it.
      */
-    const val FILM_HISTORY = "SELECT w.updated_at, w.content_key, m.id, m.key, m.source_id, m.name, m.sort_name, m.poster_url, " +
-        "m.year, m.rating, m.quality_mask, m.work_key FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key " +
+    private const val FILM_HISTORY = "SELECT w.updated_at, w.content_key, m.id, m.key, m.source_id, m.name, m.sort_name, " +
+        "m.poster_url, m.year, m.rating, m.quality_mask, m.work_key FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key " +
         "WHERE w.profile_id = :profile AND w.content_type = 'MOVIE' " +
-        "AND (w.updated_at < :at OR (w.updated_at = :at AND w.content_key < :contentKey)) " +
         "AND m.visible = 1 AND m.source_id IN (:sources) AND (:search IS NULL OR instr(m.sort_name, :search) > 0) " +
         "AND (w.work_key IS NULL OR NOT EXISTS (SELECT 1 FROM watch_progress n WHERE n.profile_id = w.profile_id " +
-        "AND n.work_key = w.work_key AND (n.updated_at > w.updated_at OR (n.updated_at = w.updated_at AND n.content_key > w.content_key)))) " +
-        "ORDER BY w.updated_at DESC, w.content_key DESC LIMIT :limit"
-
-    /** Series History: every series with episode progress, once, by its newest episode. */
-    const val SERIES_HISTORY = "SELECT w.updated_at, w.content_key, s.id, s.key, s.source_id, s.name, s.sort_name, s.poster_url, " +
-        "s.year, s.rating, s.quality_mask, s.work_key FROM watch_progress w CROSS JOIN series s ON s.key = w.series_key " +
+        "AND n.work_key = w.work_key AND (n.updated_at > w.updated_at OR (n.updated_at = w.updated_at AND n.content_key > w.content_key))))"
+    private const val SERIES_HISTORY = "SELECT w.updated_at, w.content_key, s.id, s.key, s.source_id, s.name, s.sort_name, " +
+        "s.poster_url, s.year, s.rating, s.quality_mask, s.work_key FROM watch_progress w CROSS JOIN series s ON s.key = w.series_key " +
         "WHERE w.profile_id = :profile AND w.content_type = 'EPISODE' " +
-        "AND (w.updated_at < :at OR (w.updated_at = :at AND w.content_key < :contentKey)) " +
         "AND s.visible = 1 AND s.source_id IN (:sources) AND (:search IS NULL OR instr(s.sort_name, :search) > 0) " +
         "AND NOT EXISTS (SELECT 1 FROM watch_progress n WHERE n.profile_id = w.profile_id AND n.series_key = w.series_key " +
-        "AND (n.updated_at > w.updated_at OR (n.updated_at = w.updated_at AND n.content_key > w.content_key))) " +
+        "AND (n.updated_at > w.updated_at OR (n.updated_at = w.updated_at AND n.content_key > w.content_key)))"
+    private const val OLDER = "AND (w.updated_at < :at OR (w.updated_at = :at AND w.content_key < :contentKey)) " +
         "ORDER BY w.updated_at DESC, w.content_key DESC LIMIT :limit"
+    private const val NEWER = "AND (w.updated_at > :at OR (w.updated_at = :at AND w.content_key > :contentKey)) " +
+        "ORDER BY w.updated_at, w.content_key LIMIT :limit"
+
+    const val FILM_HISTORY_OLDER = "$FILM_HISTORY $OLDER"
+    const val FILM_HISTORY_NEWER = "$FILM_HISTORY $NEWER"
+    const val SERIES_HISTORY_OLDER = "$SERIES_HISTORY $OLDER"
+    const val SERIES_HISTORY_NEWER = "$SERIES_HISTORY $NEWER"
+
+    /** Sources whose films and series the walls show. */
+    const val ENABLED_SOURCES = "SELECT id FROM source WHERE enabled = 1 AND import_scope <> 'LIVE_TV'"
 
     /** Copies of the page's films (VOD-FR-27 fill-ins and "×N"): ≤ 120 work keys per call. */
     const val FILM_COPIES = "SELECT id, key, source_id, name, sort_name, poster_url, year, rating, quality_mask, work_key " +
@@ -166,11 +173,20 @@ interface WallDao {
     @Query(WallSql.GROUPS)
     fun groups(room: String, sources: List<String>): List<WallGroupRow>
 
-    @Query(WallSql.FILM_HISTORY)
-    fun filmHistory(profile: String, at: Long, contentKey: String, sources: List<String>, search: String?, limit: Int): List<HistoryRow>
+    @Query(WallSql.FILM_HISTORY_OLDER)
+    fun filmHistoryOlder(profile: String, at: Long, contentKey: String, sources: List<String>, search: String?, limit: Int): List<HistoryRow>
 
-    @Query(WallSql.SERIES_HISTORY)
-    fun seriesHistory(profile: String, at: Long, contentKey: String, sources: List<String>, search: String?, limit: Int): List<HistoryRow>
+    @Query(WallSql.FILM_HISTORY_NEWER)
+    fun filmHistoryNewer(profile: String, at: Long, contentKey: String, sources: List<String>, search: String?, limit: Int): List<HistoryRow>
+
+    @Query(WallSql.SERIES_HISTORY_OLDER)
+    fun seriesHistoryOlder(profile: String, at: Long, contentKey: String, sources: List<String>, search: String?, limit: Int): List<HistoryRow>
+
+    @Query(WallSql.SERIES_HISTORY_NEWER)
+    fun seriesHistoryNewer(profile: String, at: Long, contentKey: String, sources: List<String>, search: String?, limit: Int): List<HistoryRow>
+
+    @Query(WallSql.ENABLED_SOURCES)
+    fun enabledSources(): List<String>
 
     @Query(WallSql.FILM_COPIES)
     fun filmCopies(workKeys: List<String>, sources: List<String>): List<WallRow>

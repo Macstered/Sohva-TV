@@ -30,8 +30,10 @@ class WallQueryPlanTest {
         "series genre before" to WallSql.SERIES_GENRE_BEFORE,
         "series unsorted after" to WallSql.SERIES_UNSORTED_AFTER,
         "series unsorted before" to WallSql.SERIES_UNSORTED_BEFORE,
-        "film history" to WallSql.FILM_HISTORY,
-        "series history" to WallSql.SERIES_HISTORY,
+        "film history older" to WallSql.FILM_HISTORY_OLDER,
+        "film history newer" to WallSql.FILM_HISTORY_NEWER,
+        "series history older" to WallSql.SERIES_HISTORY_OLDER,
+        "series history newer" to WallSql.SERIES_HISTORY_NEWER,
     )
 
     @Test

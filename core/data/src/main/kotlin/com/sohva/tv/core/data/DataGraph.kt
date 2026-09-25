@@ -6,6 +6,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import com.sohva.tv.core.data.channels.ChannelEditStore
 import com.sohva.tv.core.data.channels.ChannelListStore
 import com.sohva.tv.core.data.channels.ChannelManagerReads
+import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.live.LiveStore
@@ -22,6 +23,8 @@ import com.sohva.tv.core.data.source.RefreshFacts
 import com.sohva.tv.core.data.source.RefreshStatusStore
 import com.sohva.tv.core.data.source.ServiceKeys
 import com.sohva.tv.core.data.source.SourceStore
+import com.sohva.tv.core.data.vod.ProgressStore
+import com.sohva.tv.core.data.vod.WallReads
 import com.sohva.tv.core.model.concurrent.AppDispatchers
 import com.sohva.tv.core.model.time.SystemClock
 import kotlinx.coroutines.CoroutineScope
@@ -78,6 +81,10 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
 
     /** Programme and match reminders (M3, spec 22). */
     val reminders: ReminderStore by lazy { ReminderStore(database, dispatchers.io) }
+
+    /** Movie and series walls and progress (M4). Profiles arrive in M6; until then every row is the default profile's. */
+    val walls: WallReads by lazy { WallReads(database, dispatchers.io) { DEFAULT_PROFILE } }
+    val progress: ProgressStore by lazy { ProgressStore(database, dispatchers.io, SystemClock) { DEFAULT_PROFILE } }
 
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }
