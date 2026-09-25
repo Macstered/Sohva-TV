@@ -66,6 +66,8 @@ class WallQueryPlanTest {
                 "film facts" to ProgressSql.FILM,
                 "episode facts" to ProgressSql.EPISODE,
                 "season" to ProgressSql.SEASON,
+                "ticks own" to ProgressSql.TICKS_OWN,
+                "ticks work" to ProgressSql.TICKS_WORK,
             )
             for ((name, sql) in lookups) {
                 val plan = db.plan(sql).joinToString(" | ")

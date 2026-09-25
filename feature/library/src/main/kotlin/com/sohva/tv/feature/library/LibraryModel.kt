@@ -47,6 +47,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
 
+    private val _ticks = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Film cards to tick as watched, read around the focused card (VOD-FR-37); series walls read none. */
+    val ticks: StateFlow<Set<String>> = _ticks.asStateFlow()
+    private var tickJob: Job? = null
+
     private val _note = MutableStateFlow<RefreshNote?>(null)
     val note: StateFlow<RefreshNote?> = _note.asStateFlow()
 
@@ -73,6 +79,17 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         viewModelScope.launch { readRail() }
         select(HISTORY_KEY)
         watchChanges()
+        if (env.room == WallRoom.MOVIES) viewModelScope.launch { _wall.collect { readTicks(it.window) } }
+    }
+
+    /** At most 200 films around the focused card (VOD-FR-37); a newer read replaces an older one. */
+    private fun readTicks(window: WallWindow) {
+        tickJob?.cancel()
+        tickJob = viewModelScope.launch {
+            val from = maxOf(window.first, focusedIndex - TICK_SPAN / 2)
+            val films = (from until minOf(window.end, from + TICK_SPAN)).mapNotNull { window.itemAt(it)?.row }.map { it.key to it.workKey }
+            _ticks.value = runCatching { env.watched(films) }.getOrDefault(_ticks.value)
+        }
     }
 
     val room: WallRoom get() = env.room
@@ -124,10 +141,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
 
     /** A card took focus: remember it, and read the next or previous page when near an edge (§9.3). */
     fun focused(index: Int, key: String, columns: Int) {
+        val moved = kotlin.math.abs(index - focusedIndex) >= TICK_SPAN / 4
         focusedIndex = index
         focusedKey = key
         focusOnWall = true
         val state = _wall.value
+        if (moved && env.room == WallRoom.MOVIES) readTicks(state.window)
         if (!state.current || edgeJob?.isActive == true) return
         val window = state.window
         when {
@@ -231,6 +250,8 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
             env.changes().debounce(CHANGE_QUIET_MS).collect {
                 readRail()
                 refreshWindow()
+                // A progress write leaves the window equal, so the ticks are read here too.
+                if (env.room == WallRoom.MOVIES) readTicks(_wall.value.window)
             }
         }
     }
@@ -292,5 +313,6 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         const val SEARCH_DEBOUNCE_MS: Long = 250
         const val CHANGE_QUIET_MS: Long = 500
         const val LOAD_SECTION: String = "Library:Load"
+        const val TICK_SPAN: Int = 200
     }
 }

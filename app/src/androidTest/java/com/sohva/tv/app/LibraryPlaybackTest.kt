@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -101,9 +102,10 @@ class LibraryPlaybackTest {
         awaitFocus("details-watch")
         compose.waitUntil(10_000) { text("details-mark").contains("unwatched") }
         assertTrue(runBlocking { graph.data.progress.of(LibraryFixture.key(0)) }!!.completed)
-        // Back returns to the wall on the same card.
+        // Back returns to the wall on the same card, now ticked as watched (VOD-FR-37).
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         awaitFocus("library-card-${LibraryFixture.key(0)}")
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("library-tick", useUnmergedTree = true).fetchSemanticsNodes().size == 1 }
     }
 
     @Test

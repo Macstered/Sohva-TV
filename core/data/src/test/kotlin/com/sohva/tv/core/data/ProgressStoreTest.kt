@@ -101,6 +101,20 @@ class ProgressStoreTest {
     }
 
     @Test
+    fun aFilmFinishedOnOneCopyIsTickedOnTheOther() = runBlocking {
+        seed()
+        val films = listOf("vod:movie:s:a" to "name:quiet harbour:2020", "vod:movie:s:b" to "name:quiet harbour:2020", "vod:movie:s:c" to null)
+        assertEquals(emptySet<String>(), store.watched(films))
+        store.save("vod:movie:s:a", 89 * min, 90 * min)
+        store.save("vod:movie:s:c", 10 * min, 90 * min)
+        assertEquals(setOf("vod:movie:s:a", "vod:movie:s:b"), store.watched(films))
+        // A newer, unfinished place on the other copy takes the tick away from both.
+        now += 1_000
+        store.save("vod:movie:s:b", 20 * min, 90 * min)
+        assertEquals(emptySet<String>(), store.watched(films))
+    }
+
+    @Test
     fun forgettingAFilmForgetsEveryCopy() = runBlocking {
         seed()
         store.save("vod:movie:s:a", 20 * min, 90 * min)

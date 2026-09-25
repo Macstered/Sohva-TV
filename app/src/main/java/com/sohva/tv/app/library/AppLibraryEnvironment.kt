@@ -38,6 +38,8 @@ class AppLibraryEnvironment(
     override suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem> =
         reads.page(room, destination, search, from, forward, limit)
 
+    override suspend fun watched(films: List<Pair<String, String?>>): Set<String> = graph.data.progress.watched(films)
+
     /**
      * Imports every enabled source whose scope includes films and series, one after another
      * (VOD-FR-46), and reports what the library holds afterwards.

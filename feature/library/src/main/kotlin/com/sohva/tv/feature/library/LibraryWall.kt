@@ -54,6 +54,7 @@ internal fun interface RailFocus {
 internal fun LibraryWall(model: LibraryModel, grid: LazyGridState, rail: RailFocus, back: FocusRequester, modifier: Modifier) = trace("Library:Wall") {
     val wall by model.wall.collectAsStateWithLifecycle()
     val search by model.search.collectAsStateWithLifecycle()
+    val ticks by model.ticks.collectAsStateWithLifecycle()
     BoxWithConstraints(modifier.testTag("library-wall")) {
         val columns = maxOf(1, ((maxWidth + GAP_H) / (MIN_CELL + GAP_H)).toInt())
         val cellWidth = (maxWidth - GAP_H * (columns - 1)) / columns
@@ -88,6 +89,7 @@ internal fun LibraryWall(model: LibraryModel, grid: LazyGridState, rail: RailFoc
                     PosterCard(
                         item = item,
                         enabled = wall.current,
+                        watched = item.row.key in ticks,
                         posterPx = posterPx,
                         onFocus = {
                             focus.landed(i)

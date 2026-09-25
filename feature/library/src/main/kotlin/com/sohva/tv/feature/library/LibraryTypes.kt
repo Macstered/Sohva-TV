@@ -56,6 +56,9 @@ interface LibraryEnvironment {
 
     suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem>
 
+    /** The films to tick as watched among (content key, film identity) pairs, ≤ 200 (VOD-FR-37). */
+    suspend fun watched(films: List<Pair<String, String?>>): Set<String>
+
     /** Imports every enabled source whose scope includes films and series. */
     suspend fun refresh(): RefreshNote
 

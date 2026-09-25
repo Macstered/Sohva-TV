@@ -56,6 +56,24 @@ class ProgressStore(
         listOfNotNull(own, shared).maxByOrNull { it.updatedAt }?.toProgress()
     }
 
+    /**
+     * The films among [films] to tick as watched (spec 40 VOD-FR-37): the newest row among a film's
+     * own key and its film identity is finished, so a film finished on one copy is ticked on the
+     * other. At most [MAX_TICKS] films per call.
+     */
+    suspend fun watched(films: List<Pair<String, String?>>): Set<String> = withContext(io) {
+        if (films.isEmpty()) return@withContext emptySet()
+        val page = films.take(MAX_TICKS)
+        val who = profile()
+        val own = dao.ticksOwn(who, page.map { it.first }).associateBy { it.key }
+        val works = page.mapNotNull { it.second }.distinct()
+        val work = if (works.isEmpty()) emptyMap() else dao.ticksWork(who, works).groupBy { it.key }.mapValues { (_, rows) -> rows.maxBy { it.updatedAt } }
+        page.filter { (key, workKey) ->
+            val newest = listOfNotNull(own[key], workKey?.let(work::get)).maxByOrNull { it.updatedAt }
+            newest?.completed == true
+        }.mapTo(HashSet()) { it.first }
+    }
+
     /** Every episode row of one series (VOD-FR-95): one query, keyed by episode key. */
     suspend fun ofSeries(seriesKey: String): Map<String, Progress> = withContext(io) {
         dao.ofSeries(profile(), seriesKey).associate { it.contentKey to it.toProgress() }
@@ -107,6 +125,11 @@ class ProgressStore(
     }
 
     private fun WatchProgressEntity.toProgress() = Progress(positionMs, durationMs, completed, updatedAt)
+
+    companion object {
+        /** Watched ticks are read for at most this many cards at a time (VOD-FR-37, Trakt lesson 8). */
+        const val MAX_TICKS: Int = 200
+    }
 }
 
 /** The content keys progress accepts (spec 40 VOD-FR-23); anything else is ignored by every write. */

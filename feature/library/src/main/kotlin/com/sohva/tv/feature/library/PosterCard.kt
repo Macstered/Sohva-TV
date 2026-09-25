@@ -54,6 +54,7 @@ import com.sohva.tv.ui.design.components.InitialsTile
 import com.sohva.tv.ui.design.components.LocalArtwork
 import com.sohva.tv.ui.design.components.TagTone
 import com.sohva.tv.ui.design.components.TvTagChip
+import com.sohva.tv.ui.design.components.WatchedBadge
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
 
@@ -67,6 +68,7 @@ import com.sohva.tv.ui.design.theme.Sohva
 internal fun PosterCard(
     item: WallItem,
     enabled: Boolean,
+    watched: Boolean,
     posterPx: IntSize,
     onFocus: () -> Unit,
     onOpen: () -> Unit,
@@ -105,6 +107,7 @@ internal fun PosterCard(
                 },
         ) {
             Poster(row.name, row.posterUrl, posterPx)
+            if (watched) WatchedBadge(Modifier.align(Alignment.TopStart).padding(6.dp).testTag("library-tick"))
             Chips(row.qualityMask, Modifier.align(Alignment.TopEnd))
         }
         Text(
