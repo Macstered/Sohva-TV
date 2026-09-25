@@ -31,7 +31,9 @@ import org.junit.runner.RunWith
  * the details' title, score, runtime and synopsis, shows "Source: TMDB", Versions, Cast and the
  * Similar films the library has, repairs the missing poster, and a Similar card opens that film's
  * page on top. The series page takes the show's title and cast line, and the selected episode's
- * runtime once the selection rests. TMDB is the test's own server.
+ * runtime once the selection rests. "Wrong details?" pins the chosen record into the page and the
+ * library and undoes it, and focus returns to "Wrong details?" every time the picker closes
+ * (spec 40 §4.14, lessons 4.1). TMDB is the test's own server.
  */
 @RunWith(AndroidJUnit4::class)
 class TitleMetadataTest {
@@ -44,6 +46,8 @@ class TitleMetadataTest {
                 override fun dispatch(request: RecordedRequest): MockResponse = when {
                     request.url.encodedPath.endsWith("/search/movie") && request.url.queryParameter("query") == "Drama 0000" -> json(SEARCH)
                     request.url.encodedPath.endsWith("/movie/949") -> json(DETAILS)
+                    request.url.encodedPath.endsWith("/search/movie") && request.url.queryParameter("query") == "Drama 0001" -> json(PICKER_SEARCH)
+                    request.url.encodedPath.endsWith("/movie/555") -> json(PICKER_DETAILS)
                     request.url.encodedPath.endsWith("/search/tv") && request.url.queryParameter("query") == "Northern Line 0" -> json(SHOW_SEARCH)
                     request.url.encodedPath.endsWith("/tv/77") -> json(SHOW)
                     request.url.encodedPath.endsWith("/tv/77/season/1/episode/1") -> json(EPISODE.format(1, 48))
@@ -138,7 +142,48 @@ class TitleMetadataTest {
         assertTrue(!shows("48 min"))
     }
 
+    private fun replacementTitle(key: String): String? = graph.data.database.openHelper.readableDatabase
+        .query("SELECT replacement_title FROM movie WHERE key = '$key'").use { it.moveToFirst(); it.getString(0) }
+
+    @Test
+    fun wrongDetailsPinsTheChoiceAndUndoGivesItBack() {
+        val film = LibraryFixture.key(1)
+        focusAndPress(RailItem.MOVIES.tag)
+        focusAndPress("library-row-group:drama")
+        focusAndPress("library-card-$film")
+        compose.waitUntil(10_000) { exists("screen-film") }
+        // TMDB's answer for "Drama 0001" is another title: automatic matching leaves the page alone.
+        compose.waitUntil(10_000) { text("details-title") == "Drama 0001" }
+        focusAndPress("details-wrong")
+        compose.waitUntil(10_000) { exists("match-picker") }
+        awaitFocus("match-picker-search")
+        assertTrue(!exists("match-picker-clear"))
+        // The search ran on open with the cleaned provider name.
+        focusAndPress("match-result-555")
+        compose.waitUntil(10_000) { !exists("match-picker") }
+        awaitFocus("details-wrong")
+        compose.waitUntil(10_000) { text("details-title") == "Quiet Harbour" }
+        assertEquals("Quiet Harbour", replacementTitle(film))
+        // Open again: the choice can be undone.
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("match-picker-clear") }
+        focusAndPress("match-picker-clear")
+        compose.waitUntil(10_000) { !exists("match-picker") }
+        awaitFocus("details-wrong")
+        compose.waitUntil(10_000) { text("details-title") == "Drama 0001" }
+        assertEquals(null, replacementTitle(film))
+        // Back closes the picker the same way.
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+        awaitFocus("match-picker-search")
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { !exists("match-picker") }
+        awaitFocus("details-wrong")
+        assertTrue(exists("screen-film"))
+    }
+
     private companion object {
+        const val PICKER_SEARCH = """{"results":[{"id":555,"title":"Quiet Harbour","release_date":"2001-04-01","overview":"A harbour at night.","popularity":1.0}]}"""
+        const val PICKER_DETAILS = """{"id":555,"title":"Quiet Harbour","overview":"A harbour at night.","release_date":"2001-04-01","runtime":95,"genres":[{"id":18}]}"""
         const val SEARCH = """{"results":[{"id":949,"title":"Drama 0000","release_date":"2000-03-01","popularity":12.5,"genre_ids":[18]}]}"""
         const val DETAILS = """{"id":949,"title":"Harbour Lights","overview":"A keeper waits for a ship that never comes.",""" +
             """"poster_path":"/harbour.jpg","release_date":"2000-03-01","runtime":125,"vote_average":7.84,"genres":[{"id":18}],""" +

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sohva.tv.core.data.database.EpisodeRecord
 import com.sohva.tv.core.data.database.SeriesRecord
 import com.sohva.tv.core.data.vod.Progress
+import com.sohva.tv.core.model.metadata.TitleCleaner
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.vod.QualityChips
 import com.sohva.tv.core.model.vod.VodText
@@ -58,6 +59,11 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
 
     /** The selected episode's metadata, once looked up; any other episode's is dropped at once. */
     val episodeMetadata: StateFlow<EpisodeMetadata?> = _episodeMetadata.asStateFlow()
+
+    private val _picker = MutableStateFlow<MatchPicker?>(null)
+
+    /** The open match picker, if any (VOD-FR-104). */
+    val picker: StateFlow<MatchPicker?> = _picker.asStateFlow()
 
     private val _episodes = MutableStateFlow(EpisodesState())
     val episodesState: StateFlow<EpisodesState> = _episodes.asStateFlow()
@@ -180,7 +186,21 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
         viewModelScope.launch { env.markSeasonWatched(key, season) }
     }
 
-    fun wrongDetails() = env.wrongDetails()
+    /** "Wrong details?": the picker searches the cleaned provider name at once (VOD-FR-104). */
+    fun wrongDetails() {
+        val record = _page.value?.record ?: return
+        viewModelScope.launch {
+            val query = withContext(env.format) { TitleCleaner.searchTitle(record.name).ifBlank { record.name } }
+            _picker.value = MatchPicker(env, viewModelScope, PickerTarget(record.key, record.name, record.year, film = false), query) { chosen ->
+                _metadata.value = chosen
+            }
+        }
+    }
+
+    fun closePicker() {
+        _picker.value?.dispose()
+        _picker.value = null
+    }
 
     fun openSource() {
         _metadata.value?.sourceUrl?.let(env::openUrl)

@@ -171,6 +171,7 @@ internal class SeriesFocus {
     val refresh = FocusRequester()
     val season = FocusRequester()
     val firstEpisode = FocusRequester()
+    val wrong = FocusRequester()
 
     /** True once the viewer pressed a key: arriving episodes then leave focus alone. */
     var touched = false
@@ -217,9 +218,17 @@ private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: Scroll
             DetailsButton(stringResource(R.string.series_mark_season_watched), model::markSeasonWatched, toTop.testTag("details-mark-season"), icon = TvIcons.Check)
         }
         DetailsButton(stringResource(R.string.series_refresh_episodes), model::refresh, toTop.focusRequester(focus.refresh).testTag("details-refresh"), icon = TvIcons.Refresh)
-        DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.testTag("details-wrong"), icon = TvIcons.Search)
+        DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.focusRequester(focus.wrong).testTag("details-wrong"), icon = TvIcons.Search)
         if (source != null) {
             DetailsButton(stringResource(R.string.metadata_source, source), model::openSource, toTop.testTag("details-source"), icon = TvIcons.Info)
+        }
+    }
+    val picker by model.picker.collectAsStateWithLifecycle()
+    picker?.let { open ->
+        // Focus goes back to "Wrong details?" before the dialog hides (lessons 4.1).
+        MatchPickerDialog(open) {
+            focus.wrong.requestFocus()
+            model.closePicker()
         }
     }
     val ready = card != null

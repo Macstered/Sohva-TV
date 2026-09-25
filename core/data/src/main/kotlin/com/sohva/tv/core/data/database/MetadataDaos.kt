@@ -144,6 +144,10 @@ interface MetadataDao {
     @Query("SELECT work_key FROM movie WHERE key = :key")
     fun workKeyOf(key: String): String?
 
+    /** The copies of one film identity (a pin applies to all of them, spec 41 Q4); the work key index bounds it. */
+    @Query("SELECT key FROM movie WHERE work_key = :workKey LIMIT 50")
+    fun keysOfWork(workKey: String): List<String>
+
     @Query("SELECT COALESCE((SELECT poster_url FROM movie WHERE key = :key), (SELECT poster_url FROM series WHERE key = :key))")
     fun providerPoster(key: String): String?
 }

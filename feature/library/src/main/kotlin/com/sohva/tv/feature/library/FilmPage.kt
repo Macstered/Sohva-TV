@@ -118,6 +118,8 @@ private fun FilmColumn(model: FilmModel, page: FilmPageState, metadata: TitleMet
 @Composable
 private fun FilmActions(model: FilmModel, progress: Progress?, source: String?, scroll: ScrollState) {
     val primary = remember { FocusRequester() }
+    val wrong = remember { FocusRequester() }
+    val picker by model.picker.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val toTop = Modifier.onFocusChanged { if (it.isFocused) scrollToTop(scope, scroll) }
     val resume = progress?.resumeMs?.takeIf { it > 0 }
@@ -141,9 +143,16 @@ private fun FilmActions(model: FilmModel, progress: Progress?, source: String?, 
         if (source != null) {
             DetailsButton(stringResource(R.string.metadata_source, source), model::openSource, toTop.testTag("details-source"), icon = TvIcons.Info)
         }
-        DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.testTag("details-wrong"), icon = TvIcons.Search)
+        DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.focusRequester(wrong).testTag("details-wrong"), icon = TvIcons.Search)
     }
     LaunchedEffect(Unit) { primary.requestFocusWhenAttached() }
+    picker?.let { open ->
+        // Focus goes back to "Wrong details?" before the dialog hides (lessons 4.1).
+        MatchPickerDialog(open) {
+            wrong.requestFocus()
+            model.closePicker()
+        }
+    }
 }
 
 internal fun scrollToTop(scope: CoroutineScope, scroll: ScrollState) {

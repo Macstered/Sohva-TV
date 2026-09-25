@@ -35,6 +35,11 @@ class FilmModel(private val env: TitleEnvironment, val key: String) : ViewModel(
     private val _similar = MutableStateFlow<SimilarState>(SimilarState.Hidden)
     val similar: StateFlow<SimilarState> = _similar.asStateFlow()
 
+    private val _picker = MutableStateFlow<MatchPicker?>(null)
+
+    /** The open match picker, if any (VOD-FR-104). */
+    val picker: StateFlow<MatchPicker?> = _picker.asStateFlow()
+
     /** False once the lookup found nothing: the source was disabled or re-imported (spec 40 §3). */
     private val _gone = MutableStateFlow(false)
     val gone: StateFlow<Boolean> = _gone.asStateFlow()
@@ -55,12 +60,7 @@ class FilmModel(private val env: TitleEnvironment, val key: String) : ViewModel(
                 )
             }
             launch { _versions.value = env.versions(record).takeIf { it.size >= 2 }.orEmpty() }
-            val details = env.filmMetadata(record) ?: _metadata.value
-            _metadata.value = details
-            if (details?.detailsLoaded == true) {
-                _similar.value = SimilarState.Checking
-                _similar.value = SimilarState.Ready(env.similar(record, details))
-            }
+            show(env.filmMetadata(record) ?: _metadata.value)
         }
         viewModelScope.launch { env.progressChanges().collect { _progress.value = env.progress(key) } }
     }
@@ -87,5 +87,29 @@ class FilmModel(private val env: TitleEnvironment, val key: String) : ViewModel(
 
     fun openFilm(filmKey: String) = env.openFilm(filmKey)
 
-    fun wrongDetails() = env.wrongDetails()
+    /** "Wrong details?": the picker searches the cleaned provider name at once (VOD-FR-104). */
+    fun wrongDetails() {
+        val page = _page.value ?: return
+        val record = page.record
+        _picker.value = MatchPicker(env, viewModelScope, PickerTarget(record.key, record.name, record.year, film = true), page.cleanTitle) { chosen ->
+            viewModelScope.launch { show(chosen) }
+        }
+    }
+
+    fun closePicker() {
+        _picker.value?.dispose()
+        _picker.value = null
+    }
+
+    /** New metadata on the page; Similar follows it, and goes with it (VOD-FR-70, -106). */
+    private suspend fun show(details: TitleMetadata?) {
+        _metadata.value = details
+        val record = _page.value?.record ?: env.film(key) ?: return
+        if (details?.detailsLoaded == true) {
+            _similar.value = SimilarState.Checking
+            _similar.value = SimilarState.Ready(env.similar(record, details))
+        } else {
+            _similar.value = SimilarState.Hidden
+        }
+    }
 }

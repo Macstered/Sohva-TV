@@ -44,8 +44,17 @@ interface TitleEnvironment {
     /** Opens the player on [key] from [startMs] (spec 30 `VodPlayer`). */
     fun play(key: String, startMs: Long)
 
-    /** "Wrong details?" (the match picker arrives with metadata, M4b). */
-    fun wrongDetails()
+    /** Whether the viewer chose this title's record themselves ("Undo my choice" shows, META-FR-77). */
+    suspend fun isPinned(target: PickerTarget): Boolean
+
+    /** The match picker's search (META-FR-74): unscored, at most 12, empty on any failure. */
+    suspend fun searchMatches(target: PickerTarget, query: String): List<MatchResult>
+
+    /** Pins [result] for the title (META-FR-75); the page then shows what comes back, null when the write failed. */
+    suspend fun chooseMatch(target: PickerTarget, result: MatchResult): TitleMetadata?
+
+    /** "Undo my choice" (META-FR-77). */
+    suspend fun undoMatch(target: PickerTarget)
 
     /** What the metadata memory cache holds for the film, for the first frame (VOD-FR-60); never blocks. */
     fun cachedFilmMetadata(film: FilmRecord): TitleMetadata?
@@ -102,6 +111,33 @@ data class TitleMetadata(
     val detailsLoaded: Boolean,
     val similar: List<SimilarReference>,
 )
+
+/** The title a match picker works on: its key and the page's own lookup (META-FR-73). */
+@Immutable
+data class PickerTarget(val key: String, val name: String, val year: Int?, val film: Boolean)
+
+/** One search result in the match picker (VOD-FR-105): the thumbnail already sized for 44 × 62 dp. */
+@Immutable
+data class MatchResult(
+    val provider: String,
+    val externalId: String,
+    val title: String,
+    val year: Int?,
+    val overview: String?,
+    /** The provider's poster as stored (a TMDB path or an https address). */
+    val poster: String?,
+    val thumbUrl: String?,
+)
+
+/** The picker's result area (VOD-FR-105). */
+sealed interface PickerResults {
+    data object Searching : PickerResults
+
+    data object Nothing : PickerResults
+
+    @Immutable
+    data class Found(val results: List<MatchResult>) : PickerResults
+}
 
 /** The selected episode's metadata (VOD-FR-77), tagged with its episode so a late answer is never shown on another. */
 @Immutable

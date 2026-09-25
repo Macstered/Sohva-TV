@@ -11,9 +11,13 @@ import com.sohva.tv.core.model.text.Initials
 import com.sohva.tv.core.model.vod.CopyClaimReader
 import com.sohva.tv.core.model.vod.SimilarReference
 import com.sohva.tv.core.net.metadata.Artwork
+import com.sohva.tv.core.net.metadata.MetadataProvider
 import com.sohva.tv.core.net.metadata.MetadataRecord
+import com.sohva.tv.core.sync.metadata.ChoiceTarget
 import com.sohva.tv.core.sync.metadata.MetadataRequest
 import com.sohva.tv.feature.library.CastCard
+import com.sohva.tv.feature.library.MatchResult
+import com.sohva.tv.feature.library.PickerTarget
 import com.sohva.tv.feature.library.SimilarCard
 import com.sohva.tv.feature.library.TitleEnvironment
 import com.sohva.tv.feature.library.TitleMetadata
@@ -52,7 +56,25 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
 
     override fun play(key: String, startMs: Long) = navigation.play(key, startMs)
 
-    override fun wrongDetails() = graph.notYetAvailable()
+    override suspend fun isPinned(target: PickerTarget): Boolean = graph.metadata.choices.isPinned(choice(target))
+
+    override suspend fun searchMatches(target: PickerTarget, query: String): List<MatchResult> {
+        val found = metadata.search(if (target.film) MediaType.MOVIE else MediaType.SERIES, query)
+        return found.map { MatchResult(it.provider.id, it.externalId, it.title, it.year, it.overview, it.poster, Artwork.url(it.poster, Artwork.THUMB)) }
+    }
+
+    override suspend fun chooseMatch(target: PickerTarget, result: MatchResult): TitleMetadata? {
+        val provider = MetadataProvider.of(result.provider) ?: return null
+        val type = if (target.film) MediaType.MOVIE else MediaType.SERIES
+        val picked = MetadataRecord(provider, result.externalId, type, result.title, overview = result.overview, poster = result.poster, year = result.year)
+        // A failed write closes the picker silently and leaves the page as it was (META-FR-75).
+        val chosen = runCatching { graph.metadata.choices.choose(choice(target), picked) }.getOrNull() ?: return null
+        return withContext(format) { toMetadata(chosen) }
+    }
+
+    override suspend fun undoMatch(target: PickerTarget) {
+        runCatching { graph.metadata.choices.undo(choice(target)) }
+    }
 
     override fun cachedFilmMetadata(film: FilmRecord): TitleMetadata? = metadata.cached(request(film))?.let(::toMetadata)
 
@@ -100,6 +122,11 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
     override fun openFilm(key: String) = navigation.openFilm(key)
 
     override fun openUrl(url: String) = navigation.openUrl(url)
+
+    private fun choice(target: PickerTarget) = ChoiceTarget(
+        target.key,
+        MetadataRequest(if (target.film) MediaType.MOVIE else MediaType.SERIES, target.name, target.year, contentKey = target.key),
+    )
 
     private fun request(film: FilmRecord) = MetadataRequest(MediaType.MOVIE, film.name, film.year, contentKey = film.key)
 
