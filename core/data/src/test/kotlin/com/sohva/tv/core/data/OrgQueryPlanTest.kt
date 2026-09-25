@@ -17,6 +17,8 @@ class OrgQueryPlanTest {
         "series of keys" to OrgSql.SERIES_OF_KEYS,
         "channels page" to OrgSql.CHANNELS_PAGE,
         "channels of keys" to OrgSql.CHANNELS_OF_KEYS,
+        // A sorted group's channels for their places (GUIDE-13): the group's index, sorted in Kotlin.
+        "group channels" to OrgSql.GROUP_CHANNELS,
     )
 
     @Test

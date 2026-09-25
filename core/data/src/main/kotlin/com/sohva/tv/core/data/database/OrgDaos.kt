@@ -13,6 +13,7 @@ data class OrgGroupRow(
     val room: String,
     @ColumnInfo(name = "group_key") val groupKey: String,
     val name: String,
+    @ColumnInfo(name = "provider_order") val providerOrder: Int,
     val shown: Boolean,
     val position: Int,
     @ColumnInfo(name = "sort_mode") val sortMode: String?,
@@ -39,6 +40,21 @@ data class OrgChannelRow(
     @ColumnInfo(name = "group_name") val groupName: String?,
     val hidden: Boolean,
     val visible: Boolean,
+    @ColumnInfo(name = "group_id") val groupId: Long?,
+    @ColumnInfo(name = "playlist_order") val playlistOrder: Int,
+    /** The viewer's position from Channel management (legacy position, ORG-FR-34). */
+    val position: Long?,
+    @ColumnInfo(name = "display_rank") val rank: Long,
+)
+
+/** A channel of one sorted group, for its place in the group (GUIDE-FR-32). */
+data class RankedGroupChannel(
+    val id: Long,
+    val key: String,
+    @ColumnInfo(name = "sort_name") val sortName: String,
+    @ColumnInfo(name = "playlist_order") val playlistOrder: Int,
+    val position: Long?,
+    @ColumnInfo(name = "display_rank") val rank: Long,
 )
 
 /** A provider group row for the library manager (spec 42 ORG-FR-07, -43). */
@@ -89,12 +105,18 @@ object OrgSql {
         "FROM movie m LEFT JOIN content_group g ON g.id = m.group_id WHERE m.work_key IN (:workKeys) OR m.key IN (:keys)"
     const val SERIES_OF_KEYS = "SELECT s.id, s.key, s.source_id, s.work_key, g.group_key, g.name AS group_name, s.visible, s.item_position " +
         "FROM series s LEFT JOIN content_group g ON g.id = s.group_id WHERE s.key IN (:keys)"
-    const val CHANNELS_PAGE = "SELECT c.id, c.key, c.source_id, g.group_key, g.name AS group_name, COALESCE(x.hidden, 0) AS hidden, c.visible " +
+    const val CHANNELS_PAGE = "SELECT c.id, c.key, c.source_id, c.group_id, g.group_key, g.name AS group_name, COALESCE(x.hidden, 0) AS hidden, c.visible, " +
+        "c.playlist_order, x.position, c.display_rank " +
         "FROM channel c LEFT JOIN content_group g ON g.id = c.group_id LEFT JOIN channel_custom x ON x.channel_key = c.key " +
         "WHERE c.key > :after AND c.key < :until ORDER BY c.key LIMIT :limit"
-    const val CHANNELS_OF_KEYS = "SELECT c.id, c.key, c.source_id, g.group_key, g.name AS group_name, COALESCE(x.hidden, 0) AS hidden, c.visible " +
+    const val CHANNELS_OF_KEYS = "SELECT c.id, c.key, c.source_id, c.group_id, g.group_key, g.name AS group_name, COALESCE(x.hidden, 0) AS hidden, c.visible, " +
+        "c.playlist_order, x.position, c.display_rank " +
         "FROM channel c LEFT JOIN content_group g ON g.id = c.group_id LEFT JOIN channel_custom x ON x.channel_key = c.key WHERE c.key IN (:keys)"
-    const val GROUPS = "SELECT id, source_id, room, group_key, name, shown, position, sort_mode FROM content_group WHERE room = :room"
+    const val GROUPS = "SELECT id, source_id, room, group_key, name, provider_order, shown, position, sort_mode FROM content_group WHERE room = :room"
+
+    /** One sorted group's channels for their places (GUIDE-FR-32): a single group, through its index. */
+    const val GROUP_CHANNELS = "SELECT c.id, c.key, c.sort_name, c.playlist_order, x.position, c.display_rank " +
+        "FROM channel c INDEXED BY index_channel_group_id_display_rank LEFT JOIN channel_custom x ON x.channel_key = c.key WHERE c.group_id = :groupId"
 
     // ---- Library manager (spec 42 §9.2): small tables whole, one group's rows at most 2,000 ----
     const val MANAGER_GROUPS = "SELECT id, source_id, group_key, name, provider_order, item_count, total_count, shown, position, sort_mode " +
@@ -171,6 +193,12 @@ interface OrgDao {
 
     @Query(OrgSql.CHANNELS_OF_KEYS)
     fun channelsOf(keys: List<String>): List<OrgChannelRow>
+
+    @Query(OrgSql.GROUP_CHANNELS)
+    fun groupChannels(groupId: Long): List<RankedGroupChannel>
+
+    @Query("UPDATE channel SET display_rank = :rank WHERE id = :id")
+    fun setRank(id: Long, rank: Long)
 
     @Query("UPDATE movie SET visible = :visible, item_position = :position WHERE id = :id")
     fun setFilm(id: Long, visible: Boolean, position: Int?)

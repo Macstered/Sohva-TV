@@ -105,6 +105,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             val imported = data.beta23Import.run()
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
+            data.beta23Categories.run()
         }
         appScope.launch { data.preferences.refreshInterval.collect { sync.scheduler.schedule(it) } }
         // An update or a force-stop drops the alarm; each start sets it again (spec 22 REM-FR-14).

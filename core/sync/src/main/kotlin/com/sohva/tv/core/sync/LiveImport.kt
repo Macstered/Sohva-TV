@@ -53,7 +53,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
                     parsed++
                     // Scope BOTH leaves films and series to the catalogue import (SRC-FR-82).
                     if (scope == ImportScope.BOTH && entry.kind != M3uKind.LIVE) continue
-                    batch += m3uRow(job, entry)
+                    batch += m3uRow(job, entry, target.groups)
                     if (batch.size == BATCH) {
                         send(batch)
                         batch = ArrayList(BATCH)
@@ -77,7 +77,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
         pipeline<List<Row<ChannelEntity>>>(env.dispatchers, produce = { send ->
             var batch = ArrayList<Row<ChannelEntity>>(BATCH)
             client.liveStreams { stream ->
-                batch += xtreamRow(job, stream, streams, categories, urls, zone)
+                batch += xtreamRow(job, stream, streams, categories, urls, zone, target.groups)
                 streams++
                 if (batch.size == BATCH) {
                     send(batch)
@@ -116,7 +116,8 @@ internal class LiveImport(private val env: ImportEnvironment) {
         env.db.channelImport().count(range.from, range.until)
     }
 
-    private fun m3uRow(job: ImportJob, e: M3uEntry): Row<ChannelEntity> {
+    // [groups] is read only inside the row's builder, which runs on the writer thread.
+    private fun m3uRow(job: ImportJob, e: M3uEntry, groups: GroupResolver): Row<ChannelEntity> {
         val sourceId = job.sourceId
         val key = Keys.globalChannelId(sourceId, e.id)
         val name = e.name ?: env.names.channel(e.index + 1)
@@ -128,7 +129,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
                 id = id, key = key, sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
                 providerName = name, providerGroupId = groupId, providerLogoUrl = e.logoUrl, tvgId = e.tvgId, epgId = e.tvgId, logoUrl = e.logoUrl, streamUrlEnc = env.sealer.seal(e.streamUrl),
                 userAgent = e.userAgent, referrer = e.referrer, playlistOrder = e.index, providerNumber = e.channelNumber,
-                number = e.channelNumber, displayRank = ChannelEffects.playlistRank(e.index), visible = true, catchupType = e.catchupType,
+                number = e.channelNumber, displayRank = rank(groups, groupId, e.index), visible = true, catchupType = e.catchupType,
                 catchupSource = e.catchupSource, catchupDays = e.catchupDays, catchupTz = null, xtreamStreamId = null,
                 contentHash = hash, generation = job.generation,
             )
@@ -142,6 +143,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
         categories: Map<String, String>,
         urls: XtreamUrls,
         zone: String?,
+        groups: GroupResolver,
     ): Row<ChannelEntity> {
         val sourceId = job.sourceId
         val key = Keys.globalChannelId(sourceId, Keys.xtreamChannelLocalId(s.streamId))
@@ -157,11 +159,17 @@ internal class LiveImport(private val env: ImportEnvironment) {
                 id = id, key = key, sourceId = sourceId, groupId = groupId, name = s.name, sortName = SortNames.of(s.name),
                 providerName = s.name, providerGroupId = groupId, providerLogoUrl = s.iconUrl, tvgId = s.epgChannelId, epgId = s.epgChannelId, logoUrl = s.iconUrl, streamUrlEnc = env.sealer.seal(address),
                 userAgent = null, referrer = null, playlistOrder = order, providerNumber = number, number = number,
-                displayRank = ChannelEffects.playlistRank(order), visible = true, catchupType = catchupType, catchupSource = null,
+                displayRank = rank(groups, groupId, order), visible = true, catchupType = catchupType, catchupSource = null,
                 catchupDays = s.catchupDays, catchupTz = zone, xtreamStreamId = s.streamId, contentHash = hash,
                 generation = job.generation,
             )
         }
+    }
+
+    /** The final rank under the provider group order (GUIDE-13), so the organisation pass has nothing to rewrite. */
+    private fun rank(groups: GroupResolver, groupId: Long?, playlistOrder: Int): Long {
+        val block = groupId?.let(groups::providerOrder)?.let(ChannelEffects::providerBlock) ?: ChannelEffects.UNGROUPED_BLOCK
+        return ChannelEffects.rank(block, ChannelEffects.playlistRank(playlistOrder))
     }
 
     companion object {

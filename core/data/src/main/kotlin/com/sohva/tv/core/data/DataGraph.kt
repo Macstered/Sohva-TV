@@ -10,6 +10,7 @@ import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.live.LiveStore
+import com.sohva.tv.core.data.migration.Beta23HiddenCategories
 import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.org.OrgManager
 import com.sohva.tv.core.data.org.OrgRules
@@ -95,4 +96,7 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
 
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }
+
+    /** Beta 23's hidden categories as rules, once (spec 42 ORG-15); after the first frame. */
+    val beta23Categories: Beta23HiddenCategories by lazy { Beta23HiddenCategories(app, database, dispatchers.io) }
 }

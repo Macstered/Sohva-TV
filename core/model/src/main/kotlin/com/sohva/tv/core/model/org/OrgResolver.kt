@@ -79,7 +79,11 @@ class OrgResolver(rules: Collection<OrgRule>) {
 
     /** A group's own sort, else the room default (ORG-FR-20; a Live legacy order is the caller's). */
     fun itemSort(room: OrgRoom, sourceId: String, groupKey: String, nameKey: String): OrgSort =
-        groupRule(room, sourceId, groupKey, nameKey).sort ?: roomSort(room)
+        ruleSort(room, sourceId, groupKey, nameKey) ?: room.defaultSort
+
+    /** The group's or the room's sort rule; null when no rule sets one (ORG-FR-20: Live then follows legacy positions). */
+    fun ruleSort(room: OrgRoom, sourceId: String, groupKey: String, nameKey: String): OrgSort? =
+        groupRule(room, sourceId, groupKey, nameKey).sort ?: rule(room, "", "", "")?.sort
 
     /** A shortcut or a custom list entry (ORG-FR-09): shown unless a rule hides it. */
     fun shortcutShown(room: OrgRoom, key: String): Boolean = rule(room, "", key, "")?.enabled != false

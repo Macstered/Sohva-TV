@@ -95,9 +95,6 @@ interface ChannelEditDao {
     @Query(EditSql.AFTER)
     fun after(sourceId: String, rank: Long, id: Long, exclude: String): RankedChannel?
 
-    @Query("UPDATE channel SET display_rank = :rank WHERE id = :id")
-    fun setRank(id: Long, rank: Long)
-
     @Query("SELECT * FROM channel_custom WHERE channel_key IN (:keys)")
     fun customs(keys: List<String>): List<ChannelCustomEntity>
 

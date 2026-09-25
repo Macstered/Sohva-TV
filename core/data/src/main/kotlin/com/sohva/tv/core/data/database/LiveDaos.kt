@@ -141,6 +141,7 @@ data class ChannelRankKey(
     val id: Long,
     val key: String,
     @ColumnInfo(name = "display_rank") val rank: Long,
+    @ColumnInfo(name = "sort_name") val sortName: String,
 )
 
 /** One guide row as read, without programmes (GUIDE-FR-01, -30). */
@@ -249,7 +250,7 @@ object LiveSql {
     const val ROWS_BY_ID: String = "SELECT $COLUMNS FROM channel c LEFT JOIN content_group g ON g.id = c.group_id WHERE c.id IN (:ids)"
 
     const val KEYS_BY_CHANNEL_KEY: String =
-        "SELECT c.id, c.key, c.display_rank FROM channel c WHERE c.key IN (:keys) AND c.source_id = :sourceId AND c.visible = 1"
+        "SELECT c.id, c.key, c.display_rank, c.sort_name FROM channel c WHERE c.key IN (:keys) AND c.source_id = :sourceId AND c.visible = 1"
 
     const val BY_KEY: String = "SELECT $COLUMNS FROM channel c LEFT JOIN content_group g ON g.id = c.group_id WHERE c.key = :key"
 

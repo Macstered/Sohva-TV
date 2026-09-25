@@ -1,5 +1,6 @@
 package com.sohva.tv.core.data.live
 
+import com.sohva.tv.core.data.database.ChannelRankKey
 import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.FavouriteChannelEntity
 import com.sohva.tv.core.data.database.LiveChannel
@@ -15,9 +16,12 @@ import com.sohva.tv.core.model.guide.Genre
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.guide.GuideWindow
 import com.sohva.tv.core.model.guide.Schedules
+import com.sohva.tv.core.model.org.OrgItem
 import com.sohva.tv.core.model.org.OrgKeys
 import com.sohva.tv.core.model.org.OrgResolver
 import com.sohva.tv.core.model.org.OrgRoom
+import com.sohva.tv.core.model.org.OrgSort
+import com.sohva.tv.core.model.org.RuleValue
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
@@ -95,11 +99,32 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     override fun customLists(): Flow<List<CustomListRef>> =
         db.channelLists().lists().map { lists -> lists.map { CustomListRef(it.id, it.name) } }.flowOn(io)
 
+    /**
+     * A list's channels of [sourceId] in its view (GUIDE-FR-35, ORG-FR-21): members switched off in
+     * the list's view are left out; the order is the view's sort, else the room default's, else the
+     * list's own order. Lists are the household's own and small, so they are sorted here.
+     */
     override suspend fun customList(listId: String, sourceId: String): ListSpec.Named = withContext(io) {
-        val keys = db.channelLists().memberKeys(listId, sourceId)
-        val byKey = keys.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it) }.associateBy { it.key }
-        ListSpec.Named(sourceId, keys.mapNotNull { byKey[it]?.id }.toLongArray())
+        val places = db.channelLists().members(listId, sourceId)
+        val byKey = places.map { it.key }.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it) }.associateBy { it.key }
+        val resolver = OrgResolver(OrgRules(db).of(OrgRoom.LIVE))
+        val view = OrgKeys.list(listId)
+        val members = places.mapIndexedNotNull { i, m -> byKey[m.key]?.let { row -> ListMember(row, i, m.sortOrder, resolver.memberRule(item(sourceId, m.key), view)) } }
+            .filter { it.rule.enabled != false }
+        val sorted = when (resolver.ruleSort(OrgRoom.LIVE, "", view, view)) {
+            OrgSort.TITLE_ASC -> members.sortedWith(compareBy({ it.row.sortName }, { it.row.key }))
+            OrgSort.TITLE_DESC -> members.sortedWith(compareByDescending<ListMember> { it.row.sortName }.thenBy { it.row.key })
+            OrgSort.PROVIDER -> members.sortedWith(compareBy({ it.row.rank }, { it.row.id }))
+            // Manual and no rule: the manager's place, else the member's place in the list (ORG-FR-22).
+            else -> members.sortedWith(compareBy({ it.rule.position ?: it.sortOrder }, { it.index }))
+        }
+        ListSpec.Named(sourceId, sorted.map { it.row.id }.toLongArray())
     }
+
+    private class ListMember(val row: ChannelRankKey, val index: Int, val sortOrder: Long, val rule: RuleValue)
+
+    // A list view names its members by channel key; the channel's own groups do not take part.
+    private fun item(sourceId: String, key: String) = OrgItem(OrgRoom.LIVE, sourceId, "", "", key)
 
     override fun favouriteKeys(profileId: String): Flow<Set<String>> =
         viewer.observeFavouriteKeys(profileId).map { it.toHashSet() }.flowOn(io)

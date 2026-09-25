@@ -115,3 +115,18 @@ Done since the night session, with tests (unit, and device tests on API 30 and 3
 Left to later milestones as planned: Home's Continue watching row and hero lookups (M5),
 Trakt (M8), restricted profiles (M6), Settings rows for playback languages and the image cache
 (M7), the legal screen's TMDB and TVmaze notices (M7).
+
+## Status (25 September 2026, evening): M4c
+
+Done, with tests (unit, and device tests on API 30):
+- Organisation rules (spec 42 §4.1–4.5): the resolver, the stored `visible`, `item_position`,
+  group `shown`, `position` and `sort_mode`, film identity by work key, rules applied at import
+  and after every change; walls, rails and the guide follow them.
+- The library manager (§4.9) from the guide's options, a wall's Options › Edit and Settings ›
+  Library: rooms, scope, filter, search, both panes, group and item menus, the three order
+  menus, moves, bulk with confirmation, Undo, the remembered place, "Advanced".
+- Channel order from the rules (GUIDE-13): group blocks in the group order, each group in its own
+  order, written by the import in the common case; custom lists follow their view.
+
+Left in M4c: groups of your own (ORG-32…34, VOD-07), the old hidden-categories migration
+(ORG-15), then the M4 exit check.

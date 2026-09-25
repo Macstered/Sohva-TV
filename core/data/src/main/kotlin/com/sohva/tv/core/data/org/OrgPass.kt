@@ -42,8 +42,22 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
     fun resolveChannels(keys: List<String>) {
         if (keys.isEmpty()) return
         val resolver = OrgResolver(rules.of(OrgRoom.LIVE))
-        keys.chunked(IN_LIMIT).forEach { chunk -> db.runInTransaction { dao.channelsOf(chunk).forEach { applyChannel(it, resolver) } } }
+        val rows = keys.chunked(IN_LIMIT).flatMap { dao.channelsOf(it) }
+        for ((sourceId, ofSource) in rows.groupBy { it.sourceId }) {
+            val ranks = LiveRanks(db, liveOrder(sourceId, resolver))
+            db.runInTransaction {
+                ofSource.forEach {
+                    applyChannel(it, resolver)
+                    ranks.place(it)
+                }
+            }
+            ranks.finish()
+        }
     }
+
+    /** The Live order of [sourceId]'s groups as they are stored now (after [resolveGroups]). */
+    private fun liveOrder(sourceId: String, resolver: OrgResolver): LiveOrder =
+        LiveOrder(dao.groups(OrgRoom.LIVE.wire).filter { it.sourceId == sourceId }, resolver)
 
     /** After a playlist import of [sourceId]: the Live groups, then the source's channels and their group counts. */
     fun resolveLive(sourceId: String) {
@@ -88,8 +102,13 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
                 }
                 OrgRoom.LIVE -> {
                     // Channel groups are few and small next to a source: re-resolve the sources the keys reach.
-                    val reached = groupSources +
-                        itemKeys.chunked(IN_LIMIT).flatMap { dao.channelsOf(it.toList()) }.map { it.sourceId }
+                    // The group order and the room's default order place every channel of every source.
+                    val everywhere = touched.any { it.itemKey.isEmpty() && it.sourceId.isEmpty() && (it.groupKey == OrgKeys.GROUPS || it.groupKey.isEmpty()) }
+                    val reached = if (everywhere) {
+                        groups.map { it.sourceId }.toSet()
+                    } else {
+                        groupSources + itemKeys.chunked(IN_LIMIT).flatMap { dao.channelsOf(it.toList()) }.map { it.sourceId }
+                    }
                     reached.forEach { channels(it, resolver) }
                 }
             }
@@ -146,19 +165,29 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
         }
     }
 
-    /** A source's channels (ORG-FR-16): rules, and the household's own hidden flag (legacy hidden, ORG-FR-15). */
+    /**
+     * A source's channels (ORG-FR-16): rules, and the household's own hidden flag (legacy hidden,
+     * ORG-FR-15); and their order (GUIDE-13), written only where it changed.
+     */
     private fun channels(sourceId: String, resolver: OrgResolver, force: Boolean = false) {
         // Channel keys start with their source: its channels are one range of the key index.
         val range = KeyRange.channels(sourceId)
+        val ranks = LiveRanks(db, liveOrder(sourceId, resolver))
         var after = range.from
         var changed = false
         while (true) {
             val page = dao.channelsPage(after, range.until, PAGE)
             if (page.isEmpty()) break
-            db.runInTransaction { page.forEach { if (applyChannel(it, resolver)) changed = true } }
+            db.runInTransaction {
+                page.forEach {
+                    if (applyChannel(it, resolver)) changed = true
+                    ranks.place(it)
+                }
+            }
             after = page.last().key
             if (page.size < PAGE) break
         }
+        ranks.finish()
         if (changed || force) db.library().recountChannelGroups(sourceId)
     }
 
