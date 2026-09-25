@@ -6,6 +6,7 @@ import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SeriesEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.vod.ProgressStore
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
@@ -153,5 +154,30 @@ class ProgressStoreTest {
         assertTrue(rows.values.all { it.completed && it.durationMs == 20 * min })
         store.save("vod:episode:s:e3", 5 * min, 20 * min)
         assertFalse(store.ofSeries("series:s:9")["vod:episode:s:e3"]!!.completed)
+    }
+
+    @Test
+    fun continueWatchingKeepsOneCardPerFilmAndSeriesNewestFirst() = runBlocking {
+        seed()
+        db.sources().upsert(SourceEntity("s", "Fixture", "XTREAM", true, 0, 1, "VOD", 0, 0, 0))
+        store.save("vod:movie:s:a", 10 * min, 90 * min)
+        now += 1_000
+        store.save("vod:episode:s:e1", 5 * min, 20 * min)
+        now += 1_000
+        // Another copy of the same film, played later: one card, for the copy played last.
+        store.save("vod:movie:s:b", 20 * min, 90 * min)
+        now += 1_000
+        store.save("vod:episode:s:e3", 2 * min, 20 * min)
+        now += 1_000
+        store.markWatched("vod:movie:s:c", 90 * min)
+        val feed = store.continueWatching()
+        assertEquals(listOf("vod:episode:s:e3", "vod:movie:s:b"), feed.map { it.contentKey })
+        assertEquals(listOf("series:s:9", "vod:movie:s:b"), feed.map { it.groupKey })
+        assertEquals("Northern Line", feed[0].title)
+        assertEquals(listOf(2, 3), listOf(feed[0].season, feed[0].episode))
+        assertEquals("Quiet Harbour b", feed[1].title)
+        // Titles of a disabled source leave the row.
+        db.sources().upsert(SourceEntity("s", "Fixture", "XTREAM", false, 0, 1, "VOD", 0, 0, 0))
+        assertEquals(emptyList<String>(), store.continueWatching().map { it.contentKey })
     }
 }

@@ -2,8 +2,10 @@ package com.sohva.tv.core.data.vod
 
 import com.sohva.tv.core.data.database.CONTENT_EPISODE
 import com.sohva.tv.core.data.database.CONTENT_MOVIE
+import com.sohva.tv.core.data.database.ContinueRow
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.WatchProgressEntity
+import com.sohva.tv.core.model.metadata.TitleCleaner
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.model.vod.WatchedRule
 import kotlinx.coroutines.CoroutineDispatcher
@@ -17,6 +19,48 @@ data class Progress(val positionMs: Long, val durationMs: Long, val completed: B
     val resumeMs: Long get() = if (completed) 0 else positionMs
 
     val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+}
+
+
+/**
+ * A Continue watching card (VOD-FR-99): [title] is the series name for an episode, else the film
+ * name, as metadata calls it or cleaned by the matcher's rule; [groupKey] the series key for an
+ * episode, else the content key; [tmdbId] when the film is matched to TMDB.
+ */
+data class ContinueItem(
+    val contentKey: String,
+    val groupKey: String,
+    val title: String,
+    val year: Int?,
+    val posterUrl: String?,
+    val replacementPoster: String?,
+    val replacePoster: Boolean,
+    val season: Int?,
+    val episode: Int?,
+    val episodeTitle: String?,
+    val tmdbId: String?,
+    val positionMs: Long,
+    val durationMs: Long,
+    val updatedAt: Long,
+) {
+    companion object {
+        fun of(row: ContinueRow): ContinueItem = ContinueItem(
+            contentKey = row.contentKey,
+            groupKey = row.seriesKey ?: row.contentKey,
+            title = row.replacementTitle?.takeIf { it.isNotBlank() } ?: TitleCleaner.searchTitle(row.name).ifBlank { row.name },
+            year = row.year,
+            posterUrl = row.posterUrl,
+            replacementPoster = row.replacementPoster,
+            replacePoster = row.replacePoster,
+            season = row.season,
+            episode = row.number,
+            episodeTitle = row.episodeName,
+            tmdbId = row.externalId?.takeIf { row.workKey?.startsWith("tmdb:") == true },
+            positionMs = row.positionMs,
+            durationMs = row.durationMs,
+            updatedAt = row.updatedAt,
+        )
+    }
 }
 
 /**
@@ -124,11 +168,30 @@ class ProgressStore(
         dao.put(row)
     }
 
+    /**
+     * Continue watching for Home (spec 40 VOD-FR-99): the newest started, unfinished titles, one
+     * card per film identity and per series, at most 20. At most 60 rows of each kind are read.
+     */
+    suspend fun continueWatching(limit: Int = CONTINUE_MAX): List<ContinueItem> = withContext(io) {
+        val who = profile()
+        val rows = (dao.continueFilms(who, READ_MAX) + dao.continueEpisodes(who, READ_MAX)).sortedByDescending { it.updatedAt }
+        val seen = HashSet<String>()
+        rows.asSequence()
+            .filter { seen.add(it.seriesKey ?: it.workKey ?: it.contentKey) }
+            .take(limit)
+            .map(ContinueItem::of)
+            .toList()
+    }
+
     private fun WatchProgressEntity.toProgress() = Progress(positionMs, durationMs, completed, updatedAt)
 
     companion object {
         /** Watched ticks are read for at most this many cards at a time (VOD-FR-37, Trakt lesson 8). */
         const val MAX_TICKS: Int = 200
+
+        /** Continue watching holds at most 20 cards (VOD-FR-99). */
+        const val CONTINUE_MAX: Int = 20
+        private const val READ_MAX = 60
     }
 }
 

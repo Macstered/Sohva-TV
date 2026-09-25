@@ -17,7 +17,45 @@ data class TickRow(@ColumnInfo(name = "tick_key") val key: String, val completed
 /** An episode of a season, for "Mark season as watched". */
 data class SeasonEpisode(val key: String, @ColumnInfo(name = "source_id") val sourceId: String, @ColumnInfo(name = "duration_s") val durationSeconds: Int?)
 
+/**
+ * A started, unfinished title for Continue watching (spec 40 VOD-FR-99): the progress row and what
+ * the card draws. [name] is the film's, or the series' for an episode.
+ */
+data class ContinueRow(
+    @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    @ColumnInfo(name = "content_key") val contentKey: String,
+    @ColumnInfo(name = "work_key") val workKey: String?,
+    @ColumnInfo(name = "series_key") val seriesKey: String?,
+    @ColumnInfo(name = "position_ms") val positionMs: Long,
+    @ColumnInfo(name = "duration_ms") val durationMs: Long,
+    val name: String,
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String?,
+    val year: Int?,
+    @ColumnInfo(name = "poster_url") val posterUrl: String?,
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String?,
+    @ColumnInfo(name = "replace_poster") val replacePoster: Boolean,
+    @ColumnInfo(name = "external_id") val externalId: String?,
+    val season: Int?,
+    val number: Int?,
+    @ColumnInfo(name = "episode_name") val episodeName: String?,
+)
+
 object ProgressSql {
+    /**
+     * Continue watching (VOD-FR-99), newest first through the (profile, completed, updated_at)
+     * index; titles are reached by key, and only visible titles of enabled sources count.
+     */
+    const val CONTINUE_FILMS = "SELECT w.updated_at, w.content_key, w.work_key, NULL AS series_key, w.position_ms, w.duration_ms, " +
+        "m.name, m.replacement_title, m.year, m.poster_url, m.replacement_poster, m.replace_poster, m.external_id, " +
+        "NULL AS season, NULL AS number, NULL AS episode_name FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key " +
+        "CROSS JOIN source src ON src.id = m.source_id WHERE w.profile_id = :profile AND w.completed = 0 AND w.content_type = 'MOVIE' " +
+        "AND w.position_ms > 0 AND m.visible = 1 AND src.enabled = 1 ORDER BY w.updated_at DESC LIMIT :limit"
+    const val CONTINUE_EPISODES = "SELECT w.updated_at, w.content_key, NULL AS work_key, s.key AS series_key, w.position_ms, w.duration_ms, " +
+        "s.name, s.replacement_title, NULL AS year, s.poster_url, s.replacement_poster, s.replace_poster, s.external_id, " +
+        "e.season, e.number, e.name AS episode_name FROM watch_progress w CROSS JOIN episode e ON e.key = w.content_key " +
+        "CROSS JOIN series s ON s.id = e.series_id CROSS JOIN source src ON src.id = e.source_id " +
+        "WHERE w.profile_id = :profile AND w.completed = 0 AND w.content_type = 'EPISODE' AND w.position_ms > 0 " +
+        "AND s.visible = 1 AND src.enabled = 1 ORDER BY w.updated_at DESC LIMIT :limit"
     const val GET = "SELECT * FROM watch_progress WHERE profile_id = :profile AND content_key = :key"
     const val NEWEST_OF_WORK = "SELECT * FROM watch_progress WHERE profile_id = :profile AND work_key = :workKey " +
         "ORDER BY updated_at DESC LIMIT 1"
@@ -70,4 +108,10 @@ interface ProgressDao {
 
     @Query(ProgressSql.SEASON)
     fun season(seriesKey: String, season: Int): List<SeasonEpisode>
+
+    @Query(ProgressSql.CONTINUE_FILMS)
+    fun continueFilms(profile: String, limit: Int): List<ContinueRow>
+
+    @Query(ProgressSql.CONTINUE_EPISODES)
+    fun continueEpisodes(profile: String, limit: Int): List<ContinueRow>
 }

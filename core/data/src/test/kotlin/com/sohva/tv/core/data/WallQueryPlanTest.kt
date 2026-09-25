@@ -77,6 +77,8 @@ class WallQueryPlanTest {
                 "film unsorted count" to LibrarySql.FILM_UNSORTED_COUNT,
                 "series genre count" to LibrarySql.SERIES_GENRE_COUNT,
                 "series unsorted count" to LibrarySql.SERIES_UNSORTED_COUNT,
+                "continue films" to ProgressSql.CONTINUE_FILMS,
+                "continue episodes" to ProgressSql.CONTINUE_EPISODES,
                 "versions" to TitleSql.VERSIONS,
                 "similar" to TitleSql.SIMILAR,
                 "visible" to TitleSql.VISIBLE,
