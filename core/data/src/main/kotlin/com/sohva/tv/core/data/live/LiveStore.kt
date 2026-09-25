@@ -9,16 +9,21 @@ import com.sohva.tv.core.data.database.PlayableChannel
 import com.sohva.tv.core.data.database.ProgrammeRow
 import com.sohva.tv.core.data.database.RecentChannelEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.org.OrgRules
 import com.sohva.tv.core.model.guide.ChannelDial
 import com.sohva.tv.core.model.guide.Genre
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.guide.GuideWindow
 import com.sohva.tv.core.model.guide.Schedules
+import com.sohva.tv.core.model.org.OrgKeys
+import com.sohva.tv.core.model.org.OrgResolver
+import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -45,6 +50,22 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     override fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }
 
     override suspend fun rail(sourceId: String): List<LiveGroup> = withContext(io) { live.rail(sourceId) }
+
+    override fun railRuleChanges(): Flow<LiveRailRules> =
+        db.invalidationTracker.createFlow("organization_rule").map { railRules() }.distinctUntilChanged()
+
+    private suspend fun railRules(): LiveRailRules = withContext(io) {
+        val rules = OrgRules(db).of(OrgRoom.LIVE)
+        val resolver = OrgResolver(rules)
+        fun shortcut(key: String) = ShortcutRule(resolver.shortcutShown(OrgRoom.LIVE, key), resolver.shortcutPosition(OrgRoom.LIVE, key))
+        val listIds = rules.map { it.key.groupKey }.filter { it.startsWith(LIST) }.map { it.removePrefix(LIST) }.toSet()
+        LiveRailRules(
+            order = resolver.groupOrder(OrgRoom.LIVE),
+            favourites = shortcut(OrgKeys.FAVOURITES),
+            recent = shortcut(OrgKeys.RECENT),
+            lists = listIds.associateWith { shortcut(OrgKeys.list(it)) },
+        )
+    }
 
     override suspend fun open(spec: ListSpec): ChannelList = withContext(io) { ChannelList.open(spec, live) }
 
@@ -186,5 +207,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
 
         /** Until an import records the longest programme, assume a day. */
         const val DEFAULT_LONGEST: Long = 24 * 60 * 60 * 1000L
+
+        const val LIST = "@list:"
     }
 }

@@ -211,7 +211,7 @@ object LiveSql {
     /** The small `content_group` table, never a GROUP BY over channels (plan/04 §15.11). */
     const val RAIL: String =
         "SELECT id, group_key, name, item_count, position FROM content_group " +
-            "WHERE room = 'LIVE' AND source_id = :sourceId AND shown = 1 AND item_count > 0 ORDER BY position, provider_order, id"
+            "WHERE room = 'LIVE' AND source_id = :sourceId AND shown = 1 AND item_count > 0 ORDER BY provider_order, id"
 
     private const val AFTER = "(c.display_rank > :afterRank OR (c.display_rank = :afterRank AND c.id > :afterId))"
     private const val ORDER = "ORDER BY c.display_rank, c.id LIMIT :limit"
