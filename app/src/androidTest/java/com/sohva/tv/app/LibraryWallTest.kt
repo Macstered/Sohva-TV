@@ -166,6 +166,32 @@ class LibraryWallTest {
         assertTrue("stopped at $at after $presses presses", at == 180)
     }
 
+    /** VOD-24 (VOD-FR-56): leaving Movies and coming back finds the same group and card, past the first page. */
+    @Test
+    fun movieBrowsingIsWhereItWasAfterLeaving() {
+        openMovies()
+        openDrama()
+        intoWall()
+        // Well past the first page of 120: row 25, second column.
+        repeat(25) {
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN)
+            Thread.sleep(REPEAT_MS)
+            compose.waitForIdle()
+        }
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitFocus(card(151))
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists(RailItem.MOVIES.tag) }
+        awaitFocus(RailItem.MOVIES.tag)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("screen-movies") }
+        awaitFocus(card(151))
+        assertTrue(text("library-label"), text("library-label").startsWith("Drama"))
+        // The pages on both sides were read: Up walks back without a gap.
+        press(KeyEvent.KEYCODE_DPAD_UP)
+        awaitFocus(card(145))
+    }
+
     private fun focusedCard(): Int? = focusedTags().firstNotNullOfOrNull { it?.removePrefix("library-card-")?.takeIf { key -> key != it }?.substringAfterLast(':')?.toIntOrNull() }
 
     @Test

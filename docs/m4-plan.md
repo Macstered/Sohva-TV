@@ -128,5 +128,30 @@ Done, with tests (unit, and device tests on API 30):
 - Channel order from the rules (GUIDE-13): group blocks in the group order, each group in its own
   order, written by the import in the common case; custom lists follow their view.
 
-Left in M4c: groups of your own (ORG-32…34, VOD-07), the old hidden-categories migration
-(ORG-15), then the M4 exit check.
+Then: groups of your own (ORG-32…34, VOD-07), beta 23's hidden categories (ORG-15), and the
+walls' browse sessions for the life of the process (VOD-24, VOD-FR-56: found missing at the exit
+check; each wall's state had lived only with its stack entry).
+
+## Exit check (25 September 2026)
+
+- A 200,000-film wall opens and scrolls within budget on the stand-in: first page 3.55 ms,
+  8.55 ms per press held down (performance log).
+- The identity and metadata passes page in key order with bounded memory and pause during
+  playback (M4b tests; owner-scale import heap 55 MB).
+- The organisation query-plan tests pass (`OrgQueryPlanTest`, `WallQueryPlanTest`,
+  `ManagerQueryPlanTest`), with and without statistics.
+- A finished film returns to its details (`LibraryPlaybackTest`).
+
+Inventory (ticked in `rebuild/plan/01-feature-inventory.md`, 25 September 2026): VOD, META and
+ORG except the parts later milestones own, plus GUIDE-06, -07, -13, -20…22, -35; PLAY-03, -09,
+-34, -35; CHAN-01. Left, by owner milestone:
+- M5: VOD-50 (the held-OK dialog on Home), VOD-58 (Search's feed), META-20 (Home's hero),
+  ORG-16 (Home and Search follow the rules; sport matching in M9).
+- M6: VOD-26, ORG-17, GUIDE-08's restricted-profile part.
+- M7: VOD-54's Settings rows, META-34's legal-screen notices, ORG-35 (backups), PLAY-19's
+  Settings rows.
+- M8: VOD-16's and VOD-52's Trakt marks, PLAY-46. M10: PLAY-16's Discover player part.
+- Not in any milestone yet: the rest of the old-install import (decision "Beta 23's hidden
+  categories"); suggested as its own task.
+
+**Owner checkpoint:** browse and play the owner-scale library.

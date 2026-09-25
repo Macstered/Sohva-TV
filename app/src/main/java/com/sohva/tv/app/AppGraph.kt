@@ -4,19 +4,21 @@ import android.app.Application
 import android.util.Log
 import com.sohva.tv.app.settings.PhoneSetup
 import com.sohva.tv.core.data.DataGraph
-import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.diagnostics.RingDiagnosticsLog
+import com.sohva.tv.core.data.migration.Beta23SourceImport
+import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.concurrent.AppDispatchers
 import com.sohva.tv.core.model.concurrent.PauseGate
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.model.time.SystemClock
-import java.util.concurrent.atomic.AtomicBoolean
+import com.sohva.tv.feature.library.BrowseSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * The app's object graph: lazy holders only (plan/03 §4.4). Creating it opens nothing; the first
@@ -74,6 +76,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
      */
     @Volatile
     var guideFocusChannel: String? = null
+
+    /** One browse session per wall for the life of the process (spec 40 VOD-FR-56). Main thread only. */
+    val browseSessions: Map<WallRoom, BrowseSession> = mapOf(WallRoom.MOVIES to BrowseSession(), WallRoom.SERIES to BrowseSession())
 
     /**
      * The live reads the guide and player use: [DataGraph.live], unless a device test wraps it to

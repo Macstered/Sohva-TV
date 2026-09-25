@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  * positions and the window of at most 600 entries, never a whole destination (§9.10). Every
  * request carries a serial; a late answer never replaces the current wall (VOD-FR-13).
  */
-class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
+class LibraryModel(private val env: LibraryEnvironment, private val session: BrowseSession = BrowseSession()) : ViewModel() {
     private val _view = MutableStateFlow(RailView.GROUPS)
     val view: StateFlow<RailView> = _view.asStateFlow()
 
@@ -73,10 +73,16 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         private set
 
     /** First entry focuses History (VOD-FR-49); cleared once the screen has placed focus. */
-    var firstEntry: Boolean = true
+    var firstEntry: Boolean = !session.entered
         private set
 
-    private val lastOf = HashMap<RailView, String>()
+    /** The focused card itself: the cursor a later visit reads its pages around (VOD-FR-56). */
+    private var focusedItem: WallItem? = null
+
+    /** A destination from the browse session, selected once the rail has been read. */
+    private var restoring: String? = null
+
+    private val lastOf: MutableMap<RailView, String> get() = session.lastOf
     private var serial = 0
     private var loadJob: Job? = null
     private var edgeJob: Job? = null
@@ -96,6 +102,16 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     private var lastCustom: List<CustomGroup> = emptyList()
 
     init {
+        restoring = session.selected
+        if (restoring != null) {
+            _view.value = session.view
+            _search.value = session.search
+            focusedItem = session.focused
+            focusedKey = session.focused?.row?.key
+            focusedIndex = session.focusedIndex
+            focusOnWall = session.focusOnWall
+            genresUsed = session.view == RailView.GENRES
+        }
         viewModelScope.launch { readRail() }
         viewModelScope.launch {
             env.customGroups().collect {
@@ -104,7 +120,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
             }
         }
         viewModelScope.launch { _tvmazeCredit.value = runCatching { env.tvmazeCredit() }.getOrDefault(false) }
-        select(HISTORY_KEY)
+        if (restoring == null) select(HISTORY_KEY)
         watchChanges()
         if (env.room == WallRoom.MOVIES) viewModelScope.launch { _wall.collect { readTicks(it.window) } }
     }
@@ -134,14 +150,27 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         _selected.value = key
         lastOf[_view.value] = key
         focusedKey = null
+        focusedItem = null
         focusedIndex = 0
+        keep()
         load(row.destination)
+    }
+
+    /** The browse session follows every change of destination, view, search and focus (VOD-FR-56). */
+    private fun keep() {
+        session.view = _view.value
+        session.selected = _selected.value
+        session.search = _search.value
+        session.focused = focusedItem
+        session.focusedIndex = focusedIndex
+        session.focusOnWall = focusOnWall
     }
 
     /** The Groups / Genres toggle (VOD-FR-07): back to the view's last destination, else its first row. */
     fun showView(view: RailView) {
         if (view == _view.value) return
         _view.value = view
+        keep()
         val rows = rows(view, lastRail)
         _rail.value = rows
         val target = lastOf[view]?.takeIf { key -> rows.any { it.key == key } }
@@ -164,7 +193,9 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         val destination = _wall.value.destination ?: return
         _wall.update { it.copy(current = false, failed = false) }
         focusedKey = null
+        focusedItem = null
         focusedIndex = 0
+        keep()
         if (cut.isBlank()) {
             load(destination)
         } else {
@@ -182,6 +213,8 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         focusedKey = key
         focusOnWall = true
         val state = _wall.value
+        focusedItem = state.window.itemAt(index)
+        keep()
         if (moved && env.room == WallRoom.MOVIES) readTicks(state.window)
         lookUpVisibleLater()
         if (!state.current || edgeJob?.isActive == true) return
@@ -209,17 +242,21 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     /** A rail control took focus (VOD-FR-54). */
     fun railFocused() {
         focusOnWall = false
+        session.focusOnWall = false
     }
 
     fun entryPlaced() {
         firstEntry = false
+        session.entered = true
     }
 
     /** OK on a card (VOD-FR-52): remember it, clear a search, open the details page. */
     fun open(item: WallItem, index: Int) {
         focusedKey = item.row.key
+        focusedItem = item
         focusedIndex = index
         focusOnWall = true
+        keep()
         if (_search.value.isNotEmpty()) setSearch("")
         env.open(item)
     }
@@ -296,6 +333,37 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         }
     }
 
+    /**
+     * A wall read around [item] (VOD-FR-56): one page before it and one from it, so the card is
+     * where it was; a card that is gone gives the destination from its start.
+     */
+    private fun loadAround(destination: WallDestination, item: WallItem?, index: Int) {
+        if (item == null) return load(destination)
+        val mine = ++serial
+        loadJob?.cancel()
+        edgeJob?.cancel()
+        _wall.value = WallState(destination, WallWindow.Empty, current = false, failed = false)
+        loadJob = viewModelScope.launch {
+            val read = runCatching {
+                env.page(destination, _search.value, item, false, WallWindow.PAGE) to env.page(destination, _search.value, justBefore(item), true, WallWindow.PAGE)
+            }.getOrNull()
+            if (mine != serial) return@launch
+            val (before, from) = read ?: return@launch load(destination)
+            if (from.firstOrNull()?.row?.key != item.row.key) {
+                focusedKey = null
+                focusedItem = null
+                focusOnWall = false
+                keep()
+                return@launch load(destination)
+            }
+            // A short page before means the destination starts there, whatever the old index was.
+            val first = if (before.size < WallWindow.PAGE) 0 else maxOf(0, index - before.size)
+            focusedIndex = first + before.size
+            keep()
+            _wall.value = WallState(destination, WallWindow(first, before + from, atEnd = from.size < WallWindow.PAGE), current = true, failed = false)
+        }
+    }
+
     private fun edge(forward: Boolean) {
         val mine = serial
         val state = _wall.value
@@ -342,6 +410,18 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     private fun applyRows() {
         val rows = rows(_view.value, lastRail)
         _rail.value = rows
+        restoring?.let { key ->
+            // Back to this mode: the session's destination around its card, else the usual first row.
+            restoring = null
+            val row = rows.firstOrNull { it.key == key }
+            if (row == null) {
+                select(rows.firstOrNull { it.key != HISTORY_KEY }?.key ?: HISTORY_KEY)
+            } else {
+                _selected.value = key
+                loadAround(row.destination, focusedItem, focusedIndex)
+            }
+            return
+        }
         // The selected row disappeared → the first row (VOD-FR-08, -09); hidden History included.
         val selected = _selected.value
         if (selected != null && rows.none { it.key == selected } && rows.isNotEmpty()) {

@@ -81,9 +81,9 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
         is AppRoute.Catalogue -> {
             val room = if (route.mode == CatalogueMode.MOVIES) WallRoom.MOVIES else WallRoom.SERIES
-            // Scoped to this stack entry: the browse session lives while the wall is on the stack (spec 40 VOD-FR-56).
+            // Scoped to this stack entry; the browse session (graph.browseSessions) outlives it (spec 40 VOD-FR-56).
             val navigation = remember(stack, graph) { libraryNavigation(stack, graph) }
-            val model = viewModel { LibraryModel(AppLibraryEnvironment(graph, room, navigation)) }
+            val model = viewModel { LibraryModel(AppLibraryEnvironment(graph, room, navigation), graph.browseSessions.getValue(room)) }
             LibraryScreen(model)
         }
         AppRoute.Search -> PlaceholderScreen(R.string.home_search, { back() }, "screen-search")
