@@ -12,7 +12,8 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "channel_custom",
-    indices = [Index(value = ["source_id"])],
+    // Walked by source in key order after every import (keyset pages).
+    indices = [Index(value = ["source_id", "channel_key"])],
 )
 data class ChannelCustomEntity(
     @PrimaryKey @ColumnInfo(name = "channel_key") val channelKey: String,

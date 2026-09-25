@@ -1,6 +1,6 @@
 package com.sohva.tv.core.model.channel
 
-import java.util.Locale
+import com.sohva.tv.core.model.text.Keys
 
 /**
  * The household's edits of one channel (spec 21 CHAN-FR-02). Null or blank means "as the playlist
@@ -36,8 +36,11 @@ data class ChannelEdits(
             return digits.toInt().takeIf { it > 0 }
         }
 
-        /** The organisation key of a custom group (CHAN-FR-04), so rules and profiles treat it as that group. */
-        fun groupKey(title: String): String = "name:" + title.trim().lowercase(Locale.ROOT)
+        /**
+         * The organisation key of a custom group (CHAN-FR-04): the same key a playlist group of that
+         * title has, so rules and profiles treat the channel as its member.
+         */
+        fun groupKey(title: String): String = Keys.groupKey(null, title)
     }
 }
 

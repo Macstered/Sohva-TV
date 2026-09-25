@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 4,
-    "identityHash": "46fa94d56c7912088342d795112fccff",
+    "identityHash": "44dd666292ef0c86c3ff2574f94eff29",
     "entities": [
       {
         "tableName": "app_meta",
@@ -1183,13 +1183,14 @@
         },
         "indices": [
           {
-            "name": "index_channel_custom_source_id",
+            "name": "index_channel_custom_source_id_channel_key",
             "unique": false,
             "columnNames": [
-              "source_id"
+              "source_id",
+              "channel_key"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_custom_source_id` ON `${TABLE_NAME}` (`source_id`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_custom_source_id_channel_key` ON `${TABLE_NAME}` (`source_id`, `channel_key`)"
           }
         ]
       },
@@ -1377,7 +1378,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '46fa94d56c7912088342d795112fccff')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '44dd666292ef0c86c3ff2574f94eff29')"
     ]
   }
 }

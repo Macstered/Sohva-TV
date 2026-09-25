@@ -69,6 +69,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun viewer(): ViewerDao
 
+    abstract fun channelEdits(): ChannelEditDao
+
     /** v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied. */
     class ProviderColumns : AutoMigrationSpec {
         override fun onPostMigrate(db: SupportSQLiteDatabase) {

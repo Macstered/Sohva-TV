@@ -1,8 +1,12 @@
 package com.sohva.tv.core.sync
 
+import com.sohva.tv.core.data.database.ChannelCustomEntity
+import com.sohva.tv.core.data.live.ChannelEffects
+import com.sohva.tv.core.model.channel.ChannelEdits
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.source.RefreshKind
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import org.junit.After
@@ -38,7 +42,10 @@ class LiveImportTest {
         assertEquals("success|null|null|3", status())
         assertEquals(
             listOf("One|one.fi|News|0|null", "Two|null|News|1024|null", "Three|null|Sport|2048|7"),
-            h.query("SELECT c.name, c.epg_id, g.name, c.display_rank, c.number FROM channel c JOIN content_group g ON g.id = c.group_id ORDER BY c.display_rank"),
+            h.query(
+                "SELECT c.name, c.epg_id, g.name, c.display_rank - ${ChannelEffects.UNPOSITIONED}, c.number " +
+                    "FROM channel c JOIN content_group g ON g.id = c.group_id ORDER BY c.display_rank",
+            ),
         )
         assertEquals(listOf("sealed:http://stream.example/One.ts"), h.query("SELECT stream_url_enc FROM channel WHERE name = 'One'"))
         assertEquals(listOf("News|2|0", "Sport|1|1"), h.query("SELECT name, item_count, provider_order FROM content_group WHERE room = 'LIVE' ORDER BY provider_order"))
@@ -58,6 +65,52 @@ class LiveImportTest {
         assertEquals(listOf("One|1", "Two|3", "Four|3"), h.query("SELECT name, generation FROM channel ORDER BY display_rank"))
         assertEquals(listOf("Moved", "News"), h.query("SELECT name FROM content_group ORDER BY name"))
     }
+
+    /** M3 exit criterion 3 (spec 21 CHAN-FR-02): the household's edits are kept and re-applied. */
+    @Test
+    fun channelEditsSurviveAReImport() {
+        h.addM3u()
+        h.serve("/list.m3u", playlist(entry("One", id = "one.fi"), entry("Two"), entry("Three", group = "Sport")))
+        playlistOnly()
+        val keys = h.query("SELECT key FROM channel ORDER BY playlist_order")
+        val edits = h.db.channelEdits()
+        // Room refuses the test's main thread.
+        runBlocking(Dispatchers.IO) {
+            edits.putCustom(custom(keys[0], "m3u-1", name = "Mine", group = "Favourites here", logo = "https://provider.example/mine.png", number = 42, epg = "manual.epg"))
+            edits.putCustom(custom(keys[1], "m3u-1", hidden = true))
+            edits.putCustom(custom(keys[2], "m3u-1", position = 512))
+        }
+        // The playlist changes the first channel's logo and number; the edits must win again.
+        h.serve("/list.m3u", playlist(entry("One", id = "one.fi", extra = " tvg-logo=\"https://provider.example/new.png\" tvg-chno=\"5\""), entry("Two"), entry("Three", group = "Sport")))
+        playlistOnly()
+        assertEquals(
+            listOf("Three|Sport|1|null|512", "Mine|Favourites here|1|42|${ChannelEffects.UNPOSITIONED}", "Two|News|0|null|${ChannelEffects.UNPOSITIONED + 1024}"),
+            h.query("SELECT c.name, g.name, c.visible, c.number, c.display_rank FROM channel c JOIN content_group g ON g.id = c.group_id ORDER BY c.display_rank"),
+        )
+        assertEquals(listOf("manual.epg|https://provider.example/mine.png|One|https://provider.example/new.png"), h.query("SELECT epg_id, logo_url, provider_name, provider_logo_url FROM channel WHERE key = '${keys[0]}'"))
+        // Counts follow what is shown: News lost One (moved) and Two (hidden).
+        assertEquals(listOf("Favourites here|1", "News|0", "Sport|1"), h.query("SELECT name, item_count FROM content_group WHERE room = 'LIVE' ORDER BY name"))
+        // A third, unchanged import writes nothing (generation stays at the second import's).
+        val before = h.query("SELECT key, generation, display_rank, name FROM channel ORDER BY key")
+        playlistOnly()
+        assertEquals(before, h.query("SELECT key, generation, display_rank, name FROM channel ORDER BY key"))
+    }
+
+    private fun custom(
+        key: String,
+        source: String,
+        name: String? = null,
+        group: String? = null,
+        logo: String? = null,
+        number: Int? = null,
+        epg: String? = null,
+        hidden: Boolean = false,
+        position: Long? = null,
+    ) = ChannelCustomEntity(
+        channelKey = key, sourceId = source, customName = name, customGroupTitle = group,
+        customGroupKey = group?.let { ChannelEdits.groupKey(it) }, hidden = hidden, position = position, manualEpgId = epg,
+        customLogoUrl = logo, customNumber = number, updatedAt = 0,
+    )
 
     @Test
     fun emptyAndForeignDocumentsKeepThePreviousChannels() {
