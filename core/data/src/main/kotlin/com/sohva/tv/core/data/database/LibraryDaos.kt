@@ -30,11 +30,15 @@ object LibrarySql {
     const val COPIES = "SELECT id, work_key, group_id, sort_name, claim_mask, picture_rank, visible, primary_copy, group_primary " +
         "FROM movie WHERE work_key IN (:workKeys)"
     const val RECOUNT_FILM_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM movie " +
-        "WHERE movie.group_id = content_group.id AND movie.visible = 1 AND movie.group_primary = 1) WHERE source_id = :sourceId AND room = 'MOVIES'"
+        "WHERE movie.group_id = content_group.id AND movie.visible = 1 AND movie.group_primary = 1), " +
+        "total_count = (SELECT COUNT(DISTINCT COALESCE(movie.work_key, movie.key)) FROM movie WHERE movie.group_id = content_group.id) " +
+        "WHERE source_id = :sourceId AND room = 'MOVIES'"
     const val RECOUNT_SERIES_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM series " +
-        "WHERE series.group_id = content_group.id AND series.visible = 1 AND series.primary_copy = 1) WHERE source_id = :sourceId AND room = 'SERIES'"
+        "WHERE series.group_id = content_group.id AND series.visible = 1 AND series.primary_copy = 1), " +
+        "total_count = (SELECT COUNT(*) FROM series WHERE series.group_id = content_group.id) WHERE source_id = :sourceId AND room = 'SERIES'"
     const val RECOUNT_CHANNEL_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel " +
-        "WHERE channel.group_id = content_group.id AND channel.visible = 1) WHERE source_id = :sourceId AND room = 'LIVE'"
+        "WHERE channel.group_id = content_group.id AND channel.visible = 1), " +
+        "total_count = (SELECT COUNT(*) FROM channel WHERE channel.group_id = content_group.id) WHERE source_id = :sourceId AND room = 'LIVE'"
     const val FILM_GENRE_COUNT = "SELECT COUNT(*) FROM movie WHERE genre = :genre AND visible = 1 AND primary_copy = 1"
     const val FILM_UNSORTED_COUNT = "SELECT COUNT(*) FROM movie INDEXED BY index_movie_genre_visible_primary_copy_sort_name " +
         "WHERE genre IS NULL AND visible = 1 AND primary_copy = 1"

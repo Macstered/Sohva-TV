@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "2263fec2c578ea6577780a78ebff7cd0",
+    "identityHash": "ff9c1b1a739f496d9d9f28470ed520be",
     "entities": [
       {
         "tableName": "app_meta",
@@ -186,7 +186,7 @@
       },
       {
         "tableName": "content_group",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `source_id` TEXT NOT NULL, `room` TEXT NOT NULL, `group_key` TEXT NOT NULL, `name` TEXT NOT NULL, `provider_order` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `shown` INTEGER NOT NULL, `position` INTEGER NOT NULL, `sort_mode` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `source_id` TEXT NOT NULL, `room` TEXT NOT NULL, `group_key` TEXT NOT NULL, `name` TEXT NOT NULL, `provider_order` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `shown` INTEGER NOT NULL, `position` INTEGER NOT NULL, `sort_mode` TEXT, `total_count` INTEGER NOT NULL DEFAULT 0)",
         "fields": [
           {
             "fieldPath": "id",
@@ -246,6 +246,13 @@
             "fieldPath": "sortMode",
             "columnName": "sort_mode",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "totalCount",
+            "columnName": "total_count",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -2239,7 +2246,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2263fec2c578ea6577780a78ebff7cd0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ff9c1b1a739f496d9d9f28470ed520be')"
     ]
   }
 }

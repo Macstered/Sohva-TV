@@ -152,5 +152,6 @@ object EditSql {
             "AND key != :exclude AND (display_rank > :rank OR (display_rank = :rank AND id > :id)) ORDER BY display_rank, id LIMIT 1"
 
     const val RECOUNT_GROUP: String =
-        "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId AND visible = 1) WHERE id = :groupId"
+        "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId AND visible = 1), " +
+            "total_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId) WHERE id = :groupId"
 }

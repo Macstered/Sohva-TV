@@ -34,4 +34,23 @@ class OrgQueryPlanTest {
             }
         }
     }
+
+    /** The manager reads one group's rows (a film group's range is sorted by SQLite, bounded by the group). */
+    @Test
+    fun theManagerReadsOneGroupOrList() {
+        QueryPlanHarness.open(SohvaDatabase.VERSION).use { db ->
+            for (analyzed in listOf(false, true)) {
+                if (analyzed) db.analyze()
+                for ((name, sql) in mapOf(
+                    "films" to OrgSql.MANAGER_FILMS, "series" to OrgSql.MANAGER_SERIES,
+                    "channels" to OrgSql.MANAGER_CHANNELS, "list" to OrgSql.MANAGER_LIST_MEMBERS,
+                )) {
+                    val plan = db.plan(sql).joinToString(" | ")
+                    println("$name ($analyzed): $plan")
+                    assertFalse("$name ($analyzed): $plan", Regex("""SCAN (t|c)(?! USING)""").containsMatchIn(plan))
+                    if (name == "channels" || name == "list") assertFalse("$name ($analyzed): $plan", plan.contains("TEMP B-TREE"))
+                }
+            }
+        }
+    }
 }
