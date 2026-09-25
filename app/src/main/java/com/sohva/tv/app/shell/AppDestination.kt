@@ -10,15 +10,21 @@ import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.channels.AppChannelsEnvironment
+import com.sohva.tv.app.library.AppLibraryEnvironment
+import com.sohva.tv.app.library.LibraryNavigation
 import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.app.settings.AppSettingsServices
+import com.sohva.tv.core.data.vod.WallItem
+import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.feature.channels.ChannelsModel
 import com.sohva.tv.feature.channels.ChannelsScreen
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
+import com.sohva.tv.feature.library.LibraryModel
+import com.sohva.tv.feature.library.LibraryScreen
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
@@ -58,9 +64,12 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             PlayerScreen(model)
         }
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
-        is AppRoute.Catalogue -> when (route.mode) {
-            CatalogueMode.MOVIES -> PlaceholderScreen(R.string.home_movies, { back() }, "screen-movies")
-            CatalogueMode.SERIES -> PlaceholderScreen(R.string.home_series, { back() }, "screen-series")
+        is AppRoute.Catalogue -> {
+            val room = if (route.mode == CatalogueMode.MOVIES) WallRoom.MOVIES else WallRoom.SERIES
+            // Scoped to this stack entry: the browse session lives while the wall is on the stack (spec 40 VOD-FR-56).
+            val navigation = remember(stack, graph) { libraryNavigation(stack, graph) }
+            val model = viewModel { LibraryModel(AppLibraryEnvironment(graph, room, navigation)) }
+            LibraryScreen(model)
         }
         AppRoute.Search -> PlaceholderScreen(R.string.home_search, { back() }, "screen-search")
         AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
@@ -137,6 +146,18 @@ private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>,
         }
         graph.app.startActivity(intent)
     }.exceptionOrNull()
+}
+
+private fun libraryNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = object : LibraryNavigation {
+    // Details pages arrive with the next step of M4; until then a card says so.
+    override fun open(room: WallRoom, item: WallItem) = graph.notYetAvailable()
+
+    // The library manager arrives with spec 42 (M4c).
+    override fun openManager(room: WallRoom) = graph.notYetAvailable()
+
+    override fun leave() {
+        stack.pop()
+    }
 }
 
 /**

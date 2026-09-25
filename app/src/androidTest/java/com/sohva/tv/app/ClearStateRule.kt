@@ -32,8 +32,8 @@ class ClearStateRule : ExternalResource() {
             graph.data.preferences.resetToDefaults()
             graph.data.sources.all().forEach { graph.sync.runner.remove(it.id) }
             // Favourites and recents outlive their channels by design; tests start without them.
-            // So do the household's channel edits, lists, locks and reminders (M3).
-            for (table in listOf("favourite_channel", "recent_channel", "channel_custom", "channel_list", "channel_list_member", "locked_channel", "reminder")) {
+            // So do the household's channel edits, lists, locks and reminders (M3), and positions (M4).
+            for (table in listOf("favourite_channel", "recent_channel", "channel_custom", "channel_list", "channel_list_member", "locked_channel", "reminder", "watch_progress")) {
                 graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM $table")
             }
         }
