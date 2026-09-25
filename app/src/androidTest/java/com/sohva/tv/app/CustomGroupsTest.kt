@@ -133,7 +133,7 @@ class CustomGroupsTest {
         // Movies › Genres: the group comes first and shows only the nineties crime films.
         press(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(10_000) { exists(RailItem.MOVIES.tag) }
-        compose.onNodeWithTag(RailItem.MOVIES.tag).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.focusRail(RailItem.MOVIES)
         awaitFocus(RailItem.MOVIES.tag)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("library-view-genres") }

@@ -10,6 +10,7 @@ import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.channels.AppChannelsEnvironment
+import com.sohva.tv.app.home.AppHomeEnvironment
 import com.sohva.tv.app.library.AppLibraryEnvironment
 import com.sohva.tv.app.library.AppTitleEnvironment
 import com.sohva.tv.app.library.LibraryNavigation
@@ -28,6 +29,7 @@ import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.feature.channels.ChannelsModel
 import com.sohva.tv.feature.channels.ChannelsScreen
+import com.sohva.tv.feature.home.HomeModel
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
 import com.sohva.tv.feature.library.FilmModel
@@ -64,7 +66,9 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
     when (route) {
         AppRoute.Home -> {
             val items = remember(flags) { railItems(flags) }
-            HomeScreen(items, onOpen = { stack.push(it.route()) })
+            // Scoped to this stack entry: every arrival on Home is fresh (spec 02 §3.4).
+            val model = viewModel { HomeModel(AppHomeEnvironment(graph, stack)) }
+            HomeScreen(model, items, onOpen = { stack.push(it.route()) }, lowMemory = graph.player.lowMemory)
         }
         AppRoute.Guide -> {
             val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT

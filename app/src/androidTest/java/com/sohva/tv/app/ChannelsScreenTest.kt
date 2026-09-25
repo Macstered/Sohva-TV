@@ -80,7 +80,7 @@ class ChannelsScreenTest {
 
     private fun openChannels() {
         compose.waitUntil(10_000) { exists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0")
         press(KeyEvent.KEYCODE_MENU)

@@ -82,28 +82,28 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 
 **Structure**
 
-- [ ] **HOME-01** A fixed hero band (46 % of the screen height) over rows that scroll beneath it; the band never changes height, so rows never shift when the hero text changes.
-- [ ] **HOME-02** Header: the "Sohva TV" brand at top left and a clock (weekday, date, time) at top right, in the interface language, the chosen time zone and the device's 12/24-hour setting, updated every minute.
-- [ ] **HOME-03** Rows in a fixed order: Continue watching, Watch next, Today's sport, Recommended for you, Recently watched channels. A row with nothing to show is not drawn.
-- [ ] **HOME-04** Vertical movement pulls the focused card's row up to the top of the row area (one focus line); horizontal movement keeps the TV pivot inside a row.
-- [ ] **HOME-05** Structure lock: while the viewer is below the first row, arriving data updates the cards already shown in place but never adds, removes or reorders cards or rows.
-- [ ] **HOME-06** The navigation rail over the left edge (spec 01 §4.8).
+- [x] **HOME-01** A fixed hero band (46 % of the screen height) over rows that scroll beneath it; the band never changes height, so rows never shift when the hero text changes.
+- [x] **HOME-02** Header: the "Sohva TV" brand at top left and a clock (weekday, date, time) at top right, in the interface language, the chosen time zone and the device's 12/24-hour setting, updated every minute.
+- [x] **HOME-03** Rows in a fixed order: Continue watching, Watch next, Today's sport, Recommended for you, Recently watched channels. A row with nothing to show is not drawn.
+- [x] **HOME-04** Vertical movement pulls the focused card's row up to the top of the row area (one focus line); horizontal movement keeps the TV pivot inside a row.
+- [x] **HOME-05** Structure lock: while the viewer is below the first row, arriving data updates the cards already shown in place but never adds, removes or reorders cards or rows.
+- [x] **HOME-06** The navigation rail over the left edge (spec 01 §4.8).
 
 **Continue watching**
 
-- [ ] **HOME-07** Library films paused locally (not finished, position > 0), newest first.
-- [ ] **HOME-08** Library episodes paused locally; one card per series, the newest episode standing for the series.
+- [x] **HOME-07** Library films paused locally (not finished, position > 0), newest first.
+- [x] **HOME-08** Library episodes paused locally; one card per series, the newest episode standing for the series.
 - [ ] **HOME-09** Library copies paused on Trakt (unrestricted profiles with Trakt), merged with the local positions; a newer local position of the same copy wins.
 - [ ] **HOME-10** Discover titles paused in Discover (not completed, position > 0), one card per addon title (series: newest episode).
-- [ ] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands.
-- [ ] **HOME-12** At most 12 cards, newest first.
-- [ ] **HOME-13** Landscape card: artwork (or initials), progress bar, title, "episode label or year · N min left".
-- [ ] **HOME-14** OK on a library card resumes playback at the saved position, with the title's library page and details page placed underneath the player.
+- [ ] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M10.)*
+- [x] **HOME-12** At most 12 cards, newest first.
+- [x] **HOME-13** Landscape card: artwork (or initials), progress bar, title, "episode label or year · N min left".
+- [x] **HOME-14** OK on a library card resumes playback at the saved position, with the title's library page and details page placed underneath the player.
 - [ ] **HOME-15** OK on a Discover card opens that Discover title page.
-- [ ] **HOME-16** Hold OK on a library card: actions dialog with Resume, Start from beginning, Mark as watched, Remove from Continue watching.
-- [ ] **HOME-17** Row hint "Browse the rows with the D-pad" beside the row title.
-- [ ] **HOME-18** Loading card "Loading Continue Watching…" while the first read is under way; Down is held back until it resolves.
-- [ ] **HOME-19** Failure card "Continue Watching unavailable. Select to retry." after a read failed or took longer than 5 s; OK retries.
+- [x] **HOME-16** Hold OK on a library card: actions dialog with Resume, Start from beginning, Mark as watched, Remove from Continue watching.
+- [x] **HOME-17** Row hint "Browse the rows with the D-pad" beside the row title.
+- [x] **HOME-18** Loading card "Loading Continue Watching…" while the first read is under way; Down is held back until it resolves.
+- [x] **HOME-19** Failure card "Continue Watching unavailable. Select to retry." after a read failed or took longer than 5 s; OK retries.
 
 **Trakt rows**
 
@@ -116,50 +116,50 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 
 - [ ] **HOME-24** Today's sport: up to 6 match cards (status or kick-off, crests, score, competition) with the day's total "N matches" as the row hint.
 - [ ] **HOME-25** OK on a match card opens Sohva Sport with that match's card open.
-- [ ] **HOME-26** Recently watched channels: up to 6 channel cards (logo, name, current programme, programme progress), most recent first.
-- [ ] **HOME-27** OK on a channel card plays it live; Back from the player goes to the guide on that channel.
+- [x] **HOME-26** Recently watched channels: up to 6 channel cards (logo, name, current programme, programme progress), most recent first.
+- [x] **HOME-27** OK on a channel card plays it live; Back from the player goes to the guide on that channel.
 
 **Hero**
 
-- [ ] **HOME-28** The hero describes the focused card once focus has rested for 180 ms.
-- [ ] **HOME-29** With nothing focused, or the rail focused, the hero shows the idle subject at once: the newest Continue watching title with progress, else a recent channel, else Welcome.
-- [ ] **HOME-30** Kicker line per subject (Continue watching / Live now with a red dot / Live TV / Today's sport / Watch next / Recommended for you / Welcome), a large title, a facts line, an optional progress bar and an optional two-line synopsis.
-- [ ] **HOME-31** Synopsis and backdrop come from the same sources as the details pages (metadata match first, provider text second); a Trakt title's text comes from TMDB in the metadata language, never English first.
-- [ ] **HOME-32** Backdrop artwork at the top right, fading into the ground at its bottom and left edge, over the bundled Live TV artwork; a match shows its two crests large and faint instead.
-- [ ] **HOME-33** The backdrop crossfades (250 ms) when the subject's artwork changes; the hero text changes without animation.
+- [x] **HOME-28** The hero describes the focused card once focus has rested for 180 ms.
+- [x] **HOME-29** With nothing focused, or the rail focused, the hero shows the idle subject at once: the newest Continue watching title with progress, else a recent channel, else Welcome.
+- [x] **HOME-30** Kicker line per subject (Continue watching / Live now with a red dot / Live TV / Today's sport / Watch next / Recommended for you / Welcome), a large title, a facts line, an optional progress bar and an optional two-line synopsis.
+- [ ] **HOME-31** Synopsis and backdrop come from the same sources as the details pages (metadata match first, provider text second); a Trakt title's text comes from TMDB in the metadata language, never English first. *(library and channel part done in M5; Trakt part in M8.)*
+- [x] **HOME-32** Backdrop artwork at the top right, fading into the ground at its bottom and left edge, over the bundled Live TV artwork; a match shows its two crests large and faint instead.
+- [x] **HOME-33** The backdrop crossfades (250 ms) when the subject's artwork changes; the hero text changes without animation.
 
 **Empty and first run**
 
-- [ ] **HOME-34** With every row empty, the Welcome hero ("Live TV", "Channels and programme guide") and a "Guide" button, which takes focus and opens the programme guide.
+- [x] **HOME-34** With every row empty, the Welcome hero ("Live TV", "Channels and programme guide") and a "Guide" button, which takes focus and opens the programme guide.
 
 **Profiles**
 
-- [ ] **HOME-35** Every row is the active profile's own; switching profile resets Home to that profile's rows, focus and hero.
+- [x] **HOME-35** Every row is the active profile's own; switching profile resets Home to that profile's rows, focus and hero.
 - [ ] **HOME-36** A restricted profile sees no Trakt rows, no Discover cards and no first-sync note; its recent channels are limited to its allowed groups.
 
 ## Search
 
 Spec: [specs/03-search.md](../specs/03-search.md) · Milestone: M5 · 19 items
 
-- [ ] **SEARCH-01** Search destination on the Home rail (`home_search` "Search").
-- [ ] **SEARCH-02** Header: brand, title "Search", subtitle "Channels, programmes, movies, series, episodes and sports", and a Back button.
-- [ ] **SEARCH-03** One text field, focused on entry; typing through the TV's keyboard; at most 80 characters.
-- [ ] **SEARCH-04** A search runs when the trimmed text has at least 2 characters, 250 ms after the last change; a new change abandons the previous search.
-- [ ] **SEARCH-05** Channel results: channels whose shown name contains the text.
-- [ ] **SEARCH-06** Programme results: programmes whose title or subtitle contains the text, on any imported date, with channel name and start time.
-- [ ] **SEARCH-07** Film results (up to 40), series results (up to 40), episode results (up to 40, matching the episode or the series name).
+- [x] **SEARCH-01** Search destination on the Home rail (`home_search` "Search").
+- [x] **SEARCH-02** Header: brand, title "Search", subtitle "Channels, programmes, movies, series, episodes and sports", and a Back button.
+- [x] **SEARCH-03** One text field, focused on entry; typing through the TV's keyboard; at most 80 characters.
+- [x] **SEARCH-04** A search runs when the trimmed text has at least 2 characters, 250 ms after the last change; a new change abandons the previous search.
+- [x] **SEARCH-05** Channel results: channels whose shown name contains the text.
+- [x] **SEARCH-06** Programme results: programmes whose title or subtitle contains the text, on any imported date, with channel name and start time.
+- [x] **SEARCH-07** Film results (up to 40), series results (up to 40), episode results (up to 40, matching the episode or the series name).
 - [ ] **SEARCH-08** Sport results: today's matches whose home team, away team or competition contains the text.
-- [ ] **SEARCH-09** Matching ignores letter case.
-- [ ] **SEARCH-10** Result kinds load in parallel and each is appended when it is ready; rows already on screen never move.
-- [ ] **SEARCH-11** Each result row: thumbnail (logo, poster or the kind's initial), title, subtitle, kind label (CHANNEL, PROGRAMME, MOVIE, SERIES, EPISODE, SPORT).
-- [ ] **SEARCH-12** Status line: hint, "Searching…", "N results", "No results found." or "Some search results could not be loaded."
-- [ ] **SEARCH-13** OK on a channel or programme result plays the channel live; Back from the player goes to the guide on that channel.
-- [ ] **SEARCH-14** OK on a film opens its details page; on a series opens its series page.
-- [ ] **SEARCH-15** OK on an episode plays it from its saved position; when it ends the next episode plays (autoplay on) or the series page opens.
+- [x] **SEARCH-09** Matching ignores letter case.
+- [x] **SEARCH-10** Result kinds load in parallel and each is appended when it is ready; rows already on screen never move.
+- [x] **SEARCH-11** Each result row: thumbnail (logo, poster or the kind's initial), title, subtitle, kind label (CHANNEL, PROGRAMME, MOVIE, SERIES, EPISODE, SPORT).
+- [x] **SEARCH-12** Status line: hint, "Searching…", "N results", "No results found." or "Some search results could not be loaded."
+- [x] **SEARCH-13** OK on a channel or programme result plays the channel live; Back from the player goes to the guide on that channel.
+- [x] **SEARCH-14** OK on a film opens its details page; on a series opens its series page.
+- [x] **SEARCH-15** OK on an episode plays it from its saved position; when it ends the next episode plays (autoplay on) or the series page opens.
 - [ ] **SEARCH-16** OK on a sport result opens Sohva Sport.
-- [ ] **SEARCH-17** Only enabled sources, their active snapshots and what the device's organisation rules show (hidden channels, groups and titles never appear).
+- [x] **SEARCH-17** Only enabled sources, their active snapshots and what the device's organisation rules show (hidden channels, groups and titles never appear).
 - [ ] **SEARCH-18** A restricted profile finds only channels, programmes, films and series in its allowed groups.
-- [ ] **SEARCH-19** Leaving Search forgets the text and the results.
+- [x] **SEARCH-19** Leaving Search forgets the text and the results.
 
 ## Profiles and parental controls
 
@@ -546,7 +546,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 - [x] **VOD-47** Positions saved per profile and per copy; the copies of one film share a position.
 - [x] **VOD-48** Watched at 90 %, or with 3 minutes left on anything of 10 minutes or more.
 - [x] **VOD-49** Continue watching feed for Home: one card per film or series, newest first.
-- [ ] **VOD-50** Held-OK actions on a Continue watching card: Resume, Start from beginning, Mark as watched, Remove from Continue watching.
+- [x] **VOD-50** Held-OK actions on a Continue watching card: Resume, Start from beginning, Mark as watched, Remove from Continue watching.
 - [x] **VOD-51** Next-episode lookup across seasons (for autoplay).
 - [ ] **VOD-52** Trakt positions and watched marks overlaid on library progress.
 
@@ -596,7 +596,7 @@ Spec: [specs/41-metadata-enrichment.md](../specs/41-metadata-enrichment.md) · M
 - [x] **META-17** Series page: TMDB series with details (runtime, rating, cast), TVmaze as a fallback.
 - [x] **META-18** Selected episode: TMDB episode or TVmaze episode by number, 350 ms after the selection rests.
 - [x] **META-19** Guide hero: programme lookup by title 350 ms after the selection rests (synopsis, year, still, "TMDB x.x" rating chip).
-- [ ] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language.
+- [ ] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language. *(film, series and programme lookups done in M5; Trakt part in M8.)*
 - [x] **META-21** A missing library poster is repaired from the details record when a page opens.
 - [x] **META-22** "Source: TMDB" / "Source: TVmaze" opens the matched record's web page (film page, series page, guide hero).
 

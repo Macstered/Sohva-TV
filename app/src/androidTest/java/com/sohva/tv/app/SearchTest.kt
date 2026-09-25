@@ -66,7 +66,7 @@ class SearchTest {
 
     private fun openSearch() {
         compose.waitUntil(15_000) { exists(RailItem.SEARCH.tag) }
-        compose.onNodeWithTag(RailItem.SEARCH.tag).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.focusRail(RailItem.SEARCH)
         awaitFocus(RailItem.SEARCH.tag)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("screen-search") }
@@ -110,7 +110,13 @@ class SearchTest {
         awaitFocus(firstResult("channel")!!)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("screen-player") }
-        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        // The first Back may only hide the player's controls.
+        repeat(3) {
+            if (!exists("screen-guide")) {
+                instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+                runCatching { compose.waitUntil(3_000) { exists("screen-guide") } }
+            }
+        }
         compose.waitUntil(10_000) { exists("screen-guide") }
     }
 

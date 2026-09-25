@@ -5,6 +5,7 @@ import android.util.Log
 import com.sohva.tv.app.settings.PhoneSetup
 import com.sohva.tv.core.data.DataGraph
 import com.sohva.tv.core.data.diagnostics.RingDiagnosticsLog
+import com.sohva.tv.core.data.home.ContinueFeed
 import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.FeatureFlags
@@ -13,6 +14,7 @@ import com.sohva.tv.core.model.concurrent.PauseGate
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.model.time.SystemClock
+import com.sohva.tv.feature.home.HomeModel
 import com.sohva.tv.feature.library.BrowseSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +28,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class AppGraph(val app: Application, val flags: FeatureFlags) {
     val clock: Clock = SystemClock
+
+    /** When the graph (so, near enough, the process) started: the start-up log lines count from it. */
+    private val startedAt: Long = android.os.SystemClock.elapsedRealtime()
     val dispatchers: AppDispatchers by lazy { AndroidDispatchers() }
 
     val diagnostics: DiagnosticsLog by lazy {
@@ -48,6 +53,20 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     val pauseGate: PauseGate by lazy { PauseGate(playbackActive, inForeground) }
 
     val sync: SyncGraph by lazy { SyncGraph(this) }
+
+    /**
+     * Continue watching for the life of the process (spec 02 HOME-FR-24): started as the first work
+     * after the launch screen; it re-reads on library and progress changes, not while video plays.
+     */
+    val continueFeed: ContinueFeed by lazy {
+        ContinueFeed(
+            scope = appScope,
+            read = { data.progress.continueWatching(HomeModel.RESUME_CARDS) },
+            changes = data.walls.changes(),
+            playing = playbackActive,
+            onFirstSettled = { diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms") },
+        )
+    }
 
     /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
     val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }
@@ -105,6 +124,8 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
      */
     fun afterFirstFrame() {
         if (!started.compareAndSet(false, true)) return
+        // The Continue watching read comes first: Home's first card waits for it (spec 02 §9.1).
+        continueFeed.start()
         appScope.launch {
             // Beta 23's sources first, so an upgraded install syncs them at once (decision A1).
             val imported = data.beta23Import.run()

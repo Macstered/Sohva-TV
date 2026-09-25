@@ -42,3 +42,17 @@ profiles, M6), VOD-50 and META-20 from M4.
 4. Home screen: hero band and panel, backdrop, rows on a focus line, structure lock, hero
    subject after 180 ms, actions dialog, Welcome, focus hand-offs; device tests.
 5. Measurements on the stand-in, inventory, exit.
+
+## Status (25 September 2026, night)
+
+Built, with tests (unit, query plans, device tests on API 30):
+- Search (SEARCH-01…07, -09…15, -17, -19): FTS4 index kept by the imports, the five group
+  queries with visibility before the limit, the screen with its field, status line and routes.
+  Owner scale: every group ≤ 55 ms on the stand-in; imports as before (catalogue 139.5 s).
+- Home (HOME-01…08, -11…19 library part, -26…30, -31 library and channel part, -32…35): the
+  Continue watching projection (5 s failure, re-read at most once a second, held during
+  playback), recent channels with the programme at entry, the hero with its 180 ms rest and
+  plate backdrop, the focus line, the structure lock, hold-OK actions, Welcome, focus hand-offs.
+
+Next: the Home benchmark on the stand-in (cold start to the first card; presses along a row),
+then the M5 exit.

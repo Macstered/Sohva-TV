@@ -62,7 +62,7 @@ class PlayerControlsTest {
 
     private fun openPlayer() {
         compose.waitUntil(10_000) { exists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0", 10_000)
         press(KeyEvent.KEYCODE_DPAD_CENTER)

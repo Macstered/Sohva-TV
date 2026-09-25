@@ -53,7 +53,7 @@ class GuideListsTest {
     @Test
     fun aCustomListShowsItsChannelsInItsOwnOrder() {
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0")
         press(KeyEvent.KEYCODE_DPAD_LEFT)

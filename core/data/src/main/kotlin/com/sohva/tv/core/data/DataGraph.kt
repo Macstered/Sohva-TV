@@ -9,6 +9,7 @@ import com.sohva.tv.core.data.channels.ChannelManagerReads
 import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.home.HomeReads
 import com.sohva.tv.core.data.live.LiveStore
 import com.sohva.tv.core.data.migration.Beta23HiddenCategories
 import com.sohva.tv.core.data.migration.Beta23SourceImport
@@ -94,6 +95,9 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
 
     /** Search's groups (spec 03). */
     val search: SearchReads by lazy { SearchReads(database, dispatchers.io) }
+
+    /** Home's recent channels (spec 02). */
+    val home: HomeReads by lazy { HomeReads(database, dispatchers.io) { DEFAULT_PROFILE } }
 
     /** The library manager's reads (spec 42 §4.9); its writes go through [OrgRules] and [OrgPass]. */
     val organization: OrgManager by lazy { OrgManager(database, OrgRules(database), dispatchers.io) }

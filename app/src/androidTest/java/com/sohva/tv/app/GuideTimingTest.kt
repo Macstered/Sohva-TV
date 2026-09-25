@@ -53,7 +53,7 @@ class GuideTimingTest {
 
     private fun openGuide() {
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0", 10_000)
     }
@@ -132,7 +132,7 @@ class GuideTimingTest {
         val reads = gated.listReads.get()
         press(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(5_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0", 10_000)
         assertEquals("the kept list was read again", reads, gated.listReads.get())

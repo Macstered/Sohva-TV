@@ -1,6 +1,7 @@
 package com.sohva.tv.app
 
 import android.view.KeyEvent
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -41,11 +42,15 @@ class ShellNavigationTest {
         // The walls open on History (VOD-FR-49).
         Triple(RailItem.MOVIES, "screen-movies", "library-row-history"),
         Triple(RailItem.SERIES, "screen-series", "library-row-history"),
-        Triple(RailItem.SEARCH, "screen-search", "placeholder-back"),
+        // Search opens on its field (SEARCH-FR-50).
+        Triple(RailItem.SEARCH, "screen-search", "unified-search-field"),
         Triple(RailItem.DISCOVER, "screen-discover", "placeholder-back"),
         // Settings opens on Playlists; with no source its first control is "+ Add M3U source" (SET-FR-02).
         Triple(RailItem.SETTINGS, "screen-settings", "source-add-m3u"),
     )
+
+    private fun focused(tag: String) =
+        compose.onAllNodes(androidx.compose.ui.test.hasTestTag(tag) and androidx.compose.ui.test.isFocused()).fetchSemanticsNodes().isNotEmpty()
 
     private fun awaitHome() {
         compose.waitUntil(timeoutMillis = 10_000) {
@@ -53,10 +58,17 @@ class ShellNavigationTest {
         }
     }
 
+    /** Spec 02 §3.4: an empty Home (no sources) focuses the Welcome hero's Guide button, not the rail. */
     @Test
-    fun homeOpensWithFocusOnTheFirstRailItem() {
+    fun anEmptyHomeOpensWithFocusOnTheGuideButton() {
         awaitHome()
-        compose.onNodeWithTag(RailItem.LIVE_TV.tag).assertIsFocused()
+        try {
+            compose.waitUntil(10_000) { focused("home-hero-primary") }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            val now = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+                .map { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag) }
+            throw AssertionError("focused: $now; guide button: ${compose.onAllNodesWithTagExists("home-hero-primary")}, status: ${compose.onAllNodesWithTagExists("home-resume-status")}, rows: ${compose.onAllNodesWithTagExists("home-rows")}, hero: ${compose.onAllNodesWithTagExists("home-hero-title")}", e)
+        }
         compose.onNodeWithTag("home-nav-home").assertExists()
     }
 
@@ -68,21 +80,20 @@ class ShellNavigationTest {
     }
 
     @Test
-    fun backFromEveryDestinationReturnsFocusToItsRailItem() {
+    fun backFromEveryDestinationReturnsToAFreshHome() {
         awaitHome()
-        items.forEachIndexed { index, (item, screen, first) ->
-            // Down walks the rail from the item focused now (the previous one, after Back).
-            press(KeyEvent.KEYCODE_DPAD_DOWN, if (index == 0) 0 else 1)
-            compose.onNodeWithTag(item.tag).assertIsFocused()
+        items.forEach { (item, screen, first) ->
+            compose.focusRail(item)
             press(KeyEvent.KEYCODE_DPAD_CENTER)
             compose.waitUntil(5_000) { compose.onAllNodesWithTagExists(screen) }
             compose.waitUntil(5_000) { compose.onAllNodesWithTagExists(first) }
             compose.waitForIdle()
             compose.onNodeWithTag(first).assertIsFocused()
             press(KeyEvent.KEYCODE_BACK)
-            compose.waitUntil(5_000) { compose.onAllNodesWithTagExists(item.tag) }
-            compose.waitForIdle()
-            compose.onNodeWithTag(item.tag).assertIsFocused()
+            // Search's first Back may only close the keyboard (spec 03 §3).
+            if (compose.onAllNodesWithTagExists(screen)) press(KeyEvent.KEYCODE_BACK)
+            // Home is rebuilt on return and focuses its content, here the Welcome button (spec 01 §3.4).
+            compose.waitUntil(5_000) { focused("home-hero-primary") }
         }
     }
 }

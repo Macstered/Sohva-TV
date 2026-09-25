@@ -76,7 +76,7 @@ class PlayerArchiveTest {
 
     private fun openGuide() {
         compose.waitUntil(10_000) { exists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0")
         // The first block of the window is the airing programme once its programmes are drawn.

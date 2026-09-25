@@ -65,12 +65,7 @@ class WallBenchmark {
         seedOwnerFixture()
         pressHome()
         startActivityAndWait()
-        check(device.wait(Until.hasObject(By.res("home-live").focused(true)), WAIT_MS)) { "Home did not focus Live TV" }
-        // Movies is two rows down the rail (spec 01 SHELL-FR-60).
-        device.pressDPadDown()
-        check(device.wait(Until.hasObject(By.res("home-sportmate").focused(true)), WAIT_MS)) { "Sohva Sport not focused" }
-        device.pressDPadDown()
-        check(device.wait(Until.hasObject(By.res("home-movies").focused(true)), WAIT_MS)) { "Movies not focused" }
+        focusRailItem("home-movies")
         device.pressDPadCenter()
         check(device.wait(Until.hasObject(By.res(BIG_ROW)), WAIT_MS)) { "Movies did not open" }
         device.waitForIdle()

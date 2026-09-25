@@ -84,7 +84,7 @@ class LibraryManagerTest {
     /** Home → Movies → Drama → Options › Edit, as the viewer does. */
     private fun openFromWall() {
         compose.waitUntil(15_000) { exists(RailItem.MOVIES.tag) }
-        compose.onNodeWithTag(RailItem.MOVIES.tag).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.focusRail(RailItem.MOVIES)
         awaitFocus(RailItem.MOVIES.tag)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("library-row-group:drama") }
