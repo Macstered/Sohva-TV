@@ -19,6 +19,7 @@ import com.sohva.tv.core.model.source.XtreamAccount
 import com.sohva.tv.core.net.phone.LocalAddress
 import com.sohva.tv.core.net.phone.QrCodes
 import com.sohva.tv.core.sync.SourceChecks
+import com.sohva.tv.feature.settings.LibrarySettingsServices
 import com.sohva.tv.feature.settings.SettingsServices
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -32,8 +33,10 @@ import kotlinx.coroutines.withContext
  * lazy stores open files (secret store, database, preferences) on first touch, which must never
  * happen on the main thread (AGENTS.md §4 rule 1).
  */
-class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
+class AppSettingsServices(private val graph: AppGraph, openManager: () -> Unit = {}) : SettingsServices {
     private val io get() = graph.dispatchers.io
+
+    override val library: LibrarySettingsServices = AppLibrarySettings(graph, openManager)
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
 

@@ -143,7 +143,7 @@ internal fun GuideRow(
     val logoPx = with(LocalDensity.current) { LOGO_BOX.roundToPx() }
     val logo = remember(row.channel.logoUrl) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(row.channel.logoUrl) {
-        row.channel.logoUrl?.takeIf { it.isNotBlank() }?.let { logo.value = loader.load(it, logoPx, logoPx) }
+        row.channel.logoUrl?.takeIf { it.isNotBlank() }?.let { logo.value = loader.load(it, logoPx, logoPx, opaque = false) }
     }
     Box(
         base

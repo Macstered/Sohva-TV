@@ -54,12 +54,13 @@ object GuideFixture {
                     for (c in 0 until perGroup) {
                         val name = "${CHANNEL_NAMES[index % CHANNEL_NAMES.size]} ${index + 1}"
                         val epg = "e$s-$index"
+                        // Ranked as an import writes them (GUIDE-13): the group's block, then the playlist order.
                         channels += ChannelEntity(
                             key = "$sourceId:c$index", sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
                             providerName = name, providerGroupId = groupId, providerLogoUrl = null,
                             tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = sealedStream ?: graph.data.cipher.encrypt(stream(sourceId, index)),
                             userAgent = userAgent, referrer = referrer, playlistOrder = index, providerNumber = index + 1, number = index + 1,
-                            displayRank = ChannelEffects.playlistRank(index), visible = true, catchupType = catchupType(index), catchupSource = null,
+                            displayRank = ChannelEffects.rank(ChannelEffects.providerBlock(g), ChannelEffects.playlistRank(index)), visible = true, catchupType = catchupType(index), catchupSource = null,
                             catchupDays = catchupType(index)?.let { catchupDays },
                             catchupTz = null, xtreamStreamId = null, contentHash = 1, generation = 1,
                         )

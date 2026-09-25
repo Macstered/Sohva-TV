@@ -97,7 +97,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
             quick -> model.closeQuickActions()
             box -> model.hideBox()
             controls -> model.transport.hide()
-            else -> model.playing.value?.channel?.key?.let { model.navigation.leave(it) }
+            else -> model.currentKey()?.let { model.navigation.leave(it) }
         }
     }
     // Closing any overlay returns focus to the video (PLAY-FR-09).

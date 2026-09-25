@@ -4,14 +4,22 @@ import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.KeyRange
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SeriesEntity
+import com.sohva.tv.core.data.org.OrgPass
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.concurrent.WorkOrigin
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
+import com.sohva.tv.core.model.metadata.TitleCleaner
+import com.sohva.tv.core.model.metadata.WorkKeys
 import com.sohva.tv.core.model.source.ImportRoute
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.text.Keys
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.text.StableIds
+import com.sohva.tv.core.model.vod.CopyClaimReader
+import com.sohva.tv.core.model.vod.QualityChips
+import com.sohva.tv.core.model.vod.VodText
 import com.sohva.tv.core.net.http.ProviderRequest
 import com.sohva.tv.core.net.m3u.M3uEntry
 import com.sohva.tv.core.net.m3u.M3uKind
@@ -28,7 +36,7 @@ import com.sohva.tv.core.sync.diff.KeyedDiff
 import com.sohva.tv.core.sync.diff.Room
 import com.sohva.tv.core.sync.diff.Row
 import com.sohva.tv.core.sync.diff.Tables
-import kotlin.math.roundToInt
+
 import kotlinx.coroutines.withContext
 
 /**
@@ -49,6 +57,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         val series = KeyedDiff(Tables.series(env.db, sourceId), seriesGroups)
         val episodes = KeyedDiff(Tables.episodes(env.db, sourceId), null)
         val seriesIds = HashMap<String, Long>()
+
+        /** Time spent inside the write transactions, for the phase log. */
+        var writeNanos = 0L
         val storedBefore = KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
             KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }
     }
@@ -66,7 +77,7 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                     // Scope BOTH leaves live entries to the playlist import; VOD keeps every entry (SRC-FR-90).
                     if (scope == ImportScope.BOTH && entry.kind == M3uKind.LIVE) continue
                     parser.add(entry)
-                    if (parser.size >= LiveImport.BATCH) send(parser.take())
+                    if (parser.size >= BATCH) send(parser.take())
                 }
                 if (parser.size > 0) send(parser.take())
             }
@@ -85,21 +96,21 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         var films = 0
         var series = 0
         pipeline<Batch>(env.dispatchers, produce = { send ->
-            var batch = ArrayList<Row<MovieEntity>>(LiveImport.BATCH)
+            var batch = ArrayList<Row<MovieEntity>>(BATCH)
             client.films { film ->
                 batch += xtreamFilm(job, film, films++, filmCategories, urls)
-                if (batch.size == LiveImport.BATCH) {
+                if (batch.size == BATCH) {
                     send(Batch(batch, emptyList(), emptyList()))
-                    batch = ArrayList(LiveImport.BATCH)
+                    batch = ArrayList(BATCH)
                 }
             }
             if (batch.isNotEmpty()) send(Batch(batch, emptyList(), emptyList()))
-            var seriesBatch = ArrayList<Row<SeriesEntity>>(LiveImport.BATCH)
+            var seriesBatch = ArrayList<Row<SeriesEntity>>(BATCH)
             client.series { item ->
                 seriesBatch += xtreamSeries(job, item, series++, seriesCategories)
-                if (seriesBatch.size == LiveImport.BATCH) {
+                if (seriesBatch.size == BATCH) {
                     send(Batch(emptyList(), seriesBatch, emptyList()))
-                    seriesBatch = ArrayList(LiveImport.BATCH)
+                    seriesBatch = ArrayList(BATCH)
                 }
             }
             if (seriesBatch.isNotEmpty()) send(Batch(emptyList(), seriesBatch, emptyList()))
@@ -114,22 +125,33 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
 
     private suspend fun write(target: Target, batch: Batch, job: ImportJob) {
         env.pauseGate.awaitTurn(WorkOrigin.VIEWER)
+        val started = System.nanoTime()
         env.db.runInTransaction {
             target.films.write(batch.films)
             if (batch.series.isNotEmpty()) {
                 target.series.write(batch.series)
                 val missing = batch.series.map { it.key }.filter { it !in target.seriesIds }
-                if (missing.isNotEmpty()) env.db.seriesImport().hashes(missing).forEach { target.seriesIds[it.key] = it.id }
+                missing.chunked(IN_LIMIT).forEach { keys -> env.db.seriesImport().hashes(keys).forEach { target.seriesIds[it.key] = it.id } }
             }
             if (batch.episodes.isNotEmpty()) {
                 target.episodes.write(batch.episodes.mapNotNull { draft -> target.seriesIds[draft.seriesKey]?.let(draft.row) })
             }
         }
+        target.writeNanos += System.nanoTime() - started
         job.advance(batch.films.size + batch.series.size + batch.episodes.size)
     }
 
-    private suspend fun finish(target: Target, sourceId: String, sweepFilms: Boolean, sweepSeries: Boolean, sweepEpisodes: Boolean): Int =
-        withContext(env.dispatchers.bulkWrite) {
+    private suspend fun finish(target: Target, sourceId: String, sweepFilms: Boolean, sweepSeries: Boolean, sweepEpisodes: Boolean): Int {
+        val preferred = env.preferredCopy()
+        return withContext(env.dispatchers.bulkWrite) {
+            // Phase times go to the diagnostics log: the owner-scale import is measured by them (plan/07).
+            var mark = System.nanoTime()
+            val phase = { name: String ->
+                val now = System.nanoTime()
+                env.log.info("import", "catalogue $sourceId $name ${(now - mark) / 1_000_000} ms")
+                mark = now
+            }
+            env.log.info("import", "catalogue $sourceId write transactions ${target.writeNanos / 1_000_000} ms")
             if (sweepFilms) target.films.sweep(env.db)
             if (sweepSeries) target.series.sweep(env.db)
             if (sweepEpisodes) target.episodes.sweep(env.db)
@@ -143,23 +165,35 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                 target.filmGroups.finish(complete = sweepFilms)
                 target.seriesGroups.finish(complete = sweepSeries)
             }
+            phase("sweep and groups")
+            // The organisation rules, matches back into rewritten rows, then standing copies and
+            // folded group counts (spec 42 §9.1, spec 41 §9.3).
+            val passes = LibraryPasses(env.db)
+            OrgPass(env.db, OrgRules(env.db), passes).resolveSource(sourceId, preferred, phase)
+            passes.recountGenres()
+            phase("genre counts")
+            env.onCatalogueImported()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
                 KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }
+        }
         }
 
     private fun xtreamFilm(job: ImportJob, f: XtreamFilm, index: Int, categories: Map<String, String>, urls: XtreamUrls): Row<MovieEntity> {
         val key = Keys.movieKey(job.sourceId, f.streamId)
         val group = f.categoryId?.let { id -> categories[id]?.let { GroupRef(Keys.groupKey(id, it), it) } }
         val address = urls.film(f.streamId, f.extension)
-        val hash = ContentHash().add(f.name).add(group?.key).add(group?.name).add(f.year).add(f.rating).add(f.posterUrl)
+        val hash = ContentHash().add(KEYS_VERSION).add(f.name).add(group?.key).add(group?.name).add(f.year).add(f.rating).add(f.posterUrl)
             .add(address).add(f.plot).add(index).value()
         return Row(key, hash, group) { id, groupId ->
+            val claims = CopyClaimReader.read(f.name)
             MovieEntity(
                 id = id, key = key, sourceId = job.sourceId, providerId = f.streamId, groupId = groupId, name = f.name,
-                sortName = SortNames.of(f.name), year = f.year, rating = f.rating, ratingX10 = ratingX10(f.rating),
-                posterUrl = f.posterUrl, streamUrlEnc = env.sealer.seal(address), plot = f.plot, providerOrder = index,
-                genre = null, workKey = null, primaryCopy = true, visible = true, itemPosition = null, contentHash = hash,
-                generation = job.generation,
+                sortName = SortNames.of(f.name), year = VodText.year(f.year, f.name), rating = f.rating,
+                ratingX10 = VodText.ratingTenths(f.rating), posterUrl = f.posterUrl, streamUrlEnc = env.sealer.seal(address),
+                plot = f.plot, providerOrder = index, qualityMask = claims.qualityMask, claimMask = claims.languageMask,
+                pictureRank = claims.pictureRank, similarKey = TitleCleaner.normalizeTitle(f.name), genre = null,
+                workKey = WorkKeys.of(f.name, VodText.year(f.year, f.name)), primaryCopy = true, visible = true, itemPosition = null,
+                contentHash = hash, generation = job.generation,
             )
         }
     }
@@ -167,13 +201,14 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
     private fun xtreamSeries(job: ImportJob, s: XtreamSeries, index: Int, categories: Map<String, String>): Row<SeriesEntity> {
         val key = Keys.seriesKey(job.sourceId, s.seriesId)
         val group = s.categoryId?.let { id -> categories[id]?.let { GroupRef(Keys.groupKey(id, it), it) } }
-        val hash = ContentHash().add(s.name).add(group?.key).add(group?.name).add(s.year).add(s.rating).add(s.coverUrl)
+        val hash = ContentHash().add(KEYS_VERSION).add(s.name).add(group?.key).add(group?.name).add(s.year).add(s.rating).add(s.coverUrl)
             .add(s.backdropUrl).add(s.plot).add(index).value()
         return Row(key, hash, group) { id, groupId ->
             SeriesEntity(
                 id = id, key = key, sourceId = job.sourceId, providerId = s.seriesId, groupId = groupId, name = s.name,
-                sortName = SortNames.of(s.name), year = s.year, rating = s.rating, ratingX10 = ratingX10(s.rating),
-                posterUrl = s.coverUrl, backdropUrl = s.backdropUrl, plot = s.plot, providerOrder = index, genre = null,
+                sortName = SortNames.of(s.name), year = VodText.year(s.year, s.name), rating = s.rating,
+                ratingX10 = VodText.ratingTenths(s.rating), posterUrl = s.coverUrl, backdropUrl = s.backdropUrl, plot = s.plot,
+                providerOrder = index, qualityMask = QualityChips.mask(s.name), genre = null,
                 workKey = null, primaryCopy = true, visible = true, itemPosition = null, contentHash = hash,
                 generation = job.generation,
             )
@@ -209,13 +244,16 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
             val key = Keys.movieKey(job.sourceId, e.id)
             val group = e.group?.let { GroupRef(Keys.groupKey(null, it), it) }
             val year = EpisodeNames.year(name)
-            val hash = ContentHash().add(name).add(group?.key).add(year).add(e.logoUrl).add(e.streamUrl).add(e.index).value()
+            val hash = ContentHash().add(KEYS_VERSION).add(name).add(group?.key).add(year).add(e.logoUrl).add(e.streamUrl).add(e.index).value()
             return Row(key, hash, group) { id, groupId ->
+                val claims = CopyClaimReader.read(name)
                 MovieEntity(
                     id = id, key = key, sourceId = job.sourceId, providerId = e.id, groupId = groupId, name = name,
                     sortName = SortNames.of(name), year = year, rating = null, ratingX10 = null, posterUrl = e.logoUrl,
-                    streamUrlEnc = env.sealer.seal(e.streamUrl), plot = null, providerOrder = e.index, genre = null,
-                    workKey = null, primaryCopy = true, visible = true, itemPosition = null, contentHash = hash,
+                    streamUrlEnc = env.sealer.seal(e.streamUrl), plot = null, providerOrder = e.index,
+                    qualityMask = claims.qualityMask, claimMask = claims.languageMask, pictureRank = claims.pictureRank,
+                    similarKey = TitleCleaner.normalizeTitle(name), genre = null, workKey = WorkKeys.of(name, year), primaryCopy = true,
+                    visible = true, itemPosition = null, contentHash = hash,
                     generation = job.generation,
                 )
             }
@@ -243,12 +281,13 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         private fun seriesHeader(e: M3uEntry, marker: EpisodeNames.Marker, key: String, providerId: String): Row<SeriesEntity> {
             val group = e.group?.let { GroupRef(Keys.groupKey(null, it), it) }
             val year = EpisodeNames.year(marker.series)
-            val hash = ContentHash().add(marker.series).add(group?.key).add(year).add(e.logoUrl).add(announced.size).value()
+            val hash = ContentHash().add(KEYS_VERSION).add(marker.series).add(group?.key).add(year).add(e.logoUrl).add(announced.size).value()
             return Row(key, hash, group) { id, groupId ->
                 SeriesEntity(
                     id = id, key = key, sourceId = job.sourceId, providerId = providerId, groupId = groupId, name = marker.series,
                     sortName = SortNames.of(marker.series), year = year, rating = null, ratingX10 = null, posterUrl = e.logoUrl,
-                    backdropUrl = null, plot = null, providerOrder = announced.size - 1, genre = null, workKey = null,
+                    backdropUrl = null, plot = null, providerOrder = announced.size - 1, qualityMask = QualityChips.mask(marker.series),
+                    genre = null, workKey = null,
                     primaryCopy = true, visible = true, itemPosition = null, contentHash = hash, generation = job.generation,
                 )
             }
@@ -256,7 +295,22 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
     }
 
     private companion object {
-        fun ratingX10(rating: String?): Int? = rating?.replace(',', '.')?.toDoubleOrNull()?.takeIf { it.isFinite() }?.let { (it * 10).roundToInt() }
+        /**
+         * Part of every film and series hash: bumped when the columns an import derives change
+         * (5 = the claim columns of schema v5, 6 = work and similar keys), so the next import rewrites every row once.
+         */
+        const val KEYS_VERSION = 6
+
+        /**
+         * Rows per write transaction. Every commit rewrites the index pages it touched, and a
+         * catalogue's rows land all over its ten indexes, so fewer, larger commits write far less:
+         * 5,000 rows took a 200,000-film import from 103 s to 27 s in the host model (about 5 MB of
+         * rows held; decision "Indexes and import cost").
+         */
+        const val BATCH = 5_000
+
+        /** Keys per `IN` list: SQLite before Android 11 takes at most 999 variables. */
+        const val IN_LIMIT = 900
     }
 }
 

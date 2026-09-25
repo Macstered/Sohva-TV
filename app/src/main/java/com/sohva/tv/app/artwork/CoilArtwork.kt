@@ -34,12 +34,12 @@ class CoilArtwork(private val graph: AppGraph) : ArtworkLoader {
             .build()
     }
 
-    override suspend fun load(url: String, widthPx: Int, heightPx: Int): ImageBitmap? = withContext(graph.dispatchers.io) {
+    override suspend fun load(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): ImageBitmap? = withContext(graph.dispatchers.io) {
         val request = ImageRequest.Builder(graph.app)
             .data(url)
             .size(widthPx, heightPx)
             .precision(Precision.INEXACT)
-            .bitmapConfig(Bitmap.Config.ARGB_8888)
+            .bitmapConfig(if (opaque) Bitmap.Config.RGB_565 else Bitmap.Config.ARGB_8888)
             .build()
         (loader.execute(request) as? SuccessResult)?.image?.toBitmap()?.asImageBitmap()
     }

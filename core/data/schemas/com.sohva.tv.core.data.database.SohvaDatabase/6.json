@@ -1,0 +1,2078 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 6,
+    "identityHash": "99568216b56da0d1bd5db58b97251324",
+    "entities": [
+      {
+        "tableName": "app_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      },
+      {
+        "tableName": "source",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `priority` INTEGER NOT NULL, `connection_limit` INTEGER NOT NULL, `import_scope` TEXT NOT NULL, `epg_offset_minutes` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "connectionLimit",
+            "columnName": "connection_limit",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "importScope",
+            "columnName": "import_scope",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epgOffsetMinutes",
+            "columnName": "epg_offset_minutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "source_status",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`source_id` TEXT NOT NULL, `kind` TEXT NOT NULL, `status` TEXT NOT NULL, `last_attempt_at` INTEGER, `last_success_at` INTEGER, `last_failure_at` INTEGER, `error_code` TEXT, `error_args` TEXT, `item_count` INTEGER NOT NULL, `consecutive_failures` INTEGER NOT NULL, `generation` INTEGER NOT NULL, `epg_snapshot` INTEGER, `epg_max_duration_ms` INTEGER, PRIMARY KEY(`source_id`, `kind`))",
+        "fields": [
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastAttemptAt",
+            "columnName": "last_attempt_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSuccessAt",
+            "columnName": "last_success_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastFailureAt",
+            "columnName": "last_failure_at",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "error_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorArgs",
+            "columnName": "error_args",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "itemCount",
+            "columnName": "item_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consecutiveFailures",
+            "columnName": "consecutive_failures",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epgSnapshot",
+            "columnName": "epg_snapshot",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "epgMaxDurationMs",
+            "columnName": "epg_max_duration_ms",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "source_id",
+            "kind"
+          ]
+        }
+      },
+      {
+        "tableName": "content_group",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `source_id` TEXT NOT NULL, `room` TEXT NOT NULL, `group_key` TEXT NOT NULL, `name` TEXT NOT NULL, `provider_order` INTEGER NOT NULL, `item_count` INTEGER NOT NULL, `shown` INTEGER NOT NULL, `position` INTEGER NOT NULL, `sort_mode` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "room",
+            "columnName": "room",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupKey",
+            "columnName": "group_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerOrder",
+            "columnName": "provider_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemCount",
+            "columnName": "item_count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "shown",
+            "columnName": "shown",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortMode",
+            "columnName": "sort_mode",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_content_group_source_id_room_group_key",
+            "unique": true,
+            "columnNames": [
+              "source_id",
+              "room",
+              "group_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_content_group_source_id_room_group_key` ON `${TABLE_NAME}` (`source_id`, `room`, `group_key`)"
+          },
+          {
+            "name": "index_content_group_room_source_id_position",
+            "unique": false,
+            "columnNames": [
+              "room",
+              "source_id",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_content_group_room_source_id_position` ON `${TABLE_NAME}` (`room`, `source_id`, `position`)"
+          }
+        ]
+      },
+      {
+        "tableName": "channel",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `key` TEXT NOT NULL, `source_id` TEXT NOT NULL, `group_id` INTEGER, `name` TEXT NOT NULL, `sort_name` TEXT NOT NULL, `provider_name` TEXT NOT NULL DEFAULT '', `provider_group_id` INTEGER, `provider_logo_url` TEXT, `tvg_id` TEXT, `epg_id` TEXT, `logo_url` TEXT, `stream_url_enc` TEXT NOT NULL, `user_agent` TEXT, `referrer` TEXT, `playlist_order` INTEGER NOT NULL, `provider_number` INTEGER, `number` INTEGER, `display_rank` INTEGER NOT NULL, `visible` INTEGER NOT NULL, `catchup_type` TEXT, `catchup_source` TEXT, `catchup_days` INTEGER, `catchup_tz` TEXT, `xtream_stream_id` TEXT, `content_hash` INTEGER NOT NULL, `generation` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortName",
+            "columnName": "sort_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerName",
+            "columnName": "provider_name",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "''"
+          },
+          {
+            "fieldPath": "providerGroupId",
+            "columnName": "provider_group_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "providerLogoUrl",
+            "columnName": "provider_logo_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tvgId",
+            "columnName": "tvg_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "epgId",
+            "columnName": "epg_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "logoUrl",
+            "columnName": "logo_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "streamUrlEnc",
+            "columnName": "stream_url_enc",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userAgent",
+            "columnName": "user_agent",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "referrer",
+            "columnName": "referrer",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "playlistOrder",
+            "columnName": "playlist_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerNumber",
+            "columnName": "provider_number",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "displayRank",
+            "columnName": "display_rank",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "visible",
+            "columnName": "visible",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "catchupType",
+            "columnName": "catchup_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "catchupSource",
+            "columnName": "catchup_source",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "catchupDays",
+            "columnName": "catchup_days",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "catchupTz",
+            "columnName": "catchup_tz",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "xtreamStreamId",
+            "columnName": "xtream_stream_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contentHash",
+            "columnName": "content_hash",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_channel_key",
+            "unique": true,
+            "columnNames": [
+              "key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_channel_key` ON `${TABLE_NAME}` (`key`)"
+          },
+          {
+            "name": "index_channel_group_id_display_rank",
+            "unique": false,
+            "columnNames": [
+              "group_id",
+              "display_rank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_group_id_display_rank` ON `${TABLE_NAME}` (`group_id`, `display_rank`)"
+          },
+          {
+            "name": "index_channel_source_id_visible_display_rank",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "visible",
+              "display_rank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_source_id_visible_display_rank` ON `${TABLE_NAME}` (`source_id`, `visible`, `display_rank`)"
+          },
+          {
+            "name": "index_channel_source_id_display_rank",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "display_rank"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_source_id_display_rank` ON `${TABLE_NAME}` (`source_id`, `display_rank`)"
+          },
+          {
+            "name": "index_channel_source_id_number",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "number"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_source_id_number` ON `${TABLE_NAME}` (`source_id`, `number`)"
+          },
+          {
+            "name": "index_channel_source_id_epg_id",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "epg_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_source_id_epg_id` ON `${TABLE_NAME}` (`source_id`, `epg_id`)"
+          },
+          {
+            "name": "index_channel_source_id_sort_name",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_source_id_sort_name` ON `${TABLE_NAME}` (`source_id`, `sort_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "movie",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `key` TEXT NOT NULL, `source_id` TEXT NOT NULL, `provider_id` TEXT NOT NULL, `group_id` INTEGER, `name` TEXT NOT NULL, `sort_name` TEXT NOT NULL, `year` INTEGER, `rating` TEXT, `rating_x10` INTEGER, `poster_url` TEXT, `stream_url_enc` TEXT NOT NULL, `plot` TEXT, `provider_order` INTEGER NOT NULL, `quality_mask` INTEGER NOT NULL DEFAULT 0, `claim_mask` INTEGER NOT NULL DEFAULT 0, `picture_rank` INTEGER NOT NULL DEFAULT 0, `replacement_title` TEXT, `replacement_sort` TEXT, `replacement_poster` TEXT, `replace_poster` INTEGER NOT NULL DEFAULT 0, `external_id` TEXT, `similar_key` TEXT, `replacement_key` TEXT, `genre` TEXT, `work_key` TEXT, `primary_copy` INTEGER NOT NULL, `group_primary` INTEGER NOT NULL DEFAULT 1, `visible` INTEGER NOT NULL, `item_position` INTEGER, `content_hash` INTEGER NOT NULL, `generation` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "provider_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortName",
+            "columnName": "sort_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ratingX10",
+            "columnName": "rating_x10",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "posterUrl",
+            "columnName": "poster_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "streamUrlEnc",
+            "columnName": "stream_url_enc",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "providerOrder",
+            "columnName": "provider_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityMask",
+            "columnName": "quality_mask",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "claimMask",
+            "columnName": "claim_mask",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "pictureRank",
+            "columnName": "picture_rank",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "replacementTitle",
+            "columnName": "replacement_title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementSort",
+            "columnName": "replacement_sort",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementPoster",
+            "columnName": "replacement_poster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacePoster",
+            "columnName": "replace_poster",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "external_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "similarKey",
+            "columnName": "similar_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementKey",
+            "columnName": "replacement_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workKey",
+            "columnName": "work_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "primaryCopy",
+            "columnName": "primary_copy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupPrimary",
+            "columnName": "group_primary",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          },
+          {
+            "fieldPath": "visible",
+            "columnName": "visible",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemPosition",
+            "columnName": "item_position",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "contentHash",
+            "columnName": "content_hash",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_movie_key",
+            "unique": true,
+            "columnNames": [
+              "key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_movie_key` ON `${TABLE_NAME}` (`key`)"
+          },
+          {
+            "name": "index_movie_group_id_visible_group_primary_sort_name",
+            "unique": false,
+            "columnNames": [
+              "group_id",
+              "visible",
+              "group_primary",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id_visible_group_primary_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `group_primary`, `sort_name`)"
+          },
+          {
+            "name": "index_movie_visible_primary_copy_sort_name",
+            "unique": false,
+            "columnNames": [
+              "visible",
+              "primary_copy",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_visible_primary_copy_sort_name` ON `${TABLE_NAME}` (`visible`, `primary_copy`, `sort_name`)"
+          },
+          {
+            "name": "index_movie_genre_visible_primary_copy_sort_name",
+            "unique": false,
+            "columnNames": [
+              "genre",
+              "visible",
+              "primary_copy",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_genre_visible_primary_copy_sort_name` ON `${TABLE_NAME}` (`genre`, `visible`, `primary_copy`, `sort_name`)"
+          },
+          {
+            "name": "index_movie_work_key",
+            "unique": false,
+            "columnNames": [
+              "work_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_work_key` ON `${TABLE_NAME}` (`work_key`)"
+          },
+          {
+            "name": "index_movie_similar_key",
+            "unique": false,
+            "columnNames": [
+              "similar_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_similar_key` ON `${TABLE_NAME}` (`similar_key`)"
+          },
+          {
+            "name": "index_movie_replacement_key",
+            "unique": false,
+            "columnNames": [
+              "replacement_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_replacement_key` ON `${TABLE_NAME}` (`replacement_key`)"
+          }
+        ]
+      },
+      {
+        "tableName": "series",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `key` TEXT NOT NULL, `source_id` TEXT NOT NULL, `provider_id` TEXT NOT NULL, `group_id` INTEGER, `name` TEXT NOT NULL, `sort_name` TEXT NOT NULL, `year` INTEGER, `rating` TEXT, `rating_x10` INTEGER, `poster_url` TEXT, `backdrop_url` TEXT, `plot` TEXT, `provider_order` INTEGER NOT NULL, `quality_mask` INTEGER NOT NULL DEFAULT 0, `replacement_title` TEXT, `replacement_sort` TEXT, `replacement_poster` TEXT, `replace_poster` INTEGER NOT NULL DEFAULT 0, `external_id` TEXT, `similar_key` TEXT, `replacement_key` TEXT, `genre` TEXT, `work_key` TEXT, `primary_copy` INTEGER NOT NULL, `visible` INTEGER NOT NULL, `item_position` INTEGER, `content_hash` INTEGER NOT NULL, `generation` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "provider_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "groupId",
+            "columnName": "group_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortName",
+            "columnName": "sort_name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ratingX10",
+            "columnName": "rating_x10",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "posterUrl",
+            "columnName": "poster_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "backdropUrl",
+            "columnName": "backdrop_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "providerOrder",
+            "columnName": "provider_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qualityMask",
+            "columnName": "quality_mask",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "replacementTitle",
+            "columnName": "replacement_title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementSort",
+            "columnName": "replacement_sort",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementPoster",
+            "columnName": "replacement_poster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacePoster",
+            "columnName": "replace_poster",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "external_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "similarKey",
+            "columnName": "similar_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementKey",
+            "columnName": "replacement_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "workKey",
+            "columnName": "work_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "primaryCopy",
+            "columnName": "primary_copy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "visible",
+            "columnName": "visible",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemPosition",
+            "columnName": "item_position",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "contentHash",
+            "columnName": "content_hash",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_series_key",
+            "unique": true,
+            "columnNames": [
+              "key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_series_key` ON `${TABLE_NAME}` (`key`)"
+          },
+          {
+            "name": "index_series_group_id_visible_primary_copy_sort_name",
+            "unique": false,
+            "columnNames": [
+              "group_id",
+              "visible",
+              "primary_copy",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id_visible_primary_copy_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `primary_copy`, `sort_name`)"
+          },
+          {
+            "name": "index_series_visible_primary_copy_sort_name",
+            "unique": false,
+            "columnNames": [
+              "visible",
+              "primary_copy",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_visible_primary_copy_sort_name` ON `${TABLE_NAME}` (`visible`, `primary_copy`, `sort_name`)"
+          },
+          {
+            "name": "index_series_genre_visible_primary_copy_sort_name",
+            "unique": false,
+            "columnNames": [
+              "genre",
+              "visible",
+              "primary_copy",
+              "sort_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_genre_visible_primary_copy_sort_name` ON `${TABLE_NAME}` (`genre`, `visible`, `primary_copy`, `sort_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "episode",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `key` TEXT NOT NULL, `series_id` INTEGER NOT NULL, `source_id` TEXT NOT NULL, `provider_id` TEXT NOT NULL, `season` INTEGER NOT NULL, `number` INTEGER NOT NULL, `name` TEXT, `stream_url_enc` TEXT NOT NULL, `plot` TEXT, `duration_s` INTEGER, `thumbnail_url` TEXT, `content_hash` INTEGER NOT NULL, `generation` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "series_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "provider_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "season",
+            "columnName": "season",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "number",
+            "columnName": "number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "streamUrlEnc",
+            "columnName": "stream_url_enc",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "durationSeconds",
+            "columnName": "duration_s",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "thumbnailUrl",
+            "columnName": "thumbnail_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contentHash",
+            "columnName": "content_hash",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_episode_key",
+            "unique": true,
+            "columnNames": [
+              "key"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_episode_key` ON `${TABLE_NAME}` (`key`)"
+          },
+          {
+            "name": "index_episode_series_id_season_number",
+            "unique": false,
+            "columnNames": [
+              "series_id",
+              "season",
+              "number"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_episode_series_id_season_number` ON `${TABLE_NAME}` (`series_id`, `season`, `number`)"
+          }
+        ]
+      },
+      {
+        "tableName": "epg_channel",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`source_id` TEXT NOT NULL, `snapshot` INTEGER NOT NULL, `epg_id` TEXT NOT NULL, `display_name` TEXT, `icon_url` TEXT, PRIMARY KEY(`source_id`, `snapshot`, `epg_id`))",
+        "fields": [
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snapshot",
+            "columnName": "snapshot",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epgId",
+            "columnName": "epg_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "display_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "iconUrl",
+            "columnName": "icon_url",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "source_id",
+            "snapshot",
+            "epg_id"
+          ]
+        }
+      },
+      {
+        "tableName": "programme",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `source_id` TEXT NOT NULL, `snapshot` INTEGER NOT NULL, `epg_id` TEXT NOT NULL, `start_at` INTEGER NOT NULL, `stop_at` INTEGER NOT NULL, `title` TEXT NOT NULL, `subtitle` TEXT, `description` TEXT, `categories` TEXT, `programme_key` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snapshot",
+            "columnName": "snapshot",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epgId",
+            "columnName": "epg_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startAt",
+            "columnName": "start_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stopAt",
+            "columnName": "stop_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subtitle",
+            "columnName": "subtitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "categories",
+            "columnName": "categories",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "programmeKey",
+            "columnName": "programme_key",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_programme_source_id_snapshot_epg_id_start_at",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "snapshot",
+              "epg_id",
+              "start_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_programme_source_id_snapshot_epg_id_start_at` ON `${TABLE_NAME}` (`source_id`, `snapshot`, `epg_id`, `start_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "favourite_channel",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profile_id` TEXT NOT NULL, `channel_key` TEXT NOT NULL, `added_at` INTEGER NOT NULL, PRIMARY KEY(`profile_id`, `channel_key`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profile_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelKey",
+            "columnName": "channel_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "added_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profile_id",
+            "channel_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_favourite_channel_profile_id_added_at",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "added_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_favourite_channel_profile_id_added_at` ON `${TABLE_NAME}` (`profile_id`, `added_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "recent_channel",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profile_id` TEXT NOT NULL, `channel_key` TEXT NOT NULL, `watched_at` INTEGER NOT NULL, PRIMARY KEY(`profile_id`, `channel_key`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profile_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelKey",
+            "columnName": "channel_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "watchedAt",
+            "columnName": "watched_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profile_id",
+            "channel_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_recent_channel_profile_id_watched_at",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "watched_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_recent_channel_profile_id_watched_at` ON `${TABLE_NAME}` (`profile_id`, `watched_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "channel_custom",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`channel_key` TEXT NOT NULL, `source_id` TEXT NOT NULL, `custom_name` TEXT, `custom_group_title` TEXT, `custom_group_key` TEXT, `hidden` INTEGER NOT NULL, `position` INTEGER, `manual_epg_id` TEXT, `custom_logo_url` TEXT, `custom_number` INTEGER, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`channel_key`))",
+        "fields": [
+          {
+            "fieldPath": "channelKey",
+            "columnName": "channel_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customName",
+            "columnName": "custom_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customGroupTitle",
+            "columnName": "custom_group_title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customGroupKey",
+            "columnName": "custom_group_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hidden",
+            "columnName": "hidden",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "manualEpgId",
+            "columnName": "manual_epg_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customLogoUrl",
+            "columnName": "custom_logo_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customNumber",
+            "columnName": "custom_number",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "channel_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_channel_custom_source_id_channel_key",
+            "unique": false,
+            "columnNames": [
+              "source_id",
+              "channel_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_custom_source_id_channel_key` ON `${TABLE_NAME}` (`source_id`, `channel_key`)"
+          }
+        ]
+      },
+      {
+        "tableName": "channel_list",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `sort_order` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sort_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "channel_list_member",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`list_id` TEXT NOT NULL, `channel_key` TEXT NOT NULL, `sort_order` INTEGER NOT NULL, PRIMARY KEY(`list_id`, `channel_key`))",
+        "fields": [
+          {
+            "fieldPath": "listId",
+            "columnName": "list_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelKey",
+            "columnName": "channel_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sort_order",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "list_id",
+            "channel_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_channel_list_member_list_id_sort_order",
+            "unique": false,
+            "columnNames": [
+              "list_id",
+              "sort_order"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_list_member_list_id_sort_order` ON `${TABLE_NAME}` (`list_id`, `sort_order`)"
+          },
+          {
+            "name": "index_channel_list_member_channel_key",
+            "unique": false,
+            "columnNames": [
+              "channel_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_list_member_channel_key` ON `${TABLE_NAME}` (`channel_key`)"
+          }
+        ]
+      },
+      {
+        "tableName": "locked_channel",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profile_id` TEXT NOT NULL, `channel_key` TEXT NOT NULL, PRIMARY KEY(`profile_id`, `channel_key`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profile_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelKey",
+            "columnName": "channel_key",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profile_id",
+            "channel_key"
+          ]
+        }
+      },
+      {
+        "tableName": "reminder",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `kind` TEXT NOT NULL, `event_id` TEXT, `channel_key` TEXT, `title` TEXT NOT NULL, `subtitle` TEXT, `start_at` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventId",
+            "columnName": "event_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "channelKey",
+            "columnName": "channel_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "subtitle",
+            "columnName": "subtitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startAt",
+            "columnName": "start_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "created_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reminder_start_at",
+            "unique": false,
+            "columnNames": [
+              "start_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_reminder_start_at` ON `${TABLE_NAME}` (`start_at`)"
+          }
+        ]
+      },
+      {
+        "tableName": "watch_progress",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profile_id` TEXT NOT NULL, `content_key` TEXT NOT NULL, `source_id` TEXT NOT NULL, `content_type` TEXT NOT NULL, `work_key` TEXT, `series_key` TEXT, `position_ms` INTEGER NOT NULL, `duration_ms` INTEGER NOT NULL, `completed` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`profile_id`, `content_key`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profile_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentKey",
+            "columnName": "content_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "source_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "content_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "workKey",
+            "columnName": "work_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seriesKey",
+            "columnName": "series_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "positionMs",
+            "columnName": "position_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "duration_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completed",
+            "columnName": "completed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profile_id",
+            "content_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_watch_progress_profile_id_completed_updated_at",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "completed",
+              "updated_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_profile_id_completed_updated_at` ON `${TABLE_NAME}` (`profile_id`, `completed`, `updated_at`)"
+          },
+          {
+            "name": "index_watch_progress_profile_id_content_type_updated_at_content_key",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "content_type",
+              "updated_at",
+              "content_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_profile_id_content_type_updated_at_content_key` ON `${TABLE_NAME}` (`profile_id`, `content_type`, `updated_at`, `content_key`)"
+          },
+          {
+            "name": "index_watch_progress_profile_id_work_key_updated_at",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "work_key",
+              "updated_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_profile_id_work_key_updated_at` ON `${TABLE_NAME}` (`profile_id`, `work_key`, `updated_at`)"
+          },
+          {
+            "name": "index_watch_progress_profile_id_series_key_updated_at",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "series_key",
+              "updated_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_profile_id_series_key_updated_at` ON `${TABLE_NAME}` (`profile_id`, `series_key`, `updated_at`)"
+          },
+          {
+            "name": "index_watch_progress_content_key",
+            "unique": false,
+            "columnNames": [
+              "content_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_content_key` ON `${TABLE_NAME}` (`content_key`)"
+          }
+        ]
+      },
+      {
+        "tableName": "metadata_match",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`content_key` TEXT NOT NULL, `media_type` TEXT NOT NULL, `status` TEXT NOT NULL, `provider` TEXT, `external_id` TEXT, `genre` TEXT, `genres_version` INTEGER NOT NULL, `replacement_title` TEXT, `replacement_poster` TEXT, `replace_provider_poster` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`content_key`))",
+        "fields": [
+          {
+            "fieldPath": "contentKey",
+            "columnName": "content_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaType",
+            "columnName": "media_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "external_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "genresVersion",
+            "columnName": "genres_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "replacementTitle",
+            "columnName": "replacement_title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replacementPoster",
+            "columnName": "replacement_poster",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "replaceProviderPoster",
+            "columnName": "replace_provider_poster",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updated_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "content_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_metadata_match_external_id",
+            "unique": false,
+            "columnNames": [
+              "external_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_match_external_id` ON `${TABLE_NAME}` (`external_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "metadata_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`lookup_key` TEXT NOT NULL, `provider` TEXT NOT NULL, `status` TEXT NOT NULL, `external_id` TEXT, `payload` TEXT, `genres_version` INTEGER NOT NULL, `details_loaded` INTEGER NOT NULL, `cached_at` INTEGER NOT NULL, `expires_at` INTEGER NOT NULL, PRIMARY KEY(`lookup_key`, `provider`))",
+        "fields": [
+          {
+            "fieldPath": "lookupKey",
+            "columnName": "lookup_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "external_id",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "genresVersion",
+            "columnName": "genres_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detailsLoaded",
+            "columnName": "details_loaded",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAt",
+            "columnName": "cached_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expires_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "lookup_key",
+            "provider"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_metadata_cache_expires_at",
+            "unique": false,
+            "columnNames": [
+              "expires_at"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_cache_expires_at` ON `${TABLE_NAME}` (`expires_at`)"
+          },
+          {
+            "name": "index_metadata_cache_external_id",
+            "unique": false,
+            "columnNames": [
+              "external_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_cache_external_id` ON `${TABLE_NAME}` (`external_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "metadata_pin",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`content_key` TEXT NOT NULL, `work_key` TEXT, `provider` TEXT NOT NULL, `external_id` TEXT NOT NULL, `media_type` TEXT NOT NULL, `pinned_at` INTEGER NOT NULL, PRIMARY KEY(`content_key`))",
+        "fields": [
+          {
+            "fieldPath": "contentKey",
+            "columnName": "content_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "workKey",
+            "columnName": "work_key",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "provider",
+            "columnName": "provider",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "externalId",
+            "columnName": "external_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaType",
+            "columnName": "media_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinnedAt",
+            "columnName": "pinned_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "content_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_metadata_pin_work_key",
+            "unique": false,
+            "columnNames": [
+              "work_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_pin_work_key` ON `${TABLE_NAME}` (`work_key`)"
+          }
+        ]
+      },
+      {
+        "tableName": "metadata_queue",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`content_key` TEXT NOT NULL, `media_type` TEXT NOT NULL, `title` TEXT NOT NULL, `year` INTEGER, `target_version` INTEGER NOT NULL, `state` TEXT NOT NULL, `attempts` INTEGER NOT NULL, `next_attempt_at` INTEGER NOT NULL, `priority` INTEGER NOT NULL, `stamp` INTEGER NOT NULL, PRIMARY KEY(`content_key`))",
+        "fields": [
+          {
+            "fieldPath": "contentKey",
+            "columnName": "content_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaType",
+            "columnName": "media_type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "targetVersion",
+            "columnName": "target_version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "state",
+            "columnName": "state",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "attempts",
+            "columnName": "attempts",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nextAttemptAt",
+            "columnName": "next_attempt_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stamp",
+            "columnName": "stamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "content_key"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_metadata_queue_state_priority_content_key",
+            "unique": false,
+            "columnNames": [
+              "state",
+              "priority",
+              "content_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_queue_state_priority_content_key` ON `${TABLE_NAME}` (`state`, `priority`, `content_key`)"
+          },
+          {
+            "name": "index_metadata_queue_stamp",
+            "unique": false,
+            "columnNames": [
+              "stamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_queue_stamp` ON `${TABLE_NAME}` (`stamp`)"
+          }
+        ]
+      },
+      {
+        "tableName": "genre_count",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`room` TEXT NOT NULL, `genre` TEXT NOT NULL, `titles` INTEGER NOT NULL, PRIMARY KEY(`room`, `genre`))",
+        "fields": [
+          {
+            "fieldPath": "room",
+            "columnName": "room",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "titles",
+            "columnName": "titles",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "room",
+            "genre"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '99568216b56da0d1bd5db58b97251324')"
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 package com.sohva.tv.core.data.channels
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -51,7 +52,16 @@ interface ChannelListDao {
             "WHERE m.list_id = :listId AND c.source_id = :sourceId AND c.visible = 1 ORDER BY m.sort_order, m.channel_key",
     )
     suspend fun memberKeys(listId: String, sourceId: String): List<String>
+
+    /** The same members with their place in the list, which the manager's places are compared with (ORG-FR-22). */
+    @Query(
+        "SELECT m.channel_key, m.sort_order FROM channel_list_member m CROSS JOIN channel c ON c.key = m.channel_key " +
+            "WHERE m.list_id = :listId AND c.source_id = :sourceId AND c.visible = 1 ORDER BY m.sort_order, m.channel_key",
+    )
+    suspend fun members(listId: String, sourceId: String): List<ListMemberPlace>
 }
+
+data class ListMemberPlace(@ColumnInfo(name = "channel_key") val key: String, @ColumnInfo(name = "sort_order") val sortOrder: Long)
 
 class ChannelListStore(private val db: SohvaDatabase, private val write: CoroutineDispatcher, private val clock: Clock) {
     private val dao get() = db.channelLists()

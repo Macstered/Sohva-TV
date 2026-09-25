@@ -1,0 +1,180 @@
+package com.sohva.tv.core.data.vod
+
+import com.sohva.tv.core.data.database.CopyRow
+import com.sohva.tv.core.data.database.GenreCountEntity
+import com.sohva.tv.core.data.database.KeyRange
+import com.sohva.tv.core.data.database.MATCHED
+import com.sohva.tv.core.data.database.MetadataMatchEntity
+import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.model.org.OrgItem
+import com.sohva.tv.core.model.org.OrgKeys
+import com.sohva.tv.core.model.org.OrgResolver
+import com.sohva.tv.core.model.org.OrgRoom
+import com.sohva.tv.core.model.metadata.TitleCleaner
+import com.sohva.tv.core.model.metadata.WorkKeys
+import com.sohva.tv.core.model.text.SortNames
+import com.sohva.tv.core.model.vod.Genre
+import com.sohva.tv.core.model.vod.PreferredCopy
+
+/**
+ * The library's derived columns (spec 40 §9.3, spec 41 §4.12 and §9.2–9.3), each pass paged in
+ * key order, ≤ 2,000 rows a page, one short transaction per page, nothing catalogue-sized held:
+ * - [applyMatches] writes the stored matches of a source back into its rows after an import;
+ * - [refreshCopies] decides, per film identity, which copy stands for the film on walls that span
+ *   groups ([com.sohva.tv.core.data.database.MovieEntity.primaryCopy]) and in each of its groups;
+ * - [refreshSource] runs both for a whole source and recounts its groups;
+ * - [recountGenres] refreshes the Genres rail's counts.
+ * Blocking: callers run them on the bulk-write dispatcher.
+ */
+class LibraryPasses(private val db: SohvaDatabase) {
+    private val dao get() = db.library()
+
+    /** After an import of [sourceId]: matches back into the rows, identities and standing copies, group counts. */
+    fun refreshSource(sourceId: String, preferred: PreferredCopy, phase: (String) -> Unit = {}) {
+        applyMatches(KeyRange.movies(sourceId))
+        applyMatches(KeyRange.series(sourceId))
+        phase("matches")
+        val films = KeyRange.movies(sourceId)
+        val flips = Flips()
+        var after = films.from
+        while (true) {
+            val page = dao.filmKeysPage(after, films.until, PAGE)
+            if (page.isEmpty()) break
+            decide(page.mapNotNull { it.workKey }.distinct(), preferred, flips)
+            after = page.last().key
+            if (page.size < PAGE) break
+        }
+        flips.flush()
+        phase("standing copies")
+        dao.recountFilmGroups(sourceId)
+        phase("film counts")
+    }
+
+    /** Writes the stored matches whose content keys fall in [range] into the film or series rows. */
+    fun applyMatches(range: KeyRange) {
+        var after = range.from
+        while (true) {
+            val page = dao.matchesPage(after, range.until, PAGE)
+            if (page.isEmpty()) return
+            db.runInTransaction { page.forEach(::apply) }
+            after = page.last().contentKey
+            if (page.size < PAGE) return
+        }
+    }
+
+    /**
+     * One title's match into its row (spec 41 META-FR-60): a match gives the replacement title and
+     * poster, the external id (a film's work key becomes `tmdb:<id>`) and the genre; a real miss
+     * leaves the provider's title and no genre.
+     */
+    fun apply(match: MetadataMatchEntity) {
+        val matched = match.status == MATCHED
+        val title = match.replacementTitle?.takeIf { matched }
+        val sort = title?.let(SortNames::of)
+        val replacementKey = title?.let(TitleCleaner::normalizeTitle)
+        val genre = match.genre?.takeIf { matched && Genre.ofWire(it) != null }
+        val externalId = match.externalId?.takeIf { matched }
+        if (match.contentKey.startsWith(FILM)) {
+            val facts = dao.filmNameYear(match.contentKey) ?: return
+            val workKey = WorkKeys.of(facts.name, facts.year, externalId?.takeIf { match.provider == TMDB })
+            dao.applyFilm(match.contentKey, title, sort, match.replacementPoster.takeIf { matched }, matched && match.replaceProviderPoster, externalId, genre, workKey, replacementKey)
+            if (facts.workKey != null && facts.workKey != workKey) identityChanged(match.contentKey, facts.workKey, workKey)
+        } else {
+            dao.applySeries(match.contentKey, title, sort, match.replacementPoster.takeIf { matched }, matched && match.replaceProviderPoster, externalId, genre, replacementKey)
+        }
+    }
+
+    /**
+     * A film's identity changed (spec 42 decision "Film identity in rules"): the rules on its old
+     * identity are copied to the new one, and when rules name the new identity the film's
+     * visibility is decided again (one indexed look-up otherwise).
+     */
+    private fun identityChanged(key: String, from: String, to: String) {
+        val org = db.organization()
+        org.copyFilmRules(OrgKeys.film(from), OrgKeys.film(to))
+        if (!org.namesItem(OrgRoom.MOVIES.wire, OrgKeys.film(to))) return
+        val resolver = OrgResolver(OrgRules(db).of(OrgRoom.MOVIES))
+        for (row in org.filmsOf(emptyList(), listOf(key))) {
+            val item = OrgItem(OrgRoom.MOVIES, row.sourceId, row.groupKey ?: OrgKeys.nameKey(row.groupName), OrgKeys.nameKey(row.groupName), row.key, OrgKeys.film(to))
+            val visible = resolver.eligible(item)
+            val position = resolver.memberRule(item).position?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
+            if (visible != row.visible || position != row.itemPosition) org.setFilm(row.id, visible, position)
+        }
+    }
+
+    /**
+     * The standing copies of [workKeys] (spec 40 VOD-FR-26): the visible copy with the highest
+     * preference score, ties to the first in wall order (sort name, then id); per group the same
+     * among the group's copies. Only flags that change are written.
+     */
+    fun refreshCopies(workKeys: List<String>, preferred: PreferredCopy) {
+        val flips = Flips()
+        decide(workKeys, preferred, flips)
+        flips.flush()
+    }
+
+    /**
+     * Flags to flip, written in transactions of up to 5,000 rows: each flip rewrites the wall
+     * indexes that carry the flags, and small commits rewrite the same index pages again and again
+     * (decision "Indexes and import cost").
+     */
+    private inner class Flips {
+        val changes = ArrayList<Triple<Long, Boolean, Boolean>>()
+
+        fun add(id: Long, primary: Boolean, groupPrimary: Boolean) {
+            changes += Triple(id, primary, groupPrimary)
+            if (changes.size >= FLIP_BATCH) flush()
+        }
+
+        fun flush() {
+            if (changes.isEmpty()) return
+            db.runInTransaction { for ((id, p, g) in changes) dao.setPrimary(id, p, g) }
+            changes.clear()
+        }
+    }
+
+    private fun decide(workKeys: List<String>, preferred: PreferredCopy, flips: Flips) {
+        for (chunk in workKeys.chunked(IN_LIMIT)) {
+            val copies = dao.copies(chunk)
+            if (copies.isEmpty()) continue
+            for ((_, film) in copies.groupBy { it.workKey }) {
+                val standing = standing(film, preferred)
+                val perGroup = film.groupBy { it.groupId }.mapValues { (_, inGroup) -> standing(inGroup, preferred) }
+                for (c in film) {
+                    val primary = c.id == standing
+                    val groupPrimary = c.id == perGroup[c.groupId]
+                    if (primary != c.primaryCopy || groupPrimary != c.groupPrimary) flips.add(c.id, primary, groupPrimary)
+                }
+            }
+        }
+    }
+
+    private fun standing(copies: List<CopyRow>, preferred: PreferredCopy): Long? = copies.asSequence()
+        .filter { it.visible }
+        .sortedWith(compareByDescending<CopyRow> { preferred.score(it.claimMask, it.pictureRank) }.thenBy { it.sortName }.thenBy { it.id })
+        .firstOrNull()?.id
+
+    /** Titles per genre and Unsorted, for both rooms (VOD-FR-04): 46 indexed counts. */
+    fun recountGenres() {
+        val rows = buildList {
+            for (g in Genre.entries) {
+                add(GenreCountEntity(MOVIES, g.wire, dao.filmGenreCount(g.wire)))
+                add(GenreCountEntity(SERIES, g.wire, dao.seriesGenreCount(g.wire)))
+            }
+            add(GenreCountEntity(MOVIES, "", dao.filmUnsortedCount()))
+            add(GenreCountEntity(SERIES, "", dao.seriesUnsortedCount()))
+        }
+        db.runInTransaction { dao.putCounts(rows) }
+    }
+
+    private companion object {
+        const val PAGE = 2_000
+        const val IN_LIMIT = 500
+        const val FLIP_BATCH = 5_000
+        const val FILM = "vod:movie:"
+        const val TMDB = "tmdb"
+        const val MOVIES = "MOVIES"
+        const val SERIES = "SERIES"
+    }
+}

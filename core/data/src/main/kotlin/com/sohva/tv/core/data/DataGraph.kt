@@ -6,10 +6,14 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import com.sohva.tv.core.data.channels.ChannelEditStore
 import com.sohva.tv.core.data.channels.ChannelListStore
 import com.sohva.tv.core.data.channels.ChannelManagerReads
+import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.live.LiveStore
+import com.sohva.tv.core.data.migration.Beta23HiddenCategories
 import com.sohva.tv.core.data.migration.Beta23SourceImport
+import com.sohva.tv.core.data.org.OrgManager
+import com.sohva.tv.core.data.org.OrgRules
 import com.sohva.tv.core.data.prefs.AppPreferences
 import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.reminder.ReminderStore
@@ -22,6 +26,9 @@ import com.sohva.tv.core.data.source.RefreshFacts
 import com.sohva.tv.core.data.source.RefreshStatusStore
 import com.sohva.tv.core.data.source.ServiceKeys
 import com.sohva.tv.core.data.source.SourceStore
+import com.sohva.tv.core.data.vod.ProgressStore
+import com.sohva.tv.core.data.vod.TitleReads
+import com.sohva.tv.core.data.vod.WallReads
 import com.sohva.tv.core.model.concurrent.AppDispatchers
 import com.sohva.tv.core.model.time.SystemClock
 import kotlinx.coroutines.CoroutineScope
@@ -79,6 +86,17 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     /** Programme and match reminders (M3, spec 22). */
     val reminders: ReminderStore by lazy { ReminderStore(database, dispatchers.io) }
 
+    /** Movie and series walls and progress (M4). Profiles arrive in M6; until then every row is the default profile's. */
+    val walls: WallReads by lazy { WallReads(database, dispatchers.io) { DEFAULT_PROFILE } }
+    val progress: ProgressStore by lazy { ProgressStore(database, dispatchers.io, SystemClock) { DEFAULT_PROFILE } }
+    val titles: TitleReads by lazy { TitleReads(database, dispatchers.io, SystemClock) }
+
+    /** The library manager's reads (spec 42 §4.9); its writes go through [OrgRules] and [OrgPass]. */
+    val organization: OrgManager by lazy { OrgManager(database, OrgRules(database), dispatchers.io) }
+
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }
+
+    /** Beta 23's hidden categories as rules, once (spec 42 ORG-15); after the first frame. */
+    val beta23Categories: Beta23HiddenCategories by lazy { Beta23HiddenCategories(app, database, dispatchers.io) }
 }

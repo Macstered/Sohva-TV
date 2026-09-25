@@ -50,6 +50,15 @@ interface GuideEnvironment {
 
     /** Adds or removes the reminder (REM-FR-04); true when it was added. */
     suspend fun toggleReminder(reminder: Reminder): Boolean
+
+    /** The hero's programme metadata from the memory cache, never blocking (GUIDE-FR-64). */
+    fun cachedProgramme(programmeId: Long, title: String): HeroMetadata?
+
+    /** The hero's programme lookup; null when metadata is off, nothing matched, or it failed. */
+    suspend fun programmeMetadata(programmeId: Long, title: String): HeroMetadata?
+
+    /** "Source: …" opens the record's page; nothing happens on a TV without a browser (GUIDE-FR-65). */
+    fun openUrl(url: String)
 }
 
 /** Where the guide sends the viewer; implemented by the app's router. */
@@ -64,8 +73,11 @@ interface GuideNavigation {
     /** Options › Edit (channels): channel management (spec 21 CHAN-01). */
     fun openChannels()
 
-    /** Options › Sort, Edit (groups) and Edit (channels) until their milestones (M3, M4). */
-    fun notYetAvailable()
+    /**
+     * Options › Sort and Edit (groups): the library manager's Live room at [group] (a group name or
+     * an `@` shortcut key; null for All channels) and [source] (GUIDE-FR-94, spec 42 §3).
+     */
+    fun openManager(group: String?, source: String?)
 
     fun leave()
 }

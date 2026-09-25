@@ -86,6 +86,24 @@ sealed interface AppError {
     data object XtreamResponseInvalid : AppError { override val code = "xtream_response_invalid" }
     data object SeriesIdInvalid : AppError { override val code = "series_id_invalid" }
 
+    // Movies and series (spec 40 VOD-FR-75)
+    data object SourceDisabled : AppError { override val code = "source_disabled" }
+
+    // Metadata (spec 41 §4.16)
+    data class MetadataHttp(val provider: String, val status: Int) : AppError {
+        override val code = "metadata_http"
+        override val args get() = listOf(provider, status.toString())
+    }
+
+    data class MetadataTooLarge(val provider: String) : AppError {
+        override val code = "metadata_response_too_large"
+        override val args get() = listOf(provider)
+    }
+
+    data object TmdbKeyInvalid : AppError { override val code = "tmdb_key_invalid" }
+    data object TmdbKeyRequired : AppError { override val code = "tmdb_key_required" }
+    data object MetadataSaveFailed : AppError { override val code = "metadata_settings_save" }
+
     // Playback (SRC-FR-101)
     data class ConnectionLimit(val sourceName: String, val limit: Int) : AppError {
         override val code = "connection_limit"
@@ -101,7 +119,7 @@ object AppErrors {
         AppError.SourceNoLiveTv, AppError.SourceNoVod, AppError.PlaylistEmpty, AppError.PlaylistNotM3u,
         AppError.EpgEmpty, AppError.EpgUnmatched, AppError.CatalogueEmpty, AppError.XtreamAuthFailed,
         AppError.XtreamNoUserInfo, AppError.XtreamResponseTooLarge, AppError.XtreamResponseInvalid,
-        AppError.SeriesIdInvalid,
+        AppError.SeriesIdInvalid, AppError.SourceDisabled, AppError.TmdbKeyInvalid, AppError.TmdbKeyRequired, AppError.MetadataSaveFailed,
     ).associateBy { it.code }
 
     fun restore(code: String, args: List<String>): AppError {
@@ -110,6 +128,8 @@ object AppErrors {
         return when (code) {
             "transport_failed" -> AppError.TransportFailed(args.getOrNull(0))
             "http_status" -> int(0)?.let { AppError.HttpStatus(it) }
+            "metadata_http" -> int(1)?.let { AppError.MetadataHttp(args[0], it) }
+            "metadata_response_too_large" -> args.getOrNull(0)?.let { AppError.MetadataTooLarge(it) }
             "source_name_too_long" -> int(0)?.let { AppError.SourceNameTooLong(it) }
             "source_limit_reached" -> int(0)?.let { AppError.SourceLimitReached(it) }
             "source_url_invalid" -> args.getOrNull(0)

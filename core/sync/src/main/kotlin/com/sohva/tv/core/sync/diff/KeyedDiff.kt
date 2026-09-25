@@ -59,7 +59,8 @@ internal class KeyedDiff<E>(
         val byKey = LinkedHashMap<String, Row<E>>(rows.size * 2)
         for (row in rows) byKey[row.key] = row
         val stored = HashMap<String, KeyedHash>(byKey.size * 2)
-        for (hash in table.hashes(ArrayList(byKey.keys))) stored[hash.key] = hash
+        // Chunks under SQLite's 999-variable limit of older Android versions: a batch can be larger.
+        for (keys in byKey.keys.chunked(IN_LIMIT)) for (hash in table.hashes(keys)) stored[hash.key] = hash
         val inserts = ArrayList<E>()
         val updates = ArrayList<E>()
         for (row in byKey.values) {
@@ -99,5 +100,6 @@ internal class KeyedDiff<E>(
     companion object {
         const val PAGE = 2_000
         const val DELETE_CHUNK = 500
+        const val IN_LIMIT = 900
     }
 }

@@ -38,8 +38,9 @@ class ShellNavigationTest {
         // With no source the guide shows its empty card, "Open settings" focused (GUIDE-FR-101).
         Triple(RailItem.LIVE_TV, "screen-guide", "guide-empty-settings"),
         Triple(RailItem.SPORT, "screen-today", "placeholder-back"),
-        Triple(RailItem.MOVIES, "screen-movies", "placeholder-back"),
-        Triple(RailItem.SERIES, "screen-series", "placeholder-back"),
+        // The walls open on History (VOD-FR-49).
+        Triple(RailItem.MOVIES, "screen-movies", "library-row-history"),
+        Triple(RailItem.SERIES, "screen-series", "library-row-history"),
         Triple(RailItem.SEARCH, "screen-search", "placeholder-back"),
         Triple(RailItem.DISCOVER, "screen-discover", "placeholder-back"),
         // Settings opens on Playlists; with no source its first control is "+ Add M3U source" (SET-FR-02).

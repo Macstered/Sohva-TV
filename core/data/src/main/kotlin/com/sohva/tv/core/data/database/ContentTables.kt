@@ -57,13 +57,30 @@ data class ChannelEntity(
 )
 
 /**
- * Films (plan/04 §15.4). The wall indexes (partial, on `visible` and `primary_copy`) arrive with
- * the walls in M4. A source's rows are walked through the UNIQUE key index: every key starts with
- * its source ([KeyRanges]).
+ * Films (plan/04 §15.4). A source's rows are walked through the UNIQUE key index: every key starts
+ * with its source ([KeyRanges]). The wall indexes lead with their equality columns and end with
+ * `sort_name` (and the implicit row id), so a wall page is an index range read in order. They are
+ * full indexes rather than plan/04's partial ones: Room validates every index it finds against the
+ * entities and cannot declare a `WHERE` clause (decision "Wall indexes", M4).
  */
 @Entity(
     tableName = "movie",
-    indices = [Index(value = ["key"], unique = true)],
+    indices = [
+        Index(value = ["key"], unique = true),
+        Index(value = ["group_id", "visible", "group_primary", "sort_name"]),
+        Index(value = ["visible", "primary_copy", "sort_name"]),
+        Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
+        // A group's other content orders (spec 42 ORG-07): newest/oldest, rating, manual. Walls that
+        // span groups stay A–Z: every index costs the import (decision "Indexes and import cost").
+        // Newest first and highest rating first read forward with ties A–Z (oldest first reads the
+        // year index backwards); a missing value comes last through a second read (WallReads).
+        Index(value = ["group_id", "visible", "group_primary", "year", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
+        Index(value = ["group_id", "visible", "group_primary", "rating_x10", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
+        Index(value = ["group_id", "visible", "group_primary", "item_position", "sort_name"]),
+        Index(value = ["work_key"]),
+        Index(value = ["similar_key"]),
+        Index(value = ["replacement_key"]),
+    ],
 )
 data class MovieEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -80,18 +97,49 @@ data class MovieEntity(
     @ColumnInfo(name = "stream_url_enc") val streamUrlEnc: String,
     val plot: String?,
     @ColumnInfo(name = "provider_order") val providerOrder: Int,
+    /** [com.sohva.tv.core.model.vod.QualityChip] bits read from the name at import. */
+    @ColumnInfo(name = "quality_mask", defaultValue = "0") val qualityMask: Int = 0,
+    /** [com.sohva.tv.core.model.vod.CopyLanguage] bits read from the name at import. */
+    @ColumnInfo(name = "claim_mask", defaultValue = "0") val claimMask: Int = 0,
+    /** The "largest picture" rank of spec 40 VOD-FR-29. */
+    @ColumnInfo(name = "picture_rank", defaultValue = "0") val pictureRank: Int = 0,
+    /** Metadata's title (spec 40 VOD-FR-22) and its search form; null until matched. */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
+    @ColumnInfo(name = "replacement_sort") val replacementSort: String? = null,
+    /** Metadata's poster (a TMDB path or an https address) and whether it replaces the provider's (VOD-FR-34). */
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String? = null,
+    @ColumnInfo(name = "replace_poster", defaultValue = "0") val replacePoster: Boolean = false,
+    @ColumnInfo(name = "external_id") val externalId: String? = null,
+    /** [com.sohva.tv.core.model.metadata.TitleCleaner.normalizeTitle] of the provider and the replacement title: Similar looks titles up by these (spec 40 §9.7). */
+    @ColumnInfo(name = "similar_key") val similarKey: String? = null,
+    @ColumnInfo(name = "replacement_key") val replacementKey: String? = null,
     val genre: String?,
     @ColumnInfo(name = "work_key") val workKey: String?,
     @ColumnInfo(name = "primary_copy") val primaryCopy: Boolean,
+    /**
+     * The copy that stands for its film in its own group's wall: a film appears in every group
+     * that carries a copy (spec 40 VOD-FR-24), while [primaryCopy] stands for it once on walls
+     * that span groups.
+     */
+    @ColumnInfo(name = "group_primary", defaultValue = "1") val groupPrimary: Boolean = true,
     val visible: Boolean,
     @ColumnInfo(name = "item_position") val itemPosition: Int?,
     @ColumnInfo(name = "content_hash") val contentHash: Long,
     val generation: Long,
 )
 
+/** Series: as films plus a backdrop; never folded, so `primary_copy` stays true. */
 @Entity(
     tableName = "series",
-    indices = [Index(value = ["key"], unique = true)],
+    indices = [
+        Index(value = ["key"], unique = true),
+        Index(value = ["group_id", "visible", "primary_copy", "sort_name"]),
+        Index(value = ["visible", "primary_copy", "sort_name"]),
+        Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
+        Index(value = ["group_id", "visible", "primary_copy", "year", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
+        Index(value = ["group_id", "visible", "primary_copy", "rating_x10", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
+        Index(value = ["group_id", "visible", "primary_copy", "item_position", "sort_name"]),
+    ],
 )
 data class SeriesEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -108,6 +156,17 @@ data class SeriesEntity(
     @ColumnInfo(name = "backdrop_url") val backdropUrl: String?,
     val plot: String?,
     @ColumnInfo(name = "provider_order") val providerOrder: Int,
+    @ColumnInfo(name = "quality_mask", defaultValue = "0") val qualityMask: Int = 0,
+    /** Metadata's title (spec 40 VOD-FR-22) and its search form; null until matched. */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
+    @ColumnInfo(name = "replacement_sort") val replacementSort: String? = null,
+    /** Metadata's poster (a TMDB path or an https address) and whether it replaces the provider's (VOD-FR-34). */
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String? = null,
+    @ColumnInfo(name = "replace_poster", defaultValue = "0") val replacePoster: Boolean = false,
+    @ColumnInfo(name = "external_id") val externalId: String? = null,
+    /** [com.sohva.tv.core.model.metadata.TitleCleaner.normalizeTitle] of the provider and the replacement title: Similar looks titles up by these (spec 40 §9.7). */
+    @ColumnInfo(name = "similar_key") val similarKey: String? = null,
+    @ColumnInfo(name = "replacement_key") val replacementKey: String? = null,
     val genre: String?,
     @ColumnInfo(name = "work_key") val workKey: String?,
     @ColumnInfo(name = "primary_copy") val primaryCopy: Boolean,

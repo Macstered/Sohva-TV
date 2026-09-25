@@ -2,8 +2,9 @@
 name: Build
 
 on:
+  # Every branch, so milestone branches are checked without a pull request.
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
 

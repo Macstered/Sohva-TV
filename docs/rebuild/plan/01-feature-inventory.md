@@ -286,23 +286,23 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-03** The chosen source is remembered across launches; fallback order: channel opened for, saved source, last watched channel's source, first source.
 - [x] **GUIDE-04** Options > Source cycles through the sources; a switch lands on the new source's first group and its first channel; with one source the button does nothing.
 - [x] **GUIDE-05** Group rail opened with Left from the channel column: Favourites, All channels, Recently watched, custom channel lists, provider groups, each with a count where known.
-- [ ] **GUIDE-06** The rail follows the viewer's manual group order when one is set (All channels always first).
-- [ ] **GUIDE-07** The Favourites, Recently watched and custom-list entries disappear when switched off in the Library manager.
+- [x] **GUIDE-06** The rail follows the viewer's manual group order when one is set (All channels always first).
+- [x] **GUIDE-07** The Favourites, Recently watched and custom-list entries disappear when switched off in the Library manager.
 - [ ] **GUIDE-08** Groups switched off by a rule, or outside a restricted profile's groups, are not on the rail and their channels are never shown.
 - [x] **GUIDE-09** All channels: every visible channel of the source in guide order.
 - [x] **GUIDE-10** Favourites: the active profile's favourite channels of the selected source, in guide order.
 - [x] **GUIDE-11** Recently watched: the active profile's last 20 channels of the selected source, most recent first.
 - [x] **GUIDE-12** Custom list: the list's channels of the selected source, in the list's own order.
-- [ ] **GUIDE-13** Channel order within a list follows the organisation rules (provider order by default; manual or A–Z per group from the Library manager; positions set in Channel management).
+- [x] **GUIDE-13** Channel order within a list follows the organisation rules (provider order by default; manual or A–Z per group from the Library manager; positions set in Channel management).
 - [x] **GUIDE-14** Channel cell: number, logo (or two-letter initials), name (wraps to two lines when long), feed line (quality/language tags from the name, else group, else source).
 - [ ] **GUIDE-15** Channel numbers can be switched off (Settings > General > Channel numbers).
 - [x] **GUIDE-16** Programme blocks proportional to running time, clipped to the window and to the next programme's start; genre accent bar; airing block with progress strip; finished blocks dimmed.
 - [x] **GUIDE-17** A row without listings in the window shows "No EPG information / Watch channel"; before its programmes are read it shows a blank disabled bar.
 - [x] **GUIDE-18** Day label ("Thu 24.9.") with Now / Today / Tomorrow / Yesterday.
 - [x] **GUIDE-19** One red now-line across the grid and ruler, moved every minute.
-- [ ] **GUIDE-20** Hero: 16:9 still (backdrop, poster, or channel logo), channel and number caption, live dot and progress line; title, LIVE chip, time range, first category, year, TMDB rating chip, synopsis.
-- [ ] **GUIDE-21** Hero actions: Watch, Favourite, Remind me / Reminder set, Watch from start / Watch recording, Find programme / Close search, Source: TMDB (or TVmaze).
-- [ ] **GUIDE-22** Programme metadata (TMDB or TVmaze) looked up 350 ms after the selection settles, only when a metadata service is enabled.
+- [x] **GUIDE-20** Hero: 16:9 still (backdrop, poster, or channel logo), channel and number caption, live dot and progress line; title, LIVE chip, time range, first category, year, TMDB rating chip, synopsis.
+- [x] **GUIDE-21** Hero actions: Watch, Favourite, Remind me / Reminder set, Watch from start / Watch recording, Find programme / Close search, Source: TMDB (or TVmaze).
+- [x] **GUIDE-22** Programme metadata (TMDB or TVmaze) looked up 350 ms after the selection settles, only when a metadata service is enabled.
 - [x] **GUIDE-23** Right on the last block of a row pages +90 min; Left on the first block pages −90 min unless the window is at now.
 - [x] **GUIDE-24** Fast forward / Rewind page ±90 min; Next / Previous page ±1 day.
 - [x] **GUIDE-25** Paging reaches one day back and seven days ahead; a paged window stays where it is while the clock moves; the window at now follows the clock.
@@ -315,7 +315,7 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-32** Number dialling: overlay "Channel 12", up to 4 digits, commits 2 s after the last digit, "No channel 12" for 1.5 s; own numbers first, then list positions; focus moves to the channel.
 - [x] **GUIDE-33** Find programme: a search field on the rail filters the rows by channel name or by a programme title in the three hours shown.
 - [x] **GUIDE-34** Options sheet (Menu, or Options on the rail): Source, Sort, Edit (groups), Edit (channels), Settings, Back, Close.
-- [ ] **GUIDE-35** Sort and Edit (groups) open the Library manager at the current group and source; back from it the guide reopens with the options open on that group.
+- [x] **GUIDE-35** Sort and Edit (groups) open the Library manager at the current group and source; back from it the guide reopens with the options open on that group.
 - [x] **GUIDE-36** Edit (channels) opens [Channel management](../specs/21-channel-management.md).
 - [x] **GUIDE-37** Key-hint bar listing only working bindings.
 - [x] **GUIDE-38** "Reading the guide…" while the first rows are read.
@@ -338,7 +338,7 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 
 Spec: [specs/21-channel-management.md](../specs/21-channel-management.md) · Milestone: M3 · 30 items
 
-- [ ] **CHAN-01** Channel management screen, opened from the guide's Options > "Edit" (Channels icon) and from the Library manager's Live room > "Advanced" (the Library manager itself is reached from Settings > Library > "Manage groups & content").
+- [x] **CHAN-01** Channel management screen, opened from the guide's Options > "Edit" (Channels icon) and from the Library manager's Live room > "Advanced" (the Library manager itself is reached from Settings > Library > "Manage groups & content").
 - [x] **CHAN-02** Header: "Channel management", subtitle, Back button.
 - [x] **CHAN-03** Source filter button "Source: All" / "Source: <name>", cycling All → each source → All.
 - [x] **CHAN-04** Sort button "Sort: Playlist" / "Sort: A–Z".
@@ -412,13 +412,13 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 
 - [ ] **PLAY-01** Live channel playback full screen, opened from the guide, Home, Search, Sohva Sport, a reminder or the start screen.
 - [x] **PLAY-02** Catch-up playback of a past programme ("Watch from start") with transport controls.
-- [ ] **PLAY-03** Film and episode (VOD) playback from a resume position.
+- [x] **PLAY-03** Film and episode (VOD) playback from a resume position.
 - [x] **PLAY-04** Black video ground and letterbox bars in every colour theme.
 - [x] **PLAY-05** "Connecting to playback service…" screen, and a full-screen message with Back when the service fails.
 - [x] **PLAY-06** Live information box: channel logo or initials, name, LIVE tag, stream tags, group, programme title, start time, "% watched", time left, stop time, progress bar, next programme, stream name when it differs.
 - [x] **PLAY-07** Live information box hides after 5 s idle, stays while its buttons have focus, and does not reappear by itself when the programme changes or the guide refreshes.
 - [x] **PLAY-08** Live action row: hide controls, picture shape, audio, subtitles, channel list, stream details, quick actions, open in another player.
-- [ ] **PLAY-09** Transport controls for catch-up and VOD: title, Back, picture, audio, subtitles, progress bar, position / duration, rewind, play/pause, forward (buttons name the skip step).
+- [x] **PLAY-09** Transport controls for catch-up and VOD: title, Back, picture, audio, subtitles, progress bar, position / duration, rewind, play/pause, forward (buttons name the skip step).
 - [x] **PLAY-10** Transport controls hide after 5 s idle unless focused or a track picker is open.
 - [x] **PLAY-11** Channel list down the right edge: the playing channel's group, numbers (setting), logos, what is on now.
 - [x] **PLAY-12** Group list beside the channel list with channel counts; browsing another group is temporary until a channel is tuned.
@@ -443,8 +443,8 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [ ] **PLAY-31** Sohva Sport score ticker over live and catch-up playback.
 - [x] **PLAY-32** Leaving the app stops the stream; returning resumes it.
 - [x] **PLAY-33** The screen never sleeps while the player is open.
-- [ ] **PLAY-34** VOD progress saved every 10 s, on pause, at the end and on leaving; watched rule applied.
-- [ ] **PLAY-35** A finished film returns to its details; a finished episode continues to the next one (setting) or returns to the series.
+- [x] **PLAY-34** VOD progress saved every 10 s, on pause, at the end and on leaving; watched rule applied.
+- [x] **PLAY-35** A finished film returns to its details; a finished episode continues to the next one (setting) or returns to the series.
 - [x] **PLAY-36** Per-source connection limit enforced before a stream opens.
 - [x] **PLAY-37** Provider headers (User-Agent, Referer) sent with the stream; Sohva's own user agent otherwise.
 - [x] **PLAY-38** HLS, DASH and progressive (MPEG-TS, MP4) streams, container chosen from the address.
@@ -488,81 +488,81 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 
 **Walls**
 
-- [ ] **VOD-01** Two poster walls, Movies and Series, each with a header, a left rail and a poster grid.
-- [ ] **VOD-02** Header: "Movies"/"Series", the destination's name and title count, a "Loading library…" or failure note while an older wall is still shown, and the last refresh result.
-- [ ] **VOD-03** History destination: titles this profile played (finished ones included), newest first.
-- [ ] **VOD-04** Groups view: the provider's groups with film counts, in the library's group order.
-- [ ] **VOD-05** Genres view: the viewer's own groups, then each of 22 genres that has titles, then Unsorted, with counts.
-- [ ] **VOD-06** Groups / Genres toggle that returns to the last destination used in each view.
-- [ ] **VOD-07** Custom groups (genres, year range, minimum rating) as wall destinations.
-- [ ] **VOD-08** An "all groups" wall when every provider group is hidden.
-- [ ] **VOD-09** Poster grid with adaptive columns (6 at the default interface size), no sort bar or letter index.
-- [ ] **VOD-10** Poster card: 2:3 poster, one-line title, "year · rating".
-- [ ] **VOD-11** Poster fallback: provider poster, then the matched TMDB poster, then the title's initials; a chosen match's poster replaces the provider's.
-- [ ] **VOD-12** Picture-quality chips read from the provider's title (4K UHD; Dolby Vision, HDR10+ or HDR10).
-- [ ] **VOD-13** One card per film when several playlists, groups or qualities carry it, marked "×N".
-- [ ] **VOD-14** "When a film has more than one version" setting chooses the copy a folded card opens (None, Finnish audio, Finnish subtitles, Largest picture).
-- [ ] **VOD-15** A folded card takes a missing poster, year, rating or genre from its other copies.
+- [x] **VOD-01** Two poster walls, Movies and Series, each with a header, a left rail and a poster grid.
+- [x] **VOD-02** Header: "Movies"/"Series", the destination's name and title count, a "Loading library…" or failure note while an older wall is still shown, and the last refresh result.
+- [x] **VOD-03** History destination: titles this profile played (finished ones included), newest first.
+- [x] **VOD-04** Groups view: the provider's groups with film counts, in the library's group order.
+- [x] **VOD-05** Genres view: the viewer's own groups, then each of 22 genres that has titles, then Unsorted, with counts.
+- [x] **VOD-06** Groups / Genres toggle that returns to the last destination used in each view.
+- [x] **VOD-07** Custom groups (genres, year range, minimum rating) as wall destinations.
+- [x] **VOD-08** An "all groups" wall when every provider group is hidden.
+- [x] **VOD-09** Poster grid with adaptive columns (6 at the default interface size), no sort bar or letter index.
+- [x] **VOD-10** Poster card: 2:3 poster, one-line title, "year · rating".
+- [x] **VOD-11** Poster fallback: provider poster, then the matched TMDB poster, then the title's initials; a chosen match's poster replaces the provider's.
+- [x] **VOD-12** Picture-quality chips read from the provider's title (4K UHD; Dolby Vision, HDR10+ or HDR10).
+- [x] **VOD-13** One card per film when several playlists, groups or qualities carry it, marked "×N".
+- [x] **VOD-14** "When a film has more than one version" setting chooses the copy a folded card opens (None, Finnish audio, Finnish subtitles, Largest picture).
+- [x] **VOD-15** A folded card takes a missing poster, year, rating or genre from its other copies.
 - [ ] **VOD-16** Watched tick on film posters, whichever copy was watched (Trakt marks included).
-- [ ] **VOD-17** Search inside the selected destination by provider title or matched title.
-- [ ] **VOD-18** The previous wall stays visible (not selectable) until the next one is ready; loading, failure, empty and no-results messages.
-- [ ] **VOD-19** Wall order follows the library organisation (A–Z by default, per-group sort, manual order); History by recency.
-- [ ] **VOD-20** Library options sheet: Refresh, Edit (library manager), Back, Close.
-- [ ] **VOD-21** Refresh imports every enabled VOD source and reports "Imported N movies and M series".
-- [ ] **VOD-22** Left from the wall's first column returns to the selected rail row, scrolling it into view.
-- [ ] **VOD-23** Coming back from a title focuses the same card (or its film's standing copy) with both scroll positions kept.
-- [ ] **VOD-24** Each mode keeps its browse position (destination, view, scroll, focused card) while the app runs.
-- [ ] **VOD-25** First entry focuses History (else the first group, else Options).
+- [x] **VOD-17** Search inside the selected destination by provider title or matched title.
+- [x] **VOD-18** The previous wall stays visible (not selectable) until the next one is ready; loading, failure, empty and no-results messages.
+- [x] **VOD-19** Wall order follows the library organisation (A–Z by default, per-group sort, manual order); History by recency.
+- [x] **VOD-20** Library options sheet: Refresh, Edit (library manager), Back, Close.
+- [x] **VOD-21** Refresh imports every enabled VOD source and reports "Imported N movies and M series".
+- [x] **VOD-22** Left from the wall's first column returns to the selected rail row, scrolling it into view.
+- [x] **VOD-23** Coming back from a title focuses the same card (or its film's standing copy) with both scroll positions kept.
+- [x] **VOD-24** Each mode keeps its browse position (destination, view, scroll, focused card) while the app runs.
+- [x] **VOD-25** First entry focuses History (else the first group, else Options).
 - [ ] **VOD-26** A restricted profile sees only its allowed groups' titles.
 
 **Film page**
 
-- [ ] **VOD-27** Film page: full-bleed backdrop, breadcrumb, title, facts (score, year, runtime, quality chips), synopsis.
-- [ ] **VOD-28** Progress line "Watched X of Y", bar and "Z left" for a partly watched film.
-- [ ] **VOD-29** Resume or Watch (first focus); Start from beginning when there is a position.
-- [ ] **VOD-30** Mark as watched / Mark as unwatched.
-- [ ] **VOD-31** "Source: TMDB" (or TVmaze) opens the metadata provider's page.
-- [ ] **VOD-32** "Wrong details?" opens the match picker.
-- [ ] **VOD-33** Versions row: every copy of the film with its source and what its name claims; the chosen copy plays at the film's position.
-- [ ] **VOD-34** Cast row with photo or initials, name and character.
-- [ ] **VOD-35** Similar row: TMDB's similar films that the library has, with "checking" and "none" states.
-- [ ] **VOD-36** Details are looked up when the page opens, and a missing library poster is repaired.
+- [x] **VOD-27** Film page: full-bleed backdrop, breadcrumb, title, facts (score, year, runtime, quality chips), synopsis.
+- [x] **VOD-28** Progress line "Watched X of Y", bar and "Z left" for a partly watched film.
+- [x] **VOD-29** Resume or Watch (first focus); Start from beginning when there is a position.
+- [x] **VOD-30** Mark as watched / Mark as unwatched.
+- [x] **VOD-31** "Source: TMDB" (or TVmaze) opens the metadata provider's page.
+- [x] **VOD-32** "Wrong details?" opens the match picker.
+- [x] **VOD-33** Versions row: every copy of the film with its source and what its name claims; the chosen copy plays at the film's position.
+- [x] **VOD-34** Cast row with photo or initials, name and character.
+- [x] **VOD-35** Similar row: TMDB's similar films that the library has, with "checking" and "none" states.
+- [x] **VOD-36** Details are looked up when the page opens, and a missing library poster is repaired.
 
 **Series page**
 
-- [ ] **VOD-37** Series page: backdrop, breadcrumb, title, facts (score, year, season count, runtime), synopsis, one-line cast.
-- [ ] **VOD-38** Season buttons with a tick on seasons watched to the end.
-- [ ] **VOD-39** Episode cards: still, "S1 E2", title, part-watched bar, watched badge, selection rule, duration.
-- [ ] **VOD-40** Focusing an episode selects it; the buttons, progress line and runtime follow the selection.
-- [ ] **VOD-41** Continue episode / Watch episode; Start from beginning; Mark as watched / unwatched for the selected episode.
-- [ ] **VOD-42** Mark season as watched.
-- [ ] **VOD-43** Episodes fetched from the provider on first open; Refresh episodes on demand.
-- [ ] **VOD-44** "Loading episodes…" pill; loading, error and empty messages for episodes.
-- [ ] **VOD-45** Wrong details? and Source for series.
-- [ ] **VOD-46** OK on an episode card plays that episode from its position.
+- [x] **VOD-37** Series page: backdrop, breadcrumb, title, facts (score, year, season count, runtime), synopsis, one-line cast.
+- [x] **VOD-38** Season buttons with a tick on seasons watched to the end.
+- [x] **VOD-39** Episode cards: still, "S1 E2", title, part-watched bar, watched badge, selection rule, duration.
+- [x] **VOD-40** Focusing an episode selects it; the buttons, progress line and runtime follow the selection.
+- [x] **VOD-41** Continue episode / Watch episode; Start from beginning; Mark as watched / unwatched for the selected episode.
+- [x] **VOD-42** Mark season as watched.
+- [x] **VOD-43** Episodes fetched from the provider on first open; Refresh episodes on demand.
+- [x] **VOD-44** "Loading episodes…" pill; loading, error and empty messages for episodes.
+- [x] **VOD-45** Wrong details? and Source for series.
+- [x] **VOD-46** OK on an episode card plays that episode from its position.
 
 **Watched state and progress**
 
-- [ ] **VOD-47** Positions saved per profile and per copy; the copies of one film share a position.
-- [ ] **VOD-48** Watched at 90 %, or with 3 minutes left on anything of 10 minutes or more.
-- [ ] **VOD-49** Continue watching feed for Home: one card per film or series, newest first.
+- [x] **VOD-47** Positions saved per profile and per copy; the copies of one film share a position.
+- [x] **VOD-48** Watched at 90 %, or with 3 minutes left on anything of 10 minutes or more.
+- [x] **VOD-49** Continue watching feed for Home: one card per film or series, newest first.
 - [ ] **VOD-50** Held-OK actions on a Continue watching card: Resume, Start from beginning, Mark as watched, Remove from Continue watching.
-- [ ] **VOD-51** Next-episode lookup across seasons (for autoplay).
+- [x] **VOD-51** Next-episode lookup across seasons (for autoplay).
 - [ ] **VOD-52** Trakt positions and watched marks overlaid on library progress.
 
 **Match picker**
 
-- [ ] **VOD-53** "Choose the right title": searches the provider's name on open, manual search, results with artwork, year and synopsis; choose, Undo my choice, Close.
+- [x] **VOD-53** "Choose the right title": searches the provider's name on open, manual search, results with artwork, year and synopsis; choose, Undo my choice, Close.
 
 **Artwork**
 
 - [ ] **VOD-54** Artwork disk cache limit 100 / 250 / 500 MB (default 250), applied at the next start; usage and Clear in Settings.
-- [ ] **VOD-55** Posters decoded at wall size; bounded memory cache; at most two images decoded at once.
+- [x] **VOD-55** Posters decoded at wall size; bounded memory cache; at most two images decoded at once.
 
 **Shared**
 
-- [ ] **VOD-56** Genre vocabulary of 22 genres with localized names, plus Unsorted.
-- [ ] **VOD-57** Title initials placeholder for missing artwork and cast photos.
+- [x] **VOD-56** Genre vocabulary of 22 genres with localized names, plus Unsorted.
+- [x] **VOD-57** Title initials placeholder for missing artwork and cast photos.
 - [ ] **VOD-58** Catalogue lookups used elsewhere: search (films, series, episodes), playable stream, title by key, next episode.
 
 ## Metadata enrichment
@@ -571,54 +571,54 @@ Spec: [specs/41-metadata-enrichment.md](../specs/41-metadata-enrichment.md) · M
 
 **Settings (Library section)**
 
-- [ ] **META-01** Group "Metadata and images (optional)" with the TMDB attribution logo.
-- [ ] **META-02** Switch "TMDB titles, plots and artwork"; it refuses to turn on without a key ("Enter a TMDB key below first.").
-- [ ] **META-03** TMDB credential field (API key or Read Access Token, masked, up to 2,048 characters), encrypted on the device.
-- [ ] **META-04** "Save key" stores the credential and clears all metadata so everything is looked up again.
-- [ ] **META-05** "Test TMDB" checks the typed credential against TMDB and says whether it works.
-- [ ] **META-06** Switch "TVmaze series information" (no key).
-- [ ] **META-07** Status line under the group for every save, test and clear result.
-- [ ] **META-08** Metadata language: 22 languages, default Finnish for a Finnish interface and English (US) otherwise; a change redoes the library's titles and posters in the background.
-- [ ] **META-09** "Clear metadata cache" (Maintenance group) and buttons opening the TMDB and TVmaze websites.
+- [x] **META-01** Group "Metadata and images (optional)" with the TMDB attribution logo.
+- [x] **META-02** Switch "TMDB titles, plots and artwork"; it refuses to turn on without a key ("Enter a TMDB key below first.").
+- [x] **META-03** TMDB credential field (API key or Read Access Token, masked, up to 2,048 characters), encrypted on the device.
+- [x] **META-04** "Save key" stores the credential and clears all metadata so everything is looked up again.
+- [x] **META-05** "Test TMDB" checks the typed credential against TMDB and says whether it works.
+- [x] **META-06** Switch "TVmaze series information" (no key).
+- [x] **META-07** Status line under the group for every save, test and clear result.
+- [x] **META-08** Metadata language: 22 languages, default Finnish for a Finnish interface and English (US) otherwise; a change redoes the library's titles and posters in the background.
+- [x] **META-09** "Clear metadata cache" (Maintenance group) and buttons opening the TMDB and TVmaze websites.
 
 **Background enrichment of the library**
 
-- [ ] **META-10** Every film and series of the active catalogues of enabled sources is looked up once: replacement title, poster (only where the provider has none), TMDB id and primary genre.
-- [ ] **META-11** Replacement title shown on walls, Home and Search; the TMDB poster fills a missing provider poster.
-- [ ] **META-12** One primary genre per title in the 22-genre vocabulary, from TMDB's genre ids (TVmaze gives none); vocabulary versioned so a change revisits every title.
-- [ ] **META-13** Runs only while the app is not in front (so never during playback), 30 s after leaving, in 4-minute runs, and is cancelled when the viewer returns.
-- [ ] **META-14** Durable queue that survives restarts, picks up imports and sweeps titles that left the catalogue.
-- [ ] **META-15** Provider failures retried with exponential backoff (15 min doubling to 24 h); real misses recorded as "no match" and not retried.
+- [x] **META-10** Every film and series of the active catalogues of enabled sources is looked up once: replacement title, poster (only where the provider has none), TMDB id and primary genre.
+- [x] **META-11** Replacement title shown on walls, Home and Search; the TMDB poster fills a missing provider poster.
+- [x] **META-12** One primary genre per title in the 22-genre vocabulary, from TMDB's genre ids (TVmaze gives none); vocabulary versioned so a change revisits every title.
+- [x] **META-13** Runs only while the app is not in front (so never during playback), 30 s after leaving, in 4-minute runs, and is cancelled when the viewer returns.
+- [x] **META-14** Durable queue that survives restarts, picks up imports and sweeps titles that left the catalogue.
+- [x] **META-15** Provider failures retried with exponential backoff (15 min doubling to 24 h); real misses recorded as "no match" and not retried.
 
 **On-demand lookups**
 
-- [ ] **META-16** Film page: TMDB details with runtime, rating, up to 8 cast members and up to 20 similar films, in the metadata language.
-- [ ] **META-17** Series page: TMDB series with details (runtime, rating, cast), TVmaze as a fallback.
-- [ ] **META-18** Selected episode: TMDB episode or TVmaze episode by number, 350 ms after the selection rests.
-- [ ] **META-19** Guide hero: programme lookup by title 350 ms after the selection rests (synopsis, year, still, "TMDB x.x" rating chip).
+- [x] **META-16** Film page: TMDB details with runtime, rating, up to 8 cast members and up to 20 similar films, in the metadata language.
+- [x] **META-17** Series page: TMDB series with details (runtime, rating, cast), TVmaze as a fallback.
+- [x] **META-18** Selected episode: TMDB episode or TVmaze episode by number, 350 ms after the selection rests.
+- [x] **META-19** Guide hero: programme lookup by title 350 ms after the selection rests (synopsis, year, still, "TMDB x.x" rating chip).
 - [ ] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language.
-- [ ] **META-21** A missing library poster is repaired from the details record when a page opens.
-- [ ] **META-22** "Source: TMDB" / "Source: TVmaze" opens the matched record's web page (film page, series page, guide hero).
+- [x] **META-21** A missing library poster is repaired from the details record when a page opens.
+- [x] **META-22** "Source: TMDB" / "Source: TVmaze" opens the matched record's web page (film page, series page, guide hero).
 
 **Matching and keys**
 
-- [ ] **META-23** Provider-title cleaning before searching: language and quality prefixes, bracketed decorations, season/episode markers, trailing years and quality tags.
-- [ ] **META-24** Conservative automatic matching: confidence ≥ 0.92 and a 0.08 lead over the runner-up, with a popularity tie-break for exact titles.
-- [ ] **META-25** Film work key: `tmdb:<id>` once matched, else `name:<cleaned title>:<year>`; the identity of a film across playlists.
-- [ ] **META-26** Film identity pass folds matched copies together (background priority, paged).
+- [x] **META-23** Provider-title cleaning before searching: language and quality prefixes, bracketed decorations, season/episode markers, trailing years and quality tags.
+- [x] **META-24** Conservative automatic matching: confidence ≥ 0.92 and a 0.08 lead over the runner-up, with a popularity tie-break for exact titles.
+- [x] **META-25** Film work key: `tmdb:<id>` once matched, else `name:<cleaned title>:<year>`; the identity of a film across playlists.
+- [x] **META-26** Film identity pass folds matched copies together (background priority, paged).
 
 **Fix a match**
 
-- [ ] **META-27** "Wrong details?" match picker: searches the cleaned provider name on open; manual search; results with poster, title, year and a two-line overview.
-- [ ] **META-28** Choosing a result pins it: it never expires and automatic matching never replaces it; the library title, poster and genre follow.
-- [ ] **META-29** "Undo my choice" (only when pinned) hands the title back to automatic matching.
+- [x] **META-27** "Wrong details?" match picker: searches the cleaned provider name on open; manual search; results with poster, title, year and a two-line overview.
+- [x] **META-28** Choosing a result pins it: it never expires and automatic matching never replaces it; the library title, poster and genre follow.
+- [x] **META-29** "Undo my choice" (only when pinned) hands the title back to automatic matching.
 
 **Caches, limits, attribution**
 
-- [ ] **META-30** Memory cache of 256 lookups plus a database cache: positive 30 days (TMDB) / 24 h (TVmaze), negative 7 days, pinned forever.
-- [ ] **META-31** Identical concurrent lookups share one request; leaving a screen cancels its request.
-- [ ] **META-32** TVmaze 429 handling (one retry after Retry-After, 1–5 s); responses capped at 2 MiB; text cut to 8,000 characters; artwork only over https.
-- [ ] **META-33** Localised errors for HTTP failures, oversized responses, invalid or missing key and a failed save.
+- [x] **META-30** Memory cache of 256 lookups plus a database cache: positive 30 days (TMDB) / 24 h (TVmaze), negative 7 days, pinned forever.
+- [x] **META-31** Identical concurrent lookups share one request; leaving a screen cancels its request.
+- [x] **META-32** TVmaze 429 handling (one retry after Retry-After, 1–5 s); responses capped at 2 MiB; text cut to 8,000 characters; artwork only over https.
+- [x] **META-33** Localised errors for HTTP failures, oversized responses, invalid or missing key and a failed save.
 - [ ] **META-34** Attribution: TMDB logo in Settings, TMDB and TVmaze (CC BY-SA) notices and the metadata disclosure on the legal screen ([About](../specs/72-updates-about-diagnostics.md)).
 
 ## Library organisation
@@ -627,46 +627,46 @@ Spec: [specs/42-library-organization.md](../specs/42-library-organization.md) ·
 
 **Rules**
 
-- [ ] **ORG-01** Three rooms (Live TV, Movies, Series) with independent rules.
-- [ ] **ORG-02** Show or hide a provider group, for one source or for the same-named group across all sources.
-- [ ] **ORG-03** Show or hide an item inside one group; its other groups are unaffected.
-- [ ] **ORG-04** "Hide everywhere" / "Show everywhere" for an item.
-- [ ] **ORG-05** Hiding a group keeps its members' own choices; showing it again restores them.
-- [ ] **ORG-06** Group order: original/provider, A–Z, Z–A, manual.
-- [ ] **ORG-07** Room default content order — Live: provider, A–Z, Z–A, manual; Movies and Series: A–Z, Z–A, newest release, oldest release, highest rating, manual. Missing year or rating sorts last.
-- [ ] **ORG-08** Per-group content order overriding the room default; "Use library default"; "Use default in every group…".
-- [ ] **ORG-09** Manual order of groups and items: Move mode, Move to top, Move to bottom, Move to position.
-- [ ] **ORG-10** The first manual order starts from the order on screen; switching to an automatic order and back restores the saved manual order.
-- [ ] **ORG-11** Shortcuts as groups: Favourites and Recently watched (Live), History (Movies, Series) can be hidden and placed.
-- [ ] **ORG-12** Custom channel lists appear as groups (Live): hide the list's guide entry, hide or order members inside the list only.
-- [ ] **ORG-13** A film carried by several playlists is one item (film identity); a choice made on it follows every copy.
-- [ ] **ORG-14** Items of a disabled source are shown as unavailable and no rule can enable them.
-- [ ] **ORG-15** Old "hidden categories" settings migrate into rules once.
+- [x] **ORG-01** Three rooms (Live TV, Movies, Series) with independent rules.
+- [x] **ORG-02** Show or hide a provider group, for one source or for the same-named group across all sources.
+- [x] **ORG-03** Show or hide an item inside one group; its other groups are unaffected.
+- [x] **ORG-04** "Hide everywhere" / "Show everywhere" for an item.
+- [x] **ORG-05** Hiding a group keeps its members' own choices; showing it again restores them.
+- [x] **ORG-06** Group order: original/provider, A–Z, Z–A, manual.
+- [x] **ORG-07** Room default content order — Live: provider, A–Z, Z–A, manual; Movies and Series: A–Z, Z–A, newest release, oldest release, highest rating, manual. Missing year or rating sorts last.
+- [x] **ORG-08** Per-group content order overriding the room default; "Use library default"; "Use default in every group…".
+- [x] **ORG-09** Manual order of groups and items: Move mode, Move to top, Move to bottom, Move to position.
+- [x] **ORG-10** The first manual order starts from the order on screen; switching to an automatic order and back restores the saved manual order.
+- [x] **ORG-11** Shortcuts as groups: Favourites and Recently watched (Live), History (Movies, Series) can be hidden and placed.
+- [x] **ORG-12** Custom channel lists appear as groups (Live): hide the list's guide entry, hide or order members inside the list only.
+- [x] **ORG-13** A film carried by several playlists is one item (film identity); a choice made on it follows every copy.
+- [x] **ORG-14** Items of a disabled source are shown as unavailable and no rule can enable them.
+- [x] **ORG-15** Old "hidden categories" settings migrate into rules once.
 - [ ] **ORG-16** Every surface applies the same rules (guide, player lists and zapping, walls, rail counts, History, Home, Search, sport channel matching).
 - [ ] **ORG-17** A restricted profile sees less than the rules allow, never more.
 
 **Library manager**
 
-- [ ] **ORG-18** Two panes: groups on the left, the selected group's content on the right.
-- [ ] **ORG-19** Room buttons (Live TV, Movies, Series), source scope ("All sources" or one source), filter All / Enabled / Disabled.
-- [ ] **ORG-20** "Search this pane" and Clear.
-- [ ] **ORG-21** Each group shows enabled / total; shortcuts show "Automatic view".
-- [ ] **ORG-22** Group menu: Disable/Enable group, Content order, Move, Move to top, Move to bottom, Move to position, Reset this group.
-- [ ] **ORG-23** Item menu: Hide/Show everywhere, Move, Move to top, Move to bottom, Move to position, with a note when the source or the group is disabled.
-- [ ] **ORG-24** OK on an item switches it on or off in this group.
-- [ ] **ORG-25** Select multiple, Select all matching entries, Enable/Disable selected or all matching, with a confirmation naming the count and scope.
-- [ ] **ORG-26** Undo of the last change.
-- [ ] **ORG-27** Loading, save-error and load-error states with Retry; a key-help line.
-- [ ] **ORG-28** The last group and source are remembered per room.
-- [ ] **ORG-29** "Advanced" (Live) opens Channel management.
-- [ ] **ORG-30** Opened from the guide's options, the walls' Options › Edit and Settings › Library.
-- [ ] **ORG-31** The All/Enabled choice is remembered and shared with Channel management's "Show hidden".
+- [x] **ORG-18** Two panes: groups on the left, the selected group's content on the right.
+- [x] **ORG-19** Room buttons (Live TV, Movies, Series), source scope ("All sources" or one source), filter All / Enabled / Disabled.
+- [x] **ORG-20** "Search this pane" and Clear.
+- [x] **ORG-21** Each group shows enabled / total; shortcuts show "Automatic view".
+- [x] **ORG-22** Group menu: Disable/Enable group, Content order, Move, Move to top, Move to bottom, Move to position, Reset this group.
+- [x] **ORG-23** Item menu: Hide/Show everywhere, Move, Move to top, Move to bottom, Move to position, with a note when the source or the group is disabled.
+- [x] **ORG-24** OK on an item switches it on or off in this group.
+- [x] **ORG-25** Select multiple, Select all matching entries, Enable/Disable selected or all matching, with a confirmation naming the count and scope.
+- [x] **ORG-26** Undo of the last change.
+- [x] **ORG-27** Loading, save-error and load-error states with Retry; a key-help line.
+- [x] **ORG-28** The last group and source are remembered per room.
+- [x] **ORG-29** "Advanced" (Live) opens Channel management.
+- [x] **ORG-30** Opened from the guide's options, the walls' Options › Edit and Settings › Library.
+- [x] **ORG-31** The All/Enabled choice is remembered and shared with Channel management's "Show hidden".
 
 **Groups of your own**
 
-- [ ] **ORG-32** Up to 24 genre groups for Movies and Series: name, genres, year range, minimum rating.
-- [ ] **ORG-33** Settings list with a one-line summary per group, "None yet" when empty, "Add a group".
-- [ ] **ORG-34** Editor dialog: name, a switch per genre present in the library, from year, to year, rating at least; Save only when the group says something; Delete; Close.
+- [x] **ORG-32** Up to 24 genre groups for Movies and Series: name, genres, year range, minimum rating.
+- [x] **ORG-33** Settings list with a one-line summary per group, "None yet" when empty, "Add a group".
+- [x] **ORG-34** Editor dialog: name, a switch per genre present in the library, from year, to year, rating at least; Save only when the group says something; Delete; Close.
 
 **Backup**
 

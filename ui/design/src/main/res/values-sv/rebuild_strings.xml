@@ -22,4 +22,7 @@
     <string name="player_cause_other">Strömmen slutade spelas.</string>
     <string name="player_archive_title">Arkiv · %1$s</string>
     <string name="player_archive_unavailable">Det här programmet finns inte i arkivet.</string>
+    <string name="metadata_key_refused">TMDB avvisade nyckeln tre gånger, så hämtningen i bakgrunden har stoppats. Kontrollera nyckeln och tryck sedan på Spara nyckel.</string>
+    <string name="metadata_tvmaze_credit">En del serieuppgifter från TVmaze (CC BY-SA)</string>
+    <string name="custom_group_limit">Högst 24 grupper</string>
 </resources>

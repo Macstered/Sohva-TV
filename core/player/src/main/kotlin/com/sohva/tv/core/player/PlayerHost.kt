@@ -25,6 +25,12 @@ interface PlayerEnvironment {
      */
     suspend fun resolveArchive(channelKey: String, start: Long, stop: Long): ArchiveResult
 
+    /** Resolves a film or an episode by its content key (spec 30 PLAY-FR-14, spec 40 VOD-FR-102); null when gone. */
+    suspend fun resolveVod(contentKey: String): ResolvedStream?
+
+    /** Saves where a film or an episode got to (spec 30 PLAY-FR-130..131); the store applies the watched rule. */
+    suspend fun saveProgress(contentKey: String, positionMs: Long, durationMs: Long)
+
     /** The playback client: HTTP/1.1, connect 20 s, read 90 s, redirects followed (PLAY-FR-18). */
     val callFactory: Call.Factory
 

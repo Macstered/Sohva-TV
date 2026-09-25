@@ -95,9 +95,6 @@ interface ChannelEditDao {
     @Query(EditSql.AFTER)
     fun after(sourceId: String, rank: Long, id: Long, exclude: String): RankedChannel?
 
-    @Query("UPDATE channel SET display_rank = :rank WHERE id = :id")
-    fun setRank(id: Long, rank: Long)
-
     @Query("SELECT * FROM channel_custom WHERE channel_key IN (:keys)")
     fun customs(keys: List<String>): List<ChannelCustomEntity>
 
@@ -152,5 +149,6 @@ object EditSql {
             "AND key != :exclude AND (display_rank > :rank OR (display_rank = :rank AND id > :id)) ORDER BY display_rank, id LIMIT 1"
 
     const val RECOUNT_GROUP: String =
-        "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId AND visible = 1) WHERE id = :groupId"
+        "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId AND visible = 1), " +
+            "total_count = (SELECT COUNT(*) FROM channel WHERE group_id = :groupId) WHERE id = :groupId"
 }

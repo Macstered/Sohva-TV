@@ -14,6 +14,8 @@ data class FeatureFlags(
     val reminders: Boolean,
     val publicUpdates: Boolean,
     val demoContent: Boolean,
+    /** The background metadata enrichment (spec 41 META-FR-62): never in the Lab build. */
+    val metadataWorker: Boolean = true,
 ) {
     companion object {
         fun resolve(kind: BuildKind, traktConfigured: Boolean): FeatureFlags = FeatureFlags(
@@ -23,6 +25,7 @@ data class FeatureFlags(
             reminders = kind != BuildKind.LAB,
             publicUpdates = kind == BuildKind.RELEASE,
             demoContent = kind == BuildKind.DEMO,
+            metadataWorker = kind != BuildKind.LAB,
         )
     }
 }

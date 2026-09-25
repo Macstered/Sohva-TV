@@ -4,6 +4,9 @@ import com.sohva.tv.core.data.database.ChannelCustomEntity
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.live.ChannelEffects
+import com.sohva.tv.core.data.org.OrgPass
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.channel.ChannelEdits
 import com.sohva.tv.core.model.channel.ChannelMove
 import com.sohva.tv.core.model.channel.ChannelPositions
@@ -90,20 +93,25 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
             val moving = db.live().byKey(key) ?: return@withContext false
             val (neighbourId, neighbourKey) = onScreen(moving.rank, moving.id) ?: return@withContext false
             val neighbour = db.live().byKey(neighbourKey) ?: return@withContext false
+            // A channel moves inside its group: the guide orders a source group by group (GUIDE-13),
+            // and positions are places inside the group, not whole ranks.
+            val block = ChannelEffects.blockOf(moving.rank)
+            if (ChannelEffects.blockOf(neighbour.rank) != block) return@withContext false
             val far = if (up) {
                 edits.before(sourceId, neighbour.rank, neighbourId, key)
             } else {
                 edits.after(sourceId, neighbour.rank, neighbourId, key)
-            }
+            }?.takeIf { ChannelEffects.blockOf(it.rank) == block }
+            val place = ChannelEffects::inGroup
             val order = buildList {
                 if (up) {
-                    far?.let { add(Placed(it.key, it.rank, false)) }
-                    add(Placed(neighbourKey, neighbour.rank, true))
-                    add(Placed(key, moving.rank, true))
+                    far?.let { add(Placed(it.key, place(it.rank), false)) }
+                    add(Placed(neighbourKey, place(neighbour.rank), true))
+                    add(Placed(key, place(moving.rank), true))
                 } else {
-                    add(Placed(key, moving.rank, true))
-                    add(Placed(neighbourKey, neighbour.rank, true))
-                    far?.let { add(Placed(it.key, it.rank, false)) }
+                    add(Placed(key, place(moving.rank), true))
+                    add(Placed(neighbourKey, place(neighbour.rank), true))
+                    far?.let { add(Placed(it.key, place(it.rank), false)) }
                 }
             }
             when (val target = ChannelMove.target(order, key, up)) {
@@ -126,8 +134,8 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
      * Gives every channel of [sourceId] a position, steps of 1,024 in the current order, in pages
      * of 2,000 rows, one transaction each (CHAN-NFR-04). Used for a source's first move and when a
      * gap runs out. Two walks: the first follows the current order and writes positions only, so
-     * the order it walks never changes under it; the second walks the edit rows by key and makes
-     * each channel's rank its position.
+     * the order it walks never changes under it; the second walks the edit rows by key and ranks
+     * each channel from its position inside its group.
      */
     private fun renumber(sourceId: String) {
         var afterRank = Long.MIN_VALUE
@@ -154,7 +162,8 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
         while (true) {
             val page = edits.editedPage(sourceId, afterKey, BULK_PAGE)
             if (page.isEmpty()) return
-            db.runInTransaction { for (r in page) r.custom.position?.let { edits.setRank(r.channelId, it) } }
+            // The new positions become ranks inside each channel's group block (GUIDE-13).
+            OrgPass(db, OrgRules(db), LibraryPasses(db)).resolveChannels(page.map { it.custom.channelKey })
             afterKey = page.last().custom.channelKey
             if (page.size < BULK_PAGE) return
         }
@@ -181,6 +190,8 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
             row.providerName, row.providerGroupId, row.providerLogoUrl, row.tvgId, row.providerNumber, row.playlistOrder, custom, customGroupId,
         )
         edits.updateShown(row.id, shown.name, shown.sortName, shown.groupId, shown.logoUrl, shown.number, shown.epgId, shown.visible, shown.displayRank)
+        // The hidden flag is one input; the organisation rules decide with it (spec 42 ORG-FR-15, -16).
+        OrgPass(db, OrgRules(db), LibraryPasses(db)).resolveChannels(listOf(key))
         row.groupId?.let(edits::recountGroup)
         if (shown.groupId != row.groupId) shown.groupId?.let(edits::recountGroup)
     }

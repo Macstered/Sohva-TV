@@ -71,4 +71,9 @@ data class ContentGroupEntity(
     val shown: Boolean,
     val position: Int,
     @ColumnInfo(name = "sort_mode") val sortMode: String?,
+    /**
+     * Every item of the group, shown or not (films counted once per film identity): the library
+     * manager's "enabled / total" without counting over the catalogue (spec 42 §9.2).
+     */
+    @ColumnInfo(name = "total_count", defaultValue = "0") val totalCount: Int = 0,
 )

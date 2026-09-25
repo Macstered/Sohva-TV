@@ -84,7 +84,7 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
                 model.cycleShape()
                 true
             }
-            RemoteAction.LEAVE_PLAYER -> playing?.let { model.navigation.leave(it); true } ?: false
+            RemoteAction.LEAVE_PLAYER -> model.currentKey()?.let { model.navigation.leave(it); true } ?: false
             RemoteAction.GO_HOME -> {
                 model.navigation.home()
                 true

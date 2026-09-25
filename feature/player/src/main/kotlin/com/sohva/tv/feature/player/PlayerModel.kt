@@ -18,6 +18,8 @@ import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.model.guide.GuideWindow
 import com.sohva.tv.core.model.player.PictureShape
 import com.sohva.tv.core.model.player.PlaybackSettings
+import com.sohva.tv.core.model.player.SubtitleChoice
+import com.sohva.tv.core.model.player.TrackLanguages
 import com.sohva.tv.core.model.text.Initials
 import com.sohva.tv.core.model.text.StreamTags
 import com.sohva.tv.core.player.PlaybackErrors
@@ -45,9 +47,24 @@ class PlayerModel(
     val archive: ArchiveWindow? = null,
     /** False when a reminder or a notification started playback: not a recent channel (CHAN-FR-61). */
     private val recordFirst: Boolean = true,
+    /** A film or an episode instead of a channel (spec 30 §3.1): transport controls, no channels. */
+    val vod: VodPlay? = null,
 ) : ViewModel() {
-    /** Live TV, as opposed to catch-up ("timeshift" in spec 31). */
-    val live: Boolean get() = archive == null
+    /** Live TV, as opposed to catch-up and VOD ("timeshift" in spec 31). */
+    val live: Boolean get() = archive == null && vod == null
+
+    private val _title = MutableStateFlow<String?>(null)
+
+    /** The session's title (spec 30 PLAY-FR-47): the film or episode as the service resolved it. */
+    val title: StateFlow<String?> = _title.asStateFlow()
+
+    /** The end of a film or an episode is handled once per item (PLAY-FR-132). */
+    private var finished = false
+
+    /** VOD language preferences are applied once per item (PLAY-FR-75), never over the viewer's own choice. */
+    private var languagesApplied = false
+    private var audioByHand = false
+    private var textByHand = false
 
     private val reads = env.reads
 
@@ -136,7 +153,7 @@ class PlayerModel(
             try {
                 controller = env.client.connect(listener).also { it.addListener(listener) }
                 _connection.value = Connection.READY
-                play(firstChannel, record = recordFirst)
+                if (vod != null) playVod(vod) else play(firstChannel, record = recordFirst)
             } catch (e: Exception) {
                 _connection.value = Connection.FAILED
             }
@@ -174,6 +191,24 @@ class PlayerModel(
             reveal()
         }
     }
+
+    /** A film or an episode from its resume position (PLAY-FR-01, spec 40 VOD-FR-64). */
+    private fun playVod(request: VodPlay) {
+        val c = controller ?: return
+        finished = false
+        c.stop()
+        c.clearMediaItems()
+        val extras = Bundle().apply { putBoolean(PlaybackService.EXTRA_VOD, true) }
+        val item = MediaItem.Builder().setMediaId(request.contentKey)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build()
+        c.setMediaItem(item, request.startMs)
+        c.prepare()
+        c.play()
+        reveal()
+    }
+
+    /** The channel or the film playing: what Back and Leave report to the app. */
+    fun currentKey(): String? = _playing.value?.channel?.key ?: vod?.contentKey
 
     /** A catch-up item carries the programme's times for the service (spec 22 CATCH-FR-40). */
     private fun itemFor(key: String): MediaItem {
@@ -297,6 +332,12 @@ class PlayerModel(
     // ---- Tracks (PLAY-FR-70..74) -----------------------------------------------------------------
 
     fun chooseTrack(item: TrackItem?, type: Int) {
+        if (type == C.TRACK_TYPE_AUDIO) audioByHand = true else textByHand = true
+        select(item, type)
+        closePicker()
+    }
+
+    private fun select(item: TrackItem?, type: Int) {
         val c = controller ?: return
         val builder = c.trackSelectionParameters.buildUpon().clearOverridesOfType(type)
         if (item == null) {
@@ -306,7 +347,22 @@ class PlayerModel(
             builder.setTrackTypeDisabled(type, false).setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, item.index))
         }
         c.trackSelectionParameters = builder.build()
-        closePicker()
+    }
+
+    /** Once the audio tracks of a film or episode are known (PLAY-FR-75); live and catch-up keep the stream's own. */
+    private fun applyLanguages(tracks: Tracks) {
+        if (vod == null || languagesApplied || tracks.audio.isEmpty()) return
+        languagesApplied = true
+        viewModelScope.launch {
+            val prefs = env.settings().vodLanguages
+            val choice = TrackLanguages.choose(prefs, tracks.audio.map { it.language }, tracks.text.map { it.language }, audioByHand, textByHand)
+            choice.audio?.let { select(tracks.audio[it], C.TRACK_TYPE_AUDIO) }
+            when (val subtitles = choice.subtitles) {
+                SubtitleChoice.Keep -> Unit
+                SubtitleChoice.Off -> select(null, C.TRACK_TYPE_TEXT)
+                is SubtitleChoice.Track -> select(tracks.text[subtitles.index], C.TRACK_TYPE_TEXT)
+            }
+        }
     }
 
     /** Next audio track (mapped action): needs two or more (PLAY-FR-73). */
@@ -426,6 +482,15 @@ class PlayerModel(
                 attempt = 0
                 _banner.value = null
             }
+            val request = vod
+            if (playbackState == Player.STATE_ENDED && request != null && !finished) {
+                finished = true
+                navigation.finished(request.contentKey)
+            }
+        }
+
+        override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
+            _title.value = mediaMetadata.title?.toString()
         }
 
         override fun onPlayerError(error: PlaybackException) = onError(error)
@@ -436,6 +501,7 @@ class PlayerModel(
 
         override fun onTracksChanged(tracks: MediaTracks) {
             _tracks.value = tracksOf(tracks)
+            applyLanguages(_tracks.value)
             _frameRate.value = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
                 ?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).frameRate } }
                 ?.takeIf { it > 0f }

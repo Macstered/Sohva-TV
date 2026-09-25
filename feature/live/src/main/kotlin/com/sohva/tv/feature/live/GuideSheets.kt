@@ -54,11 +54,16 @@ internal fun GuideOptions(model: GuideModel, navigation: GuideNavigation, onClos
         )
         TvActionButton(
             stringResource(R.string.guide_sort, stringResource(R.string.guide_sort_playlist)),
-            { navigation.notYetAvailable() },
-            full,
+            { navigation.openManager(model.managerGroup(), source?.id) },
+            full.testTag("guide-options-sort"),
             icon = TvIcons.Guide,
         )
-        TvActionButton(stringResource(R.string.category_edit), { navigation.notYetAvailable() }, full, icon = TvIcons.Check)
+        TvActionButton(
+            stringResource(R.string.category_edit),
+            { navigation.openManager(model.managerGroup(), source?.id) },
+            full.testTag("guide-options-edit"),
+            icon = TvIcons.Check,
+        )
         TvActionButton(stringResource(R.string.guide_channels), { navigation.openChannels() }, full.testTag("guide-options-channels"), icon = TvIcons.Channels)
         TvActionButton(stringResource(R.string.guide_settings), {
             model.overlays.closeOptions()

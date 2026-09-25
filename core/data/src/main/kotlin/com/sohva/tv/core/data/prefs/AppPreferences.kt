@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.sohva.tv.core.data.metadata.MetadataPreferences
 import com.sohva.tv.core.model.player.BufferProfile
 import com.sohva.tv.core.model.player.Gesture
 import com.sohva.tv.core.model.player.PlaybackSettings
@@ -17,11 +18,15 @@ import com.sohva.tv.core.model.player.SkipStep
 import com.sohva.tv.core.model.player.SubtitleBackground
 import com.sohva.tv.core.model.player.SubtitleColor
 import com.sohva.tv.core.model.player.SubtitleSize
+import com.sohva.tv.core.model.player.VodLanguages
 import com.sohva.tv.core.model.settings.ColorThemeId
 import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
+import com.sohva.tv.core.model.vod.CustomGroup
+import com.sohva.tv.core.model.vod.CustomGroups
+import com.sohva.tv.core.model.vod.PreferredCopy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -32,7 +37,7 @@ import kotlinx.coroutines.flow.map
  * beta 23 every zap wrote a recent channel and re-emitted all settings to every screen, the app
  * root included (plan/03 §2.4, §4.6).
  */
-class AppPreferences(private val store: DataStore<Preferences>) {
+class AppPreferences(private val store: DataStore<Preferences>) : MetadataPreferences {
     val theme: Flow<ColorThemeId> = key(THEME) { ColorThemeId.fromStored(it) }
     val scale: Flow<InterfaceScale> = key(SCALE) { InterfaceScale.fromStored(it) }
     val startupScreen: Flow<StartupScreen> = key(STARTUP_SCREEN) { StartupScreen.fromStored(it) }
@@ -63,11 +68,38 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         }
     }
 
+    /** Groups of your own (spec 42 ORG-FR-60): device-wide, in their saved order. Parsed where collected (off the main thread). */
+    val customGroups: Flow<List<CustomGroup>> = store.data.map { it[CUSTOM_GROUPS] }.distinctUntilChanged().map(CustomGroupCodec::decode)
+
+    /** Saves or replaces [group] by id (ORG-FR-60); an unusable group or a 25th changes nothing. */
+    suspend fun saveCustomGroup(group: CustomGroup) {
+        store.edit { it[CUSTOM_GROUPS] = CustomGroupCodec.encode(CustomGroups.save(CustomGroupCodec.decode(it[CUSTOM_GROUPS]), group)) }
+    }
+
+    suspend fun deleteCustomGroup(id: String) {
+        store.edit { it[CUSTOM_GROUPS] = CustomGroupCodec.encode(CustomGroups.delete(CustomGroupCodec.decode(it[CUSTOM_GROUPS]), id)) }
+    }
+
     /** `editors_show_hidden`, shared by channel management and the Library manager (spec 21 CHAN-FR-16). */
     val editorsShowHidden: Flow<Boolean> = store.data.map { it[EDITORS_SHOW_HIDDEN] ?: true }.distinctUntilChanged()
 
     suspend fun setEditorsShowHidden(value: Boolean) {
         store.edit { it[EDITORS_SHOW_HIDDEN] = value }
+    }
+
+    /** The library manager's last group and source per room (spec 42 ORG-28): `manager_group_<ROOM>`, `manager_source_<ROOM>`. */
+    suspend fun managerLocation(room: String): Pair<String?, String?> {
+        val p = store.data.first()
+        return p[stringPreferencesKey("manager_group_$room")] to p[stringPreferencesKey("manager_source_$room")]
+    }
+
+    suspend fun setManagerLocation(room: String, group: String?, source: String?) {
+        store.edit {
+            val g = stringPreferencesKey("manager_group_$room")
+            val s = stringPreferencesKey("manager_source_$room")
+            if (group == null) it.remove(g) else it[g] = group.take(2_048)
+            if (source == null) it.remove(s) else it[s] = source.take(2_048)
+        }
     }
 
     /** Whether the "Let reminders open Sohva TV" prompt was shown; once per installation (REM-FR-05). */
@@ -96,8 +128,39 @@ class AppPreferences(private val store: DataStore<Preferences>) {
             subtitleBackground = SubtitleBackground.fromStored(p[SUBTITLE_BACKGROUND]),
             showChannelNumbers = p[SHOW_CHANNEL_NUMBERS] ?: true,
             timeZone = p[TIME_ZONE],
+            vodLanguages = VodLanguages(
+                audio = VodLanguages.stored(p[AUDIO_PRIMARY]),
+                audioSecond = VodLanguages.stored(p[AUDIO_SECONDARY]),
+                subtitles = VodLanguages.stored(p[SUBTITLE_PRIMARY]),
+                subtitlesSecond = VodLanguages.stored(p[SUBTITLE_SECONDARY]),
+            ),
         )
     }
+
+    override suspend fun metadataLanguage(): String? = store.data.first()[METADATA_LANGUAGE]
+
+    override suspend fun setMetadataLanguage(tag: String) {
+        store.edit { it[METADATA_LANGUAGE] = tag }
+    }
+
+    override suspend fun metadataKeyRefused(): Boolean = store.data.first()[METADATA_KEY_REFUSED] ?: false
+
+    override suspend fun setMetadataKeyRefused(refused: Boolean) {
+        store.edit { it[METADATA_KEY_REFUSED] = refused }
+    }
+
+    /** "When a film has more than one version" (spec 40 VOD-FR-32); unknown → whichever comes first. */
+    suspend fun preferredCopy(): PreferredCopy = PreferredCopy.of(store.data.first()[PREFERRED_COPY])
+
+    /** The same, observed by Settings. */
+    val preferredCopyChanges: Flow<PreferredCopy> get() = key(PREFERRED_COPY, PreferredCopy::of)
+
+    suspend fun setPreferredCopy(copy: PreferredCopy) {
+        store.edit { it[PREFERRED_COPY] = copy.name }
+    }
+
+    /** "Continue to the next episode" (spec 70 SET-34, spec 30 PLAY-FR-132); on by default. */
+    suspend fun autoPlayNextEpisode(): Boolean = store.data.first()[AUTO_PLAY_NEXT] ?: true
 
     /** Trimmed, cut to 128 characters; blank removes the key (GUIDE-FR-12). */
     suspend fun setLastGuideSource(id: String?) {
@@ -160,12 +223,23 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
         private val REMINDER_OVERLAY_ASKED = booleanPreferencesKey("reminder_overlay_asked")
         private val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")
+        private val CUSTOM_GROUPS = stringPreferencesKey("custom_catalogue_groups")
 
         // Beta 23's "Remote channel browser" setting: read (never shown) until a mapping is written.
         private val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")
         private val BUFFER_PROFILE = stringPreferencesKey("playback_buffer_profile")
         private val RECONNECT_POLICY = stringPreferencesKey("playback_reconnect_policy")
         private val SEEK_STEP = stringPreferencesKey("playback_seek_step")
+        private val AUTO_PLAY_NEXT = booleanPreferencesKey("auto_play_next_episode")
+        private val PREFERRED_COPY = stringPreferencesKey("preferred_catalogue_copy")
+        private val METADATA_LANGUAGE = stringPreferencesKey("metadata_language")
+
+        // Spec 70 SET-39 under beta 23's names; Settings offers them in M7.
+        private val AUDIO_PRIMARY = stringPreferencesKey("preferred_audio_language")
+        private val AUDIO_SECONDARY = stringPreferencesKey("secondary_audio_language")
+        private val SUBTITLE_PRIMARY = stringPreferencesKey("preferred_subtitle_language")
+        private val SUBTITLE_SECONDARY = stringPreferencesKey("secondary_subtitle_language")
+        private val METADATA_KEY_REFUSED = booleanPreferencesKey("metadata_key_refused")
         private val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         private val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
         private val SUBTITLE_SIZE = stringPreferencesKey("subtitle_text_size")

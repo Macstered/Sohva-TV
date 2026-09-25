@@ -28,6 +28,30 @@ object ChannelEffects {
 
     fun playlistRank(playlistOrder: Int): Long = UNPOSITIONED + playlistOrder * RANK_STEP
 
+    /**
+     * The organisation order (spec 20 GUIDE-FR-32) puts a source's channels in blocks, one per
+     * group in the Live group order; `display_rank` = block × [BLOCK] + the channel's place inside
+     * its group. Places stay within ±2⁴¹ (viewer positions, [UNPOSITIONED] + playlist ranks, sorted
+     * places), so the block decides first and one index still pages a group and the whole source.
+     */
+    const val BLOCK: Long = 1L shl 42
+    private const val HALF_BLOCK: Long = 1L shl 41
+
+    fun rank(block: Long, inGroup: Long): Long = block * BLOCK + inGroup
+
+    /**
+     * With the provider group order a group's block is its provider order + 1, so an import writes
+     * the final rank at once and the organisation pass rewrites only what rules reorder. Blocks
+     * need order, not density; channels without a group come after every group.
+     */
+    fun providerBlock(providerOrder: Int): Long = providerOrder + 1L
+
+    const val UNGROUPED_BLOCK: Long = 1L shl 20
+
+    fun blockOf(rank: Long): Long = Math.floorDiv(rank + HALF_BLOCK, BLOCK)
+
+    fun inGroup(rank: Long): Long = rank - blockOf(rank) * BLOCK
+
     /** [customGroupId] is the id of the custom group's `content_group` row when [custom] names one. */
     fun shown(
         providerName: String,

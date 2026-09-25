@@ -38,11 +38,16 @@ class MainActivity : ComponentActivity(), RootHost {
 
     override fun onStart() {
         super.onStart()
-        (application as SohvaApplication).graph.inForeground.value = true
+        val graph = (application as SohvaApplication).graph
+        graph.inForeground.value = true
+        // The enrichment gives way while the viewer is here (spec 41 META-FR-62).
+        if (graph.flags.metadataWorker) graph.metadata.scheduler.onReturn()
     }
 
     override fun onStop() {
-        (application as SohvaApplication).graph.inForeground.value = false
+        val graph = (application as SohvaApplication).graph
+        graph.inForeground.value = false
+        if (graph.flags.metadataWorker && !isChangingConfigurations) graph.metadata.scheduler.onLeave()
         super.onStop()
     }
 

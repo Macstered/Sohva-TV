@@ -19,6 +19,7 @@ internal class GroupResolver(private val dao: GroupImportDao, private val source
     private val existing: MutableMap<String, ContentGroupEntity> =
         dao.groups(sourceId, room.name).associateByTo(HashMap()) { it.groupKey }
     private val met = LinkedHashMap<String, Met>()
+    private val orderById = HashMap<Long, Int>()
 
     private class Met(val id: Long, var name: String, val order: Int, var count: Int)
 
@@ -32,8 +33,12 @@ internal class GroupResolver(private val dao: GroupImportDao, private val source
         val order = met.size
         val id = existing[ref.key]?.id ?: insert(ref, order)
         met[ref.key] = Met(id, ref.name, order, if (count) 1 else 0)
+        orderById[id] = order
         return id
     }
+
+    /** The provider order this import gave [groupId] (the order groups first appear); writer thread. */
+    fun providerOrder(groupId: Long): Int? = orderById[groupId]
 
     /** Moves one counted item out of [groupId] (a channel moved or hidden by the household's edits). */
     fun uncount(groupId: Long) {

@@ -7,10 +7,12 @@ import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.data.database.LiveSource
 import com.sohva.tv.core.data.live.ChannelList
 import com.sohva.tv.core.data.live.ListSpec
+import com.sohva.tv.core.data.live.LiveRailRules
 import com.sohva.tv.core.model.guide.CatchupRules
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.guide.GuideRules
 import com.sohva.tv.core.model.guide.GuideWindow
+import com.sohva.tv.core.model.org.OrgKeys
 import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.reminder.ReminderIds
 import com.sohva.tv.core.model.reminder.ReminderKind
@@ -56,6 +58,15 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private val _list = MutableStateFlow<ListView?>(null)
     val list: StateFlow<ListView?> = _list.asStateFlow()
 
+    /** The group the library manager opens at (spec 42 §3): the rail entry shown, null for All channels. */
+    fun managerGroup(): String? = when (val entry = _list.value?.entry) {
+        RailEntry.Favourites -> OrgKeys.FAVOURITES
+        RailEntry.Recent -> OrgKeys.RECENT
+        is RailEntry.Group -> entry.group.name
+        is RailEntry.CustomList -> OrgKeys.list(entry.listId)
+        else -> null
+    }
+
     private val _reading = MutableStateFlow(false)
 
     /** "Reading the guide…" above the kept rows after 400 ms (GUIDE-FR-36). */
@@ -70,6 +81,9 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
 
     private val _selection = MutableStateFlow<GuideSelection?>(null)
     val selection: StateFlow<GuideSelection?> = _selection.asStateFlow()
+
+    /** The selected programme's metadata, once looked up (GUIDE-FR-64). */
+    val heroMetadata: StateFlow<HeroMetadata?> = GuideHeroLookup(env, viewModelScope, selection).metadata
 
     private val _focus = MutableStateFlow<GuideFocus?>(null)
     val focus: StateFlow<GuideFocus?> = _focus.asStateFlow()
@@ -108,6 +122,14 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         viewModelScope.launch { env.timeZone.collect { _labels.value = TimeLabels(TimeLabels.zoneOf(it), env.locale) } }
         viewModelScope.launch { tick() }
         viewModelScope.launch { watchSources() }
+        viewModelScope.launch {
+            // Organisation changes (the library manager) re-order the rail and hide its shortcuts.
+            reads.railRuleChanges().collect { rules ->
+                if (rules == railRules) return@collect
+                railRules = rules
+                refreshRail()
+            }
+        }
         viewModelScope.launch {
             // Writes re-read the rail and the list; a burst folds into one read (GUIDE-FR-37).
             reads.changes().drop(1).conflate().collect {
@@ -170,6 +192,9 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private fun firstGroup(): RailEntry =
         GuideRules.firstGroup(_rail.value.mapNotNull { it.entry as? RailEntry.Group }) { null } ?: RailEntry.All
 
+    /** The Live room's rail rules as last observed; the rail never waits for them. */
+    private var railRules = LiveRailRules()
+
     private suspend fun refreshRail() {
         val source = _source.value ?: return
         val groups = reads.rail(source.id)
@@ -177,12 +202,14 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         val all = groups.sumOf { it.itemCount } + ungrouped
         val favouriteCount = favourites.value.size
         val lists = reads.customLists().first()
-        _rail.value = buildList {
-            add(RailItem(RailEntry.Favourites, favouriteCount.takeIf { it > 0 }))
-            add(RailItem(RailEntry.All, all.takeIf { it > 0 }))
-            add(RailItem(RailEntry.Recent, null))
-            lists.forEach { add(RailItem(RailEntry.CustomList(it.id, it.name), null)) }
-            groups.forEach { add(RailItem(RailEntry.Group(it), it.itemCount)) }
+        val rules = railRules
+        _rail.value = GuideRailOrder.entries(groups, lists, rules) { entry ->
+            when (entry) {
+                RailEntry.Favourites -> favouriteCount.takeIf { it > 0 }
+                RailEntry.All -> all.takeIf { it > 0 }
+                is RailEntry.Group -> entry.group.itemCount
+                else -> null
+            }
         }
         // A selected group that disappeared (GUIDE-FR-15).
         val selected = _entry.value as? RailEntry.Group ?: return
@@ -500,6 +527,8 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     }
 
     fun reminderId(row: GuideRowData, programme: GuideProgramme): String = ReminderIds.programme(row.key, programme.key)
+
+    fun openSource(url: String) = env.openUrl(url)
 
     fun toggleFavourite(key: String) {
         viewModelScope.launch {

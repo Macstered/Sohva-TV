@@ -22,4 +22,7 @@
     <string name="player_cause_other">Der Stream wurde nicht mehr abgespielt.</string>
     <string name="player_archive_title">Archiv · %1$s</string>
     <string name="player_archive_unavailable">Diese Sendung ist im Archiv nicht verfügbar.</string>
+    <string name="metadata_key_refused">TMDB hat den Schlüssel dreimal abgelehnt, daher ist die Abfrage im Hintergrund angehalten. Prüfe den Schlüssel und drücke dann Schlüssel speichern.</string>
+    <string name="metadata_tvmaze_credit">Einige Serieninfos von TVmaze (CC BY-SA)</string>
+    <string name="custom_group_limit">Bis zu 24 Gruppen</string>
 </resources>

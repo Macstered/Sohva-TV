@@ -41,9 +41,11 @@ class LiveImportTest {
         playlistOnly()
         assertEquals("success|null|null|3", status())
         assertEquals(
-            listOf("One|one.fi|News|0|null", "Two|null|News|1024|null", "Three|null|Sport|2048|7"),
+            // Group by group (GUIDE-FR-32): block, then the place inside the group.
+            listOf("One|one.fi|News|1|0|null", "Two|null|News|1|1024|null", "Three|null|Sport|2|2048|7"),
             h.query(
-                "SELECT c.name, c.epg_id, g.name, c.display_rank - ${ChannelEffects.UNPOSITIONED}, c.number " +
+                "SELECT c.name, c.epg_id, g.name, c.display_rank / ${ChannelEffects.BLOCK}, " +
+                    "c.display_rank % ${ChannelEffects.BLOCK} - ${ChannelEffects.UNPOSITIONED}, c.number " +
                     "FROM channel c JOIN content_group g ON g.id = c.group_id ORDER BY c.display_rank",
             ),
         )
@@ -62,7 +64,8 @@ class LiveImportTest {
         assertEquals(listOf("1", "1", "1"), h.query("SELECT generation FROM channel"))
         h.serve("/list.m3u", playlist(entry("One"), entry("Two", group = "Moved"), entry("Four")))
         playlistOnly()
-        assertEquals(listOf("One|1", "Two|3", "Four|3"), h.query("SELECT name, generation FROM channel ORDER BY display_rank"))
+        // News (first seen first) before Moved: the guide orders a source group by group (GUIDE-FR-32).
+        assertEquals(listOf("One|1", "Four|3", "Two|3"), h.query("SELECT name, generation FROM channel ORDER BY display_rank"))
         assertEquals(listOf("Moved", "News"), h.query("SELECT name FROM content_group ORDER BY name"))
     }
 
@@ -84,7 +87,12 @@ class LiveImportTest {
         h.serve("/list.m3u", playlist(entry("One", id = "one.fi", extra = " tvg-logo=\"https://provider.example/new.png\" tvg-chno=\"5\""), entry("Two"), entry("Three", group = "Sport")))
         playlistOnly()
         assertEquals(
-            listOf("Three|Sport|1|null|512", "Mine|Favourites here|1|42|${ChannelEffects.UNPOSITIONED}", "Two|News|0|null|${ChannelEffects.UNPOSITIONED + 1024}"),
+            // Blocks in group order (News, Sport, then the custom group made last); the position orders inside Sport.
+            listOf(
+                "Two|News|0|null|${ChannelEffects.rank(1, ChannelEffects.UNPOSITIONED + 1024)}",
+                "Three|Sport|1|null|${ChannelEffects.rank(2, 512)}",
+                "Mine|Favourites here|1|42|${ChannelEffects.rank(3, ChannelEffects.UNPOSITIONED)}",
+            ),
             h.query("SELECT c.name, g.name, c.visible, c.number, c.display_rank FROM channel c JOIN content_group g ON g.id = c.group_id ORDER BY c.display_rank"),
         )
         assertEquals(listOf("manual.epg|https://provider.example/mine.png|One|https://provider.example/new.png"), h.query("SELECT epg_id, logo_url, provider_name, provider_logo_url FROM channel WHERE key = '${keys[0]}'"))

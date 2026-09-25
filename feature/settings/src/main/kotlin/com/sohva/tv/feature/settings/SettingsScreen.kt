@@ -153,6 +153,7 @@ private fun SettingsPane(
             SettingsSection.SOURCES -> if (state.page == null) PlaylistsList(state, model, start) else SourcePage(state, model, start)
             SettingsSection.GENERAL -> GeneralPane(state, model, start)
             SettingsSection.REMOTE -> RemotePane(state, model, start)
+            SettingsSection.METADATA -> LibraryPane(model.library, start)
             else -> PendingSection(state.section)
         }
     }

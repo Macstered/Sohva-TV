@@ -27,11 +27,15 @@ import androidx.compose.ui.unit.sp
  * backed by its image loader; previews and tests get none, which draws the initials.
  */
 fun interface ArtworkLoader {
-    /** The image at [widthPx] × [heightPx] or smaller, or null when it cannot be had. */
-    suspend fun load(url: String, widthPx: Int, heightPx: Int): ImageBitmap?
+    /**
+     * The image at [widthPx] × [heightPx] or smaller, or null when it cannot be had. [opaque]
+     * artwork (posters, backdrops, stills) decodes as RGB_565, half the memory of ARGB_8888 (spec
+     * 40 §9.5); logos keep their transparency.
+     */
+    suspend fun load(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): ImageBitmap?
 
     companion object {
-        val None: ArtworkLoader = ArtworkLoader { _, _, _ -> null }
+        val None: ArtworkLoader = ArtworkLoader { _, _, _, _ -> null }
     }
 }
 
@@ -48,7 +52,7 @@ fun LogoTile(name: String, url: String?, size: Dp, modifier: Modifier = Modifier
     val px = with(LocalDensity.current) { (size - padding * 2).roundToPx() }
     var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
     LaunchedEffect(url, px) {
-        if (!url.isNullOrBlank()) image = loader.load(url, px, px)
+        if (!url.isNullOrBlank()) image = loader.load(url, px, px, opaque = false)
     }
     Box(modifier) {
         InitialsTile(name, Modifier.size(size), fontSize = fontSize)

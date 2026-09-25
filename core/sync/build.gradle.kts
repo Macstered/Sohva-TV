@@ -18,6 +18,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.moshi)
     implementation(libs.androidx.room.runtime)
 
     testImplementation(libs.junit)

@@ -3,6 +3,7 @@ package com.sohva.tv.core.player
 import android.content.Intent
 import android.os.Bundle
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -15,9 +16,11 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import com.sohva.tv.core.model.player.BufferProfile
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -35,8 +38,15 @@ class PlaybackService : MediaSessionService() {
     private var lease: ConnectionLeases.Lease? = null
     private var profile = BufferProfile.DEFAULT
 
+    /** The film or episode playing, whose position is saved (spec 30 §4.21); null for live and catch-up. */
+    private var vodKey: String? = null
+    private var progressJob: Job? = null
+
     // The main dispatcher is the player's application thread (Q-10 keeps the dedicated looper open).
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // Progress writes outlive the service: the last one starts in onDestroy, after which [scope] is cancelled.
+    private val saves = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onCreate() {
         super.onCreate()
@@ -60,6 +70,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        saveProgress()
         releaseStream()
         scope.cancel()
         session.release()
@@ -69,13 +80,44 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun releaseStream() {
+        progressJob?.cancel()
+        vodKey = null
         lease?.release()
         lease = null
         registry.clear()
     }
 
+    /**
+     * Saves the VOD position now: every 10 s while it plays, when it stops (pause, stall, stop,
+     * the next item), at its end and when the service goes (PLAY-FR-130). The position is read on
+     * the player's thread; the store writes on its own.
+     */
+    private fun saveProgress() {
+        val key = vodKey ?: return
+        val position = player.currentPosition
+        val duration = player.duration.takeIf { it != C.TIME_UNSET } ?: return
+        saves.launch { runCatching { env.saveProgress(key, position, duration) } }
+    }
+
+    private fun startProgressLoop() {
+        progressJob?.cancel()
+        progressJob = scope.launch {
+            while (true) {
+                delay(PROGRESS_MS)
+                if (player.isPlaying) saveProgress()
+            }
+        }
+    }
+
     private inner class Watcher : Player.Listener {
-        override fun onIsPlayingChanged(isPlaying: Boolean) = env.setPlaybackActive(isPlaying)
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            env.setPlaybackActive(isPlaying)
+            if (!isPlaying) saveProgress()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED) saveProgress()
+        }
 
         /** Clearing the items releases the source and its lease (PLAY-FR-23). */
         override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
@@ -107,9 +149,13 @@ class PlaybackService : MediaSessionService() {
                 // Release the previous stream before taking a lease, so a zap works at limit 1 (PLAY-FR-16).
                 releaseStream()
                 applyProfile()
-                // A catch-up request carries the programme's start and stop (spec 22 CATCH-FR-40).
+                // A catch-up request carries the programme's start and stop (spec 22 CATCH-FR-40);
+                // a film or an episode says so (PLAY-FR-01).
                 val extras = item.requestMetadata.extras
-                val stream = if (extras != null && extras.containsKey(EXTRA_ARCHIVE_START)) {
+                val vod = extras?.getBoolean(EXTRA_VOD) == true
+                val stream = if (vod) {
+                    env.resolveVod(request)
+                } else if (extras != null && extras.containsKey(EXTRA_ARCHIVE_START)) {
                     when (val archive = env.resolveArchive(request, extras.getLong(EXTRA_ARCHIVE_START), extras.getLong(EXTRA_ARCHIVE_STOP))) {
                         is ArchiveResult.Ready -> archive.stream
                         ArchiveResult.Gone -> null
@@ -138,6 +184,10 @@ class PlaybackService : MediaSessionService() {
                     return@launch
                 }
                 lease = taken
+                if (vod) {
+                    vodKey = stream.key
+                    startProgressLoop()
+                }
                 val placeholder = registry.register(stream)
                 val item = MediaItem.Builder()
                     .setMediaId(stream.key)
@@ -177,5 +227,10 @@ class PlaybackService : MediaSessionService() {
         /** Request extras of a catch-up item: the programme's start and stop, epoch milliseconds. */
         const val EXTRA_ARCHIVE_START: String = "com.sohva.tv.player.ARCHIVE_START"
         const val EXTRA_ARCHIVE_STOP: String = "com.sohva.tv.player.ARCHIVE_STOP"
+
+        /** Request extra of a film or an episode (boolean). */
+        const val EXTRA_VOD: String = "com.sohva.tv.player.VOD"
+
+        const val PROGRESS_MS: Long = 10_000
     }
 }

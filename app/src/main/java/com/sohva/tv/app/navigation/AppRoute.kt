@@ -1,5 +1,6 @@
 package com.sohva.tv.app.navigation
 
+import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.core.model.settings.StartupScreen
 import com.sohva.tv.feature.player.ArchiveWindow
 import com.sohva.tv.ui.design.navigation.RouteCodec
@@ -20,6 +21,24 @@ sealed interface AppRoute {
 
     /** Channel management (spec 21), over the guide. */
     data object Channels : AppRoute
+
+    /**
+     * The library manager (spec 42 §3) for [room], at [group] and [source] when a screen gave
+     * them. Restored after process death at the room's remembered place (ORG-FR-01).
+     */
+    data class LibraryManager(val room: OrgRoom, val group: String? = null, val source: String? = null) : AppRoute
+
+    /** A film's page (spec 40 §3), by content key. */
+    data class FilmDetails(val key: String) : AppRoute
+
+    /** A series' page (spec 40 §3), by series key. */
+    data class SeriesDetails(val key: String) : AppRoute
+
+    /**
+     * A film or an episode from [startMs] (spec 30 §3.1). Never restored after process death:
+     * it restores to the page underneath.
+     */
+    data class VodPlayer(val contentKey: String, val startMs: Long) : AppRoute
 
     /**
      * Playback of a channel (spec 30 §3.1): live, or with [archive] a programme from the
@@ -48,10 +67,21 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
         AppRoute.Channels -> "channels"
+        is AppRoute.LibraryManager -> "manager:${route.room.name}"
+        is AppRoute.FilmDetails -> "film:${route.key}"
+        is AppRoute.SeriesDetails -> "seriespage:${route.key}"
         is AppRoute.Player -> "player"
+        is AppRoute.VodPlayer -> "player"
     }
 
-    override fun decode(value: String): AppRoute? = when (value) {
+    override fun decode(value: String): AppRoute? = when {
+        value.startsWith("film:") -> AppRoute.FilmDetails(value.removePrefix("film:"))
+        value.startsWith("seriespage:") -> AppRoute.SeriesDetails(value.removePrefix("seriespage:"))
+        value.startsWith("manager:") -> OrgRoom.entries.firstOrNull { it.name == value.removePrefix("manager:") }?.let { AppRoute.LibraryManager(it) }
+        else -> decodePlain(value)
+    }
+
+    private fun decodePlain(value: String): AppRoute? = when (value) {
         "home" -> AppRoute.Home
         "guide" -> AppRoute.Guide
         "today" -> AppRoute.Today

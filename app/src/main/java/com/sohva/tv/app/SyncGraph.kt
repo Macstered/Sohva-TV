@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import androidx.work.WorkManager
 import com.sohva.tv.core.net.http.ProviderHttp
+import com.sohva.tv.core.sync.EpisodeFetch
 import com.sohva.tv.core.sync.FallbackNames
 import com.sohva.tv.core.sync.ImportEnvironment
 import com.sohva.tv.core.sync.ImportRunner
@@ -22,9 +23,9 @@ class SyncGraph(private val graph: AppGraph) {
         ProviderHttp(ProviderHttp.client(agent), graph.diagnostics)
     }
 
-    val runner: ImportRunner by lazy {
+    private val environment: ImportEnvironment by lazy {
         val data = graph.data
-        val environment = ImportEnvironment(
+        ImportEnvironment(
             db = data.database,
             http = http,
             sealer = StreamSealer { data.cipher.encrypt(it) },
@@ -33,9 +34,17 @@ class SyncGraph(private val graph: AppGraph) {
             pauseGate = graph.pauseGate,
             log = graph.diagnostics,
             names = ResourceFallbackNames(graph.app),
+            preferredCopy = { data.preferences.preferredCopy() },
+            onCatalogueImported = {
+                if (graph.flags.metadataWorker) graph.metadata.scheduler.afterImport(graph.inForeground.value)
+            },
         )
-        ImportRunner(environment, data.sources, graph.appScope)
     }
+
+    val runner: ImportRunner by lazy { ImportRunner(environment, graph.data.sources, graph.appScope) }
+
+    /** A series' episodes from the provider (spec 40 VOD-FR-75). */
+    val episodes: EpisodeFetch by lazy { EpisodeFetch(environment, graph.data.sources) }
 
     val checks: SourceChecks by lazy { SourceChecks(http, graph.dispatchers.io) }
 

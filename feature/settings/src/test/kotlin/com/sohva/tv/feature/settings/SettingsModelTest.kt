@@ -39,6 +39,8 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsModelTest {
     private class FakeServices : SettingsServices {
+        override val library: LibrarySettingsServices = FakeLibrary()
+
         val sources = MutableStateFlow<List<Source>>(emptyList())
         val health = MutableStateFlow<List<SourceHealth>>(emptyList())
         val interval = MutableStateFlow(RefreshInterval.TWENTY_FOUR_HOURS)

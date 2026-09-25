@@ -56,9 +56,18 @@ interface PlayerNavigation {
 
     /** Starts another player app with the stream; returns why it failed, or null (PLAY-FR-115..116). */
     fun openExternal(stream: ExternalStream): Throwable?
+
+    /**
+     * A film or an episode played to its end (spec 30 PLAY-FR-132): the next episode, or back to
+     * the details page. Called once per item.
+     */
+    fun finished(contentKey: String)
 }
 
 enum class Connection { CONNECTING, READY, FAILED }
+
+/** A film or an episode to play from [startMs] (spec 30 §3.1 `VodPlayer`, spec 40 VOD-FR-64). */
+data class VodPlay(val contentKey: String, val startMs: Long)
 
 /** A programme to play from the provider's archive: its guide times, epoch ms (spec 22 CATCH-FR-11). */
 @Immutable

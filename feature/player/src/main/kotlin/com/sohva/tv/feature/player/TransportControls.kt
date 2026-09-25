@@ -48,6 +48,7 @@ internal fun TransportControls(model: PlayerModel, modifier: Modifier = Modifier
     val transport = model.transport
     val progress by transport.progress.collectAsStateWithLifecycle()
     val playing by model.playing.collectAsStateWithLifecycle()
+    val title by model.title.collectAsStateWithLifecycle()
     val shape by model.shape.collectAsStateWithLifecycle()
     val tracks by model.tracks.collectAsStateWithLifecycle()
     val focusPlay by transport.focusPlayRequest.collectAsStateWithLifecycle()
@@ -61,7 +62,7 @@ internal fun TransportControls(model: PlayerModel, modifier: Modifier = Modifier
             .testTag("player-transport"),
     ) {
         Text(
-            stringResource(R.string.player_archive_title, playing?.channel?.name.orEmpty()),
+            if (model.vod != null) title.orEmpty() else stringResource(R.string.player_archive_title, playing?.channel?.name.orEmpty()),
             Modifier.fillMaxWidth(0.62f),
             style = Sohva.typography.headline.copy(fontSize = 22.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black),
             color = Sohva.palette.textPrimary,
