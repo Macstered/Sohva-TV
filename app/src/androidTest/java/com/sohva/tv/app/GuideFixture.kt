@@ -52,6 +52,7 @@ object GuideFixture {
                         val epg = "e$s-$index"
                         channels += ChannelEntity(
                             key = "$sourceId:c$index", sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
+                            providerName = name, providerGroupId = groupId, providerLogoUrl = null,
                             tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = sealedStream ?: graph.data.cipher.encrypt(stream(sourceId, index)),
                             userAgent = userAgent, referrer = referrer, playlistOrder = index, providerNumber = index + 1, number = index + 1,
                             displayRank = index * 1024L, visible = true, catchupType = null, catchupSource = null, catchupDays = null,

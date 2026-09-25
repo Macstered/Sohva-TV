@@ -60,6 +60,7 @@ class FixtureActivity : Activity() {
                     val epg = "owner.$index"
                     channels += ChannelEntity(
                         key = "$SOURCE:$index", sourceId = SOURCE, groupId = groupId, name = name, sortName = SortNames.of(name),
+                        providerName = name, providerGroupId = groupId, providerLogoUrl = null,
                         tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = "not-playable", userAgent = null, referrer = null,
                         playlistOrder = index, providerNumber = index + 1, number = index + 1, displayRank = index * 1024L,
                         visible = true, catchupType = null, catchupSource = null, catchupDays = null, catchupTz = null,

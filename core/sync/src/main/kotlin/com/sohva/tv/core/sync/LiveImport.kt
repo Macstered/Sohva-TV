@@ -117,7 +117,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
         return Row(key, hash, group) { id, groupId ->
             ChannelEntity(
                 id = id, key = key, sourceId = sourceId, groupId = groupId, name = name, sortName = SortNames.of(name),
-                tvgId = e.tvgId, epgId = e.tvgId, logoUrl = e.logoUrl, streamUrlEnc = env.sealer.seal(e.streamUrl),
+                providerName = name, providerGroupId = groupId, providerLogoUrl = e.logoUrl, tvgId = e.tvgId, epgId = e.tvgId, logoUrl = e.logoUrl, streamUrlEnc = env.sealer.seal(e.streamUrl),
                 userAgent = e.userAgent, referrer = e.referrer, playlistOrder = e.index, providerNumber = e.channelNumber,
                 number = e.channelNumber, displayRank = e.index.toLong() * RANK_STEP, visible = true, catchupType = e.catchupType,
                 catchupSource = e.catchupSource, catchupDays = e.catchupDays, catchupTz = null, xtreamStreamId = null,
@@ -146,7 +146,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
         return Row(key, hash, group) { id, groupId ->
             ChannelEntity(
                 id = id, key = key, sourceId = sourceId, groupId = groupId, name = s.name, sortName = SortNames.of(s.name),
-                tvgId = s.epgChannelId, epgId = s.epgChannelId, logoUrl = s.iconUrl, streamUrlEnc = env.sealer.seal(address),
+                providerName = s.name, providerGroupId = groupId, providerLogoUrl = s.iconUrl, tvgId = s.epgChannelId, epgId = s.epgChannelId, logoUrl = s.iconUrl, streamUrlEnc = env.sealer.seal(address),
                 userAgent = null, referrer = null, playlistOrder = order, providerNumber = number, number = number,
                 displayRank = order.toLong() * RANK_STEP, visible = true, catchupType = catchupType, catchupSource = null,
                 catchupDays = s.catchupDays, catchupTz = zone, xtreamStreamId = s.streamId, contentHash = hash,

@@ -7,9 +7,11 @@ import androidx.room.PrimaryKey
 
 /**
  * Live channels (plan/04 §15.3), updated in place by [key] with a [contentHash] of the provider's
- * fields, so an unchanged channel is never rewritten. Effective columns (`epg_id`, `logo_url`,
- * `number`, `display_rank`, `visible`) are the provider's values until channel management (M3)
- * folds in the viewer's edits.
+ * fields, so an unchanged channel is never rewritten. The effective columns (`name`, `sort_name`,
+ * `group_id`, `logo_url`, `number`, `epg_id`, `display_rank`, `visible`) are what every screen
+ * reads: the provider's values with the household's edits from `channel_custom` applied. The
+ * `provider_*` columns (and `tvg_id`, `provider_number`, `playlist_order`) keep the playlist's own
+ * values, so an edit can be undone without a re-import (spec 21 CHAN-FR-31).
  */
 @Entity(
     tableName = "channel",
@@ -29,6 +31,9 @@ data class ChannelEntity(
     @ColumnInfo(name = "group_id") val groupId: Long?,
     val name: String,
     @ColumnInfo(name = "sort_name") val sortName: String,
+    @ColumnInfo(name = "provider_name", defaultValue = "") val providerName: String,
+    @ColumnInfo(name = "provider_group_id") val providerGroupId: Long?,
+    @ColumnInfo(name = "provider_logo_url") val providerLogoUrl: String?,
     @ColumnInfo(name = "tvg_id") val tvgId: String?,
     @ColumnInfo(name = "epg_id") val epgId: String?,
     @ColumnInfo(name = "logo_url") val logoUrl: String?,
