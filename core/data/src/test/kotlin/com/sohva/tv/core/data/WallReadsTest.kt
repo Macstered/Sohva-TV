@@ -6,13 +6,23 @@ import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.SourceEntity
+import com.sohva.tv.core.data.org.Field
+import com.sohva.tv.core.data.org.OrgPass
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.data.org.RuleChange
+import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.data.vod.ProgressStore
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallReads
 import com.sohva.tv.core.data.vod.WallRoom
+import com.sohva.tv.core.model.org.OrgKeys
+import com.sohva.tv.core.model.org.OrgRoom
+import com.sohva.tv.core.model.org.OrgSort
+import com.sohva.tv.core.model.org.RuleKey
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
+import com.sohva.tv.core.model.vod.PreferredCopy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -145,5 +155,31 @@ class WallReadsTest {
         assertEquals(2, onlyB.single { it.row.key == "vod:movie:b:4" }.copies)
         // Search finds the replacement title as well as the provider's (VOD-FR-42).
         assertEquals(listOf("4"), names(reads.page(WallRoom.MOVIES, drama, "harb", null, forward = true, limit = 10)))
+    }
+
+    @Test
+    fun theRailFollowsTheGroupOrderAndHistorysRule() = runBlocking {
+        seed()
+        val rules = OrgRules(db)
+        val pass = OrgPass(db, rules, LibraryPasses(db))
+        fun change(vararg c: RuleChange) {
+            rules.change(c.toList())
+            pass.afterChange(c.map { it.key }, PreferredCopy.NONE)
+        }
+        assertEquals(listOf("Comedy", "Drama"), reads.rail(WallRoom.MOVIES).groups.map { it.name })
+        change(RuleChange(RuleKey(OrgRoom.MOVIES, "", OrgKeys.GROUPS, ""), sort = Field.Set(OrgSort.TITLE_DESC)))
+        assertEquals(listOf("Drama", "Comedy"), reads.rail(WallRoom.MOVIES).groups.map { it.name })
+        // Manual order: the smallest place among a merged group's sources; unplaced last.
+        change(
+            RuleChange(RuleKey(OrgRoom.MOVIES, "", OrgKeys.GROUPS, ""), sort = Field.Set(OrgSort.MANUAL)),
+            RuleChange(RuleKey(OrgRoom.MOVIES, "b", "name:drama", ""), position = Field.Set(1024)),
+            RuleChange(RuleKey(OrgRoom.MOVIES, "", OrgKeys.HISTORY, ""), enabled = Field.Set(false)),
+        )
+        val rail = reads.rail(WallRoom.MOVIES)
+        assertEquals(listOf("Drama", "Comedy"), rail.groups.map { it.name })
+        assertEquals(false, rail.historyShown)
+        // A hidden group leaves the rail.
+        change(RuleChange(RuleKey(OrgRoom.MOVIES, "", "name:comedy", ""), enabled = Field.Set(false)))
+        assertEquals(listOf("Drama"), reads.rail(WallRoom.MOVIES).groups.map { it.name })
     }
 }

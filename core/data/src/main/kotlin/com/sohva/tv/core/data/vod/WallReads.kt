@@ -4,6 +4,11 @@ import com.sohva.tv.core.data.database.CopyFacts
 import com.sohva.tv.core.data.database.HistoryRow
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.WallRow
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.model.org.OrgKeys
+import com.sohva.tv.core.model.org.OrgResolver
+import com.sohva.tv.core.model.org.OrgRoom
+import com.sohva.tv.core.model.org.OrgSort
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.vod.Genre
 import java.util.Locale
@@ -13,7 +18,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** Movies or Series (spec 40 VOD-FR-01). */
-enum class WallRoom(val groupRoom: String) { MOVIES("MOVIES"), SERIES("SERIES") }
+enum class WallRoom(val groupRoom: String, val org: OrgRoom) { MOVIES("MOVIES", OrgRoom.MOVIES), SERIES("SERIES", OrgRoom.SERIES) }
 
 /** What a wall shows (spec 40 VOD-FR-02): a slice the database answers directly. */
 sealed interface WallDestination {
@@ -30,8 +35,14 @@ sealed interface WallDestination {
     data object Unsorted : WallDestination
 }
 
-/** A rail row for a provider group: its label, its sources' group ids and the title count. */
-data class RailGroup(val name: String, val groupIds: List<Long>, val count: Int)
+/** A rail row for a provider group: its label, its sources' group ids, the title count and its manual place. */
+data class RailGroup(val name: String, val groupIds: List<Long>, val count: Int, val position: Int = Int.MAX_VALUE)
+
+/**
+ * The rail of a room (spec 42 ORG-FR-19, ORG-11): the shown groups in the room's group order, and
+ * History's shortcut rule. [manual] says whether History takes its own place among the groups.
+ */
+data class Rail(val groups: List<RailGroup>, val historyShown: Boolean, val historyPosition: Long?, val manual: Boolean)
 
 /**
  * One wall entry with the position the pager keys on: `(sortName, id)` for A–Z walls,
@@ -57,11 +68,27 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
      * labelled with the smallest spelling, case-insensitive A–Z (VOD-FR-03's default order). A few
      * hundred rows per source.
      */
-    suspend fun groups(room: WallRoom): List<RailGroup> = withContext(io) {
+    suspend fun groups(room: WallRoom): List<RailGroup> = rail(room).groups
+
+    /**
+     * The rail (ORG-FR-19): provider order is the case-insensitive name order for films and series
+     * (VOD-FR-03), A–Z and Z–A compare the sort forms, manual order the smallest place among a
+     * merged group's sources (none last, then by name). Hidden groups are not read at all.
+     */
+    suspend fun rail(room: WallRoom): Rail = withContext(io) {
         val rows = dao.groups(room.groupRoom, dao.enabledSources())
-        rows.groupBy { it.name.trim().lowercase(Locale.ROOT) }
-            .map { (_, same) -> RailGroup(same.minOf { it.name.trim() }, same.map { it.id }, same.sumOf { it.itemCount }) }
+        val merged = rows.groupBy { it.name.trim().lowercase(Locale.ROOT) }
+            .map { (_, same) -> RailGroup(same.minOf { it.name.trim() }, same.map { it.id }, same.sumOf { it.itemCount }, same.minOf { it.position }) }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        val resolver = OrgResolver(OrgRules(db).of(room.org))
+        val order = resolver.groupOrder(room.org)
+        val groups = when (order) {
+            OrgSort.TITLE_ASC -> merged.sortedBy { SortNames.of(it.name) }
+            OrgSort.TITLE_DESC -> merged.sortedByDescending { SortNames.of(it.name) }
+            OrgSort.MANUAL -> merged.sortedBy { it.position }
+            else -> merged
+        }
+        Rail(groups, resolver.shortcutShown(room.org, OrgKeys.HISTORY), resolver.shortcutPosition(room.org, OrgKeys.HISTORY), order == OrgSort.MANUAL)
     }
 
     /**

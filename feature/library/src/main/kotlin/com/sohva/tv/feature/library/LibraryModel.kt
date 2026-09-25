@@ -3,7 +3,7 @@ package com.sohva.tv.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tracing.Trace
-import com.sohva.tv.core.data.vod.RailGroup
+import com.sohva.tv.core.data.vod.Rail
 import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
@@ -80,7 +80,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     private var loadJob: Job? = null
     private var edgeJob: Job? = null
     private var searchJob: Job? = null
-    private var lastGroups: List<RailGroup> = emptyList()
+    private var lastRail = Rail(emptyList(), historyShown = true, historyPosition = null, manual = false)
+
+    private val _railRefocus = MutableStateFlow(0)
+
+    /** Bumped when the row focus was on left the rail (hidden History): the screen puts focus on the selection again. */
+    val railRefocus: StateFlow<Int> = _railRefocus.asStateFlow()
     private var lastCounts: Map<String, Int> = emptyMap()
 
     /** Genre counts are read only once the Genres view has been used (VOD-FR-04). */
@@ -127,7 +132,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     fun showView(view: RailView) {
         if (view == _view.value) return
         _view.value = view
-        val rows = rows(view, lastGroups)
+        val rows = rows(view, lastRail)
         _rail.value = rows
         val target = lastOf[view]?.takeIf { key -> rows.any { it.key == key } }
             ?: _selected.value?.takeIf { it == HISTORY_KEY }
@@ -299,14 +304,15 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     }
 
     private suspend fun readRail() {
-        lastGroups = runCatching { env.groups() }.getOrElse { return }
+        lastRail = runCatching { env.rail() }.getOrElse { return }
         if (genresUsed) lastCounts = runCatching { env.genreCounts() }.getOrDefault(lastCounts)
-        val rows = rows(_view.value, lastGroups)
+        val rows = rows(_view.value, lastRail)
         _rail.value = rows
-        // The selected group disappeared while others remain → the first group (VOD-FR-09).
+        // The selected row disappeared → the first row (VOD-FR-08, -09); hidden History included.
         val selected = _selected.value
-        if (selected != null && rows.none { it.key == selected } && selected != HISTORY_KEY) {
-            select(rows.firstOrNull { it.key != HISTORY_KEY }?.key ?: HISTORY_KEY)
+        if (selected != null && rows.none { it.key == selected } && rows.isNotEmpty()) {
+            select(rows.first().key)
+            if (!focusOnWall) _railRefocus.value++
         }
     }
 
@@ -348,12 +354,23 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     private fun justBefore(item: WallItem): WallItem =
         if (item.progressKey.isNotEmpty()) item.copy(progressKey = item.progressKey + '\u0000') else item.copy(row = item.row.copy(id = item.row.id - 1))
 
-    private fun rows(view: RailView, groups: List<RailGroup>): List<RailRow> = buildList {
-        add(historyRow())
+    private fun rows(view: RailView, rail: Rail): List<RailRow> = buildList {
+        val history = rail.historyShown
+        // With manual group order History takes its own place: before the first group placed after
+        // it, and without a place after every placed group (spec 40 VOD-FR-03).
+        val historyAt = when {
+            !history || view != RailView.GROUPS || !rail.manual -> 0
+            else -> rail.groups.indexOfFirst { it.position.toLong() > (rail.historyPosition ?: (Int.MAX_VALUE - 1L)) }.let { if (it < 0) rail.groups.size else it }
+        }
+        if (history && historyAt == 0) add(historyRow())
         when (view) {
             RailView.GROUPS -> {
-                if (groups.isEmpty()) add(RailRow(ALL_KEY, WallDestination.AllGroups, null, null))
-                groups.forEach { g -> add(RailRow("group:" + g.name.lowercase(Locale.ROOT), WallDestination.Group(g.name, g.groupIds), g.name, g.count)) }
+                if (rail.groups.isEmpty()) add(RailRow(ALL_KEY, WallDestination.AllGroups, null, null))
+                rail.groups.forEachIndexed { i, g ->
+                    if (history && historyAt == i && i > 0) add(historyRow())
+                    add(RailRow("group:" + g.name.lowercase(Locale.ROOT), WallDestination.Group(g.name, g.groupIds), g.name, g.count))
+                }
+                if (history && historyAt > 0 && historyAt == rail.groups.size) add(historyRow())
             }
             // The 22 genres in their fixed order, then Unsorted, each only with titles (VOD-FR-04).
             RailView.GENRES -> {

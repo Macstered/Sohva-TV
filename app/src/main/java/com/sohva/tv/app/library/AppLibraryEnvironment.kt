@@ -1,7 +1,7 @@
 package com.sohva.tv.app.library
 
 import com.sohva.tv.app.AppGraph
-import com.sohva.tv.core.data.vod.RailGroup
+import com.sohva.tv.core.data.vod.Rail
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
@@ -35,7 +35,7 @@ class AppLibraryEnvironment(
 
     override fun changes(): Flow<Unit> = reads.changes()
 
-    override suspend fun groups(): List<RailGroup> = reads.groups(room)
+    override suspend fun rail(): Rail = reads.rail(room)
 
     override suspend fun genreCounts(): Map<String, Int> = reads.genreCounts(room)
 

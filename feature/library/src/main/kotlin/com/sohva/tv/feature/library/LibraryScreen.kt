@@ -87,6 +87,8 @@ fun LibraryScreen(model: LibraryModel) = trace("Library:Screen") {
             }
         }
     }
+    val refocus by model.railRefocus.collectAsStateWithLifecycle()
+    LaunchedEffect(refocus) { if (refocus > 0) rail.focusRail() }
     LaunchedEffect(model) {
         if (model.firstEntry) {
             rail.focusRail()

@@ -1,7 +1,7 @@
 package com.sohva.tv.feature.library
 
 import androidx.compose.runtime.Immutable
-import com.sohva.tv.core.data.vod.RailGroup
+import com.sohva.tv.core.data.vod.Rail
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
@@ -52,7 +52,8 @@ interface LibraryEnvironment {
     /** Any write that can change the wall or its rail. */
     fun changes(): Flow<Unit>
 
-    suspend fun groups(): List<RailGroup>
+    /** The shown groups in the room's order and History's shortcut rule (spec 42 ORG-FR-19, ORG-11). */
+    suspend fun rail(): Rail
 
     /** Titles per genre wire value, `""` for Unsorted (VOD-FR-04). */
     suspend fun genreCounts(): Map<String, Int>

@@ -1,6 +1,7 @@
 package com.sohva.tv.feature.library
 
 import com.sohva.tv.core.data.database.WallRow
+import com.sohva.tv.core.data.vod.Rail
 import com.sohva.tv.core.data.vod.RailGroup
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
@@ -35,7 +36,7 @@ class TransientEmptyTest {
         var reads = 0
         override val room: WallRoom = WallRoom.SERIES
         override fun changes(): Flow<Unit> = emptyFlow()
-        override suspend fun groups(): List<RailGroup> = listOf(RailGroup("Drama", listOf(1L), 3))
+        override suspend fun rail(): Rail = Rail(listOf(RailGroup("Drama", listOf(1L), 3)), historyShown = true, historyPosition = null, manual = false)
         override suspend fun genreCounts(): Map<String, Int> = emptyMap()
         override suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem> {
             if (destination == WallDestination.History) return emptyList()

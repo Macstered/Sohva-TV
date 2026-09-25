@@ -54,6 +54,8 @@ data class WallGroupRow(
     @ColumnInfo(name = "source_id") val sourceId: String,
     val name: String,
     @ColumnInfo(name = "item_count") val itemCount: Int,
+    /** The resolved manual place (spec 42 ORG-FR-19); `Int.MAX_VALUE` when none. */
+    val position: Int = Int.MAX_VALUE,
 )
 
 /** A History row: the progress row's time and key for the keyset, and the title it points at. */
@@ -111,7 +113,7 @@ object WallSql {
     const val SERIES_UNSORTED_BEFORE = "$SERIES_UNSORTED $BEFORE"
 
     /** The rooms' groups of the enabled sources: a few hundred rows per source, merged in memory. */
-    const val GROUPS = "SELECT id, source_id, name, item_count FROM content_group " +
+    const val GROUPS = "SELECT id, source_id, name, item_count, position FROM content_group " +
         "WHERE room = :room AND source_id IN (:sources) AND shown = 1 AND item_count > 0"
 
     /**
