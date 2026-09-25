@@ -10,6 +10,7 @@ import androidx.room.RoomDatabase
 import androidx.room.Upsert
 import androidx.room.migration.AutoMigrationSpec
 import com.sohva.tv.core.data.channels.ChannelListDao
+import com.sohva.tv.core.data.live.ChannelEffects
 import com.sohva.tv.core.data.reminder.ReminderDao
 import androidx.sqlite.db.SupportSQLiteDatabase
 
@@ -79,10 +80,15 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun manager(): ManagerDao
 
-    /** v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied. */
+    /**
+     * v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied, and
+     * ranks move to M3's scheme (playlist order above every viewer position), or channels an import
+     * leaves unchanged would sort against re-imported ones in two different scales.
+     */
     class ProviderColumns : AutoMigrationSpec {
         override fun onPostMigrate(db: SupportSQLiteDatabase) {
             db.execSQL("UPDATE channel SET provider_name = name, provider_group_id = group_id, provider_logo_url = logo_url")
+            db.execSQL("UPDATE channel SET display_rank = ${ChannelEffects.UNPOSITIONED} + playlist_order * ${ChannelEffects.RANK_STEP}")
         }
     }
 

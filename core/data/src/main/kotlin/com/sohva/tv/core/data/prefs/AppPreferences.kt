@@ -63,6 +63,13 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         }
     }
 
+    /** `editors_show_hidden`, shared by channel management and the Library manager (spec 21 CHAN-FR-16). */
+    val editorsShowHidden: Flow<Boolean> = store.data.map { it[EDITORS_SHOW_HIDDEN] ?: true }.distinctUntilChanged()
+
+    suspend fun setEditorsShowHidden(value: Boolean) {
+        store.edit { it[EDITORS_SHOW_HIDDEN] = value }
+    }
+
     /** Whether the "Let reminders open Sohva TV" prompt was shown; once per installation (REM-FR-05). */
     suspend fun reminderOverlayAsked(): Boolean = store.data.first()[REMINDER_OVERLAY_ASKED] ?: false
 
@@ -152,6 +159,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val LAST_CHANNEL = stringPreferencesKey("last_channel_id")
         private val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
         private val REMINDER_OVERLAY_ASKED = booleanPreferencesKey("reminder_overlay_asked")
+        private val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")
 
         // Beta 23's "Remote channel browser" setting: read (never shown) until a mapping is written.
         private val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")

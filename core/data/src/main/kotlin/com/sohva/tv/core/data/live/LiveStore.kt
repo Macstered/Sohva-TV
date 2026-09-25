@@ -39,7 +39,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
      * is the current state, not a write (spec 20 §10).
      */
     override fun changes(): Flow<Unit> =
-        db.invalidationTracker.createFlow("channel", "content_group", "source", "source_status").map { }
+        db.invalidationTracker.createFlow("channel", "content_group", "source", "source_status", "channel_list", "channel_list_member").map { }
 
     /** A new guide snapshot or a source edit re-reads the visible programmes (§8 "Import while open"). */
     override fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }
@@ -68,6 +68,15 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     override suspend fun recents(sourceId: String, profileId: String): ListSpec.Named = withContext(io) {
         val keys = viewer.recentKeys(profileId)
         val byKey = live.keysByChannelKey(sourceId, keys).associateBy { it.key }
+        ListSpec.Named(sourceId, keys.mapNotNull { byKey[it]?.id }.toLongArray())
+    }
+
+    override fun customLists(): Flow<List<CustomListRef>> =
+        db.channelLists().lists().map { lists -> lists.map { CustomListRef(it.id, it.name) } }.flowOn(io)
+
+    override suspend fun customList(listId: String, sourceId: String): ListSpec.Named = withContext(io) {
+        val keys = db.channelLists().memberKeys(listId, sourceId)
+        val byKey = keys.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it) }.associateBy { it.key }
         ListSpec.Named(sourceId, keys.mapNotNull { byKey[it]?.id }.toLongArray())
     }
 

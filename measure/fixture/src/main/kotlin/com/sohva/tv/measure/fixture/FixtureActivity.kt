@@ -10,6 +10,7 @@ import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
+import com.sohva.tv.core.data.live.ChannelEffects
 import com.sohva.tv.core.model.text.SortNames
 import kotlinx.coroutines.runBlocking
 
@@ -62,7 +63,7 @@ class FixtureActivity : Activity() {
                         key = "$SOURCE:$index", sourceId = SOURCE, groupId = groupId, name = name, sortName = SortNames.of(name),
                         providerName = name, providerGroupId = groupId, providerLogoUrl = null,
                         tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = "not-playable", userAgent = null, referrer = null,
-                        playlistOrder = index, providerNumber = index + 1, number = index + 1, displayRank = index * 1024L,
+                        playlistOrder = index, providerNumber = index + 1, number = index + 1, displayRank = ChannelEffects.playlistRank(index),
                         visible = true, catchupType = null, catchupSource = null, catchupDays = null, catchupTz = null,
                         xtreamStreamId = null, contentHash = 1, generation = 1,
                     )

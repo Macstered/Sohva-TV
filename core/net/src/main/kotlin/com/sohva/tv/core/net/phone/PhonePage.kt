@@ -24,6 +24,16 @@ data class PhonePageTexts(
     val privacy: String,
 )
 
+/** The logo page's texts (spec 21 CHAN-FR-41), in the TV's interface language. */
+data class LogoPageTexts(
+    val languageTag: String,
+    val title: String,
+    val help: String,
+    val choose: String,
+    val sending: String,
+    val invalid: String,
+)
+
 /**
  * The Sources page (spec 11 PHONE-FR-33) with the rebuild's token handling (plan/09 M1): the token
  * travels in the address fragment, which browsers never send; the inline script keeps it in memory,
@@ -41,6 +51,24 @@ object PhonePage {
         .catch(function(){n.textContent='…';n.hidden=false;});});});
     """.trimIndent().replace("\n", "")
 
+    /**
+     * The logo page's script (CHAN-FR-41): the chosen picture is drawn on a canvas at most 512 px
+     * on its longer side and posted as a PNG data URL for the channel named in the page. The texts
+     * it shows live in the page, so the script stays one constant with one hash.
+     */
+    private val LOGO_SCRIPT = """
+        var t=location.hash.slice(1);history.replaceState(null,'','/');
+        var n=document.getElementById('notice'),f=document.getElementById('file'),c=document.getElementById('channel').value;
+        var sending=document.getElementById('sending').textContent,invalid=document.getElementById('invalid').textContent;
+        f.addEventListener('change',function(){var x=f.files[0];if(!x)return;var u=URL.createObjectURL(x);var i=new Image();
+        i.onload=function(){var s=Math.min(1,512/Math.max(i.width,i.height));var w=Math.max(1,Math.round(i.width*s)),h=Math.max(1,Math.round(i.height*s));
+        var v=document.createElement('canvas');v.width=w;v.height=h;v.getContext('2d').drawImage(i,0,0,w,h);URL.revokeObjectURL(u);
+        n.textContent=sending;n.hidden=false;var b=new URLSearchParams({type:'logo',channel:c,image:v.toDataURL('image/png')}).toString();
+        fetch('/submit',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/x-www-form-urlencoded'},body:b})
+        .then(function(r){return r.text();}).then(function(s){n.textContent=s;}).catch(function(){n.textContent='…';});};
+        i.onerror=function(){URL.revokeObjectURL(u);n.textContent=invalid;n.hidden=false;};i.src=u;});
+    """.trimIndent().replace("\n", "")
+
     private val STYLE = "body{font-family:system-ui,sans-serif;margin:0;padding:20px;background:#12151c;color:#f2f4f8}" +
         "h1{font-size:1.4rem;margin:0 0 4px}h2{font-size:1.1rem;margin:22px 0 8px}p{color:#aab1c0;line-height:1.4}" +
         "form{background:#1c2130;border-radius:12px;padding:14px;margin-top:14px}" +
@@ -49,10 +77,10 @@ object PhonePage {
         "button{margin-top:14px;width:100%;padding:14px;border:none;border-radius:10px;background:#ff8a3d;color:#1a0d02;font-weight:bold;font-size:1rem}" +
         ".notice{background:#26304a;color:#fff;padding:12px;border-radius:10px}"
 
-    /** The Content-Security-Policy: only this page's own script and inline style (PHONE-FR-24). */
+    /** The Content-Security-Policy: only the pages' own two scripts and inline style (PHONE-FR-24). */
     val contentSecurityPolicy: String by lazy {
-        val hash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(SCRIPT.toByteArray(Charsets.UTF_8)))
-        "default-src 'none'; script-src 'sha256-$hash'; style-src 'unsafe-inline'; connect-src 'self'; " +
+        fun hash(script: String) = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray(Charsets.UTF_8)))
+        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
             "img-src 'self' blob: data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
     }
 
@@ -77,6 +105,21 @@ object PhonePage {
         field(texts.apiSports, "api_sports_key", "autocapitalize=\"off\" autocomplete=\"off\"")
         append("<button type=\"submit\">").append(escape(texts.send)).append("</button></form>")
         append("<p>").append(escape(texts.privacy)).append("</p><script>").append(SCRIPT).append("</script></body></html>")
+    }
+
+    /** One picture for one channel (CHAN-FR-41); [channelKey] rides in a hidden field, escaped. */
+    fun logo(texts: LogoPageTexts, channelKey: String): String = buildString {
+        append("<!DOCTYPE html><html lang=\"").append(escape(texts.languageTag)).append("\"><head><meta charset=\"utf-8\">")
+        append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>").append(escape(texts.title))
+        append("</title><style>").append(STYLE).append("</style></head><body>")
+        append("<h1>").append(escape(texts.title)).append("</h1><p>").append(escape(texts.help)).append("</p>")
+        append("<p id=\"notice\" class=\"notice\" hidden></p>")
+        append("<span id=\"sending\" hidden>").append(escape(texts.sending)).append("</span>")
+        append("<span id=\"invalid\" hidden>").append(escape(texts.invalid)).append("</span>")
+        append("<form><input type=\"hidden\" id=\"channel\" value=\"").append(escape(channelKey)).append("\">")
+        append("<label for=\"file\">").append(escape(texts.choose)).append("</label>")
+        append("<input id=\"file\" type=\"file\" accept=\"image/*\"></form>")
+        append("<script>").append(LOGO_SCRIPT).append("</script></body></html>")
     }
 
     private fun StringBuilder.form(type: String, heading: String, texts: PhonePageTexts, fields: StringBuilder.() -> Unit) {

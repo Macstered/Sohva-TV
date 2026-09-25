@@ -100,6 +100,17 @@ interface ChannelEditDao {
 
     @Query("SELECT * FROM channel_custom WHERE channel_key IN (:keys)")
     fun customs(keys: List<String>): List<ChannelCustomEntity>
+
+    /** A removed source's edits, [limit] rows at a time (spec 21 CHAN-30); the number deleted. */
+    @Query("DELETE FROM channel_custom WHERE channel_key IN (SELECT channel_key FROM channel_custom WHERE source_id = :sourceId LIMIT :limit)")
+    fun deleteCustomsOf(sourceId: String, limit: Int): Int
+
+    /** List memberships of a removed source's channels (keys from..until), [limit] rows at a time. */
+    @Query(
+        "DELETE FROM channel_list_member WHERE rowid IN " +
+            "(SELECT rowid FROM channel_list_member WHERE channel_key > :from AND channel_key < :until LIMIT :limit)",
+    )
+    fun deleteMembersIn(from: String, until: String, limit: Int): Int
 }
 
 /** A channel's place in its source's order. */

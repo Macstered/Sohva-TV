@@ -5,6 +5,7 @@ import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
+import com.sohva.tv.core.data.live.ChannelEffects
 import com.sohva.tv.core.model.guide.GuideWindow
 import com.sohva.tv.core.model.text.SortNames
 
@@ -58,7 +59,7 @@ object GuideFixture {
                             providerName = name, providerGroupId = groupId, providerLogoUrl = null,
                             tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = sealedStream ?: graph.data.cipher.encrypt(stream(sourceId, index)),
                             userAgent = userAgent, referrer = referrer, playlistOrder = index, providerNumber = index + 1, number = index + 1,
-                            displayRank = index * 1024L, visible = true, catchupType = catchupType(index), catchupSource = null,
+                            displayRank = ChannelEffects.playlistRank(index), visible = true, catchupType = catchupType(index), catchupSource = null,
                             catchupDays = catchupType(index)?.let { catchupDays },
                             catchupTz = null, xtreamStreamId = null, contentHash = 1, generation = 1,
                         )

@@ -84,6 +84,7 @@ class DatabaseDeviceTest {
             it.execSQL("INSERT INTO favourite_channel (profile_id, channel_key, added_at) VALUES ('default', 's1:a', 5)")
         }
         helper.runMigrationsAndValidate(name, 4, true).use { db ->
+            db.query("SELECT display_rank FROM channel WHERE id = 1").use { it.moveToFirst(); assertEquals(1L shl 40, it.getLong(0)) }
             db.query("SELECT provider_name, provider_group_id, provider_logo_url, name FROM channel WHERE id = 1").use {
                 it.moveToFirst()
                 assertEquals("Northstar 1", it.getString(0))

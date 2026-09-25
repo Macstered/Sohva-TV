@@ -176,10 +176,12 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         val ungrouped = reads.open(ListSpec.Ungrouped(source.id)).size
         val all = groups.sumOf { it.itemCount } + ungrouped
         val favouriteCount = favourites.value.size
+        val lists = reads.customLists().first()
         _rail.value = buildList {
             add(RailItem(RailEntry.Favourites, favouriteCount.takeIf { it > 0 }))
             add(RailItem(RailEntry.All, all.takeIf { it > 0 }))
             add(RailItem(RailEntry.Recent, null))
+            lists.forEach { add(RailItem(RailEntry.CustomList(it.id, it.name), null)) }
             groups.forEach { add(RailItem(RailEntry.Group(it), it.itemCount)) }
         }
         // A selected group that disappeared (GUIDE-FR-15).
@@ -213,6 +215,7 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         RailEntry.Favourites -> { { reads.favourites(source.id) } }
         RailEntry.Recent -> { { reads.recents(source.id) } }
         is RailEntry.Group -> { { ListSpec.Group(source.id, entry.group.id) } }
+        is RailEntry.CustomList -> { { reads.customList(entry.listId, source.id) } }
     }
 
     /**

@@ -23,7 +23,7 @@ sealed interface PhoneSetupState {
      * Serving at [url], which carries the page's token: show it only on the TV. [lastSource] names
      * the last source received; [lastWasKeys] when the last thing received was keys only.
      */
-    data class Open(val url: String, val received: Int, val lastSource: String?, val lastWasKeys: Boolean) : PhoneSetupState {
+    data class Open(val url: String, val received: Int, val lastSource: String?, val lastWasKeys: Boolean, val logoSaved: Boolean = false) : PhoneSetupState {
         override fun toString(): String = "Open(received=$received)"
     }
 }

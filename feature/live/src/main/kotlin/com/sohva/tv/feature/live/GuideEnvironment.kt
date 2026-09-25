@@ -61,6 +61,9 @@ interface GuideNavigation {
 
     fun openSettings()
 
+    /** Options › Edit (channels): channel management (spec 21 CHAN-01). */
+    fun openChannels()
+
     /** Options › Sort, Edit (groups) and Edit (channels) until their milestones (M3, M4). */
     fun notYetAvailable()
 

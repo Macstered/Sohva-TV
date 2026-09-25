@@ -73,6 +73,11 @@ sealed interface RailEntry {
     data class Group(val group: LiveGroup) : RailEntry {
         override val id: String = "group:" + group.groupKey
     }
+
+    /** One of the household's channel lists (spec 21 CHAN-28), after Recently watched. */
+    data class CustomList(val listId: String, val name: String) : RailEntry {
+        override val id: String = "list:$listId"
+    }
 }
 
 /** A rail row as shown: the entry and its trailing count, when it has one (GUIDE-FR-24). */

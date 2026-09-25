@@ -18,6 +18,9 @@ sealed interface AppRoute {
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
 
+    /** Channel management (spec 21), over the guide. */
+    data object Channels : AppRoute
+
     /**
      * Playback of a channel (spec 30 §3.1): live, or with [archive] a programme from the
      * provider's archive (spec 22). [returnToGuide]: Back from the bare picture leaves to
@@ -44,6 +47,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         AppRoute.Discover -> "discover"
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
+        AppRoute.Channels -> "channels"
         is AppRoute.Player -> "player"
     }
 
@@ -57,6 +61,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         "discover" -> AppRoute.Discover
         "profiles" -> AppRoute.ProfilePicker
         "settings" -> AppRoute.Settings
+        "channels" -> AppRoute.Channels
         // A playback route restores to the screen underneath it (spec 01 §4.4).
         else -> null
     }

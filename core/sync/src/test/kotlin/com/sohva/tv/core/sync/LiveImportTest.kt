@@ -96,6 +96,25 @@ class LiveImportTest {
         assertEquals(before, h.query("SELECT key, generation, display_rank, name FROM channel ORDER BY key"))
     }
 
+    /** Spec 21 CHAN-30: a removed source takes its channels' edits and list memberships with it. */
+    @Test
+    fun removingASourceRemovesItsEditsAndMemberships() {
+        h.addM3u()
+        h.serve("/list.m3u", playlist(entry("One"), entry("Two")))
+        playlistOnly()
+        val keys = h.query("SELECT key FROM channel ORDER BY playlist_order")
+        runBlocking(Dispatchers.IO) {
+            h.db.channelEdits().putCustom(custom(keys[0], "m3u-1", name = "Mine"))
+            h.db.openHelper.writableDatabase.execSQL("INSERT INTO channel_list (id, name, sort_order, updated_at) VALUES ('l1', 'Evening', 0, 0)")
+            h.db.openHelper.writableDatabase.execSQL("INSERT INTO channel_list_member (list_id, channel_key, sort_order) VALUES ('l1', '${keys[1]}', 0)")
+            h.db.openHelper.writableDatabase.execSQL("INSERT INTO channel_list_member (list_id, channel_key, sort_order) VALUES ('l1', 'other:c9', 1)")
+            h.runner.remove("m3u-1")
+        }
+        assertEquals(listOf("0"), h.query("SELECT COUNT(*) FROM channel_custom"))
+        assertEquals(listOf("other:c9"), h.query("SELECT channel_key FROM channel_list_member"))
+        assertEquals(listOf("1"), h.query("SELECT COUNT(*) FROM channel_list"))
+    }
+
     private fun custom(
         key: String,
         source: String,

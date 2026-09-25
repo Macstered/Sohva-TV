@@ -9,18 +9,21 @@ import androidx.core.net.toUri
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
+import com.sohva.tv.app.channels.AppChannelsEnvironment
 import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.core.model.FeatureFlags
+import com.sohva.tv.feature.channels.ChannelsModel
+import com.sohva.tv.feature.channels.ChannelsScreen
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
-import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.ArchiveWindow
+import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerModel
 import com.sohva.tv.feature.player.PlayerNavigation
 import com.sohva.tv.feature.player.PlayerScreen
@@ -62,6 +65,11 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
         AppRoute.Search -> PlaceholderScreen(R.string.home_search, { back() }, "screen-search")
         AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
         AppRoute.ProfilePicker -> PlaceholderScreen(R.string.profile_active_title, { back() }, "screen-profiles")
+        AppRoute.Channels -> {
+            // Scoped to this stack entry: popped with the screen (plan/03 §4.5).
+            val model = viewModel { ChannelsModel(AppChannelsEnvironment(graph)) }
+            ChannelsScreen(model, onBack = { back() })
+        }
         AppRoute.Settings -> {
             // Scoped to this stack entry: popped with Settings (plan/03 §4.5). Accounts waits for Trakt (M6).
             val model = viewModel { SettingsModel(AppSettingsServices(graph), accounts = false) }
@@ -84,6 +92,10 @@ private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = objec
 
     override fun openSettings() {
         stack.push(AppRoute.Settings)
+    }
+
+    override fun openChannels() {
+        stack.push(AppRoute.Channels)
     }
 
     override fun notYetAvailable() {

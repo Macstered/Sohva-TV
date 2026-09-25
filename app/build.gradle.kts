@@ -104,6 +104,7 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:live"))
     implementation(project(":feature:player"))
+    implementation(project(":feature:channels"))
     implementation(project(":core:player"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
