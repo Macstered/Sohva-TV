@@ -5,6 +5,9 @@ import com.sohva.tv.core.data.database.ProgressSql
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.TitleSql
 import com.sohva.tv.core.data.database.WallSql
+import com.sohva.tv.core.data.vod.GroupOrderPages
+import com.sohva.tv.core.data.vod.WallRoom
+import com.sohva.tv.core.model.org.OrgSort
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -89,6 +92,25 @@ class WallQueryPlanTest {
                 val plan = db.plan(sql).joinToString(" | ")
                 assertTrue("$name: $plan", plan.contains("SEARCH"))
                 assertFalse("$name: $plan", Regex("""\bSCAN\b""").containsMatchIn(plan))
+            }
+        }
+    }
+
+    @Test
+    fun aGroupsOtherOrdersReadTheirIndexInOrder() {
+        QueryPlanHarness.open(SohvaDatabase.VERSION).use { db ->
+            for (analyzed in listOf(false, true)) {
+                if (analyzed) db.analyze()
+                for (room in WallRoom.entries) for (sort in listOf(OrgSort.TITLE_DESC, OrgSort.NEWEST, OrgSort.OLDEST, OrgSort.RATING, OrgSort.MANUAL)) {
+                    val phases = if (sort == OrgSort.TITLE_DESC) listOf(null) else listOf(1, 2)
+                    for (phase in phases) for (cursor in listOf(false, true)) for (forward in listOf(true, false)) {
+                        val sql = GroupOrderPages.planSql(room, sort, phase, cursor, forward)
+                        val plan = db.plan(sql).joinToString(" | ")
+                        val name = "$room $sort phase $phase cursor $cursor forward $forward ($analyzed)"
+                        assertFalse("$name: $plan", plan.contains("TEMP B-TREE"))
+                        assertTrue("$name: $plan", plan.contains("USING INDEX") || plan.contains("USING COVERING INDEX"))
+                    }
+                }
             }
         }
     }

@@ -72,8 +72,10 @@ data class ChannelEntity(
         Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
         // A group's other content orders (spec 42 ORG-07): newest/oldest, rating, manual. Walls that
         // span groups stay A–Z: every index costs the import (decision "Indexes and import cost").
-        Index(value = ["group_id", "visible", "group_primary", "year", "sort_name"]),
-        Index(value = ["group_id", "visible", "group_primary", "rating_x10", "sort_name"]),
+        // Newest first and highest rating first read forward with ties A–Z (oldest first reads the
+        // year index backwards); a missing value comes last through a second read (WallReads).
+        Index(value = ["group_id", "visible", "group_primary", "year", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
+        Index(value = ["group_id", "visible", "group_primary", "rating_x10", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
         Index(value = ["group_id", "visible", "group_primary", "item_position", "sort_name"]),
         Index(value = ["work_key"]),
         Index(value = ["similar_key"]),
@@ -134,8 +136,8 @@ data class MovieEntity(
         Index(value = ["group_id", "visible", "primary_copy", "sort_name"]),
         Index(value = ["visible", "primary_copy", "sort_name"]),
         Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
-        Index(value = ["group_id", "visible", "primary_copy", "year", "sort_name"]),
-        Index(value = ["group_id", "visible", "primary_copy", "rating_x10", "sort_name"]),
+        Index(value = ["group_id", "visible", "primary_copy", "year", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
+        Index(value = ["group_id", "visible", "primary_copy", "rating_x10", "sort_name"], orders = [Index.Order.ASC, Index.Order.ASC, Index.Order.ASC, Index.Order.DESC, Index.Order.ASC]),
         Index(value = ["group_id", "visible", "primary_copy", "item_position", "sort_name"]),
     ],
 )

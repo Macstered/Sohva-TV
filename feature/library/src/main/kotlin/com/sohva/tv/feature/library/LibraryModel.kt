@@ -313,7 +313,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         if (selected != null && rows.none { it.key == selected } && rows.isNotEmpty()) {
             select(rows.first().key)
             if (!focusOnWall) _railRefocus.value++
+            return
         }
+        // The selected group's order changed (library manager): the wall reads again in the new order.
+        val now = rows.firstOrNull { it.key == selected }?.destination
+        val shown = _wall.value.destination
+        if (now is WallDestination.Group && shown is WallDestination.Group && now != shown && loadJob?.isActive != true) load(now)
     }
 
     private suspend fun refreshWindow() {
@@ -368,7 +373,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
                 if (rail.groups.isEmpty()) add(RailRow(ALL_KEY, WallDestination.AllGroups, null, null))
                 rail.groups.forEachIndexed { i, g ->
                     if (history && historyAt == i && i > 0) add(historyRow())
-                    add(RailRow("group:" + g.name.lowercase(Locale.ROOT), WallDestination.Group(g.name, g.groupIds), g.name, g.count))
+                    add(RailRow("group:" + g.name.lowercase(Locale.ROOT), WallDestination.Group(g.name, g.groupIds, g.sort), g.name, g.count))
                 }
                 if (history && historyAt > 0 && historyAt == rail.groups.size) add(historyRow())
             }

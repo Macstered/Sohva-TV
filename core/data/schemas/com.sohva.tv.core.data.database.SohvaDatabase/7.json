@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "a9a9ad55aec925a1008c767b1dfb4060",
+    "identityHash": "2263fec2c578ea6577780a78ebff7cd0",
     "entities": [
       {
         "tableName": "app_meta",
@@ -759,8 +759,14 @@
               "year",
               "sort_name"
             ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id_visible_group_primary_year_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `group_primary`, `year`, `sort_name`)"
+            "orders": [
+              "ASC",
+              "ASC",
+              "ASC",
+              "DESC",
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id_visible_group_primary_year_sort_name` ON `${TABLE_NAME}` (`group_id` ASC, `visible` ASC, `group_primary` ASC, `year` DESC, `sort_name` ASC)"
           },
           {
             "name": "index_movie_group_id_visible_group_primary_rating_x10_sort_name",
@@ -772,8 +778,14 @@
               "rating_x10",
               "sort_name"
             ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id_visible_group_primary_rating_x10_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `group_primary`, `rating_x10`, `sort_name`)"
+            "orders": [
+              "ASC",
+              "ASC",
+              "ASC",
+              "DESC",
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id_visible_group_primary_rating_x10_sort_name` ON `${TABLE_NAME}` (`group_id` ASC, `visible` ASC, `group_primary` ASC, `rating_x10` DESC, `sort_name` ASC)"
           },
           {
             "name": "index_movie_group_id_visible_group_primary_item_position_sort_name",
@@ -1043,8 +1055,14 @@
               "year",
               "sort_name"
             ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id_visible_primary_copy_year_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `primary_copy`, `year`, `sort_name`)"
+            "orders": [
+              "ASC",
+              "ASC",
+              "ASC",
+              "DESC",
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id_visible_primary_copy_year_sort_name` ON `${TABLE_NAME}` (`group_id` ASC, `visible` ASC, `primary_copy` ASC, `year` DESC, `sort_name` ASC)"
           },
           {
             "name": "index_series_group_id_visible_primary_copy_rating_x10_sort_name",
@@ -1056,8 +1074,14 @@
               "rating_x10",
               "sort_name"
             ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id_visible_primary_copy_rating_x10_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `primary_copy`, `rating_x10`, `sort_name`)"
+            "orders": [
+              "ASC",
+              "ASC",
+              "ASC",
+              "DESC",
+              "ASC"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id_visible_primary_copy_rating_x10_sort_name` ON `${TABLE_NAME}` (`group_id` ASC, `visible` ASC, `primary_copy` ASC, `rating_x10` DESC, `sort_name` ASC)"
           },
           {
             "name": "index_series_group_id_visible_primary_copy_item_position_sort_name",
@@ -2215,7 +2239,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a9a9ad55aec925a1008c767b1dfb4060')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2263fec2c578ea6577780a78ebff7cd0')"
     ]
   }
 }

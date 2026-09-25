@@ -24,8 +24,11 @@ enum class WallRoom(val groupRoom: String, val org: OrgRoom) { MOVIES("MOVIES", 
 sealed interface WallDestination {
     data object History : WallDestination
 
-    /** A provider group, merged by name across enabled sources: [groupIds] holds one id per source. */
-    data class Group(val name: String, val groupIds: List<Long>) : WallDestination
+    /**
+     * A provider group, merged by name across enabled sources: [groupIds] holds one id per source;
+     * [sort] is its content order (spec 42 ORG-FR-20).
+     */
+    data class Group(val name: String, val groupIds: List<Long>, val sort: OrgSort = OrgSort.TITLE_ASC) : WallDestination
 
     /** Every title: the wall when every provider group is hidden (VOD-08). */
     data object AllGroups : WallDestination
@@ -36,7 +39,7 @@ sealed interface WallDestination {
 }
 
 /** A rail row for a provider group: its label, its sources' group ids, the title count and its manual place. */
-data class RailGroup(val name: String, val groupIds: List<Long>, val count: Int, val position: Int = Int.MAX_VALUE)
+data class RailGroup(val name: String, val groupIds: List<Long>, val count: Int, val position: Int = Int.MAX_VALUE, val sort: OrgSort = OrgSort.TITLE_ASC)
 
 /**
  * The rail of a room (spec 42 ORG-FR-19, ORG-11): the shown groups in the room's group order, and
@@ -58,6 +61,7 @@ data class WallItem(val row: WallRow, val watchedAt: Long = 0, val progressKey: 
  */
 class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatcher, private val profile: () -> String) {
     private val dao get() = db.walls()
+    private val orders = GroupOrderPages { db.walls() }
 
     /** Any write that can change a wall or its rail: imports, source edits, progress. */
     fun changes(): Flow<Unit> =
@@ -78,7 +82,13 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
     suspend fun rail(room: WallRoom): Rail = withContext(io) {
         val rows = dao.groups(room.groupRoom, dao.enabledSources())
         val merged = rows.groupBy { it.name.trim().lowercase(Locale.ROOT) }
-            .map { (_, same) -> RailGroup(same.minOf { it.name.trim() }, same.map { it.id }, same.sumOf { it.itemCount }, same.minOf { it.position }) }
+            .map { (_, same) ->
+                RailGroup(
+                    same.minOf { it.name.trim() }, same.map { it.id }, same.sumOf { it.itemCount }, same.minOf { it.position },
+                    // Sources' groups of one name share the combined rule; the first source's order stands.
+                    OrgSort.of(same.first().sortMode) ?: room.org.defaultSort,
+                )
+            }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
         val resolver = OrgResolver(OrgRules(db).of(room.org))
         val order = resolver.groupOrder(room.org)
@@ -109,6 +119,14 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
             if (sources.isEmpty()) return@withContext emptyList()
             val query = search.trim().takeIf { it.isNotEmpty() }?.let(SortNames::of)
             if (destination == WallDestination.History) return@withContext history(room, query, from, forward, limit, sources)
+            if (destination is WallDestination.Group && orders.serves(destination.sort)) {
+                // A group's other order: each source's group pages in that order, merged by the same tuple.
+                val order = orders.comparator(destination.sort)
+                val rows = destination.groupIds.flatMap { orders.page(room, it, destination.sort, sources, query, from?.row, forward, limit) }
+                    .sortedWith(order)
+                val page = if (forward) rows.take(limit) else rows.takeLast(limit)
+                return@withContext if (room == WallRoom.MOVIES) fold(page, destination, sources) else page.map { WallItem(it) }
+            }
             val name = from?.row?.sortName ?: if (forward) "" else MAX_NAME
             val id = from?.row?.id ?: if (forward) Long.MIN_VALUE else Long.MAX_VALUE
             val rows = when (destination) {

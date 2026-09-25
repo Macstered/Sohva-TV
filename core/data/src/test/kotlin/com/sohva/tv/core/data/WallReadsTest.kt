@@ -182,4 +182,36 @@ class WallReadsTest {
         change(RuleChange(RuleKey(OrgRoom.MOVIES, "", "name:comedy", ""), enabled = Field.Set(false)))
         assertEquals(listOf("Drama"), reads.rail(WallRoom.MOVIES).groups.map { it.name })
     }
+
+    @Test
+    fun aGroupsOtherOrdersPageBothWaysWithMissingValuesLast() = runBlocking {
+        db.sources().upsert(SourceEntity("a", "First", "XTREAM", true, 0, 1, "VOD", 0, 0, 0))
+        val g = group("a", "Drama", 6)
+        val films = listOf("Echo" to 2001, "Alpha" to null, "Delta" to 2010, "Bravo" to 2001, "Foxtrot" to null, "Charlie" to 1999)
+        db.movieImport().insert(films.mapIndexed { i, (name, year) -> film("a", "$i", name, g).copy(year = year, itemPosition = if (i % 2 == 0) (6 - i) * 1024 else null) })
+        suspend fun all(sort: OrgSort, step: Int): List<String> {
+            val drama = WallDestination.Group("Drama", listOf(g), sort)
+            val out = ArrayList<WallItem>()
+            while (true) {
+                val page = reads.page(WallRoom.MOVIES, drama, "", out.lastOrNull(), forward = true, limit = step)
+                out += page
+                if (page.size < step) break
+            }
+            // Back from the end gives the same order.
+            val back = ArrayList<WallItem>()
+            while (true) {
+                val page = reads.page(WallRoom.MOVIES, drama, "", back.firstOrNull(), forward = false, limit = step)
+                back.addAll(0, page)
+                if (page.size < step) break
+            }
+            assertEquals(out.map { it.row.name }, back.map { it.row.name })
+            return out.map { it.row.name }
+        }
+        assertEquals(listOf("Delta", "Bravo", "Echo", "Charlie", "Alpha", "Foxtrot"), all(OrgSort.NEWEST, 2))
+        // Oldest reads the year index backwards: one year's titles run Z–A (decision "Group orders").
+        assertEquals(listOf("Charlie", "Echo", "Bravo", "Delta", "Foxtrot", "Alpha"), all(OrgSort.OLDEST, 4))
+        assertEquals(listOf("Foxtrot", "Echo", "Delta", "Charlie", "Bravo", "Alpha"), all(OrgSort.TITLE_DESC, 5))
+        // Placed titles by place, then the rest A–Z.
+        assertEquals(listOf("Foxtrot", "Delta", "Echo", "Alpha", "Bravo", "Charlie"), all(OrgSort.MANUAL, 3))
+    }
 }
