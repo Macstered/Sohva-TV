@@ -65,12 +65,14 @@ takes it and the owner can overrule it at the checkpoint:
 
 ## Design
 
-- **Stored wall keys** (spec 40 §9.3, plan/04 §15.4): `movie`/`series` gain `quality_mask`,
-  `claim_mask`, `picture_rank`, `search_text`, `similar_key`, `year_key`, `rating_key`; the import
-  computes them (pure functions in `core:model`, unit-tested). `sort_name` stays the title key: it
-  is already the one Unicode-aware sort form (decision "`sort_name`", 24 September), and SQLite's
-  byte order on it is the wall's A–Z.
-- **Partial indexes** `WHERE visible = 1 AND primary_copy = 1` as plan/04 §15.4 lists them.
+- **Stored wall keys** (spec 40 §9.3, plan/04 §15.4): `movie` gains `quality_mask`, `claim_mask`
+  and `picture_rank`, `series` gains `quality_mask`; the import computes them (pure functions in
+  `core:model`, unit-tested). `sort_name` stays the title key and the search text (the one
+  Unicode-aware sort form, decision "`sort_name`", 24 September); `similar_key` and a replacement
+  title's search form arrive with metadata (M4b).
+- **Wall indexes**: full composite indexes with the equality columns first, not plan/04's partial
+  ones (decision "Wall indexes"); films carry `group_primary` beside `primary_copy` (decision "A
+  film in each of its groups").
 - **Folding**: `primary_copy` is a stored flag the identity pass sets per `work_key`, using the copy
   preference. Until metadata exists (M4b) the work key is `name:<cleaned title>:<year>`.
 - **Pager** (`feature:library`): pages of 120, window of 5 pages, absolute indices, keyset both ways,
