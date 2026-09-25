@@ -47,7 +47,13 @@ class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
 
     override suspend fun save(config: SourceConfig): Outcome<SourceConfig> = withContext(io) { graph.data.sources.save(config) }
 
-    override suspend fun remove(sourceId: String): Outcome<Unit> = withContext(io) { graph.sync.runner.remove(sourceId) }
+    /** The source's phone-sent logo files go with it (spec 21 §6 rebuild rule; beta 23 left them behind). */
+    override suspend fun remove(sourceId: String): Outcome<Unit> = withContext(io) {
+        val logos = graph.data.channelManager.phoneLogoKeys(sourceId)
+        val result = graph.sync.runner.remove(sourceId)
+        if (result is Outcome.Ok) logos.forEach(graph.phone.logos::delete)
+        result
+    }
 
     override fun syncNow(sourceId: String) {
         // WorkManager starts on first use and reads its database then.

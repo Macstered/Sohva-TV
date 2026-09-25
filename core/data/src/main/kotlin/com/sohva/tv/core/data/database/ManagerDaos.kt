@@ -77,6 +77,10 @@ interface ManagerDao {
     @Query("SELECT * FROM channel_custom WHERE channel_key = :key")
     suspend fun custom(key: String): ChannelCustomEntity?
 
+    /** Channels of [sourceId] whose logo is a phone-sent file (spec 21 §6: deleted with the source). */
+    @Query("SELECT channel_key FROM channel_custom WHERE source_id = :sourceId AND custom_logo_url LIKE 'file:%'")
+    suspend fun phoneLogoKeys(sourceId: String): List<String>
+
     @Query(ManagerSql.EPG_OPTIONS)
     suspend fun epgOptions(sourceId: String, pattern: String?, afterName: String, afterId: String, limit: Int): List<EpgChannelOption>
 

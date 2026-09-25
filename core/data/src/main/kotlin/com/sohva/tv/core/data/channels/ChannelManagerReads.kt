@@ -48,6 +48,8 @@ class ChannelManagerReads(private val db: SohvaDatabase, private val io: Corouti
 
     suspend fun custom(key: String): ChannelCustomEntity? = withContext(io) { dao.custom(key) }
 
+    suspend fun phoneLogoKeys(sourceId: String): List<String> = withContext(io) { dao.phoneLogoKeys(sourceId) }
+
     suspend fun epgName(sourceId: String, epgId: String): String? = withContext(io) { dao.epgName(sourceId, epgId) }
 
     suspend fun epgOptions(sourceId: String, search: String, after: EpgChannelOption?, limit: Int): List<EpgChannelOption> = withContext(io) {

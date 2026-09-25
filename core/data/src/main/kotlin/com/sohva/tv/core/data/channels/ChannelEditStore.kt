@@ -137,7 +137,10 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
             val page = edits.rankPage(sourceId, afterRank, afterId, BULK_PAGE)
             if (page.isEmpty()) break
             db.runInTransaction {
-                val customs = edits.customs(page.map { it.key }).associateBy { it.channelKey }
+                // SQLite of API 23–30 takes at most 999 variables in a statement.
+                val customs = page.chunked(IN_LIMIT)
+                    .flatMap { chunk -> edits.customs(chunk.map { it.key }) }
+                    .associateBy { it.channelKey }
                 for (c in page) {
                     val position = ChannelPositions.initial(index++)
                     store((customs[c.key] ?: empty(c.key, sourceId)).copy(position = position, updatedAt = clock.wallMillis()))
@@ -197,5 +200,6 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
 
     private companion object {
         const val BULK_PAGE = 2_000
+        const val IN_LIMIT = 500
     }
 }
