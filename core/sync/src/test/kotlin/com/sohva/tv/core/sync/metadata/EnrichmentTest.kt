@@ -12,6 +12,7 @@ import com.sohva.tv.core.data.source.ServiceKeys
 import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.error.Outcome
+import com.sohva.tv.core.model.metadata.MediaType
 import com.sohva.tv.core.model.metadata.WorkKeys
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
@@ -84,8 +85,9 @@ class EnrichmentTest {
         CoroutineScope(SupervisorJob() + Dispatchers.IO),
     )
     private var paused = false
+    private var playing = false
     private val enrichment = Enrichment(
-        db, service, LibraryPasses(db), clock, Dispatchers.IO, log, { PreferredCopy.NONE }, { listOf("s") }, { paused },
+        db, service, LibraryPasses(db), clock, Dispatchers.IO, log, { PreferredCopy.NONE }, { listOf("s") }, { paused }, { playing },
     )
 
     @After
@@ -150,6 +152,28 @@ class EnrichmentTest {
         enrichment.synchronise()
         paused = true
         assertEquals(RunEnd.STOPPED, enrichment.run())
+        assertEquals(0, server.requestCount)
+    }
+
+    private fun visible(id: String, name: String, year: Int?) = VisibleTitle("vod:movie:s:$id", MediaType.MOVIE, name, year)
+
+    @Test
+    fun theTitlesOnScreenAreLookedUpInTheForegroundOnce() = runBlocking {
+        seed()
+        enrichment.lookUpVisible(listOf(visible("1", "Heat", 1995), visible("2", "Quiet Harbour", 2020)))
+        assertEquals("Heat", row("vod:movie:s:1")[0])
+        assertEquals("no_match", db.metadata().match("vod:movie:s:2")!!.status)
+        // Settled titles are not asked again.
+        val asked = server.requestCount
+        enrichment.lookUpVisible(listOf(visible("1", "Heat", 1995), visible("2", "Quiet Harbour", 2020)))
+        assertEquals(asked, server.requestCount)
+    }
+
+    @Test
+    fun theForegroundBudgetWaitsWhileVideoPlays() = runBlocking {
+        seed()
+        playing = true
+        enrichment.lookUpVisible(listOf(visible("1", "Heat", 1995)))
         assertEquals(0, server.requestCount)
     }
 

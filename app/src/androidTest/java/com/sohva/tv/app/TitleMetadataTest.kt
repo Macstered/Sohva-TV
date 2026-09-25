@@ -5,12 +5,14 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.sohva.tv.core.data.metadata.MetadataSettings
 import com.sohva.tv.core.data.source.ServiceKeys
 import com.sohva.tv.feature.home.RailItem
 import kotlinx.coroutines.runBlocking
@@ -127,7 +129,13 @@ class TitleMetadataTest {
 
     @Test
     fun theSeriesPageTakesTheShowAndTheSelectedEpisode() {
+        runBlocking {
+            graph.data.secrets.write(MetadataSettings.TVMAZE_ENABLED, "true")
+            graph.metadata.settings.reload()
+        }
         focusAndPress(RailItem.SERIES.tag)
+        // With TVmaze on, the Series wall credits it (spec 41 Q9).
+        compose.waitUntil(10_000) { exists("library-tvmaze-credit") }
         focusAndPress("library-row-group:crime")
         focusAndPress("library-card-${LibraryFixture.seriesKey(0)}")
         compose.waitUntil(10_000) { exists("screen-series-page") }
@@ -140,6 +148,28 @@ class TitleMetadataTest {
         compose.onNodeWithTag("series-episode-${LibraryFixture.episodeKey(0, 2)}").performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitUntil(10_000) { shows("52 min") }
         assertTrue(!shows("48 min"))
+    }
+
+    /** Spec 41 Q10: a card the focus rests on is looked up in the foreground, and the wall shows the new title. */
+    @Test
+    fun aRestingCardIsLookedUpWhileTheAppIsInFront() {
+        focusAndPress(RailItem.MOVIES.tag)
+        focusAndPress("library-row-group:drama")
+        val card = "library-card-${LibraryFixture.key(0)}"
+        compose.waitUntil(10_000) { exists(card) }
+        compose.onNodeWithTag(card).performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus(card)
+        try {
+            compose.waitUntil(15_000) { replacementTitle(LibraryFixture.key(0)) == "Harbour Lights" }
+        } catch (e: Throwable) {
+            throw AssertionError("requests: ${server.requestCount}; match: " + graph.data.database.metadata().match(LibraryFixture.key(0)), e)
+        }
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(hasTestTag(card) and hasText("Harbour Lights", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals("Harbour Lights", replacementTitle(LibraryFixture.key(0)))
+        // Data arriving never moves focus (AGENTS 5.2).
+        awaitFocus(card)
     }
 
     private fun replacementTitle(key: String): String? = graph.data.database.openHelper.readableDatabase
@@ -184,7 +214,8 @@ class TitleMetadataTest {
     private companion object {
         const val PICKER_SEARCH = """{"results":[{"id":555,"title":"Quiet Harbour","release_date":"2001-04-01","overview":"A harbour at night.","popularity":1.0}]}"""
         const val PICKER_DETAILS = """{"id":555,"title":"Quiet Harbour","overview":"A harbour at night.","release_date":"2001-04-01","runtime":95,"genres":[{"id":18}]}"""
-        const val SEARCH = """{"results":[{"id":949,"title":"Drama 0000","release_date":"2000-03-01","popularity":12.5,"genre_ids":[18]}]}"""
+        const val SEARCH = """{"results":[{"id":949,"title":"Harbour Lights","original_title":"Drama 0000","release_date":"2000-03-01",""" +
+            """"popularity":12.5,"genre_ids":[18]}]}"""
         const val DETAILS = """{"id":949,"title":"Harbour Lights","overview":"A keeper waits for a ship that never comes.",""" +
             """"poster_path":"/harbour.jpg","release_date":"2000-03-01","runtime":125,"vote_average":7.84,"genres":[{"id":18}],""" +
             """"credits":{"cast":[{"name":"Aino Example","character":"Keeper"},{"name":"Otto Sample","character":"Captain"}]},""" +

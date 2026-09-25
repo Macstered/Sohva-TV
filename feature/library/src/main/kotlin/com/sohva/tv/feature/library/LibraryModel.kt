@@ -53,6 +53,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     /** Film cards to tick as watched, read around the focused card (VOD-FR-37); series walls read none. */
     val ticks: StateFlow<Set<String>> = _ticks.asStateFlow()
     private var tickJob: Job? = null
+    private var visibleJob: Job? = null
+
+    private val _tvmazeCredit = MutableStateFlow(false)
+
+    /** TVmaze's CC BY-SA credit under the header (spec 41 Q9). */
+    val tvmazeCredit: StateFlow<Boolean> = _tvmazeCredit.asStateFlow()
 
     private val _note = MutableStateFlow<RefreshNote?>(null)
     val note: StateFlow<RefreshNote?> = _note.asStateFlow()
@@ -82,6 +88,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
 
     init {
         viewModelScope.launch { readRail() }
+        viewModelScope.launch { _tvmazeCredit.value = runCatching { env.tvmazeCredit() }.getOrDefault(false) }
         select(HISTORY_KEY)
         watchChanges()
         if (env.room == WallRoom.MOVIES) viewModelScope.launch { _wall.collect { readTicks(it.window) } }
@@ -161,11 +168,26 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         focusOnWall = true
         val state = _wall.value
         if (moved && env.room == WallRoom.MOVIES) readTicks(state.window)
+        lookUpVisibleLater()
         if (!state.current || edgeJob?.isActive == true) return
         val window = state.window
         when {
             window.wantsNext(index, columns) -> edge(forward = true)
             window.wantsPrevious(index, columns) -> edge(forward = false)
+        }
+    }
+
+    /**
+     * The titles around the focused card once focus has rested a second (spec 41 Q10): every
+     * focus move cancels the wait and the lookups, so nothing runs while a key is held.
+     */
+    private fun lookUpVisibleLater() {
+        visibleJob?.cancel()
+        visibleJob = viewModelScope.launch {
+            delay(VISIBLE_REST_MS)
+            val window = _wall.value.window
+            val around = (maxOf(window.first, focusedIndex - VISIBLE_SPAN) until minOf(window.end, focusedIndex + VISIBLE_SPAN))
+            env.lookUpVisible(around.mapNotNull(window::itemAt))
         }
     }
 
@@ -335,5 +357,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         const val CHANGE_QUIET_MS: Long = 500
         const val LOAD_SECTION: String = "Library:Load"
         const val TICK_SPAN: Int = 200
+        const val VISIBLE_REST_MS: Long = 1_000
+        const val VISIBLE_SPAN: Int = 24
     }
 }

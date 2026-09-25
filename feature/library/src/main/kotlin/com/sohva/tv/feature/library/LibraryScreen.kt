@@ -160,6 +160,10 @@ private fun LibraryHeader(model: LibraryModel) {
             }
             stale?.let { Text(it, style = Sohva.typography.caption, color = Sohva.palette.textMuted) }
             note?.let { Text(noteText(it), Modifier.testTag("library-note"), style = Sohva.typography.caption, color = Sohva.palette.textMuted) }
+            val credit by model.tvmazeCredit.collectAsStateWithLifecycle()
+            if (credit) {
+                Text(stringResource(R.string.metadata_tvmaze_credit), Modifier.testTag("library-tvmaze-credit"), style = Sohva.typography.caption, color = Sohva.palette.textDim)
+            }
         }
     }
 }

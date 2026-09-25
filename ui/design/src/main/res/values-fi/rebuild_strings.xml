@@ -23,4 +23,5 @@
     <string name="player_archive_title">Arkisto · %1$s</string>
     <string name="player_archive_unavailable">Tätä ohjelmaa ei saa arkistosta.</string>
     <string name="metadata_key_refused">TMDB hylkäsi avaimen kolme kertaa, joten taustahaku on pysäytetty. Tarkista avain ja paina Tallenna avain.</string>
+    <string name="metadata_tvmaze_credit">Osa sarjojen tiedoista: TVmaze (CC BY-SA)</string>
 </resources>

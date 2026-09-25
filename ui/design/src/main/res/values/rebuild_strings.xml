@@ -24,4 +24,6 @@
     <string name="player_archive_unavailable">This programme is not available from the archive.</string>
     <!-- Spec 41 Q8 (decided 25 September 2026): the worker stops after three refusals. -->
     <string name="metadata_key_refused">TMDB refused the key three times, so background lookups have stopped. Check the key, then press Save key.</string>
+    <!-- Spec 41 Q9 (decided 25 September 2026): a small credit wherever TVmaze data shows. -->
+    <string name="metadata_tvmaze_credit">Some series details from TVmaze (CC BY-SA)</string>
 </resources>

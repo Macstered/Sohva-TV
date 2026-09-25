@@ -20,6 +20,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
+/** A title on screen for the foreground budget: what its lookup needs. */
+data class VisibleTitle(val key: String, val type: MediaType, val name: String, val year: Int?)
+
 /** How a run ended, and so when the worker runs next (spec 41 META-FR-63). */
 enum class RunEnd {
     /** Nothing left to do, or metadata is off. */
@@ -55,6 +58,8 @@ class Enrichment(
     private val enabledSources: suspend () -> List<String>,
     /** True while video plays or the app is in front: the run stops (META-FR-63). */
     private val paused: () -> Boolean,
+    /** True while video plays: even the foreground budget waits (spec 41 Q10). */
+    private val playing: () -> Boolean = { false },
 ) {
     private val dao get() = db.metadata()
     private var lastGenreCount = 0L
@@ -122,6 +127,26 @@ class Enrichment(
         }
         db.runInTransaction { dao.putQueue(rows) }
         return pending
+    }
+
+    /**
+     * The foreground budget (spec 41 Q10, decided): the titles on screen that metadata has not
+     * settled yet, looked up one a second and applied one by one, so a fresh library does not show
+     * provider titles for its whole first session. Never during playback; the caller cancels it the
+     * moment a key moves focus, so a held key pauses it. A provider failure leaves the title to
+     * the background worker.
+     */
+    suspend fun lookUpVisible(titles: List<VisibleTitle>): Unit = withContext(bulk) {
+        if (titles.isEmpty()) return@withContext
+        val settled = titles.map { it.key }.chunked(IN_LIMIT).flatMap(dao::matchesOf).mapTo(HashSet()) { it.contentKey }
+        for (title in titles.take(VISIBLE_MAX)) {
+            if (title.key in settled) continue
+            if (playing()) return@withContext
+            val row = MetadataQueueEntity(title.key, title.type.wire, title.name, title.year, Genre.VERSION, PENDING, 0, 0, 0, 0)
+            val outcome = service.catalogue(MetadataRequest(title.type, title.name, title.year, contentKey = title.key))
+            if (outcome != CatalogueOutcome.Retry) apply(listOf(row to outcome))
+            delay(VISIBLE_SPACING_MS)
+        }
     }
 
     /**
@@ -224,6 +249,8 @@ class Enrichment(
 
     companion object {
         const val PAGE: Int = 2_000
+        const val VISIBLE_MAX: Int = 48
+        const val VISIBLE_SPACING_MS: Long = 1_000
         const val IN_LIMIT: Int = 500
         const val BATCH: Int = 60
         const val SPACING_MS: Long = 225

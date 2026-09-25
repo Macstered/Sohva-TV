@@ -6,9 +6,11 @@ import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.concurrent.WorkOrigin
+import com.sohva.tv.core.model.metadata.MediaType
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.RefreshState
+import com.sohva.tv.core.sync.metadata.VisibleTitle
 import com.sohva.tv.feature.library.LibraryEnvironment
 import com.sohva.tv.feature.library.RefreshNote
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +38,17 @@ class AppLibraryEnvironment(
     override suspend fun groups(): List<RailGroup> = reads.groups(room)
 
     override suspend fun genreCounts(): Map<String, Int> = reads.genreCounts(room)
+
+    /** Series walls with TVmaze on (films never come from TVmaze, META-FR-13). */
+    override suspend fun tvmazeCredit(): Boolean =
+        room == WallRoom.SERIES && withContext(graph.dispatchers.io) { graph.metadata.settings.current().tvmazeEnabled }
+
+    /** Only with metadata on and outside the Lab build (spec 41 Q10). */
+    override suspend fun lookUpVisible(items: List<WallItem>) {
+        if (!graph.flags.metadataWorker || items.isEmpty()) return
+        val type = if (room == WallRoom.MOVIES) MediaType.MOVIE else MediaType.SERIES
+        graph.metadata.lookUpVisible(items.map { VisibleTitle(it.row.key, type, it.row.name, it.row.year) })
+    }
 
     override suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem> =
         reads.page(room, destination, search, from, forward, limit)

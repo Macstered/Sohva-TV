@@ -62,6 +62,15 @@ interface LibraryEnvironment {
     /** The films to tick as watched among (content key, film identity) pairs, ≤ 200 (VOD-FR-37). */
     suspend fun watched(films: List<Pair<String, String?>>): Set<String>
 
+    /**
+     * Looks up the titles on screen that metadata has not settled (spec 41 Q10), one a second;
+     * cancelled by the caller when focus moves on.
+     */
+    suspend fun lookUpVisible(items: List<WallItem>)
+
+    /** Whether TVmaze may have supplied what this wall shows: its credit then shows (spec 41 Q9). */
+    suspend fun tvmazeCredit(): Boolean
+
     /** Imports every enabled source whose scope includes films and series. */
     suspend fun refresh(): RefreshNote
 
