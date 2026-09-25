@@ -74,8 +74,7 @@ class LibraryPlaybackTest {
 
     private fun open(rail: RailItem, row: String, card: String) {
         compose.waitUntil(15_000) { exists(rail.tag) }
-        compose.onNodeWithTag(rail.tag).performSemanticsAction(SemanticsActions.RequestFocus)
-        awaitFocus(rail.tag)
+        compose.focusRail(rail)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists(row) }
         compose.onNodeWithTag(row).performSemanticsAction(SemanticsActions.RequestFocus)

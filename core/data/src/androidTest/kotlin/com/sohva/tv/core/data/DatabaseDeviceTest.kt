@@ -170,6 +170,26 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom7To8IndexingExistingTitlesForSearch() {
+        helper.createDatabase(name, 7).use {
+            it.execSQL(
+                "INSERT INTO movie (id, key, source_id, provider_id, group_id, name, sort_name, year, rating, rating_x10, poster_url, " +
+                    "stream_url_enc, plot, provider_order, quality_mask, claim_mask, picture_rank, genre, work_key, primary_copy, group_primary, " +
+                    "visible, item_position, content_hash, generation) VALUES (1, 'vod:movie:s1:9', 's1', '9', 3, 'Quiet Harbour', " +
+                    "'quiet harbour', 2020, NULL, NULL, NULL, 'sealed', NULL, 0, 0, 0, 0, NULL, NULL, 1, 1, 1, NULL, 42, 1)",
+            )
+        }
+        helper.runMigrationsAndValidate(name, 8, true).use { db ->
+            val found = { term: String -> db.query("SELECT rowid FROM movie_search WHERE movie_search MATCH ?", arrayOf(term)).use { it.count } }
+            assertEquals(1, found("\"harb*\""))
+            // The triggers came with the tables: a rename follows.
+            db.execSQL("UPDATE movie SET name = 'Loud Pier' WHERE id = 1")
+            assertEquals(0, found("\"harb*\""))
+            assertEquals(1, found("\"pier*\""))
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

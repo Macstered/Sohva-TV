@@ -3,6 +3,8 @@ package com.sohva.tv.core.sync
 import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.KeyRange
 import com.sohva.tv.core.data.database.MovieEntity
+import com.sohva.tv.core.data.database.SearchIndex
+import com.sohva.tv.core.data.database.SearchTable
 import com.sohva.tv.core.data.database.SeriesEntity
 import com.sohva.tv.core.data.org.OrgPass
 import com.sohva.tv.core.data.org.OrgRules
@@ -36,7 +38,6 @@ import com.sohva.tv.core.sync.diff.KeyedDiff
 import com.sohva.tv.core.sync.diff.Room
 import com.sohva.tv.core.sync.diff.Row
 import com.sohva.tv.core.sync.diff.Tables
-
 import kotlinx.coroutines.withContext
 
 /**
@@ -172,6 +173,8 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
             OrgPass(env.db, OrgRules(env.db), passes).resolveSource(sourceId, preferred, phase)
             passes.recountGenres()
             phase("genre counts")
+            SearchIndex.catchUp(env.db, SearchTable.MOVIE, SearchTable.SERIES, SearchTable.EPISODE)
+            phase("search index")
             env.onCatalogueImported()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
                 KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }

@@ -29,6 +29,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -78,6 +83,8 @@ fun HomeRail(
     requesters: Map<RailItem, FocusRequester>,
     onOpen: (RailItem) -> Unit,
     modifier: Modifier = Modifier,
+    onFocused: () -> Unit = {},
+    onExit: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     val t by animateFloatAsState(
@@ -92,7 +99,14 @@ fun HomeRail(
             .width(EXPANDED)
             .fillMaxHeight()
             .semantics { contentDescription = navigation }
-            .onFocusChanged { expanded = it.hasFocus }
+            .onFocusChanged {
+                if (it.hasFocus && !expanded) onFocused()
+                expanded = it.hasFocus
+            }
+            // Right leaves the rail for the rows (spec 02 HOME-FR-83), not the nearest card.
+            .onPreviewKeyEvent { e ->
+                (e.type == KeyEventType.KeyDown && e.key == Key.DirectionRight).also { if (it) onExit() }
+            }
             .drawBehind {
                 // The wider, denser rail is its own scrim over the rows.
                 val width = lerp(COLLAPSED.toPx(), EXPANDED.toPx(), t)

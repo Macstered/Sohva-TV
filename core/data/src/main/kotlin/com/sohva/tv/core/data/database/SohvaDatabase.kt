@@ -44,6 +44,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MetadataQueueEntity::class,
         GenreCountEntity::class,
         OrganizationRuleEntity::class,
+        MovieSearchEntity::class,
+        SeriesSearchEntity::class,
+        EpisodeSearchEntity::class,
+        ChannelSearchEntity::class,
+        ProgrammeSearchEntity::class,
     ],
     version = SohvaDatabase.VERSION,
     exportSchema = true,
@@ -54,7 +59,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     // the next import fills the claims (the import hash carries a keys version), so opening the
     // database runs no data migration. 5 -> 6 (M4b) adds the metadata tables and the titles'
     // metadata columns; the next import and the enrichment fill them. 6 -> 7 (M4c) adds the
-    // organisation rules and the indexes of the other content orders.
+    // organisation rules and the indexes of the other content orders. 7 -> 8 (M5) adds Search's
+    // full-text tables; [SearchTablesCreated] installs their triggers and indexes existing rows once,
+    // inside the migration: no released install holds version 7 data, so the one-time cost falls
+    // only on test installs (decision "Search index").
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -62,6 +70,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8, spec = SohvaDatabase.SearchTablesCreated::class),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -107,6 +116,10 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun organization(): OrgDao
 
+    abstract fun search(): SearchDao
+
+    abstract fun home(): HomeDao
+
     /**
      * v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied, and
      * ranks move to M3's scheme (playlist order above every viewer position), or channels an import
@@ -119,8 +132,16 @@ abstract class SohvaDatabase : RoomDatabase() {
         }
     }
 
+    /** v7 -> v8: the search tables are new and empty; their triggers go in and existing rows are indexed. */
+    class SearchTablesCreated : AutoMigrationSpec {
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            SearchIndex.installTriggers(db)
+            SearchIndex.fill(db)
+        }
+    }
+
     companion object {
-        const val VERSION: Int = 7
+        const val VERSION: Int = 8
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

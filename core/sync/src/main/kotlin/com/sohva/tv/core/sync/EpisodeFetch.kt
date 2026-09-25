@@ -1,6 +1,8 @@
 package com.sohva.tv.core.sync
 
 import com.sohva.tv.core.data.database.EpisodeEntity
+import com.sohva.tv.core.data.database.SearchIndex
+import com.sohva.tv.core.data.database.SearchTable
 import com.sohva.tv.core.data.source.SourceStore
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
@@ -48,6 +50,7 @@ class EpisodeFetch(private val env: ImportEnvironment, private val sources: Sour
                     rows.chunked(CHUNK).forEach { chunk -> env.db.episodeImport().deleteKeys(chunk.map { it.key }) }
                     rows.chunked(CHUNK).forEach(env.db.episodeImport()::insert)
                 }
+                SearchIndex.catchUp(env.db, SearchTable.EPISODE)
             }
             Outcome.Ok(Unit)
         } catch (e: CancellationException) {

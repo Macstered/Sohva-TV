@@ -22,6 +22,7 @@ object DatabaseFactory {
             .setQueryExecutor(executor("SohvaDbRead", READ_THREADS))
             .setTransactionExecutor(executor("SohvaDbWrite", 1))
             .addCallback(PragmaCallback)
+            .addCallback(SearchIndex.Callback)
             .build()
 
     private fun executor(name: String, threads: Int): ExecutorService {

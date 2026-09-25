@@ -17,7 +17,8 @@ import kotlinx.coroutines.runBlocking
 
 /**
  * Writes the owner-scale guide (plan/07 §6.1: 56,164 channels in 800 groups, about 165,000
- * programmes around now) and film library ([FilmFixture]) once, shows "fixture-ready" and finishes. Fictional
+ * programmes around now) and film library ([FilmFixture]) once, and Home's rows ([HomeFixture]) every
+ * run, shows "fixture-ready" and finishes. Fictional
  * names and reserved addresses only; streams are not playable.
  */
 class FixtureActivity : Activity() {
@@ -42,7 +43,7 @@ class FixtureActivity : Activity() {
     private fun seed(): Int {
         val db = DatabaseFactory.create(applicationContext)
         try {
-            return seedGuide(db) + FilmFixture.seed(db)
+            return seedGuide(db) + FilmFixture.seed(db) + HomeFixture.seed(db, System.currentTimeMillis())
         } finally {
             db.close()
         }

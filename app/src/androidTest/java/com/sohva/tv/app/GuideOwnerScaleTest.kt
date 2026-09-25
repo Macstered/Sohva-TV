@@ -54,7 +54,7 @@ class GuideOwnerScaleTest {
         assumeTrue(asked)
         val heap = HeapSampler().also { it.start() }
         compose.waitUntil(15_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         val opened = System.nanoTime()
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("guide-row-0")

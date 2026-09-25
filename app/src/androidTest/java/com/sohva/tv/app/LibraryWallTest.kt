@@ -79,8 +79,7 @@ class LibraryWallTest {
     /** Home → Movies with OK, as the viewer does. */
     private fun openMovies() {
         compose.waitUntil(15_000) { exists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
-        compose.onNodeWithTag(RailItem.MOVIES.tag).performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.focusRail(RailItem.MOVIES)
         awaitFocus(RailItem.MOVIES.tag)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("screen-movies") }
@@ -182,7 +181,8 @@ class LibraryWallTest {
         awaitFocus(card(151))
         press(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(10_000) { exists(RailItem.MOVIES.tag) }
-        awaitFocus(RailItem.MOVIES.tag)
+        // Home is rebuilt and focuses its content (spec 01 §3.4); the rail is reached with Left.
+        compose.focusRail(RailItem.MOVIES)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("screen-movies") }
         awaitFocus(card(151))

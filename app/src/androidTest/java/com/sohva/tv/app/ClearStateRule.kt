@@ -50,6 +50,8 @@ class ClearStateRule : ExternalResource() {
         graph.guideFocusChannel = null
         // The walls' browse sessions live for the process (VOD-FR-56); each test starts at a first visit.
         graph.browseSessions.values.forEach { it.clear() }
+        // Continue watching lives for the process (spec 02 HOME-FR-24): read again for this test's rows.
+        graph.continueFeed.retry()
         // The ringing queue lives in the process; the tables were emptied above, so this also cancels the alarm.
         graph.reminders.resetForTests()
         runBlocking { graph.reminders.reschedule() }

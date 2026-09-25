@@ -10,6 +10,7 @@ import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.channels.AppChannelsEnvironment
+import com.sohva.tv.app.home.AppHomeEnvironment
 import com.sohva.tv.app.library.AppLibraryEnvironment
 import com.sohva.tv.app.library.AppTitleEnvironment
 import com.sohva.tv.app.library.LibraryNavigation
@@ -19,6 +20,7 @@ import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.app.organize.AppManagerEnvironment
 import com.sohva.tv.app.organize.ManagerNavigation
+import com.sohva.tv.app.search.AppSearchEnvironment
 import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.core.data.vod.ContentKeys
 import com.sohva.tv.core.data.vod.WallItem
@@ -27,6 +29,7 @@ import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.feature.channels.ChannelsModel
 import com.sohva.tv.feature.channels.ChannelsScreen
+import com.sohva.tv.feature.home.HomeModel
 import com.sohva.tv.feature.home.HomeScreen
 import com.sohva.tv.feature.home.RailItem
 import com.sohva.tv.feature.library.FilmModel
@@ -47,6 +50,8 @@ import com.sohva.tv.feature.player.PlayerModel
 import com.sohva.tv.feature.player.PlayerNavigation
 import com.sohva.tv.feature.player.PlayerScreen
 import com.sohva.tv.feature.player.VodPlay
+import com.sohva.tv.feature.search.SearchModel
+import com.sohva.tv.feature.search.SearchScreen
 import com.sohva.tv.feature.settings.SettingsModel
 import com.sohva.tv.feature.settings.SettingsScreen
 import com.sohva.tv.ui.design.R
@@ -61,7 +66,9 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
     when (route) {
         AppRoute.Home -> {
             val items = remember(flags) { railItems(flags) }
-            HomeScreen(items, onOpen = { stack.push(it.route()) })
+            // Scoped to this stack entry: every arrival on Home is fresh (spec 02 §3.4).
+            val model = viewModel { HomeModel(AppHomeEnvironment(graph, stack)) }
+            HomeScreen(model, items, onOpen = { stack.push(it.route()) }, lowMemory = graph.player.lowMemory)
         }
         AppRoute.Guide -> {
             val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
@@ -86,7 +93,12 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel { LibraryModel(AppLibraryEnvironment(graph, room, navigation), graph.browseSessions.getValue(room)) }
             LibraryScreen(model)
         }
-        AppRoute.Search -> PlaceholderScreen(R.string.home_search, { back() }, "screen-search")
+        AppRoute.Search -> {
+            val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
+            // Scoped to this stack entry: leaving Search forgets the text and the results (SEARCH-19).
+            val model = viewModel { SearchModel(AppSearchEnvironment(graph, stack, locale)) }
+            SearchScreen(model)
+        }
         AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
         AppRoute.ProfilePicker -> PlaceholderScreen(R.string.profile_active_title, { back() }, "screen-profiles")
         AppRoute.Channels -> {

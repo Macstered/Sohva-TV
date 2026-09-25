@@ -3,6 +3,8 @@ package com.sohva.tv.app
 import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.ProgrammeEntity
+import com.sohva.tv.core.data.database.SearchIndex
+import com.sohva.tv.core.data.database.SearchTable
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
 import com.sohva.tv.core.data.live.ChannelEffects
@@ -80,6 +82,8 @@ object GuideFixture {
                     db.sources().upsert(SourceEntity(sourceId, "Fixture ${'A' + s}", "M3U", true, sources - s, 1, "LIVE_TV", 0, now, now))
                 }
             }
+            // As the playlist and guide imports end: the new rows into Search's index.
+            SearchIndex.catchUp(db, SearchTable.CHANNEL, SearchTable.PROGRAMME)
         }
     }
 

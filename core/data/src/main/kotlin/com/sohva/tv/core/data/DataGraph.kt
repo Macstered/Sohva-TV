@@ -9,6 +9,7 @@ import com.sohva.tv.core.data.channels.ChannelManagerReads
 import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.home.HomeReads
 import com.sohva.tv.core.data.live.LiveStore
 import com.sohva.tv.core.data.migration.Beta23HiddenCategories
 import com.sohva.tv.core.data.migration.Beta23SourceImport
@@ -17,6 +18,7 @@ import com.sohva.tv.core.data.org.OrgRules
 import com.sohva.tv.core.data.prefs.AppPreferences
 import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.reminder.ReminderStore
+import com.sohva.tv.core.data.search.SearchReads
 import com.sohva.tv.core.data.security.AndroidKeystoreKeyProvider
 import com.sohva.tv.core.data.security.EnvelopeCipher
 import com.sohva.tv.core.data.security.EnvelopeSpec
@@ -90,6 +92,12 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val walls: WallReads by lazy { WallReads(database, dispatchers.io) { DEFAULT_PROFILE } }
     val progress: ProgressStore by lazy { ProgressStore(database, dispatchers.io, SystemClock) { DEFAULT_PROFILE } }
     val titles: TitleReads by lazy { TitleReads(database, dispatchers.io, SystemClock) }
+
+    /** Search's groups (spec 03). */
+    val search: SearchReads by lazy { SearchReads(database, dispatchers.io) }
+
+    /** Home's recent channels (spec 02). */
+    val home: HomeReads by lazy { HomeReads(database, dispatchers.io) { DEFAULT_PROFILE } }
 
     /** The library manager's reads (spec 42 §4.9); its writes go through [OrgRules] and [OrgPass]. */
     val organization: OrgManager by lazy { OrgManager(database, OrgRules(database), dispatchers.io) }

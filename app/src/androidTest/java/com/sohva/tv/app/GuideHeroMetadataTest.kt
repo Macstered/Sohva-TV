@@ -84,7 +84,7 @@ class GuideHeroMetadataTest {
     @Test
     fun theSelectedProgrammeGetsItsYearRatingOverviewAndSource() {
         compose.waitUntil(10_000) { exists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("guide-row-0") }
         awaitFocus("guide-row-0")

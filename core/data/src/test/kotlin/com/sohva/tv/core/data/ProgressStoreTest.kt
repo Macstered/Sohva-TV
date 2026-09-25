@@ -172,6 +172,9 @@ class ProgressStoreTest {
         store.markWatched("vod:movie:s:c", 90 * min)
         val feed = store.continueWatching()
         assertEquals(listOf("vod:episode:s:e3", "vod:movie:s:b"), feed.map { it.contentKey })
+        // The query collapses before its limit: two episodes of one series and two copies of a film are one row each (spec 02 §8).
+        assertEquals(listOf("vod:episode:s:e3"), db.progress().continueEpisodes(who, 1).map { it.contentKey })
+        assertEquals(1, db.progress().continueFilms(who, 2).size)
         assertEquals(listOf("series:s:9", "vod:movie:s:b"), feed.map { it.groupKey })
         assertEquals("Northern Line", feed[0].title)
         assertEquals(listOf(2, 3), listOf(feed[0].season, feed[0].episode))

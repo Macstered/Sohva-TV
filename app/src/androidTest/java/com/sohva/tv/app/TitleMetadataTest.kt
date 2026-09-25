@@ -99,7 +99,8 @@ class TitleMetadataTest {
 
     @Test
     fun theDetailsFillThePageAndSimilarOpensAnotherFilm() {
-        focusAndPress(RailItem.MOVIES.tag)
+        compose.focusRail(RailItem.MOVIES)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
         focusAndPress("library-row-group:drama")
         focusAndPress("library-card-${LibraryFixture.key(0)}")
         compose.waitUntil(10_000) { exists("screen-film") }
@@ -133,7 +134,8 @@ class TitleMetadataTest {
             graph.data.secrets.write(MetadataSettings.TVMAZE_ENABLED, "true")
             graph.metadata.settings.reload()
         }
-        focusAndPress(RailItem.SERIES.tag)
+        compose.focusRail(RailItem.SERIES)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
         // With TVmaze on, the Series wall credits it (spec 41 Q9).
         compose.waitUntil(10_000) { exists("library-tvmaze-credit") }
         focusAndPress("library-row-group:crime")
@@ -153,7 +155,8 @@ class TitleMetadataTest {
     /** Spec 41 Q10: a card the focus rests on is looked up in the foreground, and the wall shows the new title. */
     @Test
     fun aRestingCardIsLookedUpWhileTheAppIsInFront() {
-        focusAndPress(RailItem.MOVIES.tag)
+        compose.focusRail(RailItem.MOVIES)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
         focusAndPress("library-row-group:drama")
         val card = "library-card-${LibraryFixture.key(0)}"
         compose.waitUntil(10_000) { exists(card) }
@@ -178,7 +181,8 @@ class TitleMetadataTest {
     @Test
     fun wrongDetailsPinsTheChoiceAndUndoGivesItBack() {
         val film = LibraryFixture.key(1)
-        focusAndPress(RailItem.MOVIES.tag)
+        compose.focusRail(RailItem.MOVIES)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
         focusAndPress("library-row-group:drama")
         focusAndPress("library-card-$film")
         compose.waitUntil(10_000) { exists("screen-film") }

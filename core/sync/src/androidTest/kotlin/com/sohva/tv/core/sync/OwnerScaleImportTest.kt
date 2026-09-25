@@ -109,6 +109,25 @@ class OwnerScaleImportTest {
         step("xtream catalogue unchanged", "panel", RefreshKind.CATALOGUE)
         heap.finish()
 
+        // Search at owner scale (spec 03 §9: each group within 100 ms on the stand-in), warm, median of 5.
+        for (term in listOf("ha", "north", "signal kitchen", "zz")) {
+            val groups = linkedMapOf<String, suspend () -> Int>(
+                "live" to { data.search.live(term).let { it.channels.size + it.programmes.size } },
+                "films" to { data.search.films(term).size },
+                "series" to { data.search.series(term).size },
+                "episodes" to { data.search.episodes(term).size },
+            )
+            for ((group, run) in groups) {
+                var found = 0
+                val times = (1..5).map {
+                    val begun = System.nanoTime()
+                    found = run()
+                    (System.nanoTime() - begun) / 1_000_000
+                }.sorted()
+                Log.i(TAG, "search '$term' $group: median ${times[2]} ms, max ${times.last()} ms, $found rows")
+            }
+        }
+
         val counts = listOf("channel", "programme", "movie", "series", "episode").associateWith { table ->
             data.database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
         }

@@ -77,7 +77,7 @@ class ReminderTest {
 
     private fun awaitHome() {
         compose.waitUntil(10_000) { exists(RailItem.LIVE_TV.tag) }
-        awaitFocus(RailItem.LIVE_TV.tag)
+        compose.focusRail(RailItem.LIVE_TV)
     }
 
     @Test

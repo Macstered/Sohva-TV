@@ -56,7 +56,8 @@ class GuideBenchmark {
             seedOwnerFixture()
             pressHome()
             startActivityAndWait()
-            check(device.wait(Until.hasObject(By.res("home-live")), WAIT_MS)) { "Home did not open" }
+            check(device.wait(Until.hasObject(By.res("screen-home")), WAIT_MS)) { "Home did not open" }
+            focusRailItem("home-live")
             device.pressDPadCenter()
             check(device.wait(Until.hasObject(By.res("guide-row-0")), WAIT_MS)) { "the guide did not open" }
             // Let the first rows' programmes arrive before measuring.

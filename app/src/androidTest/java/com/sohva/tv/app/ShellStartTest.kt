@@ -15,6 +15,7 @@ import com.sohva.tv.ui.design.ground.LocalRenderDispatcher
 import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import android.app.LocaleManager
 import android.os.Build
 import android.os.LocaleList
@@ -65,7 +66,10 @@ class ShellStartTest {
         repeat(3) {
             ActivityScenario.launch(MainActivity::class.java).use {
                 compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
-                compose.onNodeWithTag(RailItem.LIVE_TV.tag).assertIsFocused()
+                // Content focused, rail closed (spec 01 §11: three launches in one process).
+                compose.waitUntil(10_000) {
+                    compose.onAllNodes(androidx.compose.ui.test.hasTestTag("home-hero-primary") and androidx.compose.ui.test.isFocused()).fetchSemanticsNodes().isNotEmpty()
+                }
             }
         }
     }
@@ -80,7 +84,8 @@ class ShellStartTest {
         }
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
-            compose.onNodeWithText("Suora TV").assertExists()
+            // The rail and the Welcome hero both say it.
+            assertTrue(compose.onAllNodesWithTextExists("Suora TV"))
             compose.onNodeWithText("Asetukset").assertExists()
         }
     }
@@ -92,8 +97,9 @@ class ShellStartTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
             // The Home marker is filled with textPrimary: Kanagawa's parchment, not Original's white.
+            // Home focuses its content, so the marker is its collapsed 48 dp square: sample its left edge.
             val image = compose.onNodeWithTag("home-nav-home").captureToImage().asAndroidBitmap()
-            val pixel = image.getPixel(image.width * 9 / 10, image.height / 2)
+            val pixel = image.getPixel(image.height / 8, image.height / 2)
             assertEquals(Integer.toHexString(0xFFDCD7BA.toInt()), Integer.toHexString(pixel))
         }
     }

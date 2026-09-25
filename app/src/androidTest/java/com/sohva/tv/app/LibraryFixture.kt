@@ -3,6 +3,8 @@ package com.sohva.tv.app
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.MovieEntity
+import com.sohva.tv.core.data.database.SearchIndex
+import com.sohva.tv.core.data.database.SearchTable
 import com.sohva.tv.core.data.database.SeriesEntity
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
@@ -52,6 +54,8 @@ object LibraryFixture {
         if (series > 0) seedSeries(graph, series, episodes, stream)
         db.sourceStatus().upsert(SourceStatusEntity(SOURCE, "catalogue", "success", now, now, null, null, null, index, 0, 1, null, null))
         runBlocking { db.sources().upsert(SourceEntity(SOURCE, "Fixture VOD", "M3U", true, 0, 1, "VOD", 0, now, now)) }
+        // As a catalogue import ends: the new titles into Search's index.
+        SearchIndex.catchUp(db, SearchTable.MOVIE, SearchTable.SERIES, SearchTable.EPISODE)
     }
 
     /** [count] series "Northern Line n" in the group "Crime", each with [episodes] episodes of season 1. */
