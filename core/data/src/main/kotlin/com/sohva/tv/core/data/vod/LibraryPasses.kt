@@ -6,6 +6,11 @@ import com.sohva.tv.core.data.database.KeyRange
 import com.sohva.tv.core.data.database.MATCHED
 import com.sohva.tv.core.data.database.MetadataMatchEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.model.org.OrgItem
+import com.sohva.tv.core.model.org.OrgKeys
+import com.sohva.tv.core.model.org.OrgResolver
+import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.core.model.metadata.TitleCleaner
 import com.sohva.tv.core.model.metadata.WorkKeys
 import com.sohva.tv.core.model.text.SortNames
@@ -69,8 +74,27 @@ class LibraryPasses(private val db: SohvaDatabase) {
             val facts = dao.filmNameYear(match.contentKey) ?: return
             val workKey = WorkKeys.of(facts.name, facts.year, externalId?.takeIf { match.provider == TMDB })
             dao.applyFilm(match.contentKey, title, sort, match.replacementPoster.takeIf { matched }, matched && match.replaceProviderPoster, externalId, genre, workKey, replacementKey)
+            if (facts.workKey != null && facts.workKey != workKey) identityChanged(match.contentKey, facts.workKey, workKey)
         } else {
             dao.applySeries(match.contentKey, title, sort, match.replacementPoster.takeIf { matched }, matched && match.replaceProviderPoster, externalId, genre, replacementKey)
+        }
+    }
+
+    /**
+     * A film's identity changed (spec 42 decision "Film identity in rules"): the rules on its old
+     * identity are copied to the new one, and when rules name the new identity the film's
+     * visibility is decided again (one indexed look-up otherwise).
+     */
+    private fun identityChanged(key: String, from: String, to: String) {
+        val org = db.organization()
+        org.copyFilmRules(OrgKeys.film(from), OrgKeys.film(to))
+        if (!org.namesItem(OrgRoom.MOVIES.wire, OrgKeys.film(to))) return
+        val resolver = OrgResolver(OrgRules(db).of(OrgRoom.MOVIES))
+        for (row in org.filmsOf(emptyList(), listOf(key))) {
+            val item = OrgItem(OrgRoom.MOVIES, row.sourceId, row.groupKey ?: OrgKeys.nameKey(row.groupName), OrgKeys.nameKey(row.groupName), row.key, OrgKeys.film(to))
+            val visible = resolver.eligible(item)
+            val position = resolver.memberRule(item).position?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt()
+            if (visible != row.visible || position != row.itemPosition) org.setFilm(row.id, visible, position)
         }
     }
 

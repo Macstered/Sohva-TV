@@ -4,6 +4,8 @@ import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.KeyRange
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SeriesEntity
+import com.sohva.tv.core.data.org.OrgPass
+import com.sohva.tv.core.data.org.OrgRules
 import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.concurrent.WorkOrigin
 import com.sohva.tv.core.model.error.AppError
@@ -150,9 +152,10 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                 target.filmGroups.finish(complete = sweepFilms)
                 target.seriesGroups.finish(complete = sweepSeries)
             }
-            // Matches back into rewritten rows, then standing copies and folded group counts (spec 41 §9.3).
+            // The organisation rules, matches back into rewritten rows, then standing copies and
+            // folded group counts (spec 42 §9.1, spec 41 §9.3).
             val passes = LibraryPasses(env.db)
-            passes.refreshSource(sourceId, preferred)
+            OrgPass(env.db, OrgRules(env.db), passes).resolveSource(sourceId, preferred)
             passes.recountGenres()
             env.onCatalogueImported()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +

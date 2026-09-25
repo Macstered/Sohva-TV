@@ -4,6 +4,9 @@ import com.sohva.tv.core.data.database.ChannelCustomEntity
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.live.ChannelEffects
+import com.sohva.tv.core.data.org.OrgPass
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.channel.ChannelEdits
 import com.sohva.tv.core.model.channel.ChannelMove
 import com.sohva.tv.core.model.channel.ChannelPositions
@@ -181,6 +184,8 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
             row.providerName, row.providerGroupId, row.providerLogoUrl, row.tvgId, row.providerNumber, row.playlistOrder, custom, customGroupId,
         )
         edits.updateShown(row.id, shown.name, shown.sortName, shown.groupId, shown.logoUrl, shown.number, shown.epgId, shown.visible, shown.displayRank)
+        // The hidden flag is one input; the organisation rules decide with it (spec 42 ORG-FR-15, -16).
+        OrgPass(db, OrgRules(db), LibraryPasses(db)).resolveChannels(listOf(key))
         row.groupId?.let(edits::recountGroup)
         if (shown.groupId != row.groupId) shown.groupId?.let(edits::recountGroup)
     }

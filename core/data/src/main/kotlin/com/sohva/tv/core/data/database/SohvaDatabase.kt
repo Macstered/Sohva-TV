@@ -43,6 +43,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MetadataPinEntity::class,
         MetadataQueueEntity::class,
         GenreCountEntity::class,
+        OrganizationRuleEntity::class,
     ],
     version = SohvaDatabase.VERSION,
     exportSchema = true,
@@ -52,13 +53,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     // 4 -> 5 (M4) adds the films' claim columns with defaults, the wall indexes and watch_progress;
     // the next import fills the claims (the import hash carries a keys version), so opening the
     // database runs no data migration. 5 -> 6 (M4b) adds the metadata tables and the titles'
-    // metadata columns; the next import and the enrichment fill them.
+    // metadata columns; the next import and the enrichment fill them. 6 -> 7 (M4c) adds the
+    // organisation rules and the indexes of the other content orders.
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4, spec = SohvaDatabase.ProviderColumns::class),
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
+        AutoMigration(from = 6, to = 7),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -102,6 +105,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun manager(): ManagerDao
 
+    abstract fun organization(): OrgDao
+
     /**
      * v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied, and
      * ranks move to M3's scheme (playlist order above every viewer position), or channels an import
@@ -115,7 +120,7 @@ abstract class SohvaDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION: Int = 6
+        const val VERSION: Int = 7
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

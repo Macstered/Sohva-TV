@@ -154,6 +154,22 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom6To7AddingTheOrganisationRules() {
+        helper.createDatabase(name, 6).use {
+            it.execSQL(
+                "INSERT INTO movie (id, key, source_id, provider_id, group_id, name, sort_name, year, rating, rating_x10, poster_url, " +
+                    "stream_url_enc, plot, provider_order, quality_mask, claim_mask, picture_rank, genre, work_key, primary_copy, group_primary, " +
+                    "visible, item_position, content_hash, generation) VALUES (1, 'vod:movie:s1:9', 's1', '9', 3, 'Quiet Harbour', " +
+                    "'quiet harbour', 2020, NULL, NULL, NULL, 'sealed', NULL, 0, 0, 0, 0, NULL, NULL, 1, 1, 1, NULL, 42, 1)",
+            )
+        }
+        helper.runMigrationsAndValidate(name, 7, true).use { db ->
+            db.query("SELECT name FROM movie WHERE id = 1").use { it.moveToFirst(); assertEquals("Quiet Harbour", it.getString(0)) }
+            db.query("SELECT COUNT(*) FROM organization_rule").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

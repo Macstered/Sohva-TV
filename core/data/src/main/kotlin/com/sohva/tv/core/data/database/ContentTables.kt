@@ -70,6 +70,16 @@ data class ChannelEntity(
         Index(value = ["group_id", "visible", "group_primary", "sort_name"]),
         Index(value = ["visible", "primary_copy", "sort_name"]),
         Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
+        // The other content orders (spec 42 ORG-07): newest/oldest, rating, and manual in a group.
+        Index(value = ["group_id", "visible", "group_primary", "year", "sort_name"]),
+        Index(value = ["group_id", "visible", "group_primary", "rating_x10", "sort_name"]),
+        Index(value = ["group_id", "visible", "group_primary", "item_position", "sort_name"]),
+        Index(value = ["visible", "primary_copy", "year", "sort_name"]),
+        Index(value = ["visible", "primary_copy", "rating_x10", "sort_name"]),
+        Index(value = ["genre", "visible", "primary_copy", "year", "sort_name"]),
+        Index(value = ["genre", "visible", "primary_copy", "rating_x10", "sort_name"]),
+        // A group's members in row order, for the organisation pass (spec 42 §9.1).
+        Index(value = ["group_id"]),
         Index(value = ["work_key"]),
         Index(value = ["similar_key"]),
         Index(value = ["replacement_key"]),
@@ -129,6 +139,14 @@ data class MovieEntity(
         Index(value = ["group_id", "visible", "primary_copy", "sort_name"]),
         Index(value = ["visible", "primary_copy", "sort_name"]),
         Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
+        Index(value = ["group_id", "visible", "primary_copy", "year", "sort_name"]),
+        Index(value = ["group_id", "visible", "primary_copy", "rating_x10", "sort_name"]),
+        Index(value = ["group_id", "visible", "primary_copy", "item_position", "sort_name"]),
+        Index(value = ["visible", "primary_copy", "year", "sort_name"]),
+        Index(value = ["visible", "primary_copy", "rating_x10", "sort_name"]),
+        Index(value = ["genre", "visible", "primary_copy", "year", "sort_name"]),
+        Index(value = ["genre", "visible", "primary_copy", "rating_x10", "sort_name"]),
+        Index(value = ["group_id"]),
     ],
 )
 data class SeriesEntity(

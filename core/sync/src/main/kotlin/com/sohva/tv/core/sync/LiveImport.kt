@@ -3,6 +3,9 @@ package com.sohva.tv.core.sync
 import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.KeyRange
 import com.sohva.tv.core.data.live.ChannelEffects
+import com.sohva.tv.core.data.org.OrgPass
+import com.sohva.tv.core.data.org.OrgRules
+import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.concurrent.WorkOrigin
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
@@ -107,6 +110,8 @@ internal class LiveImport(private val env: ImportEnvironment) {
         // counts are written, so moved and hidden channels are counted where they are shown.
         EditsApplier(env.db, target.groups).apply(sourceId)
         env.db.runInTransaction { target.groups.finish(complete = true) }
+        // The organisation rules over the new rows (spec 42 §9.1): hidden groups and channels, then their counts.
+        OrgPass(env.db, OrgRules(env.db), LibraryPasses(env.db)).resolveLive(sourceId)
         val range = KeyRange.channels(sourceId)
         env.db.channelImport().count(range.from, range.until)
     }

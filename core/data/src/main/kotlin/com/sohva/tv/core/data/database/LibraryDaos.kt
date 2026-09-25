@@ -22,7 +22,7 @@ data class CopyRow(
 data class FilmKey(val key: String, @ColumnInfo(name = "work_key") val workKey: String?)
 
 /** The facts a match needs to re-key a film. */
-data class FilmNameYear(val name: String, val year: Int?)
+data class FilmNameYear(val name: String, val year: Int?, @ColumnInfo(name = "work_key") val workKey: String?)
 
 object LibrarySql {
     const val MATCHES_PAGE = "SELECT * FROM metadata_match WHERE content_key > :after AND content_key < :until ORDER BY content_key LIMIT :limit"
@@ -31,6 +31,10 @@ object LibrarySql {
         "FROM movie WHERE work_key IN (:workKeys)"
     const val RECOUNT_FILM_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM movie " +
         "WHERE movie.group_id = content_group.id AND movie.visible = 1 AND movie.group_primary = 1) WHERE source_id = :sourceId AND room = 'MOVIES'"
+    const val RECOUNT_SERIES_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM series " +
+        "WHERE series.group_id = content_group.id AND series.visible = 1 AND series.primary_copy = 1) WHERE source_id = :sourceId AND room = 'SERIES'"
+    const val RECOUNT_CHANNEL_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM channel " +
+        "WHERE channel.group_id = content_group.id AND channel.visible = 1) WHERE source_id = :sourceId AND room = 'LIVE'"
     const val FILM_GENRE_COUNT = "SELECT COUNT(*) FROM movie WHERE genre = :genre AND visible = 1 AND primary_copy = 1"
     const val FILM_UNSORTED_COUNT = "SELECT COUNT(*) FROM movie INDEXED BY index_movie_genre_visible_primary_copy_sort_name " +
         "WHERE genre IS NULL AND visible = 1 AND primary_copy = 1"
@@ -47,7 +51,7 @@ interface LibraryDao {
     @Query(LibrarySql.FILM_KEYS_PAGE)
     fun filmKeysPage(after: String, until: String, limit: Int): List<FilmKey>
 
-    @Query("SELECT name, year FROM movie WHERE key = :key")
+    @Query("SELECT name, year, work_key FROM movie WHERE key = :key")
     fun filmNameYear(key: String): FilmNameYear?
 
     @Query(
@@ -70,6 +74,12 @@ interface LibraryDao {
 
     @Query(LibrarySql.RECOUNT_FILM_GROUPS)
     fun recountFilmGroups(sourceId: String)
+
+    @Query(LibrarySql.RECOUNT_SERIES_GROUPS)
+    fun recountSeriesGroups(sourceId: String)
+
+    @Query(LibrarySql.RECOUNT_CHANNEL_GROUPS)
+    fun recountChannelGroups(sourceId: String)
 
     @Query(LibrarySql.FILM_GENRE_COUNT)
     fun filmGenreCount(genre: String): Int
