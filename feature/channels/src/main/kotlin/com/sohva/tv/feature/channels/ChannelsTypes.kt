@@ -7,6 +7,8 @@ import com.sohva.tv.core.data.database.ChannelListEntity
 import com.sohva.tv.core.data.database.EpgChannelOption
 import com.sohva.tv.core.data.database.ManagedChannel
 import com.sohva.tv.core.data.database.ManagerSource
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 
@@ -70,6 +72,16 @@ interface ChannelsEnvironment {
     val showHidden: Flow<Boolean>
 
     suspend fun setShowHidden(value: Boolean)
+
+    /** The phone page (spec 11), here in logo mode for one channel (spec 21 CHAN-FR-40). */
+    val phone: Flow<PhoneSetupState>
+
+    fun openLogoPhone(key: String, name: String)
+
+    fun closePhone()
+
+    /** The page address as a QR code, built off the main thread; null when it cannot be. */
+    suspend fun qrCode(url: String): QrMatrix?
 }
 
 /** A row as the list draws it: formatted once per page, off the main thread. */

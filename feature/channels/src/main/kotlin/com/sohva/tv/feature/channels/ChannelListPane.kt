@@ -81,6 +81,13 @@ internal fun ChannelListPane(model: ChannelsModel, modifier: Modifier) {
                     Box(Modifier.fillMaxWidth().height(ROW_HEIGHT))
                 } else {
                     ChannelListRow(model, row, selected, if (index == 0) Modifier.focusRequester(first) else Modifier)
+                    // Read the neighbouring page before the remote reaches it, so a held key never
+                    // meets an empty row it cannot focus.
+                    LaunchedEffect(index, pages) {
+                        val offset = index % ChannelPages.PAGE
+                        if (offset >= ChannelPages.PAGE - PREFETCH) model.request(index + PREFETCH)
+                        if (offset < PREFETCH && index >= PREFETCH) model.request(index - PREFETCH)
+                    }
                 }
             }
         }
@@ -163,3 +170,4 @@ private fun ChannelListRow(model: ChannelsModel, row: ChannelRow, selected: Stat
 
 private val ROW_HEIGHT = 54.dp
 private const val FRAMES = 30
+private const val PREFETCH = 50

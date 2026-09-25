@@ -8,6 +8,11 @@ import com.sohva.tv.core.data.database.ChannelListEntity
 import com.sohva.tv.core.data.database.EpgChannelOption
 import com.sohva.tv.core.data.database.ManagedChannel
 import com.sohva.tv.core.data.database.ManagerSource
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
+import com.sohva.tv.core.net.phone.LocalAddress
+import com.sohva.tv.core.net.phone.PhoneMode
+import com.sohva.tv.core.net.phone.QrCodes
 import com.sohva.tv.feature.channels.ChannelFilter
 import com.sohva.tv.feature.channels.ChannelSort
 import com.sohva.tv.feature.channels.ChannelsEnvironment
@@ -16,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Channel management's side of the graph (plan/03 §4.6): the manager reads and the edit and list stores. */
@@ -74,6 +80,19 @@ class AppChannelsEnvironment(private val graph: AppGraph) : ChannelsEnvironment 
     override val showHidden: Flow<Boolean> get() = flow { emitAll(graph.data.preferences.editorsShowHidden) }.flowOn(io)
 
     override suspend fun setShowHidden(value: Boolean) = withContext(io) { graph.data.preferences.setEditorsShowHidden(value) }
+
+    override val phone: Flow<PhoneSetupState> get() = graph.phone.state()
+
+    // Opening a socket and reading the interfaces are io work; the server thread does the rest.
+    override fun openLogoPhone(key: String, name: String) {
+        graph.appScope.launch { graph.phone.server.start(LocalAddress.current(), PhoneMode.Logo(key, name)) }
+    }
+
+    override fun closePhone() {
+        graph.appScope.launch { graph.phone.server.stop() }
+    }
+
+    override suspend fun qrCode(url: String): QrMatrix? = withContext(io) { QrCodes.of(url) }
 
     private fun ChannelFilter.query() = ManagerQuery(showHidden, groupName, search, byName = sort == ChannelSort.NAME)
 }

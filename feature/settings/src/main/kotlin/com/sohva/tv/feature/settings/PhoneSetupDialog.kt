@@ -6,23 +6,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +25,7 @@ import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.DialogCard
+import com.sohva.tv.ui.design.components.QrCodeImage
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
@@ -81,7 +75,7 @@ internal fun PhoneSetupDialog(phone: PhoneSetupState, qr: QrMatrix?, onClose: ()
 private fun OpenPage(phone: PhoneSetupState.Open, qr: QrMatrix?) {
     Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
         // The address shows at once; the code joins it when built (PHONE-FR-51), or never (PHONE-FR-52).
-        if (qr != null) QrCode(qr, stringResource(R.string.phone_setup_qr_description))
+        if (qr != null) QrCodeImage(qr, stringResource(R.string.phone_setup_qr_description))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.phone_setup_help), style = Sohva.typography.label.copy(fontSize = 13.sp), color = Sohva.palette.textMuted)
             Text(
@@ -101,30 +95,4 @@ private fun OpenPage(phone: PhoneSetupState.Open, qr: QrMatrix?) {
             Text(stringResource(R.string.phone_setup_privacy), style = Sohva.typography.caption.copy(fontSize = 12.sp), color = Sohva.palette.textMuted)
         }
     }
-}
-
-/**
- * 280 dp, a white square with 8 dp of padding whatever the theme; the modules are drawn as
- * squares from the small matrix, recorded once (no 512 px bitmap).
- */
-@Composable
-private fun QrCode(qr: QrMatrix, description: String) {
-    Box(
-        Modifier
-            .size(280.dp)
-            .testTag("phone-setup-qr")
-            .semantics { contentDescription = description }
-            .drawWithCache {
-                val inset = 8.dp.toPx()
-                val cell = (size.width - 2 * inset) / qr.size
-                onDrawBehind {
-                    drawRect(Color.White)
-                    for (y in 0 until qr.size) {
-                        for (x in 0 until qr.size) {
-                            if (qr.isDark(x, y)) drawRect(Color.Black, Offset(inset + x * cell, inset + y * cell), Size(cell + 0.5f, cell + 0.5f))
-                        }
-                    }
-                }
-            },
-    )
 }

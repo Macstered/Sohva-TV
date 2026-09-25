@@ -161,6 +161,48 @@ class ChannelsScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("Channel order updated") }
     }
 
+    /** Spec 21 §11: a phone logo post for another channel is refused; one for the open channel is stored and shown. */
+    @Test
+    fun aLogoFromThePhoneIsStoredForTheOpenChannelOnly() {
+        openChannels()
+        click("channels-logo-phone")
+        compose.waitUntil(10_000) { exists("channels-logo-url") }
+        val url = text("channels-logo-url")
+        val bitmap = android.graphics.Bitmap.createBitmap(600, 300, android.graphics.Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.RED) }
+        val png = java.io.ByteArrayOutputStream().also { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+        val image = "data:image/png;base64," + android.util.Base64.encodeToString(png, android.util.Base64.NO_WRAP)
+        assertEquals(403, postLogo(url, "fixture-0:c1", image))
+        assertEquals(200, postLogo(url, "fixture-0:c0", image))
+        compose.waitUntil(10_000) { !exists("channels-logo-dialog") && compose.onAllNodesWithTextExists("Logo received from the phone") }
+        val stored = q("SELECT custom_logo_url FROM channel_custom WHERE channel_key = 'fixture-0:c0'").single()
+        assertTrue(stored, stored.startsWith("file:") && stored.endsWith(".png"))
+        val file = java.io.File(java.net.URI(stored))
+        assertTrue(file.isFile)
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(file.path, bounds)
+        assertEquals("shrunk to 256 px on its longer side", 256, bounds.outWidth)
+        // Reset deletes the file with the edit.
+        click("channels-reset")
+        compose.waitUntil(5_000) { !file.exists() }
+    }
+
+    /** Posts the logo form as the phone page's script does; returns the HTTP status. */
+    private fun postLogo(pageUrl: String, channel: String, image: String): Int {
+        val token = pageUrl.substringAfter('#')
+        val connection = java.net.URL(pageUrl.substringBefore('#').trimEnd('/') + "/submit").openConnection() as java.net.HttpURLConnection
+        return try {
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Authorization", "Bearer $token")
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+            val body = "type=logo&channel=" + java.net.URLEncoder.encode(channel, "UTF-8") + "&image=" + java.net.URLEncoder.encode(image, "UTF-8")
+            connection.outputStream.use { it.write(body.toByteArray()) }
+            connection.responseCode
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     /** Beta 23's "Remove a source" leaves nothing behind (CHAN-30), checked from the store's side. */
     @Test
     fun anEditOfARemovedSourceIsGone() {

@@ -112,6 +112,8 @@ private fun EditorFieldsBlock(model: ChannelsModel, row: ChannelRow) {
             style = Sohva.typography.caption.copy(fontWeight = FontWeight.Normal),
             color = Sohva.palette.textMuted,
         )
+        Spacer(Modifier.height(6.dp))
+        LogoFromPhone(model)
     }
 }
 

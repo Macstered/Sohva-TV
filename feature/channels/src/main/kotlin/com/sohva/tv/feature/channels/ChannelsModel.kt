@@ -7,6 +7,8 @@ import com.sohva.tv.core.data.database.ChannelListEntity
 import com.sohva.tv.core.data.database.EpgChannelOption
 import com.sohva.tv.core.data.database.ManagedChannel
 import com.sohva.tv.core.data.database.ManagerSource
+import com.sohva.tv.core.model.phone.PhoneSetupState
+import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.text.Initials
 import com.sohva.tv.ui.design.R
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -74,6 +76,15 @@ class ChannelsModel(private val env: ChannelsEnvironment) : ViewModel() {
     private val _listIndex = MutableStateFlow(0)
     val listIndex: StateFlow<Int> = _listIndex.asStateFlow()
 
+    /** The channel whose logo the phone page is open for, or null (CHAN-FR-40). */
+    private val _logoFor = MutableStateFlow<ChannelRow?>(null)
+    val logoFor: StateFlow<ChannelRow?> = _logoFor.asStateFlow()
+
+    val phone: StateFlow<PhoneSetupState> = env.phone.stateIn(viewModelScope, SharingStarted.Eagerly, PhoneSetupState.Closed)
+
+    private val _qr = MutableStateFlow<QrMatrix?>(null)
+    val qr: StateFlow<QrMatrix?> = _qr.asStateFlow()
+
     private var sourceNames: Map<String, String> = emptyMap()
     private var searchJob: Job? = null
     private var rebuildJob: Job? = null
@@ -86,6 +97,42 @@ class ChannelsModel(private val env: ChannelsEnvironment) : ViewModel() {
             _filter.value = _filter.value.copy(showHidden = env.showHidden.first())
             rebuild(focusFirst = true)
         }
+        viewModelScope.launch { phone.collect(::onPhone) }
+    }
+
+    /** "Logo from phone": the page in logo mode for the selected channel and its dialog (CHAN-FR-40). */
+    fun openLogoPhone() {
+        val row = _selected.value ?: return
+        _logoFor.value = row
+        env.openLogoPhone(row.key, row.channel.name)
+    }
+
+    /** Close, Back or leaving the screen stops the page (CHAN-NFR-10). */
+    fun closeLogoPhone() {
+        _logoFor.value = null
+        env.closePhone()
+    }
+
+    private var qrFor: String? = null
+
+    private suspend fun onPhone(state: PhoneSetupState) {
+        if (_logoFor.value == null) return
+        if (state is PhoneSetupState.Open) {
+            if (qrFor != state.url) {
+                qrFor = state.url
+                _qr.value = env.qrCode(state.url)
+            }
+            // A logo arrived: say so, stop the page, and show it (CHAN-FR-43).
+            if (state.logoSaved) {
+                closeLogoPhone()
+                _status.value = Status(R.string.channels_logo_received, (_status.value?.serial ?: 0) + 1)
+                refresh()
+            }
+        }
+    }
+
+    override fun onCleared() {
+        if (_logoFor.value != null) env.closePhone()
     }
 
     // ---- Filters (CHAN-FR-11…16) ----------------------------------------------------------------
@@ -161,12 +208,20 @@ class ChannelsModel(private val env: ChannelsEnvironment) : ViewModel() {
     fun request(index: Int) {
         val pages = _pages.value ?: return
         val page = index / ChannelPages.PAGE
-        if (pages.isLoaded(page)) return
+        if (page < 0 || page >= pages.pageCount || pages.isLoaded(page)) return
+        // One read per page at a time: rows and the prefetch ask for the same page together.
+        if (!loading.add(pages to page)) return
         viewModelScope.launch {
-            pages.load(page)
+            try {
+                pages.load(page)
+            } finally {
+                loading.remove(pages to page)
+            }
             if (_pages.value === pages) _version.value++
         }
     }
+
+    private val loading = HashSet<Pair<ChannelPages, Int>>()
 
     private fun rowOf(channel: ManagedChannel): ChannelRow {
         val line = channel.groupName?.takeIf { it.isNotBlank() } ?: sourceNames[channel.sourceId].orEmpty()
