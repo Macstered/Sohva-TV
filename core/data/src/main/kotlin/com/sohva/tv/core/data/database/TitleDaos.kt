@@ -52,6 +52,8 @@ data class SeriesRecord(
     val rating: String?,
     val plot: String?,
     @ColumnInfo(name = "quality_mask") val qualityMask: Int,
+    /** The metadata title, once the background enrichment matched the series (spec 41 META-FR-60). */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
 )
 
 /** An episode card's facts (VOD-FR-84); [name] null reads as the translated "Episode n". */
@@ -102,7 +104,7 @@ object TitleSql {
     const val REPAIR_SERIES_POSTER = "UPDATE series SET replacement_poster = :poster, replace_poster = 1 WHERE key = :key " +
         "AND (poster_url IS NULL OR poster_url = '') AND (replacement_poster IS NULL OR replacement_poster = '')"
     const val SERIES = "SELECT s.id, s.key, s.source_id, s.provider_id, s.name, g.name AS group_name, s.poster_url, s.backdrop_url, " +
-        "s.year, s.rating, s.plot, s.quality_mask FROM series s LEFT JOIN content_group g ON g.id = s.group_id WHERE s.key = :key"
+        "s.year, s.rating, s.plot, s.quality_mask, s.replacement_title FROM series s LEFT JOIN content_group g ON g.id = s.group_id WHERE s.key = :key"
     const val EPISODES = "SELECT e.key, e.season, e.number, e.name, e.duration_s, e.thumbnail_url, e.plot " +
         "FROM series s CROSS JOIN episode e ON e.series_id = s.id WHERE s.key = :seriesKey ORDER BY e.season, e.number"
     const val PLAYABLE_FILM = "SELECT m.key, m.name AS title, NULL AS series_name, NULL AS season, NULL AS number, m.stream_url_enc, " +

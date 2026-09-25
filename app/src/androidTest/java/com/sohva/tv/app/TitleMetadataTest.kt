@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
@@ -26,13 +27,14 @@ import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 
 /**
- * Spec 40 §4.10 and spec 41 §11 "Film page": with TMDB on, the page takes the details' title,
- * score, runtime and synopsis, shows "Source: TMDB", Versions, Cast and the Similar films the
- * library has, repairs the missing poster, and a Similar card opens that film's page on top.
- * TMDB is the test's own server.
+ * Spec 40 §4.10–4.11 and spec 41 §11 "Film page", "Series page": with TMDB on, the film page takes
+ * the details' title, score, runtime and synopsis, shows "Source: TMDB", Versions, Cast and the
+ * Similar films the library has, repairs the missing poster, and a Similar card opens that film's
+ * page on top. The series page takes the show's title and cast line, and the selected episode's
+ * runtime once the selection rests. TMDB is the test's own server.
  */
 @RunWith(AndroidJUnit4::class)
-class FilmMetadataTest {
+class TitleMetadataTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val graph get() = (instrumentation.targetContext.applicationContext as SohvaApplication).graph
     private val server = MockWebServer()
@@ -42,12 +44,16 @@ class FilmMetadataTest {
                 override fun dispatch(request: RecordedRequest): MockResponse = when {
                     request.url.encodedPath.endsWith("/search/movie") && request.url.queryParameter("query") == "Drama 0000" -> json(SEARCH)
                     request.url.encodedPath.endsWith("/movie/949") -> json(DETAILS)
+                    request.url.encodedPath.endsWith("/search/tv") && request.url.queryParameter("query") == "Northern Line 0" -> json(SHOW_SEARCH)
+                    request.url.encodedPath.endsWith("/tv/77") -> json(SHOW)
+                    request.url.encodedPath.endsWith("/tv/77/season/1/episode/1") -> json(EPISODE.format(1, 48))
+                    request.url.encodedPath.endsWith("/tv/77/season/1/episode/2") -> json(EPISODE.format(2, 52))
                     else -> json("""{"results":[]}""")
                 }
             }
             server.start()
             graph.metadata.useEndpoints(server.url("/3/"), server.url("/tvmaze/"))
-            LibraryFixture.seed(graph, perGroup = 6)
+            LibraryFixture.seed(graph, perGroup = 6, series = 1, episodes = 2)
             val db = graph.data.database.openHelper.writableDatabase
             // Drama 0000 and Comedy 0000 are two copies of one film (VOD-FR-68).
             db.execSQL("UPDATE movie SET work_key = 'tmdb:949' WHERE key IN ('${LibraryFixture.key(0)}', '${LibraryFixture.key(6)}')")
@@ -113,6 +119,25 @@ class FilmMetadataTest {
         compose.waitUntil(10_000) { text("details-title") == "Harbour Lights" }
     }
 
+    private fun shows(text: String) = compose.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
+
+    @Test
+    fun theSeriesPageTakesTheShowAndTheSelectedEpisode() {
+        focusAndPress(RailItem.SERIES.tag)
+        focusAndPress("library-row-group:crime")
+        focusAndPress("library-card-${LibraryFixture.seriesKey(0)}")
+        compose.waitUntil(10_000) { exists("screen-series-page") }
+        compose.waitUntil(15_000) { text("details-title") == "Northern Lights" }
+        compose.waitUntil(10_000) { text("details-cast-line").contains("Aino Example, Otto Sample") }
+        assertTrue(text("details-source").contains("TMDB"))
+        awaitFocus("details-watch")
+        // The first episode is selected: its runtime replaces the 20-second duration once looked up.
+        compose.waitUntil(10_000) { shows("48 min") }
+        compose.onNodeWithTag("series-episode-${LibraryFixture.episodeKey(0, 2)}").performSemanticsAction(SemanticsActions.RequestFocus)
+        compose.waitUntil(10_000) { shows("52 min") }
+        assertTrue(!shows("48 min"))
+    }
+
     private companion object {
         const val SEARCH = """{"results":[{"id":949,"title":"Drama 0000","release_date":"2000-03-01","popularity":12.5,"genre_ids":[18]}]}"""
         const val DETAILS = """{"id":949,"title":"Harbour Lights","overview":"A keeper waits for a ship that never comes.",""" +
@@ -120,5 +145,10 @@ class FilmMetadataTest {
             """"credits":{"cast":[{"name":"Aino Example","character":"Keeper"},{"name":"Otto Sample","character":"Captain"}]},""" +
             """"similar":{"results":[{"id":1003,"title":"Drama 0003","release_date":"2003-06-01"},""" +
             """{"id":1004,"title":"Drama 0004","release_date":"1990-06-01"}]}}"""
+        const val SHOW_SEARCH = """{"results":[{"id":77,"name":"Northern Lights","original_name":"Northern Line 0","first_air_date":"2020-02-01","popularity":3.0}]}"""
+        const val SHOW = """{"id":77,"name":"Northern Lights","original_name":"Northern Line 0","overview":"A night train and its passengers.","first_air_date":"2020-02-01",""" +
+            """"episode_run_time":[45],"vote_average":8.3,"genres":[{"id":80}],""" +
+            """"credits":{"cast":[{"name":"Aino Example","character":"Driver"},{"name":"Otto Sample","character":"Guard"}]}}"""
+        const val EPISODE = """{"id":%1${'$'}d,"name":"Chapter %1${'$'}d","season_number":1,"episode_number":%1${'$'}d,"runtime":%2${'$'}d}"""
     }
 }

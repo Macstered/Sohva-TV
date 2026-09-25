@@ -60,8 +60,9 @@ fun SeriesPage(model: SeriesModel) = trace("Library:Series") {
     val page by model.page.collectAsStateWithLifecycle()
     val gone by model.gone.collectAsStateWithLifecycle()
     val episodes by model.episodesState.collectAsStateWithLifecycle()
+    val metadata by model.metadata.collectAsStateWithLifecycle()
     Box(Modifier.fillMaxSize().testTag("screen-series-page")) {
-        DetailsBackdrop(page?.record?.backdropUrl)
+        DetailsBackdrop(metadata?.backdropUrl ?: page?.record?.backdropUrl)
         val state = page
         when {
             gone -> Text(
@@ -70,17 +71,19 @@ fun SeriesPage(model: SeriesModel) = trace("Library:Series") {
                 style = Sohva.typography.bodyLarge,
                 color = Sohva.palette.textMuted,
             )
-            state != null -> SeriesColumn(model, state)
+            state != null -> SeriesColumn(model, state, metadata)
         }
         if (episodes.loading) LoadingPill(Modifier.align(Alignment.TopEnd).padding(top = 24.dp, end = 32.dp))
     }
 }
 
 @Composable
-private fun SeriesColumn(model: SeriesModel, page: SeriesPageState) {
+private fun SeriesColumn(model: SeriesModel, page: SeriesPageState, metadata: TitleMetadata?) {
     val scroll = rememberScrollState()
     val focus = remember { SeriesFocus() }
     val record = page.record
+    // VOD-FR-78: the metadata title, else the background match's, else the provider name.
+    val title = metadata?.title ?: record.replacementTitle ?: record.name
     Column(
         Modifier
             .fillMaxSize()
@@ -95,46 +98,71 @@ private fun SeriesColumn(model: SeriesModel, page: SeriesPageState) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SohvaTvBrand(fontSize = 22.sp)
             Spacer(Modifier.width(24.dp))
-            Breadcrumb(listOfNotNull(stringResource(R.string.catalogue_series), page.breadcrumbGroup, record.name), Modifier.weight(1f))
+            Breadcrumb(listOfNotNull(stringResource(R.string.catalogue_series), page.breadcrumbGroup, title), Modifier.weight(1f))
         }
         Spacer(Modifier.height(30.dp))
         Text(
-            record.name,
+            title,
             Modifier.fillMaxWidth(0.62f).testTag("details-title"),
             style = Sohva.typography.display.copy(fontWeight = FontWeight.Black),
             color = Sohva.palette.textPrimary,
             maxLines = 2,
         )
-        SeriesFacts(model, page)
+        SeriesFacts(model, page, metadata)
         Text(
-            record.plot?.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_details_available),
+            metadata?.overview ?: record.plot?.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_details_available),
             Modifier.fillMaxWidth(0.62f).padding(top = 16.dp),
             style = Sohva.typography.body,
             color = Sohva.palette.textMuted,
             maxLines = 3,
         )
+        CastLine(metadata?.cast.orEmpty())
         val selected by model.selected.collectAsStateWithLifecycle()
         val cards by model.cards.collectAsStateWithLifecycle()
         ProgressLine(cards.firstOrNull { it.record.key == selected }?.progress, Modifier.padding(top = 18.dp))
-        SeriesActions(model, focus, scroll)
+        SeriesActions(model, focus, scroll, metadata?.sourceName)
         Seasons(model, focus)
         Episodes(model, focus)
     }
 }
 
-/** Year, "N seasons", the selected episode's runtime, the score and the chips (VOD-FR-78). */
+/**
+ * Year, "N seasons", the runtime (the selected episode's metadata, else its duration, else the
+ * series metadata), the score and the chips (VOD-FR-78).
+ */
 @Composable
-private fun SeriesFacts(model: SeriesModel, page: SeriesPageState) {
+private fun SeriesFacts(model: SeriesModel, page: SeriesPageState, metadata: TitleMetadata?) {
     val seasons by model.seasons.collectAsStateWithLifecycle()
     val selected by model.selected.collectAsStateWithLifecycle()
     val cards by model.cards.collectAsStateWithLifecycle()
-    val seconds = cards.firstOrNull { it.record.key == selected }?.record?.durationSeconds
+    val episode by model.episodeMetadata.collectAsStateWithLifecycle()
+    val seconds = cards.firstOrNull { it.record.key == selected }?.record?.durationSeconds?.takeIf { it > 0 }
+    val minutes = episode?.takeIf { it.key == selected }?.metadata?.runtimeMinutes
+    val runtimeMs = when {
+        minutes != null -> minutes * 60_000L
+        seconds != null -> seconds * 1_000L
+        else -> metadata?.runtimeMinutes?.let { it * 60_000L }
+    }
     val facts = listOfNotNull(
-        page.record.year?.toString(),
+        (metadata?.year ?: page.record.year)?.toString(),
         seasons.size.takeIf { it > 0 }?.let { seasonCount(it) },
-        seconds?.takeIf { it > 0 }?.let { runtime(it * 1_000L) },
+        runtimeMs?.let { runtime(it) },
     )
-    FactsRow(page.record.rating, facts, page.quality, Modifier.padding(top = 12.dp))
+    FactsRow(metadata?.rating ?: page.record.rating, facts, page.quality, Modifier.padding(top = 12.dp))
+}
+
+/** "Cast: a, b, c" on at most two lines, 0.62 of the width: tiles pushed the episodes off screen (VOD-FR-79). */
+@Composable
+private fun CastLine(cast: List<CastCard>) {
+    if (cast.isEmpty()) return
+    val names = remember(cast) { cast.joinToString(", ") { it.name } }
+    Text(
+        stringResource(R.string.series_cast_line, names),
+        Modifier.fillMaxWidth(0.62f).padding(top = 10.dp).testTag("details-cast-line"),
+        style = Sohva.typography.label,
+        color = Sohva.palette.textMuted,
+        maxLines = 2,
+    )
 }
 
 /** Focus targets shared by the page's rows (VOD-FR-82, -88). */
@@ -153,12 +181,12 @@ internal class SeriesFocus {
 
 /**
  * Continue or Watch episode, Start from beginning, Mark as watched (the selected episode), Mark
- * season as watched, Refresh episodes, Wrong details? (VOD-FR-81). Before any episode exists focus
+ * season as watched, Refresh episodes, Wrong details?, and "Source: …" with metadata (VOD-FR-81). Before any episode exists focus
  * waits on Refresh episodes, then moves to Watch episode when they arrive, unless the viewer has
  * pressed a key or picked a season meanwhile.
  */
 @Composable
-private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: ScrollState) {
+private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: ScrollState, source: String?) {
     val cards by model.cards.collectAsStateWithLifecycle()
     val selected by model.selected.collectAsStateWithLifecycle()
     val season by model.season.collectAsStateWithLifecycle()
@@ -190,6 +218,9 @@ private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: Scroll
         }
         DetailsButton(stringResource(R.string.series_refresh_episodes), model::refresh, toTop.focusRequester(focus.refresh).testTag("details-refresh"), icon = TvIcons.Refresh)
         DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.testTag("details-wrong"), icon = TvIcons.Search)
+        if (source != null) {
+            DetailsButton(stringResource(R.string.metadata_source, source), model::openSource, toTop.testTag("details-source"), icon = TvIcons.Info)
+        }
     }
     val ready = card != null
     LaunchedEffect(ready) {
@@ -238,7 +269,11 @@ private fun Episodes(model: SeriesModel, focus: SeriesFocus) {
     val selected by model.selected.collectAsStateWithLifecycle()
     val state by model.episodesState.collectAsStateWithLifecycle()
     val page by model.page.collectAsStateWithLifecycle()
+    val metadata by model.metadata.collectAsStateWithLifecycle()
+    val episode by model.episodeMetadata.collectAsStateWithLifecycle()
     val shown = remember(cards, season) { cards.filter { it.record.season == season } }
+    // Without a thumbnail: the selected card takes its episode's still, the rest the series backdrop, else the poster (VOD-FR-84).
+    val seriesImage = metadata?.backdropUrl ?: page?.record?.backdropUrl ?: metadata?.posterUrl ?: page?.record?.posterUrl
     SectionHeading(stringResource(R.string.series_episodes), top = 20, bottom = 12)
     if (shown.isEmpty()) {
         val (text, color) = when {
@@ -256,7 +291,7 @@ private fun Episodes(model: SeriesModel, focus: SeriesFocus) {
             EpisodeCardView(
                 card = card,
                 selected = card.record.key == selected,
-                fallbackImage = page?.record?.backdropUrl ?: page?.record?.posterUrl,
+                fallbackImage = episode?.takeIf { card.record.key == selected && it.key == selected }?.metadata?.backdropUrl ?: seriesImage,
                 onFocus = { model.select(card.record.key) },
                 onOpen = { model.watch(card) },
                 modifier = (if (card === shown.first()) Modifier.focusRequester(focus.firstEpisode) else Modifier)

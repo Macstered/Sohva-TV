@@ -3,22 +3,26 @@ package com.sohva.tv.feature.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sohva.tv.core.data.database.EpisodeRecord
+import com.sohva.tv.core.data.database.SeriesRecord
 import com.sohva.tv.core.data.vod.Progress
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.vod.QualityChips
 import com.sohva.tv.core.model.vod.VodText
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * The series page (spec 40 §4.11): the record, its episodes from the database (fetched from the
- * provider on the first open when none are stored), the progress of this series only, and the
- * selected season and episode. Season ticks and cards are built off the main thread (§9.8).
+ * provider on the first open when none are stored), the progress of this series only, the
+ * selected season and episode, and metadata for the series and for the selected episode (the
+ * latter 350 ms after the selection rests). Season ticks and cards are built off the main thread (§9.8).
  */
 class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewModel() {
     private val _page = MutableStateFlow<SeriesPageState?>(null)
@@ -47,6 +51,14 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
     /** The selected episode's key: the buttons and progress line follow it (VOD-FR-40). */
     val selected: StateFlow<String?> = _selected.asStateFlow()
 
+    private val _metadata = MutableStateFlow<TitleMetadata?>(null)
+    val metadata: StateFlow<TitleMetadata?> = _metadata.asStateFlow()
+
+    private val _episodeMetadata = MutableStateFlow<EpisodeMetadata?>(null)
+
+    /** The selected episode's metadata, once looked up; any other episode's is dropped at once. */
+    val episodeMetadata: StateFlow<EpisodeMetadata?> = _episodeMetadata.asStateFlow()
+
     private val _episodes = MutableStateFlow(EpisodesState())
     val episodesState: StateFlow<EpisodesState> = _episodes.asStateFlow()
 
@@ -63,9 +75,13 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
                 _gone.value = true
                 return@launch
             }
+            _metadata.value = env.cachedSeriesMetadata(record)
             _page.value = withContext(env.format) {
                 SeriesPageState(record, record.groupName?.let(VodText::breadcrumbGroup), QualityChips.labels(record.qualityMask))
             }
+            launch { env.seriesMetadata(record)?.let { _metadata.value = it } }
+            // Moving on cancels the previous episode's wait or lookup (VOD-FR-77).
+            _selected.collectLatest { selected -> lookUpEpisode(record, selected) }
         }
         viewModelScope.launch {
             // Both flows answer once at the start, then on every change.
@@ -99,6 +115,19 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
         if (selected == null || built.first.none { it.record.key == selected && it.record.season == season }) {
             _selected.value = built.first.firstOrNull { it.record.season == season }?.record?.key
         }
+    }
+
+    private suspend fun lookUpEpisode(record: SeriesRecord, selected: String?) {
+        if (_episodeMetadata.value?.key != selected) _episodeMetadata.value = null
+        val card = _cards.value.firstOrNull { it.record.key == selected } ?: return
+        val season = card.record.season
+        val number = card.record.number
+        env.cachedEpisodeMetadata(record, season, number)?.let {
+            _episodeMetadata.value = EpisodeMetadata(card.record.key, it)
+            return
+        }
+        delay(EPISODE_REST_MS)
+        env.episodeMetadata(record, season, number)?.let { _episodeMetadata.value = EpisodeMetadata(card.record.key, it) }
     }
 
     /** "Refresh episodes" (VOD-FR-75); a second press while a fetch runs is ignored. */
@@ -153,5 +182,13 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
 
     fun wrongDetails() = env.wrongDetails()
 
+    fun openSource() {
+        _metadata.value?.sourceUrl?.let(env::openUrl)
+    }
+
     private fun knownMs(card: EpisodeCard): Long = maxOf(card.progress?.durationMs ?: 0, (card.record.durationSeconds ?: 0) * 1_000L)
+
+    private companion object {
+        const val EPISODE_REST_MS = 350L
+    }
 }

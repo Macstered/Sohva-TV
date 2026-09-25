@@ -80,17 +80,43 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
             SimilarCard(found.key, reference.title, reference.year, Artwork.url(reference.poster, Artwork.POSTER_WALL) ?: found.libraryPoster)
         }
 
+    override fun cachedSeriesMetadata(series: SeriesRecord): TitleMetadata? = metadata.cached(request(series))?.let(::toMetadata)
+
+    override suspend fun seriesMetadata(series: SeriesRecord): TitleMetadata? {
+        val record = metadata.seriesDetails(request(series)) ?: return null
+        val poster = record.poster
+        if (series.posterUrl.isNullOrBlank() && poster != null) titles.repairPoster(series.key, poster)
+        return withContext(format) { toMetadata(record) }
+    }
+
+    override fun cachedEpisodeMetadata(series: SeriesRecord, season: Int, episode: Int): TitleMetadata? =
+        metadata.cached(episodeRequest(series, season, episode))?.let { toMetadata(it, still = true) }
+
+    override suspend fun episodeMetadata(series: SeriesRecord, season: Int, episode: Int): TitleMetadata? {
+        val record = metadata.episode(request(series), season, episode) ?: return null
+        return withContext(format) { toMetadata(record, still = true) }
+    }
+
     override fun openFilm(key: String) = navigation.openFilm(key)
 
     override fun openUrl(url: String) = navigation.openUrl(url)
 
     private fun request(film: FilmRecord) = MetadataRequest(MediaType.MOVIE, film.name, film.year, contentKey = film.key)
 
-    /** A record as the page draws it: artwork sized for where it is drawn (spec 41 §9.5). */
-    private fun toMetadata(record: MetadataRecord) = TitleMetadata(
+    private fun request(series: SeriesRecord) = MetadataRequest(MediaType.SERIES, series.name, series.year, contentKey = series.key)
+
+    /** As [MetadataService.episode] builds it, so the memory cache is asked with the same key. */
+    private fun episodeRequest(series: SeriesRecord, season: Int, episode: Int) =
+        request(series).copy(type = MediaType.EPISODE, season = season, episode = episode)
+
+    /**
+     * A record as the page draws it: artwork sized for where it is drawn (spec 41 §9.5); an
+     * episode's backdrop is its still on the episode card.
+     */
+    private fun toMetadata(record: MetadataRecord, still: Boolean = false) = TitleMetadata(
         title = record.title.ifBlank { null },
         overview = record.overview,
-        backdropUrl = Artwork.url(record.backdrop, Artwork.BACKDROP),
+        backdropUrl = Artwork.url(record.backdrop, if (still) Artwork.STILL else Artwork.BACKDROP),
         posterUrl = Artwork.url(record.poster, Artwork.POSTER_WALL),
         year = record.year,
         runtimeMinutes = record.runtimeMinutes,

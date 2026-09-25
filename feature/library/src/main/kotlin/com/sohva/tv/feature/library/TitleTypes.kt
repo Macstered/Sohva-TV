@@ -62,6 +62,18 @@ interface TitleEnvironment {
     /** The library films that stand for TMDB's similar titles (VOD-FR-70, -71). */
     suspend fun similar(film: FilmRecord, metadata: TitleMetadata): List<SimilarCard>
 
+    /** The series lookup from the memory cache, for the first frame (VOD-FR-77). */
+    fun cachedSeriesMetadata(series: SeriesRecord): TitleMetadata?
+
+    /** The series lookup (VOD-FR-77); a missing library poster is repaired from it. */
+    suspend fun seriesMetadata(series: SeriesRecord): TitleMetadata?
+
+    /** The selected episode from the memory cache (VOD-FR-77); its backdrop is sized as an episode still. */
+    fun cachedEpisodeMetadata(series: SeriesRecord, season: Int, episode: Int): TitleMetadata?
+
+    /** The selected episode's lookup, run once the selection has rested 350 ms (VOD-FR-77). */
+    suspend fun episodeMetadata(series: SeriesRecord, season: Int, episode: Int): TitleMetadata?
+
     /** Pushes another film page (a Similar card, spec 40 §3). */
     fun openFilm(key: String)
 
@@ -90,6 +102,10 @@ data class TitleMetadata(
     val detailsLoaded: Boolean,
     val similar: List<SimilarReference>,
 )
+
+/** The selected episode's metadata (VOD-FR-77), tagged with its episode so a late answer is never shown on another. */
+@Immutable
+data class EpisodeMetadata(val key: String, val metadata: TitleMetadata)
 
 /** A cast member (VOD-FR-69): not focusable; initials under the photo. */
 @Immutable
