@@ -41,12 +41,15 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sohva.tv.core.data.database.WallRow
 import com.sohva.tv.core.data.vod.WallItem
+import com.sohva.tv.core.model.metadata.TmdbImages
 import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.model.vod.QualityChips
 import com.sohva.tv.ui.design.R
@@ -106,12 +109,13 @@ internal fun PosterCard(
                     if (focused) drawRing(ring)
                 },
         ) {
-            Poster(row.name, row.posterUrl, posterPx)
+            val posters = remember(row.posterUrl, row.replacementPoster, row.replacePoster, posterPx.width) { posters(row, posterPx.width) }
+            Poster(row.displayTitle, posters.first, posterPx, fallback = posters.second)
             if (watched) WatchedBadge(Modifier.align(Alignment.TopStart).padding(6.dp).testTag("library-tick"))
-            Chips(row.qualityMask, Modifier.align(Alignment.TopEnd))
+            Chips(item.copies, row.qualityMask, Modifier.align(Alignment.TopEnd))
         }
         Text(
-            row.name,
+            row.displayTitle,
             Modifier.padding(top = 9.dp),
             style = Sohva.typography.label.copy(fontWeight = FontWeight.SemiBold),
             color = if (focused) Sohva.palette.textPrimary else Sohva.palette.textMuted,
@@ -123,18 +127,30 @@ internal fun PosterCard(
 }
 
 /**
+ * Which poster a wall card asks for first, and which it tries once if that fails (VOD-FR-34, -35):
+ * the replacement when the override says so or the provider has none, else the provider's with
+ * the replacement behind it. TMDB paths are sized for the card (spec 41 §9.5).
+ */
+private fun posters(row: WallRow, widthPx: Int): Pair<String?, String?> {
+    val provider = row.posterUrl?.takeIf { it.isNotBlank() }
+    val replacement = TmdbImages.wallPoster(row.replacementPoster, widthPx)
+    return if (row.replacePoster || provider == null) (replacement ?: provider) to null else provider to replacement
+}
+
+/**
  * The poster in one rounded clip over a solid `surfaceSubtle` fill: the initials when there is no
- * address or it fails (beta 23 left an empty tile), the image cropped once it has loaded. Decoded
- * as RGB_565 at the drawn size, no cross-fade; the request is cancelled when the card leaves.
+ * address or it fails (beta 23 left an empty tile), the image cropped once it has loaded. A
+ * [fallback] is tried once when [url] fails. Decoded as RGB_565 at the drawn size, no cross-fade;
+ * the request is cancelled when the card leaves.
  */
 @Composable
-internal fun Poster(title: String, url: String?, px: IntSize) {
+internal fun Poster(title: String, url: String?, px: IntSize, fallback: String? = null) {
     val loader = LocalArtwork.current
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
-    var failed by remember(url) { mutableStateOf(url.isNullOrBlank()) }
-    LaunchedEffect(url, px) {
+    var image by remember(url, fallback) { mutableStateOf<ImageBitmap?>(null) }
+    var failed by remember(url, fallback) { mutableStateOf(url.isNullOrBlank()) }
+    LaunchedEffect(url, fallback, px) {
         if (url.isNullOrBlank()) return@LaunchedEffect
-        image = loader.load(url, px.width, px.height, opaque = true)
+        image = loader.load(url, px.width, px.height, opaque = true) ?: fallback?.let { loader.load(it, px.width, px.height, opaque = true) }
         failed = image == null
     }
     val shape = RoundedCornerShape(Sohva.shapes.medium)
@@ -152,12 +168,13 @@ internal fun Poster(title: String, url: String?, px: IntSize) {
     }
 }
 
-/** "×N" (films folded from several copies, M4b) and the picture-quality chips, 6 dp in, 4 dp apart. */
+/** "×N" for a film folded from several copies (accent), then the picture-quality chips, 6 dp in, 4 dp apart (VOD-FR-36). */
 @Composable
-private fun Chips(qualityMask: Int, modifier: Modifier) {
-    if (qualityMask == 0) return
+private fun Chips(copies: Int, qualityMask: Int, modifier: Modifier) {
+    if (qualityMask == 0 && copies < 2) return
     val labels = remember(qualityMask) { QualityChips.labels(qualityMask) }
     Row(modifier.padding(6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (copies >= 2) TvTagChip(stringResource(R.string.catalogue_copy_count, copies), Modifier.testTag("library-copies"), tone = TagTone.ACCENT)
         labels.forEach { TvTagChip(it, tone = TagTone.PRIMARY) }
     }
 }

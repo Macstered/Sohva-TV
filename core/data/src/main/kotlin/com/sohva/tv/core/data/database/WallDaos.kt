@@ -20,6 +20,32 @@ data class WallRow(
     val rating: String?,
     @ColumnInfo(name = "quality_mask") val qualityMask: Int,
     @ColumnInfo(name = "work_key") val workKey: String?,
+    /** The metadata override (VOD-FR-21): the title shown instead of [name] when present (VOD-FR-22). */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
+    /** A TMDB image path or an https address. */
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String? = null,
+    @ColumnInfo(name = "replace_poster") val replacePoster: Boolean = false,
+) {
+    /** VOD-FR-22. */
+    val displayTitle: String get() = replacementTitle?.takeIf { it.isNotBlank() } ?: name
+}
+
+/**
+ * A copy of a page's film, for the folded card (VOD-FR-27): what it may fill in, and where it
+ * stands, so a card counts only the copies of its own wall.
+ */
+data class CopyFacts(
+    val key: String,
+    @ColumnInfo(name = "work_key") val workKey: String,
+    @ColumnInfo(name = "group_id") val groupId: Long?,
+    val genre: String?,
+    @ColumnInfo(name = "poster_url") val posterUrl: String?,
+    val year: Int?,
+    val rating: String?,
+    @ColumnInfo(name = "quality_mask") val qualityMask: Int,
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String?,
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String?,
+    @ColumnInfo(name = "replace_poster") val replacePoster: Boolean,
 )
 
 /** A provider group of one source in a wall room: the rail merges them by name across sources. */
@@ -45,8 +71,12 @@ data class HistoryRow(
  * destination once, cancellably.
  */
 object WallSql {
-    private const val COLUMNS = "id, key, source_id, name, sort_name, poster_url, year, rating, quality_mask, work_key"
-    private const val FILTERS = "AND source_id IN (:sources) AND (:search IS NULL OR instr(sort_name, :search) > 0)"
+    private const val COLUMNS = "id, key, source_id, name, sort_name, poster_url, year, rating, quality_mask, work_key, " +
+        "replacement_title, replacement_poster, replace_poster"
+
+    // The provider title or the replacement title (VOD-FR-42), both in their sort form.
+    private const val FILTERS = "AND source_id IN (:sources) AND (:search IS NULL OR instr(sort_name, :search) > 0 " +
+        "OR instr(COALESCE(replacement_sort, ''), :search) > 0)"
     private const val AFTER = "AND (sort_name > :name OR (sort_name = :name AND id > :id)) $FILTERS ORDER BY sort_name, id LIMIT :limit"
     private const val BEFORE = "AND (sort_name < :name OR (sort_name = :name AND id < :id)) $FILTERS ORDER BY sort_name DESC, id DESC LIMIT :limit"
 
@@ -91,15 +121,17 @@ object WallSql {
      * "Older" pages continue down the list; "newer" pages come back up it.
      */
     private const val FILM_HISTORY = "SELECT w.updated_at, w.content_key, m.id, m.key, m.source_id, m.name, m.sort_name, " +
-        "m.poster_url, m.year, m.rating, m.quality_mask, m.work_key FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key " +
-        "WHERE w.profile_id = :profile AND w.content_type = 'MOVIE' " +
-        "AND m.visible = 1 AND m.source_id IN (:sources) AND (:search IS NULL OR instr(m.sort_name, :search) > 0) " +
+        "m.poster_url, m.year, m.rating, m.quality_mask, m.work_key, m.replacement_title, m.replacement_poster, m.replace_poster " +
+        "FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key WHERE w.profile_id = :profile AND w.content_type = 'MOVIE' " +
+        "AND m.visible = 1 AND m.source_id IN (:sources) " +
+        "AND (:search IS NULL OR instr(m.sort_name, :search) > 0 OR instr(COALESCE(m.replacement_sort, ''), :search) > 0) " +
         "AND (w.work_key IS NULL OR NOT EXISTS (SELECT 1 FROM watch_progress n WHERE n.profile_id = w.profile_id " +
         "AND n.work_key = w.work_key AND (n.updated_at > w.updated_at OR (n.updated_at = w.updated_at AND n.content_key > w.content_key))))"
     private const val SERIES_HISTORY = "SELECT w.updated_at, w.content_key, s.id, s.key, s.source_id, s.name, s.sort_name, " +
-        "s.poster_url, s.year, s.rating, s.quality_mask, s.work_key FROM watch_progress w CROSS JOIN series s ON s.key = w.series_key " +
-        "WHERE w.profile_id = :profile AND w.content_type = 'EPISODE' " +
-        "AND s.visible = 1 AND s.source_id IN (:sources) AND (:search IS NULL OR instr(s.sort_name, :search) > 0) " +
+        "s.poster_url, s.year, s.rating, s.quality_mask, s.work_key, s.replacement_title, s.replacement_poster, s.replace_poster " +
+        "FROM watch_progress w CROSS JOIN series s ON s.key = w.series_key WHERE w.profile_id = :profile AND w.content_type = 'EPISODE' " +
+        "AND s.visible = 1 AND s.source_id IN (:sources) " +
+        "AND (:search IS NULL OR instr(s.sort_name, :search) > 0 OR instr(COALESCE(s.replacement_sort, ''), :search) > 0) " +
         "AND NOT EXISTS (SELECT 1 FROM watch_progress n WHERE n.profile_id = w.profile_id AND n.series_key = w.series_key " +
         "AND (n.updated_at > w.updated_at OR (n.updated_at = w.updated_at AND n.content_key > w.content_key)))"
     private const val OLDER = "AND (w.updated_at < :at OR (w.updated_at = :at AND w.content_key < :contentKey)) " +
@@ -116,8 +148,8 @@ object WallSql {
     const val ENABLED_SOURCES = "SELECT id FROM source WHERE enabled = 1 AND import_scope <> 'LIVE_TV'"
 
     /** Copies of the page's films (VOD-FR-27 fill-ins and "×N"): ≤ 120 work keys per call. */
-    const val FILM_COPIES = "SELECT id, key, source_id, name, sort_name, poster_url, year, rating, quality_mask, work_key " +
-        "FROM movie WHERE work_key IN (:workKeys) AND visible = 1 AND source_id IN (:sources)"
+    const val FILM_COPIES = "SELECT key, work_key, group_id, genre, poster_url, year, rating, quality_mask, replacement_title, " +
+        "replacement_poster, replace_poster FROM movie WHERE work_key IN (:workKeys) AND visible = 1 AND source_id IN (:sources)"
 }
 
 @Dao
@@ -189,5 +221,5 @@ interface WallDao {
     fun enabledSources(): List<String>
 
     @Query(WallSql.FILM_COPIES)
-    fun filmCopies(workKeys: List<String>, sources: List<String>): List<WallRow>
+    fun filmCopies(workKeys: List<String>, sources: List<String>): List<CopyFacts>
 }

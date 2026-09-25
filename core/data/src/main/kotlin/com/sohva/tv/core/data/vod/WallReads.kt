@@ -1,5 +1,6 @@
 package com.sohva.tv.core.data.vod
 
+import com.sohva.tv.core.data.database.CopyFacts
 import com.sohva.tv.core.data.database.HistoryRow
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.WallRow
@@ -34,9 +35,10 @@ data class RailGroup(val name: String, val groupIds: List<Long>, val count: Int)
 
 /**
  * One wall entry with the position the pager keys on: `(sortName, id)` for A–Z walls,
- * `(watchedAt, progressKey)` for History.
+ * `(watchedAt, progressKey)` for History. [copies] is how many copies of the film the card stands
+ * for on this wall ("×N" from 2, VOD-FR-36).
  */
-data class WallItem(val row: WallRow, val watchedAt: Long = 0, val progressKey: String = "")
+data class WallItem(val row: WallRow, val watchedAt: Long = 0, val progressKey: String = "", val copies: Int = 1)
 
 /**
  * The walls' reads (spec 40 §9.3) on the database dispatcher. Pages are keyset ranges; a merged
@@ -99,8 +101,43 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
                 WallDestination.History -> error("handled above")
             }
             val ordered = if (forward) rows else rows.asReversed()
-            ordered.map { WallItem(it) }
+            if (room == WallRoom.MOVIES) fold(ordered, destination, sources) else ordered.map { WallItem(it) }
         }
+
+    /**
+     * Folded cards (VOD-FR-27): one read of the page's copies by work key (at most 120 keys), kept
+     * to the copies on this wall; a card with two or more takes their count, the union of their
+     * quality chips, and a poster, year, rating and override from the first copy that has one.
+     */
+    private fun fold(rows: List<WallRow>, destination: WallDestination, sources: List<String>): List<WallItem> {
+        val works = rows.mapNotNull { it.workKey }.distinct()
+        if (works.isEmpty()) return rows.map { WallItem(it) }
+        val copies = dao.filmCopies(works, sources).filter { it.onWall(destination) }.groupBy { it.workKey }
+        return rows.map { row ->
+            val same = row.workKey?.let(copies::get).orEmpty()
+            if (same.size < 2) WallItem(row) else WallItem(filled(row, same.filter { it.key != row.key }), copies = same.size)
+        }
+    }
+
+    private fun CopyFacts.onWall(destination: WallDestination): Boolean = when (destination) {
+        is WallDestination.Group -> groupId in destination.groupIds
+        is WallDestination.OfGenre -> genre == destination.genre.wire
+        WallDestination.Unsorted -> genre == null
+        WallDestination.AllGroups, WallDestination.History -> true
+    }
+
+    private fun filled(row: WallRow, others: List<CopyFacts>): WallRow {
+        val override = if (row.replacementTitle.isNullOrBlank()) others.firstOrNull { !it.replacementTitle.isNullOrBlank() } else null
+        return row.copy(
+            posterUrl = row.posterUrl?.takeIf { it.isNotBlank() } ?: others.firstNotNullOfOrNull { it.posterUrl?.takeIf(String::isNotBlank) },
+            year = row.year ?: others.firstNotNullOfOrNull { it.year },
+            rating = row.rating?.takeIf { it.isNotBlank() } ?: others.firstNotNullOfOrNull { it.rating?.takeIf(String::isNotBlank) },
+            qualityMask = others.fold(row.qualityMask) { mask, copy -> mask or copy.qualityMask },
+            replacementTitle = override?.replacementTitle ?: row.replacementTitle,
+            replacementPoster = override?.replacementPoster ?: row.replacementPoster,
+            replacePoster = override?.replacePoster ?: row.replacePoster,
+        )
+    }
 
     private fun history(room: WallRoom, query: String?, from: WallItem?, forward: Boolean, limit: Int, sources: List<String>): List<WallItem> {
         val who = profile()

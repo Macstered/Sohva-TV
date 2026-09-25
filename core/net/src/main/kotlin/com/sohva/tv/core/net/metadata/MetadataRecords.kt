@@ -2,6 +2,7 @@ package com.sohva.tv.core.net.metadata
 
 import com.sohva.tv.core.model.metadata.Candidate
 import com.sohva.tv.core.model.metadata.MediaType
+import com.sohva.tv.core.model.metadata.TmdbImages
 
 /** The two metadata providers, consulted in this order (spec 41 META-FR-13). */
 enum class MetadataProvider(val id: String, val displayName: String, val home: String) {
@@ -29,11 +30,7 @@ object Artwork {
     const val BACKDROP: String = "w780"
     const val PROFILE: String = "w185"
 
-    fun url(image: String?, size: String): String? = when {
-        image.isNullOrBlank() -> null
-        image.startsWith("/") -> "https://image.tmdb.org/t/p/$size$image"
-        else -> image
-    }
+    fun url(image: String?, size: String): String? = TmdbImages.url(image, size)
 
     /** Only https artwork, at most 2,048 characters (META-FR-38). */
     internal fun httpsOrNull(url: String?): String? =

@@ -123,4 +123,27 @@ class WallReadsTest {
         val newer = reads.page(WallRoom.MOVIES, WallDestination.History, "", history[2], forward = false, limit = 2)
         assertEquals(listOf("4", "8"), names(newer))
     }
+
+    @Test
+    fun aFoldedCardCountsItsCopiesOnThisWallAndFillsIn() = runBlocking {
+        seed()
+        val sql = db.openHelper.writableDatabase
+        // Bravo (b) stands for Delta (b) and Alpha (a): one film in three copies, two of them in Drama b.
+        sql.execSQL("UPDATE movie SET work_key = 'tmdb:1', year = 2001, quality_mask = 1 WHERE key = 'vod:movie:b:5'")
+        sql.execSQL("UPDATE movie SET work_key = 'tmdb:1', poster_url = 'https://provider.example/p.jpg' WHERE key = 'vod:movie:a:3'")
+        sql.execSQL("UPDATE movie SET work_key = 'tmdb:1', replacement_title = 'Harbour', replacement_sort = 'harbour' WHERE key = 'vod:movie:b:4'")
+        sql.execSQL("UPDATE movie SET group_primary = 0, primary_copy = 0 WHERE key IN ('vod:movie:b:5', 'vod:movie:a:3')")
+        val drama = WallDestination.Group("Drama", listOf(dramaA, dramaB))
+        val wall = reads.page(WallRoom.MOVIES, drama, "", null, forward = true, limit = 10)
+        val bravo = wall.single { it.row.key == "vod:movie:b:4" }
+        assertEquals(3, bravo.copies)
+        assertEquals("Harbour", bravo.row.displayTitle)
+        assertEquals(2001, bravo.row.year)
+        assertEquals("https://provider.example/p.jpg", bravo.row.posterUrl)
+        assertEquals(1, bravo.row.qualityMask)
+        val onlyB = reads.page(WallRoom.MOVIES, WallDestination.Group("Drama", listOf(dramaB)), "", null, forward = true, limit = 10)
+        assertEquals(2, onlyB.single { it.row.key == "vod:movie:b:4" }.copies)
+        // Search finds the replacement title as well as the provider's (VOD-FR-42).
+        assertEquals(listOf("4"), names(reads.page(WallRoom.MOVIES, drama, "harb", null, forward = true, limit = 10)))
+    }
 }
