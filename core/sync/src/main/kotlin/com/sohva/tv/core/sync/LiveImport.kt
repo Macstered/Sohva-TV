@@ -165,6 +165,7 @@ internal class LiveImport(private val env: ImportEnvironment) {
     }
 
     companion object {
-        const val BATCH = 250
+        /** Rows per write transaction: larger commits rewrite the channel indexes' pages less often (decision "Indexes and import cost"). */
+        const val BATCH = 2_000
     }
 }

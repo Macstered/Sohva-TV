@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 7,
-    "identityHash": "9f2031b206cc980489a6fbd23321cbf3",
+    "identityHash": "a9a9ad55aec925a1008c767b1dfb4060",
     "entities": [
       {
         "tableName": "app_meta",
@@ -789,65 +789,6 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id_visible_group_primary_item_position_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `group_primary`, `item_position`, `sort_name`)"
           },
           {
-            "name": "index_movie_visible_primary_copy_year_sort_name",
-            "unique": false,
-            "columnNames": [
-              "visible",
-              "primary_copy",
-              "year",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_visible_primary_copy_year_sort_name` ON `${TABLE_NAME}` (`visible`, `primary_copy`, `year`, `sort_name`)"
-          },
-          {
-            "name": "index_movie_visible_primary_copy_rating_x10_sort_name",
-            "unique": false,
-            "columnNames": [
-              "visible",
-              "primary_copy",
-              "rating_x10",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_visible_primary_copy_rating_x10_sort_name` ON `${TABLE_NAME}` (`visible`, `primary_copy`, `rating_x10`, `sort_name`)"
-          },
-          {
-            "name": "index_movie_genre_visible_primary_copy_year_sort_name",
-            "unique": false,
-            "columnNames": [
-              "genre",
-              "visible",
-              "primary_copy",
-              "year",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_genre_visible_primary_copy_year_sort_name` ON `${TABLE_NAME}` (`genre`, `visible`, `primary_copy`, `year`, `sort_name`)"
-          },
-          {
-            "name": "index_movie_genre_visible_primary_copy_rating_x10_sort_name",
-            "unique": false,
-            "columnNames": [
-              "genre",
-              "visible",
-              "primary_copy",
-              "rating_x10",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_genre_visible_primary_copy_rating_x10_sort_name` ON `${TABLE_NAME}` (`genre`, `visible`, `primary_copy`, `rating_x10`, `sort_name`)"
-          },
-          {
-            "name": "index_movie_group_id",
-            "unique": false,
-            "columnNames": [
-              "group_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_group_id` ON `${TABLE_NAME}` (`group_id`)"
-          },
-          {
             "name": "index_movie_work_key",
             "unique": false,
             "columnNames": [
@@ -1130,65 +1071,6 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id_visible_primary_copy_item_position_sort_name` ON `${TABLE_NAME}` (`group_id`, `visible`, `primary_copy`, `item_position`, `sort_name`)"
-          },
-          {
-            "name": "index_series_visible_primary_copy_year_sort_name",
-            "unique": false,
-            "columnNames": [
-              "visible",
-              "primary_copy",
-              "year",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_visible_primary_copy_year_sort_name` ON `${TABLE_NAME}` (`visible`, `primary_copy`, `year`, `sort_name`)"
-          },
-          {
-            "name": "index_series_visible_primary_copy_rating_x10_sort_name",
-            "unique": false,
-            "columnNames": [
-              "visible",
-              "primary_copy",
-              "rating_x10",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_visible_primary_copy_rating_x10_sort_name` ON `${TABLE_NAME}` (`visible`, `primary_copy`, `rating_x10`, `sort_name`)"
-          },
-          {
-            "name": "index_series_genre_visible_primary_copy_year_sort_name",
-            "unique": false,
-            "columnNames": [
-              "genre",
-              "visible",
-              "primary_copy",
-              "year",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_genre_visible_primary_copy_year_sort_name` ON `${TABLE_NAME}` (`genre`, `visible`, `primary_copy`, `year`, `sort_name`)"
-          },
-          {
-            "name": "index_series_genre_visible_primary_copy_rating_x10_sort_name",
-            "unique": false,
-            "columnNames": [
-              "genre",
-              "visible",
-              "primary_copy",
-              "rating_x10",
-              "sort_name"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_genre_visible_primary_copy_rating_x10_sort_name` ON `${TABLE_NAME}` (`genre`, `visible`, `primary_copy`, `rating_x10`, `sort_name`)"
-          },
-          {
-            "name": "index_series_group_id",
-            "unique": false,
-            "columnNames": [
-              "group_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_group_id` ON `${TABLE_NAME}` (`group_id`)"
           }
         ]
       },
@@ -2333,7 +2215,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9f2031b206cc980489a6fbd23321cbf3')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a9a9ad55aec925a1008c767b1dfb4060')"
     ]
   }
 }

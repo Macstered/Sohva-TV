@@ -13,8 +13,6 @@ class OrgQueryPlanTest {
     private val queries = mapOf(
         "films page" to OrgSql.FILMS_PAGE,
         "series page" to OrgSql.SERIES_PAGE,
-        "films of group" to OrgSql.FILMS_OF_GROUP,
-        "series of group" to OrgSql.SERIES_OF_GROUP,
         "films of work" to OrgSql.FILMS_OF_WORK,
         "series of keys" to OrgSql.SERIES_OF_KEYS,
         "channels page" to OrgSql.CHANNELS_PAGE,

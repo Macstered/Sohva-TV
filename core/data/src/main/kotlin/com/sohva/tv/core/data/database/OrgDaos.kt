@@ -46,12 +46,6 @@ object OrgSql {
         "FROM movie m LEFT JOIN content_group g ON g.id = m.group_id WHERE m.key > :after AND m.key < :until ORDER BY m.key LIMIT :limit"
     const val SERIES_PAGE = "SELECT s.id, s.key, s.source_id, s.work_key, g.group_key, g.name AS group_name, s.visible, s.item_position " +
         "FROM series s LEFT JOIN content_group g ON g.id = s.group_id WHERE s.key > :after AND s.key < :until ORDER BY s.key LIMIT :limit"
-    const val FILMS_OF_GROUP = "SELECT m.id, m.key, m.source_id, m.work_key, g.group_key, g.name AS group_name, m.visible, m.item_position " +
-        "FROM content_group g CROSS JOIN movie m INDEXED BY index_movie_group_id ON m.group_id = g.id WHERE g.id = :groupId AND m.id > :afterId " +
-        "ORDER BY m.id LIMIT :limit"
-    const val SERIES_OF_GROUP = "SELECT s.id, s.key, s.source_id, s.work_key, g.group_key, g.name AS group_name, s.visible, s.item_position " +
-        "FROM content_group g CROSS JOIN series s INDEXED BY index_series_group_id ON s.group_id = g.id WHERE g.id = :groupId AND s.id > :afterId " +
-        "ORDER BY s.id LIMIT :limit"
     const val FILMS_OF_WORK = "SELECT m.id, m.key, m.source_id, m.work_key, g.group_key, g.name AS group_name, m.visible, m.item_position " +
         "FROM movie m LEFT JOIN content_group g ON g.id = m.group_id WHERE m.work_key IN (:workKeys) OR m.key IN (:keys)"
     const val SERIES_OF_KEYS = "SELECT s.id, s.key, s.source_id, s.work_key, g.group_key, g.name AS group_name, s.visible, s.item_position " +
@@ -92,12 +86,6 @@ interface OrgDao {
 
     @Query(OrgSql.SERIES_PAGE)
     fun seriesPage(after: String, until: String, limit: Int): List<OrgTitleRow>
-
-    @Query(OrgSql.FILMS_OF_GROUP)
-    fun filmsOfGroup(groupId: Long, afterId: Long, limit: Int): List<OrgTitleRow>
-
-    @Query(OrgSql.SERIES_OF_GROUP)
-    fun seriesOfGroup(groupId: Long, afterId: Long, limit: Int): List<OrgTitleRow>
 
     @Query(OrgSql.FILMS_OF_WORK)
     fun filmsOf(workKeys: List<String>, keys: List<String>): List<OrgTitleRow>

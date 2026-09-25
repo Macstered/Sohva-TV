@@ -31,19 +31,24 @@ class LibraryPasses(private val db: SohvaDatabase) {
     private val dao get() = db.library()
 
     /** After an import of [sourceId]: matches back into the rows, identities and standing copies, group counts. */
-    fun refreshSource(sourceId: String, preferred: PreferredCopy) {
+    fun refreshSource(sourceId: String, preferred: PreferredCopy, phase: (String) -> Unit = {}) {
         applyMatches(KeyRange.movies(sourceId))
         applyMatches(KeyRange.series(sourceId))
+        phase("matches")
         val films = KeyRange.movies(sourceId)
+        val flips = Flips()
         var after = films.from
         while (true) {
             val page = dao.filmKeysPage(after, films.until, PAGE)
             if (page.isEmpty()) break
-            refreshCopies(page.mapNotNull { it.workKey }.distinct(), preferred)
+            decide(page.mapNotNull { it.workKey }.distinct(), preferred, flips)
             after = page.last().key
             if (page.size < PAGE) break
         }
+        flips.flush()
+        phase("standing copies")
         dao.recountFilmGroups(sourceId)
+        phase("film counts")
     }
 
     /** Writes the stored matches whose content keys fall in [range] into the film or series rows. */
@@ -104,20 +109,44 @@ class LibraryPasses(private val db: SohvaDatabase) {
      * among the group's copies. Only flags that change are written.
      */
     fun refreshCopies(workKeys: List<String>, preferred: PreferredCopy) {
+        val flips = Flips()
+        decide(workKeys, preferred, flips)
+        flips.flush()
+    }
+
+    /**
+     * Flags to flip, written in transactions of up to 5,000 rows: each flip rewrites the wall
+     * indexes that carry the flags, and small commits rewrite the same index pages again and again
+     * (decision "Indexes and import cost").
+     */
+    private inner class Flips {
+        val changes = ArrayList<Triple<Long, Boolean, Boolean>>()
+
+        fun add(id: Long, primary: Boolean, groupPrimary: Boolean) {
+            changes += Triple(id, primary, groupPrimary)
+            if (changes.size >= FLIP_BATCH) flush()
+        }
+
+        fun flush() {
+            if (changes.isEmpty()) return
+            db.runInTransaction { for ((id, p, g) in changes) dao.setPrimary(id, p, g) }
+            changes.clear()
+        }
+    }
+
+    private fun decide(workKeys: List<String>, preferred: PreferredCopy, flips: Flips) {
         for (chunk in workKeys.chunked(IN_LIMIT)) {
             val copies = dao.copies(chunk)
             if (copies.isEmpty()) continue
-            val changes = ArrayList<Triple<Long, Boolean, Boolean>>()
             for ((_, film) in copies.groupBy { it.workKey }) {
                 val standing = standing(film, preferred)
                 val perGroup = film.groupBy { it.groupId }.mapValues { (_, inGroup) -> standing(inGroup, preferred) }
                 for (c in film) {
                     val primary = c.id == standing
                     val groupPrimary = c.id == perGroup[c.groupId]
-                    if (primary != c.primaryCopy || groupPrimary != c.groupPrimary) changes += Triple(c.id, primary, groupPrimary)
+                    if (primary != c.primaryCopy || groupPrimary != c.groupPrimary) flips.add(c.id, primary, groupPrimary)
                 }
             }
-            if (changes.isNotEmpty()) db.runInTransaction { for ((id, p, g) in changes) dao.setPrimary(id, p, g) }
         }
     }
 
@@ -142,6 +171,7 @@ class LibraryPasses(private val db: SohvaDatabase) {
     private companion object {
         const val PAGE = 2_000
         const val IN_LIMIT = 500
+        const val FLIP_BATCH = 5_000
         const val FILM = "vod:movie:"
         const val TMDB = "tmdb"
         const val MOVIES = "MOVIES"

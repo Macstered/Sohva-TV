@@ -57,6 +57,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         val series = KeyedDiff(Tables.series(env.db, sourceId), seriesGroups)
         val episodes = KeyedDiff(Tables.episodes(env.db, sourceId), null)
         val seriesIds = HashMap<String, Long>()
+
+        /** Time spent inside the write transactions, for the phase log. */
+        var writeNanos = 0L
         val storedBefore = KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
             KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }
     }
@@ -74,7 +77,7 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                     // Scope BOTH leaves live entries to the playlist import; VOD keeps every entry (SRC-FR-90).
                     if (scope == ImportScope.BOTH && entry.kind == M3uKind.LIVE) continue
                     parser.add(entry)
-                    if (parser.size >= LiveImport.BATCH) send(parser.take())
+                    if (parser.size >= BATCH) send(parser.take())
                 }
                 if (parser.size > 0) send(parser.take())
             }
@@ -93,21 +96,21 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         var films = 0
         var series = 0
         pipeline<Batch>(env.dispatchers, produce = { send ->
-            var batch = ArrayList<Row<MovieEntity>>(LiveImport.BATCH)
+            var batch = ArrayList<Row<MovieEntity>>(BATCH)
             client.films { film ->
                 batch += xtreamFilm(job, film, films++, filmCategories, urls)
-                if (batch.size == LiveImport.BATCH) {
+                if (batch.size == BATCH) {
                     send(Batch(batch, emptyList(), emptyList()))
-                    batch = ArrayList(LiveImport.BATCH)
+                    batch = ArrayList(BATCH)
                 }
             }
             if (batch.isNotEmpty()) send(Batch(batch, emptyList(), emptyList()))
-            var seriesBatch = ArrayList<Row<SeriesEntity>>(LiveImport.BATCH)
+            var seriesBatch = ArrayList<Row<SeriesEntity>>(BATCH)
             client.series { item ->
                 seriesBatch += xtreamSeries(job, item, series++, seriesCategories)
-                if (seriesBatch.size == LiveImport.BATCH) {
+                if (seriesBatch.size == BATCH) {
                     send(Batch(emptyList(), seriesBatch, emptyList()))
-                    seriesBatch = ArrayList(LiveImport.BATCH)
+                    seriesBatch = ArrayList(BATCH)
                 }
             }
             if (seriesBatch.isNotEmpty()) send(Batch(emptyList(), seriesBatch, emptyList()))
@@ -122,23 +125,33 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
 
     private suspend fun write(target: Target, batch: Batch, job: ImportJob) {
         env.pauseGate.awaitTurn(WorkOrigin.VIEWER)
+        val started = System.nanoTime()
         env.db.runInTransaction {
             target.films.write(batch.films)
             if (batch.series.isNotEmpty()) {
                 target.series.write(batch.series)
                 val missing = batch.series.map { it.key }.filter { it !in target.seriesIds }
-                if (missing.isNotEmpty()) env.db.seriesImport().hashes(missing).forEach { target.seriesIds[it.key] = it.id }
+                missing.chunked(IN_LIMIT).forEach { keys -> env.db.seriesImport().hashes(keys).forEach { target.seriesIds[it.key] = it.id } }
             }
             if (batch.episodes.isNotEmpty()) {
                 target.episodes.write(batch.episodes.mapNotNull { draft -> target.seriesIds[draft.seriesKey]?.let(draft.row) })
             }
         }
+        target.writeNanos += System.nanoTime() - started
         job.advance(batch.films.size + batch.series.size + batch.episodes.size)
     }
 
     private suspend fun finish(target: Target, sourceId: String, sweepFilms: Boolean, sweepSeries: Boolean, sweepEpisodes: Boolean): Int {
         val preferred = env.preferredCopy()
         return withContext(env.dispatchers.bulkWrite) {
+            // Phase times go to the diagnostics log: the owner-scale import is measured by them (plan/07).
+            var mark = System.nanoTime()
+            val phase = { name: String ->
+                val now = System.nanoTime()
+                env.log.info("import", "catalogue $sourceId $name ${(now - mark) / 1_000_000} ms")
+                mark = now
+            }
+            env.log.info("import", "catalogue $sourceId write transactions ${target.writeNanos / 1_000_000} ms")
             if (sweepFilms) target.films.sweep(env.db)
             if (sweepSeries) target.series.sweep(env.db)
             if (sweepEpisodes) target.episodes.sweep(env.db)
@@ -152,11 +165,13 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                 target.filmGroups.finish(complete = sweepFilms)
                 target.seriesGroups.finish(complete = sweepSeries)
             }
+            phase("sweep and groups")
             // The organisation rules, matches back into rewritten rows, then standing copies and
             // folded group counts (spec 42 §9.1, spec 41 §9.3).
             val passes = LibraryPasses(env.db)
-            OrgPass(env.db, OrgRules(env.db), passes).resolveSource(sourceId, preferred)
+            OrgPass(env.db, OrgRules(env.db), passes).resolveSource(sourceId, preferred, phase)
             passes.recountGenres()
+            phase("genre counts")
             env.onCatalogueImported()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
                 KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }
@@ -285,6 +300,17 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
          * (5 = the claim columns of schema v5, 6 = work and similar keys), so the next import rewrites every row once.
          */
         const val KEYS_VERSION = 6
+
+        /**
+         * Rows per write transaction. Every commit rewrites the index pages it touched, and a
+         * catalogue's rows land all over its ten indexes, so fewer, larger commits write far less:
+         * 5,000 rows took a 200,000-film import from 103 s to 27 s in the host model (about 5 MB of
+         * rows held; decision "Indexes and import cost").
+         */
+        const val BATCH = 5_000
+
+        /** Keys per `IN` list: SQLite before Android 11 takes at most 999 variables. */
+        const val IN_LIMIT = 900
     }
 }
 

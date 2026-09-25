@@ -25,15 +25,17 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
     private val dao get() = db.organization()
 
     /** After an import of [sourceId]: its groups in every room, then its titles and channels. */
-    fun resolveSource(sourceId: String, preferred: PreferredCopy) {
+    fun resolveSource(sourceId: String, preferred: PreferredCopy, phase: (String) -> Unit = {}) {
         val resolver = OrgResolver(rules.all())
         for (room in OrgRoom.entries) resolveGroups(room, resolver)
         // The standing copies are decided for the whole source right after (refreshSource).
         titles(KeyRange.movies(sourceId), OrgRoom.MOVIES, resolver, null)
         titles(KeyRange.series(sourceId), OrgRoom.SERIES, resolver, null)
         channels(sourceId, resolver)
-        passes.refreshSource(sourceId, preferred)
+        phase("organisation")
+        passes.refreshSource(sourceId, preferred, phase)
         db.library().recountSeriesGroups(sourceId)
+        phase("series counts")
     }
 
     /** Channels whose edits changed (channel management): the rules decide their visibility again. */
@@ -52,8 +54,9 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
 
     /**
      * After rules changed: every group of the changed rooms, then the items the changed keys can
-     * reach: a group key's members, an item key's copies. Shortcut and list rules are read where
-     * they are used and resolve nothing here.
+     * reach: a group key's sources (walked by key range: about 1.5 s for 200,000 films on the
+     * stand-in, and no extra index on the title tables), an item key's copies. Shortcut and list
+     * rules are read where they are used and resolve nothing here.
      */
     fun afterChange(keys: Collection<RuleKey>, preferred: PreferredCopy) {
         if (keys.isEmpty()) return
@@ -62,12 +65,13 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
             val groups = resolveGroups(room, resolver)
             val touched = keys.filter { it.room == room }
             val itemKeys = touched.map { it.itemKey }.filter { it.isNotEmpty() && !it.startsWith("@") }.toSet()
-            val groupIds = groups.filter { g -> touched.any { k -> k.itemKey.isEmpty() && reaches(k, g) } }.map { it.id }
+            val reachedGroups = groups.filter { g -> touched.any { k -> k.itemKey.isEmpty() && reaches(k, g) } }
+            val groupSources = reachedGroups.map { it.sourceId }.toSet()
             val sources = HashSet<String>()
             when (room) {
                 OrgRoom.MOVIES -> {
                     val works = HashSet<String>()
-                    ofGroups(groupIds) { id, after -> dao.filmsOfGroup(id, after, PAGE) }.forEach { page -> apply(page, room, resolver, works, sources) }
+                    groupSources.forEach { titles(KeyRange.movies(it), room, resolver, works, sources) }
                     val workKeys = itemKeys.filter { it.startsWith(WORK) }.map { it.removePrefix(WORK) }
                     val contentKeys = itemKeys.filter { !it.startsWith(WORK) }
                     if (workKeys.isNotEmpty() || contentKeys.isNotEmpty()) {
@@ -78,13 +82,13 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
                     sources.forEach { db.library().recountFilmGroups(it) }
                 }
                 OrgRoom.SERIES -> {
-                    ofGroups(groupIds) { id, after -> dao.seriesOfGroup(id, after, PAGE) }.forEach { page -> apply(page, room, resolver, null, sources) }
+                    groupSources.forEach { titles(KeyRange.series(it), room, resolver, null, sources) }
                     itemKeys.chunked(IN_LIMIT).forEach { apply(dao.seriesOf(it), room, resolver, null, sources) }
                     sources.forEach { db.library().recountSeriesGroups(it) }
                 }
                 OrgRoom.LIVE -> {
                     // Channel groups are few and small next to a source: re-resolve the sources the keys reach.
-                    val reached = groups.filter { it.id in groupIds }.map { it.sourceId }.toSet() +
+                    val reached = groupSources +
                         itemKeys.chunked(IN_LIMIT).flatMap { dao.channelsOf(it.toList()) }.map { it.sourceId }
                     reached.forEach { channels(it, resolver) }
                 }
@@ -112,12 +116,12 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
         return rows
     }
 
-    private fun titles(range: KeyRange, room: OrgRoom, resolver: OrgResolver, works: MutableSet<String>?) {
+    private fun titles(range: KeyRange, room: OrgRoom, resolver: OrgResolver, works: MutableSet<String>?, sources: MutableSet<String> = HashSet()) {
         var after = range.from
         while (true) {
             val page = if (room == OrgRoom.MOVIES) dao.filmsPage(after, range.until, PAGE) else dao.seriesPage(after, range.until, PAGE)
             if (page.isEmpty()) return
-            apply(page, room, resolver, works, HashSet())
+            apply(page, room, resolver, works, sources)
             after = page.last().key
             if (page.size < PAGE) return
         }
@@ -164,20 +168,6 @@ class OrgPass(private val db: SohvaDatabase, private val rules: OrgRules, privat
         if (visible == row.visible) return false
         dao.setChannel(row.id, visible)
         return true
-    }
-
-    /** Pages of each group's members by row id, one group at a time (an index range each). */
-    private fun ofGroups(groupIds: List<Long>, read: (Long, Long) -> List<OrgTitleRow>): Sequence<List<OrgTitleRow>> = sequence {
-        for (id in groupIds) {
-            var after = 0L
-            while (true) {
-                val page = read(id, after)
-                if (page.isEmpty()) break
-                yield(page)
-                after = page.last().id
-                if (page.size < PAGE) break
-            }
-        }
     }
 
     private companion object {
