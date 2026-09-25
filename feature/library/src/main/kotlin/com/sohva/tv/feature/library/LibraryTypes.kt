@@ -54,6 +54,9 @@ interface LibraryEnvironment {
 
     suspend fun groups(): List<RailGroup>
 
+    /** Titles per genre wire value, `""` for Unsorted (VOD-FR-04). */
+    suspend fun genreCounts(): Map<String, Int>
+
     suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem>
 
     /** The films to tick as watched among (content key, film identity) pairs, ≤ 200 (VOD-FR-37). */

@@ -35,6 +35,8 @@ class AppLibraryEnvironment(
 
     override suspend fun groups(): List<RailGroup> = reads.groups(room)
 
+    override suspend fun genreCounts(): Map<String, Int> = reads.genreCounts(room)
+
     override suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem> =
         reads.page(room, destination, search, from, forward, limit)
 

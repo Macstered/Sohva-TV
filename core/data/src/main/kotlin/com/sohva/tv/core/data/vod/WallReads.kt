@@ -50,7 +50,7 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
 
     /** Any write that can change a wall or its rail: imports, source edits, progress. */
     fun changes(): Flow<Unit> =
-        db.invalidationTracker.createFlow("movie", "series", "content_group", "source", "watch_progress").map { }
+        db.invalidationTracker.createFlow("movie", "series", "content_group", "source", "watch_progress", "genre_count").map { }
 
     /**
      * The room's provider groups of the enabled sources, merged by `lowercase(trim(name))` and
@@ -62,6 +62,14 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
         rows.groupBy { it.name.trim().lowercase(Locale.ROOT) }
             .map { (_, same) -> RailGroup(same.minOf { it.name.trim() }, same.map { it.id }, same.sumOf { it.itemCount }) }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+    }
+
+    /**
+     * Titles per genre wire value (`""` for Unsorted) from the counts table the background passes
+     * keep (spec 40 VOD-FR-04, §9.3): one small read, never a count over the library.
+     */
+    suspend fun genreCounts(room: WallRoom): Map<String, Int> = withContext(io) {
+        db.library().counts(room.groupRoom).associate { it.genre to it.titles }
     }
 
     /**

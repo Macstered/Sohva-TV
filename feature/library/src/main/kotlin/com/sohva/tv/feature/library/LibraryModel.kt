@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tracing.Trace
 import com.sohva.tv.core.data.vod.RailGroup
+import com.sohva.tv.core.model.vod.Genre
 import com.sohva.tv.core.data.vod.WallDestination
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
@@ -74,6 +75,10 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     private var edgeJob: Job? = null
     private var searchJob: Job? = null
     private var lastGroups: List<RailGroup> = emptyList()
+    private var lastCounts: Map<String, Int> = emptyMap()
+
+    /** Genre counts are read only once the Genres view has been used (VOD-FR-04). */
+    private var genresUsed = false
 
     init {
         viewModelScope.launch { readRail() }
@@ -97,7 +102,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
     /** OK on a rail row (VOD-FR-06): focus alone never selects. Selecting what is loading does nothing. */
     fun select(key: String) {
         if (key == _selected.value && loadJob?.isActive == true) return
-        val row = _rail.value.firstOrNull { it.key == key } ?: if (key == HISTORY_KEY) historyRow() else return
+        val row = _rail.value.firstOrNull { it.key == key } ?: when {
+            key == HISTORY_KEY -> historyRow()
+            // A genre before its count has arrived (VOD-FR-07: Action at once).
+            key.startsWith(GENRE_PREFIX) -> Genre.ofWire(key.removePrefix(GENRE_PREFIX))?.let { genreRow(it, null) } ?: return
+            else -> return
+        }
         searchJob?.cancel()
         _selected.value = key
         lastOf[_view.value] = key
@@ -115,8 +125,12 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         val target = lastOf[view]?.takeIf { key -> rows.any { it.key == key } }
             ?: _selected.value?.takeIf { it == HISTORY_KEY }
             ?: rows.firstOrNull { it.key != HISTORY_KEY }?.key
-            ?: HISTORY_KEY
+            ?: if (view == RailView.GENRES) GENRE_PREFIX + Genre.ACTION.wire else HISTORY_KEY
         select(target)
+        if (view == RailView.GENRES && !genresUsed) {
+            genresUsed = true
+            viewModelScope.launch { readRail() }
+        }
     }
 
     /** Search inside the destination (VOD-FR-40…44): 250 ms debounce, clearing queries at once. */
@@ -258,6 +272,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
 
     private suspend fun readRail() {
         lastGroups = runCatching { env.groups() }.getOrElse { return }
+        if (genresUsed) lastCounts = runCatching { env.genreCounts() }.getOrDefault(lastCounts)
         val rows = rows(_view.value, lastGroups)
         _rail.value = rows
         // The selected group disappeared while others remain → the first group (VOD-FR-09).
@@ -298,17 +313,23 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
                 if (groups.isEmpty()) add(RailRow(ALL_KEY, WallDestination.AllGroups, null, null))
                 groups.forEach { g -> add(RailRow("group:" + g.name.lowercase(Locale.ROOT), WallDestination.Group(g.name, g.groupIds), g.name, g.count)) }
             }
-            // Genre rows and their counts arrive with metadata (M4b); until then every title is Unsorted.
-            RailView.GENRES -> add(RailRow(UNSORTED_KEY, WallDestination.Unsorted, null, null))
+            // The 22 genres in their fixed order, then Unsorted, each only with titles (VOD-FR-04).
+            RailView.GENRES -> {
+                Genre.entries.forEach { g -> lastCounts[g.wire]?.takeIf { it > 0 }?.let { add(genreRow(g, it)) } }
+                lastCounts[""]?.takeIf { it > 0 }?.let { add(RailRow(UNSORTED_KEY, WallDestination.Unsorted, null, it)) }
+            }
         }
     }
 
     private fun historyRow() = RailRow(HISTORY_KEY, WallDestination.History, null, null)
 
+    private fun genreRow(genre: Genre, count: Int?) = RailRow(GENRE_PREFIX + genre.wire, WallDestination.OfGenre(genre), null, count)
+
     companion object {
         const val HISTORY_KEY: String = "history"
         const val ALL_KEY: String = "all"
         const val UNSORTED_KEY: String = "unsorted"
+        const val GENRE_PREFIX: String = "genre:"
         const val SEARCH_MAX: Int = 80
         const val SEARCH_DEBOUNCE_MS: Long = 250
         const val CHANGE_QUIET_MS: Long = 500

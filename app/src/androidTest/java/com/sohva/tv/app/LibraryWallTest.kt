@@ -94,6 +94,30 @@ class LibraryWallTest {
         compose.waitUntil(10_000) { exists(card(0)) }
     }
 
+    /** VOD-FR-04, -07: the Genres view lists only genres with titles, in the fixed order, then Unsorted. */
+    @Test
+    fun theGenresViewListsGenresWithTitlesAndOpensOne() {
+        val sql = graph.data.database.openHelper.writableDatabase
+        sql.execSQL("UPDATE movie SET genre = 'crime' WHERE key IN ('${LibraryFixture.key(0)}', '${LibraryFixture.key(1)}')")
+        sql.execSQL("UPDATE movie SET genre = 'action' WHERE key = '${LibraryFixture.key(2)}'")
+        graph.metadata.passes.recountGenres()
+        openMovies()
+        compose.onNodeWithTag("library-view-genres").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("library-view-genres")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("library-row-genre:crime") && exists("library-row-unsorted") }
+        assertTrue(!exists("library-row-genre:drama"))
+        // History stays selected: it is the first row of both views (VOD-FR-07). Action comes before Crime.
+        assertTrue(text("library-label").startsWith("History"))
+        val top = { tag: String -> compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.top }
+        assertTrue(top("library-row-genre:action") < top("library-row-genre:crime"))
+        compose.onNodeWithTag("library-row-genre:crime").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("library-row-genre:crime")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { text("library-label") == "Crime  ·  2" && exists(card(0)) && exists(card(1)) }
+        assertTrue(!exists(card(2)))
+    }
+
     @Test
     fun firstEntryFocusesHistoryAndAnEmptyHistorySaysSo() {
         openMovies()
