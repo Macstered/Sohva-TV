@@ -9,6 +9,7 @@ import com.sohva.tv.core.data.live.LiveStore
 import com.sohva.tv.core.data.migration.Beta23SourceImport
 import com.sohva.tv.core.data.prefs.AppPreferences
 import com.sohva.tv.core.data.prefs.LocaleStore
+import com.sohva.tv.core.data.reminder.ReminderStore
 import com.sohva.tv.core.data.security.AndroidKeystoreKeyProvider
 import com.sohva.tv.core.data.security.EnvelopeCipher
 import com.sohva.tv.core.data.security.EnvelopeSpec
@@ -66,6 +67,9 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
 
     /** The guide's and player's reads, favourites and recents (M2). */
     val live: LiveStore by lazy { LiveStore(database, dispatchers.io, SystemClock) }
+
+    /** Programme and match reminders (M3, spec 22). */
+    val reminders: ReminderStore by lazy { ReminderStore(database, dispatchers.io) }
 
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }

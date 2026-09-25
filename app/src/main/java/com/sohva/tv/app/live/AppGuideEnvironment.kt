@@ -4,6 +4,7 @@ import com.sohva.tv.app.AppGraph
 import com.sohva.tv.core.data.live.ChannelList
 import com.sohva.tv.core.data.live.ListSpec
 import com.sohva.tv.core.data.live.LiveReads
+import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.feature.live.GuideEnvironment
@@ -46,4 +47,10 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
     override fun keptList(spec: ListSpec): ChannelList? = graph.keptRows.get(spec)
 
     override fun keepList(list: ChannelList) = graph.keptRows.keep(list)
+
+    override val remindersOn: Boolean get() = graph.flags.reminders
+
+    override val reminderIds: Flow<Set<String>> get() = graph.reminders.ids
+
+    override suspend fun toggleReminder(reminder: Reminder): Boolean = graph.reminders.toggle(reminder)
 }

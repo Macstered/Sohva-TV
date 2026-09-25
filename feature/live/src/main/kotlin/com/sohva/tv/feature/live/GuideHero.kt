@@ -183,6 +183,8 @@ private fun HeroButtons(model: GuideModel, selection: GuideSelection, actions: R
             state = SurfaceState(selected = favourite),
             compact = true,
         )
+        ReminderButton(model, selection)
+        ArchiveButton(model, selection, actions)
         TvActionButton(
             stringResource(if (search.visible) R.string.guide_close_search else R.string.guide_find_programme),
             { model.overlays.toggleSearch() },
@@ -192,4 +194,37 @@ private fun HeroButtons(model: GuideModel, selection: GuideSelection, actions: R
             compact = true,
         )
     }
+}
+
+/** Remind me / Reminder set (selected), only for a programme that has not started (GUIDE-FR-65). */
+@Composable
+private fun ReminderButton(model: GuideModel, selection: GuideSelection) {
+    if (!model.remindersOn) return
+    val programme = selection.programme ?: return
+    if (programme.start <= model.nowState.longValue) return
+    val reminders by model.reminders.collectAsStateWithLifecycle()
+    val set = model.reminderId(selection.row, programme) in reminders
+    TvActionButton(
+        stringResource(if (set) R.string.guide_reminder_set else R.string.guide_remind),
+        { model.toggleReminder(selection.row, programme) },
+        Modifier.testTag("guide-hero-reminder"),
+        icon = TvIcons.Epg,
+        state = SurfaceState(selected = set),
+        compact = true,
+    )
+}
+
+/** "Watch from start" while the programme airs, "Watch recording" once it has ended; only when the archive has it (GUIDE-FR-65). */
+@Composable
+private fun ArchiveButton(model: GuideModel, selection: GuideSelection, actions: RowActions) {
+    val programme = selection.programme ?: return
+    val now = model.nowState.longValue
+    if (!selection.row.offersArchive(programme, now)) return
+    TvActionButton(
+        stringResource(if (programme.isLive(now)) R.string.guide_watch_from_start else R.string.guide_watch_recording),
+        { actions.playArchive(selection.row, programme) },
+        Modifier.testTag("guide-hero-archive"),
+        icon = TvIcons.Replay,
+        compact = true,
+    )
 }

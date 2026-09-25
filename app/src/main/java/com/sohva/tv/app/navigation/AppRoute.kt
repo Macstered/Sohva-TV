@@ -1,6 +1,7 @@
 package com.sohva.tv.app.navigation
 
 import com.sohva.tv.core.model.settings.StartupScreen
+import com.sohva.tv.feature.player.ArchiveWindow
 import com.sohva.tv.ui.design.navigation.RouteCodec
 
 /**
@@ -18,10 +19,17 @@ sealed interface AppRoute {
     data object Settings : AppRoute
 
     /**
-     * Live playback of a channel (spec 30 §3.1). [returnToGuide]: Back from the bare picture
-     * leaves to `[Home, Guide]` on this channel. Never restored after process death (spec 01).
+     * Playback of a channel (spec 30 §3.1): live, or with [archive] a programme from the
+     * provider's archive (spec 22). [returnToGuide]: Back from the bare picture leaves to
+     * `[Home, Guide]` on this channel; catch-up always pops. [recordWatched] is false for playback
+     * a reminder or a notification started (spec 21 CHAN-FR-61). Never restored after process death.
      */
-    data class Player(val channelKey: String, val returnToGuide: Boolean) : AppRoute
+    data class Player(
+        val channelKey: String,
+        val returnToGuide: Boolean,
+        val archive: ArchiveWindow? = null,
+        val recordWatched: Boolean = true,
+    ) : AppRoute
 }
 
 enum class CatalogueMode { MOVIES, SERIES }

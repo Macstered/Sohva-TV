@@ -75,6 +75,10 @@ class SettingsModelTest {
         override suspend fun catalogueCounts(sourceId: String): Pair<Int, Int> = films
         override suspend fun testPlaylist(address: String): SourceChecks.Result = playlistResult
         override suspend fun testXtream(account: XtreamAccount): SourceChecks.Result = SourceChecks.Result.Account(4)
+        override fun remindersCanOpen(): Boolean? = null
+
+        override fun openOverlaySettings() = Unit
+
         override fun remoteMapping(): Flow<RemoteMapping> = flowOf(RemoteMapping.DEFAULTS)
 
         override suspend fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) = Unit

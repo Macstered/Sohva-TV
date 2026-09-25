@@ -54,6 +54,12 @@ interface SettingsServices {
 
     suspend fun setRefreshInterval(interval: RefreshInterval)
 
+    /** Whether a due reminder may bring the app forward; null when this build has no reminders (spec 22 REM-FR-34). */
+    fun remindersCanOpen(): Boolean?
+
+    /** Opens the TV's "display over other apps" setting (REM-FR-32). */
+    fun openOverlaySettings()
+
     /** The player's remote mapping (spec 31 §4.7). */
     fun remoteMapping(): Flow<RemoteMapping>
 

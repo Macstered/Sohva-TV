@@ -11,6 +11,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.PickerChoice
@@ -30,6 +31,11 @@ internal fun GeneralPane(state: SettingsState, model: SettingsModel, start: Focu
     // Set only when the picker closes, so focus returns to the row (SET-FR-08) and never lands on it unasked.
     var returnFocus by remember { mutableStateOf(false) }
     val row = remember { FocusRequester() }
+    // Coming back from the TV settings shows the new answer (REM-FR-34).
+    LifecycleResumeEffect(Unit) {
+        model.refreshReminderAccess()
+        onPauseOrDispose { }
+    }
     SettingsGroup {
         SettingsValueRow(
             title = stringResource(R.string.source_refresh_schedule),
@@ -39,6 +45,16 @@ internal fun GeneralPane(state: SettingsState, model: SettingsModel, start: Focu
             icon = TvIcons.Refresh,
             subtitle = stringResource(R.string.source_refresh_schedule_help),
         )
+        state.remindersCanOpen?.let { allowed ->
+            SettingsValueRow(
+                title = stringResource(R.string.reminders_open_title),
+                value = stringResource(if (allowed) R.string.reminders_open_allowed else R.string.reminders_open_not_allowed),
+                onClick = model::openOverlaySettings,
+                modifier = Modifier.testTag("settings-reminders-open"),
+                icon = TvIcons.Info,
+                subtitle = stringResource(R.string.reminders_open_help),
+            )
+        }
     }
     StatusGroup(listOfNotNull(state.messages[SettingsSection.GENERAL]?.resolve()), securityNote = false)
     if (picking) {

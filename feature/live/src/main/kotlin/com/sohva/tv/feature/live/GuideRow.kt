@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.guide.GuideRules
 import com.sohva.tv.ui.design.components.LocalArtwork
 import com.sohva.tv.ui.design.motion.Motion
@@ -82,6 +83,9 @@ internal class GridMemory {
 /** What a row does on OK and Left (GUIDE-FR-71, -74, -75). */
 internal interface RowActions {
     fun play(row: GuideRowData)
+
+    /** The programme from the provider's archive (spec 22 CATCH-02…04). */
+    fun playArchive(row: GuideRowData, programme: GuideProgramme)
 
     fun openActions(row: GuideRowData, column: Int)
 
@@ -297,14 +301,18 @@ private fun handleKey(
 private fun hasBlocks(row: GuideRowData, model: GuideModel): Boolean =
     model.programmes.schedule(row.channel.epgId)?.let { model.drawnBlocks(it.programmes).isNotEmpty() } == true
 
-/** OK (GUIDE-FR-74): the channel column or the filler play live; a future block opens its actions. */
+/**
+ * OK (GUIDE-FR-74): the channel column or the filler play live; a future block opens its actions;
+ * an airing or past block plays from its start when the archive has it (so OK restarts the airing
+ * programme of a catch-up channel, as beta 23 did), otherwise live.
+ */
 private fun press(row: GuideRowData, state: RowState, model: GuideModel, actions: RowActions) {
     val column = state.column
     val programme = column.takeIf { it >= 0 }?.let { model.programmes.schedule(row.channel.epgId)?.programmes?.getOrNull(it) }
     when {
         programme == null -> actions.play(row)
         programme.isFuture(model.nowState.longValue) -> actions.openActions(row, column)
-        // Catch-up of a past or airing block arrives with spec 22 (M3); until then live, as for channels without catch-up.
+        row.offersArchive(programme, model.nowState.longValue) -> actions.playArchive(row, programme)
         else -> actions.play(row)
     }
 }

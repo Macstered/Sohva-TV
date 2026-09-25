@@ -20,6 +20,7 @@ import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
 import com.sohva.tv.feature.player.ExternalStream
+import com.sohva.tv.feature.player.ArchiveWindow
 import com.sohva.tv.feature.player.PlayerModel
 import com.sohva.tv.feature.player.PlayerNavigation
 import com.sohva.tv.feature.player.PlayerScreen
@@ -50,7 +51,7 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             // One model per player session: zaps happen inside it, so the controller, the picture
             // shape and the previous channel carry across them (spec 30 PLAY-FR-23, -58, -81).
             val navigation = remember(stack, graph, route) { playerNavigation(route, stack, graph) }
-            val model = viewModel { PlayerModel(graph.player.screen(locale), route.channelKey, navigation) }
+            val model = viewModel { PlayerModel(graph.player.screen(locale), route.channelKey, navigation, route.archive, route.recordWatched) }
             PlayerScreen(model)
         }
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
@@ -73,6 +74,12 @@ private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = objec
     override fun play(channelKey: String) {
         graph.guideFocusChannel = channelKey
         stack.push(AppRoute.Player(channelKey, returnToGuide = true))
+    }
+
+    /** Catch-up opens the player over the guide; Back pops to it (spec 22 §3). */
+    override fun playArchive(channelKey: String, start: Long, stop: Long) {
+        graph.guideFocusChannel = channelKey
+        stack.push(AppRoute.Player(channelKey, returnToGuide = false, archive = ArchiveWindow(start, stop)))
     }
 
     override fun openSettings() {

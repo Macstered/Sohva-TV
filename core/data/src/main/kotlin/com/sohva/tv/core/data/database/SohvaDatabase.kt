@@ -9,6 +9,7 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
 import androidx.room.migration.AutoMigrationSpec
+import com.sohva.tv.core.data.reminder.ReminderDao
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
@@ -70,6 +71,8 @@ abstract class SohvaDatabase : RoomDatabase() {
     abstract fun viewer(): ViewerDao
 
     abstract fun channelEdits(): ChannelEditDao
+
+    abstract fun reminders(): ReminderDao
 
     /** v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied. */
     class ProviderColumns : AutoMigrationSpec {

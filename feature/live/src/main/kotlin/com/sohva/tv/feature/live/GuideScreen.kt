@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tracing.trace
+import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.ground.ScreenBackground
 import com.sohva.tv.ui.design.text.Text
@@ -68,6 +69,9 @@ private fun GuideContent(model: GuideModel, navigation: GuideNavigation) {
     val actions = remember(model, navigation) {
         object : RowActions {
             override fun play(row: GuideRowData) = navigation.play(row.key)
+
+            override fun playArchive(row: GuideRowData, programme: GuideProgramme) =
+                navigation.playArchive(row.key, programme.start, programme.stop)
 
             override fun openActions(row: GuideRowData, column: Int) {
                 val programme = model.programmes.schedule(row.channel.epgId)?.programmes?.getOrNull(column) ?: return

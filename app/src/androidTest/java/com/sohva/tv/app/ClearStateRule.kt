@@ -38,6 +38,9 @@ class ClearStateRule : ExternalResource() {
             }
         }
         graph.guideFocusChannel = null
+        // The ringing queue lives in the process; the tables were emptied above, so this also cancels the alarm.
+        graph.reminders.resetForTests()
+        runBlocking { graph.reminders.reschedule() }
         graph.liveReadsOverride = null
     }
 }

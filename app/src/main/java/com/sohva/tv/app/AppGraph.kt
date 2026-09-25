@@ -53,6 +53,15 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** Logos and artwork, decoded at their drawn size; the loader is built on first use. */
     val artwork: com.sohva.tv.app.artwork.CoilArtwork by lazy { com.sohva.tv.app.artwork.CoilArtwork(this) }
 
+    /**
+     * What a notification tap or a bring-forward asked the app to open (spec 01 SHELL-FR-40/41);
+     * the shell takes it once the start route is applied, then clears it.
+     */
+    val openRequest: MutableStateFlow<com.sohva.tv.app.reminder.OpenRequest?> = MutableStateFlow(null)
+
+    /** Programme and match reminders (spec 22); built on first use, never in the Lab build. */
+    val reminders: com.sohva.tv.app.reminder.ReminderCenter by lazy { com.sohva.tv.app.reminder.ReminderCenter(this) }
+
     /** The phone setup page (spec 11); built on first use. */
     val phone: PhoneSetup by lazy { PhoneSetup(this) }
 
@@ -95,6 +104,8 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             sync.runner.recoverAfterRestart()
         }
         appScope.launch { data.preferences.refreshInterval.collect { sync.scheduler.schedule(it) } }
+        // An update or a force-stop drops the alarm; each start sets it again (spec 22 REM-FR-14).
+        if (flags.reminders) appScope.launch { reminders.reschedule() }
     }
 
     private companion object {

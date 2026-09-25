@@ -63,6 +63,13 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         }
     }
 
+    /** Whether the "Let reminders open Sohva TV" prompt was shown; once per installation (REM-FR-05). */
+    suspend fun reminderOverlayAsked(): Boolean = store.data.first()[REMINDER_OVERLAY_ASKED] ?: false
+
+    suspend fun setReminderOverlayAsked() {
+        store.edit { it[REMINDER_OVERLAY_ASKED] = true }
+    }
+
     /** Writes the defaults explicitly (REMOTE-FR-34). */
     suspend fun resetRemoteMapping() {
         store.edit { it[REMOTE_MAPPINGS] = RemoteMapping.DEFAULTS.encode() }
@@ -144,6 +151,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val TIME_ZONE = stringPreferencesKey("time_zone")
         private val LAST_CHANNEL = stringPreferencesKey("last_channel_id")
         private val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
+        private val REMINDER_OVERLAY_ASKED = booleanPreferencesKey("reminder_overlay_asked")
 
         // Beta 23's "Remote channel browser" setting: read (never shown) until a mapping is written.
         private val REMOTE_CHANNEL_KEY_MODE = stringPreferencesKey("remote_channel_key_mode")

@@ -18,6 +18,13 @@ interface PlayerEnvironment {
     /** Resolves a live channel by its key, or null when it is gone (PLAY-FR-14 step 2). Off the main thread. */
     suspend fun resolveLive(channelKey: String): ResolvedStream?
 
+    /**
+     * Resolves a programme of [channelKey] from the provider's archive (spec 22 CATCH-FR-41): the
+     * availability rule is checked again against the clock and the address is built from the live
+     * one. Null when the channel is gone ([ArchiveResult.Gone]) or no address can be built.
+     */
+    suspend fun resolveArchive(channelKey: String, start: Long, stop: Long): ArchiveResult
+
     /** The playback client: HTTP/1.1, connect 20 s, read 90 s, redirects followed (PLAY-FR-18). */
     val callFactory: Call.Factory
 
@@ -33,6 +40,14 @@ interface PlayerEnvironment {
     val lowMemory: Boolean
 
     val log: DiagnosticsLog
+}
+
+sealed interface ArchiveResult {
+    data class Ready(val stream: ResolvedStream) : ArchiveResult
+
+    data object Gone : ArchiveResult
+
+    data object Unavailable : ArchiveResult
 }
 
 /** A stream ready to open: the real address stays inside the engine. */

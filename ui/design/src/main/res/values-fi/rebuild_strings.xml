@@ -20,4 +20,6 @@
     <string name="player_cause_decoder">Tämä televisio ei osaa purkaa lähetyksen kuva- tai äänimuotoa.</string>
     <string name="player_cause_too_heavy">Tämä televisio ei pysty toistamaan lähetyksen kuvaa sujuvasti (%1$s).</string>
     <string name="player_cause_other">Lähetyksen toisto pysähtyi.</string>
+    <string name="player_archive_title">Arkisto · %1$s</string>
+    <string name="player_archive_unavailable">Tätä ohjelmaa ei saa arkistosta.</string>
 </resources>

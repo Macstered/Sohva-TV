@@ -7,7 +7,7 @@ import com.sohva.tv.core.model.player.RemoteDispatcher
 import com.sohva.tv.core.model.player.RemoteMapping
 
 /**
- * The player's keys (spec 31 §4.6, spec 30 §4.3) for live playback: the channel list's own keys,
+ * The player's keys (spec 31 §4.6, spec 30 §4.3) for live TV and catch-up: the channel list's own keys,
  * and the clean screen through the shared [RemoteDispatcher], which lives for the whole player
  * session (REMOTE-FR-09) so a held channel key zaps exactly once. Returns whether the event is
  * consumed; an unconsumed Back travels the window's Back route (spec 30 §3.2).
@@ -15,7 +15,7 @@ import com.sohva.tv.core.model.player.RemoteMapping
 class PlayerKeys internal constructor(private val model: PlayerModel, mapping: RemoteMapping = RemoteMapping.DEFAULTS) : CleanScreen {
     private val dispatcher = RemoteDispatcher(mapping)
 
-    override val live: Boolean = true
+    override val live: Boolean get() = model.live
 
     override val boxVisible: Boolean get() = model.boxVisible.value
 
@@ -34,12 +34,13 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
         return dispatcher.onKey(event.keyCode, down, event.repeatCount, this)
     }
 
-    override fun reveal(focusPlayPause: Boolean) = model.reveal()
+    override fun reveal(focusPlayPause: Boolean) {
+        if (live) model.reveal() else model.transport.show(focusPlayPause)
+    }
 
     override fun focusBox() = model.focusBox()
 
-    // Live playback has no transport controls; the dispatcher never asks for them here.
-    override fun showControls() = model.reveal()
+    override fun showControls() = model.transport.show(focusPlay = true)
 
     override fun dial(digit: Int) = model.dial.digit(digit)
 
@@ -53,8 +54,9 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
             RemoteAction.SWITCH_TO_PREVIOUS_CHANNEL -> model.switchToPrevious()
             RemoteAction.OPEN_CHANNEL_BROWSER -> model.channels.openList()
             RemoteAction.OPEN_GROUP_BROWSER -> model.channels.openList(withGroups = true)
+            // Live shows the box; catch-up the controls with Play/Pause focused (REMOTE-FR-10).
             RemoteAction.PROGRAMME_INFO -> {
-                model.reveal()
+                if (live) model.reveal() else showControls()
                 true
             }
             RemoteAction.TOGGLE_STATS -> {
@@ -95,8 +97,27 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
                 model.navigation.sport()
                 true
             }
-            // Timeshift actions (catch-up M3, films M4) never apply to live; NOTHING never acts.
-            else -> false
+            RemoteAction.PLAY_PAUSE -> {
+                model.transport.togglePlay()
+                true
+            }
+            RemoteAction.SEEK_BACK -> {
+                model.transport.skip(back = true)
+                true
+            }
+            RemoteAction.SEEK_FORWARD -> {
+                model.transport.skip(back = false)
+                true
+            }
+            RemoteAction.RESTART -> {
+                model.transport.restart()
+                true
+            }
+            RemoteAction.SHOW_CONTROLS -> {
+                showControls()
+                true
+            }
+            RemoteAction.NOTHING -> false
         }
     }
 

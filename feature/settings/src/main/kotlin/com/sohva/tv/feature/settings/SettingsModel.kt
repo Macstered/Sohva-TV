@@ -59,6 +59,8 @@ data class SettingsState(
     val messages: Map<SettingsSection, SettingsMessage> = emptyMap(),
     val refreshInterval: RefreshInterval = RefreshInterval.TWENTY_FOUR_HOURS,
     val remote: RemoteMapping = RemoteMapping.DEFAULTS,
+    /** "Reminders can open Sohva TV": null when the build has no reminders (REM-FR-34). */
+    val remindersCanOpen: Boolean? = null,
     val phone: PhoneSetupState = PhoneSetupState.Closed,
     /** The phone page's code, once built for its current address. */
     val qr: QrMatrix? = null,
@@ -106,6 +108,11 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     }
 
     fun openPhoneSetup() = services.openPhoneSetup()
+
+    /** Read again whenever the screen resumes, so coming back from the TV settings updates it (REM-FR-34). */
+    fun refreshReminderAccess() = state.update { it.copy(remindersCanOpen = services.remindersCanOpen()) }
+
+    fun openOverlaySettings() = services.openOverlaySettings()
 
     fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) {
         viewModelScope.launch { services.setRemoteAction(button, gesture, action) }

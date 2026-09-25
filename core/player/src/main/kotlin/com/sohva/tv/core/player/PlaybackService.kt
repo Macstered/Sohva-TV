@@ -97,7 +97,8 @@ class PlaybackService : MediaSessionService() {
             mediaItems: MutableList<MediaItem>,
         ): ListenableFuture<MutableList<MediaItem>> {
             val result = SettableFuture.create<MutableList<MediaItem>>()
-            val request = mediaItems.singleOrNull()?.mediaId?.takeIf { it.isNotBlank() }
+            val item = mediaItems.singleOrNull()
+            val request = item?.mediaId?.takeIf { it.isNotBlank() }
             if (request == null) {
                 result.setException(IllegalArgumentException("A channel ID is required"))
                 return result
@@ -106,7 +107,21 @@ class PlaybackService : MediaSessionService() {
                 // Release the previous stream before taking a lease, so a zap works at limit 1 (PLAY-FR-16).
                 releaseStream()
                 applyProfile()
-                val stream = env.resolveLive(request)
+                // A catch-up request carries the programme's start and stop (spec 22 CATCH-FR-40).
+                val extras = item.requestMetadata.extras
+                val stream = if (extras != null && extras.containsKey(EXTRA_ARCHIVE_START)) {
+                    when (val archive = env.resolveArchive(request, extras.getLong(EXTRA_ARCHIVE_START), extras.getLong(EXTRA_ARCHIVE_STOP))) {
+                        is ArchiveResult.Ready -> archive.stream
+                        ArchiveResult.Gone -> null
+                        ArchiveResult.Unavailable -> {
+                            fail(controller, PlaybackErrors.ARCHIVE_UNAVAILABLE, Bundle.EMPTY)
+                            result.setException(IllegalStateException("The archive address cannot be built"))
+                            return@launch
+                        }
+                    }
+                } else {
+                    env.resolveLive(request)
+                }
                 if (stream == null) {
                     fail(controller, PlaybackErrors.NO_LONGER_AVAILABLE, Bundle.EMPTY)
                     result.setException(IllegalStateException("Media is no longer available"))
@@ -158,5 +173,9 @@ class PlaybackService : MediaSessionService() {
     companion object {
         const val SESSION_ID: String = "streammate-live-tv"
         const val EXTRA_CODE: String = "com.sohva.tv.player.CODE"
+
+        /** Request extras of a catch-up item: the programme's start and stop, epoch milliseconds. */
+        const val EXTRA_ARCHIVE_START: String = "com.sohva.tv.player.ARCHIVE_START"
+        const val EXTRA_ARCHIVE_STOP: String = "com.sohva.tv.player.ARCHIVE_STOP"
     }
 }

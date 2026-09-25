@@ -15,6 +15,9 @@ object PlaybackErrors {
     /** Error codes of the engine's own failures, carried to the screen in a session error. */
     const val CONNECTION_LIMIT: Int = 1001
     const val NO_LONGER_AVAILABLE: Int = 1002
+
+    /** No archive address can be built for the programme now (spec 22 CATCH-FR-42). */
+    const val ARCHIVE_UNAVAILABLE: Int = 1003
     const val EXTRA_SOURCE_NAME: String = "com.sohva.tv.player.SOURCE_NAME"
     const val EXTRA_LIMIT: String = "com.sohva.tv.player.LIMIT"
 

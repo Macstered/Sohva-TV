@@ -67,6 +67,10 @@ class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
 
     override suspend fun setRefreshInterval(interval: RefreshInterval) = withContext(io) { graph.data.preferences.setRefreshInterval(interval) }
 
+    override fun remindersCanOpen(): Boolean? = if (graph.flags.reminders) graph.reminders.mayOpenOverOtherApps() else null
+
+    override fun openOverlaySettings() = graph.reminders.openOverlaySettings()
+
     override fun remoteMapping(): Flow<RemoteMapping> = flow { emitAll(graph.data.preferences.remoteMapping) }.flowOn(io)
 
     override suspend fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) =

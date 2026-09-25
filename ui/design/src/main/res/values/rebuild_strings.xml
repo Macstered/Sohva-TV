@@ -20,4 +20,6 @@
     <string name="player_cause_decoder">This TV cannot decode the stream’s picture or sound format.</string>
     <string name="player_cause_too_heavy">This TV cannot play this stream’s picture smoothly (%1$s).</string>
     <string name="player_cause_other">The stream stopped playing.</string>
+    <string name="player_archive_title">Archive · %1$s</string>
+    <string name="player_archive_unavailable">This programme is not available from the archive.</string>
 </resources>

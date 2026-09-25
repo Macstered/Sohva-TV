@@ -4,6 +4,14 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Reminders (spec 22 §7): the panel notification, the alarm again after a reboot, exact
+         alarms (Android 12+, checked before use), and "display over other apps", which only the
+         viewer grants in the TV settings and which only lets a due reminder open this app. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <uses-feature
         android:name="android.software.leanback"
         android:required="true" />
@@ -41,6 +49,19 @@
             android:supportsPictureInPicture="true"
             tools:ignore="DiscouragedApi,LockedOrientationActivity"
             tools:targetApi="24" />
+
+        <!-- Not exported: the fire broadcast names this component, and the system delivers its own
+             broadcasts (reboot, update, clock and zone changes) regardless (spec 22 REM-FR-14). -->
+        <receiver
+            android:name=".reminder.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- WorkManager starts on first use (Configuration.Provider), not at process start: nothing
              but the first screen's work runs before the first frame (AGENTS.md section 4 rule 9). -->

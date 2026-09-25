@@ -60,6 +60,10 @@ interface PlayerNavigation {
 
 enum class Connection { CONNECTING, READY, FAILED }
 
+/** A programme to play from the provider's archive: its guide times, epoch ms (spec 22 CATCH-FR-11). */
+@Immutable
+data class ArchiveWindow(val start: Long, val stop: Long)
+
 /** The channel on screen, formatted once per zap. */
 @Immutable
 data class Playing(val channel: LiveChannel, val number: Int?, val tags: List<String>, val initials: String)

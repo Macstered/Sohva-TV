@@ -30,6 +30,9 @@ object GuideFixture {
         guideFor: Int = Int.MAX_VALUE,
         /** One sealed address for every channel, instead of sealing each (owner-scale fixtures). */
         sealedStream: String? = null,
+        /** The playlist's catch-up type for each channel (null = none), with [catchupDays] of archive. */
+        catchupType: (index: Int) -> String? = { null },
+        catchupDays: Int = 7,
     ) {
         val db = graph.data.database
         val now = System.currentTimeMillis()
@@ -55,7 +58,8 @@ object GuideFixture {
                             providerName = name, providerGroupId = groupId, providerLogoUrl = null,
                             tvgId = epg, epgId = epg, logoUrl = null, streamUrlEnc = sealedStream ?: graph.data.cipher.encrypt(stream(sourceId, index)),
                             userAgent = userAgent, referrer = referrer, playlistOrder = index, providerNumber = index + 1, number = index + 1,
-                            displayRank = index * 1024L, visible = true, catchupType = null, catchupSource = null, catchupDays = null,
+                            displayRank = index * 1024L, visible = true, catchupType = catchupType(index), catchupSource = null,
+                            catchupDays = catchupType(index)?.let { catchupDays },
                             catchupTz = null, xtreamStreamId = null, contentHash = 1, generation = 1,
                         )
                         if (withGuide && index < guideFor) programmes += schedule(sourceId, epg, index, now)
