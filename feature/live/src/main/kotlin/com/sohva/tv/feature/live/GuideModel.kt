@@ -71,6 +71,9 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private val _selection = MutableStateFlow<GuideSelection?>(null)
     val selection: StateFlow<GuideSelection?> = _selection.asStateFlow()
 
+    /** The selected programme's metadata, once looked up (GUIDE-FR-64). */
+    val heroMetadata: StateFlow<HeroMetadata?> = GuideHeroLookup(env, viewModelScope, selection).metadata
+
     private val _focus = MutableStateFlow<GuideFocus?>(null)
     val focus: StateFlow<GuideFocus?> = _focus.asStateFlow()
     private var focusSerial = 0
@@ -500,6 +503,8 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     }
 
     fun reminderId(row: GuideRowData, programme: GuideProgramme): String = ReminderIds.programme(row.key, programme.key)
+
+    fun openSource(url: String) = env.openUrl(url)
 
     fun toggleFavourite(key: String) {
         viewModelScope.launch {

@@ -30,7 +30,9 @@ import kotlinx.coroutines.withContext
 class AppTitleEnvironment(private val graph: AppGraph, private val navigation: TitleNavigation) : TitleEnvironment {
     private val titles get() = graph.data.titles
     private val progress get() = graph.data.progress
+    // Reached on the io dispatcher only: the first use builds the service and its HTTP client.
     private val metadata get() = graph.metadata.service
+    private val io get() = graph.dispatchers.io
 
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
@@ -56,10 +58,10 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
 
     override fun play(key: String, startMs: Long) = navigation.play(key, startMs)
 
-    override suspend fun isPinned(target: PickerTarget): Boolean = graph.metadata.choices.isPinned(choice(target))
+    override suspend fun isPinned(target: PickerTarget): Boolean = withContext(io) { graph.metadata.choices.isPinned(choice(target)) }
 
     override suspend fun searchMatches(target: PickerTarget, query: String): List<MatchResult> {
-        val found = metadata.search(if (target.film) MediaType.MOVIE else MediaType.SERIES, query)
+        val found = withContext(io) { metadata.search(if (target.film) MediaType.MOVIE else MediaType.SERIES, query) }
         return found.map { MatchResult(it.provider.id, it.externalId, it.title, it.year, it.overview, it.poster, Artwork.url(it.poster, Artwork.THUMB)) }
     }
 
@@ -68,18 +70,18 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
         val type = if (target.film) MediaType.MOVIE else MediaType.SERIES
         val picked = MetadataRecord(provider, result.externalId, type, result.title, overview = result.overview, poster = result.poster, year = result.year)
         // A failed write closes the picker silently and leaves the page as it was (META-FR-75).
-        val chosen = runCatching { graph.metadata.choices.choose(choice(target), picked) }.getOrNull() ?: return null
+        val chosen = runCatching { withContext(io) { graph.metadata.choices.choose(choice(target), picked) } }.getOrNull() ?: return null
         return withContext(format) { toMetadata(chosen) }
     }
 
     override suspend fun undoMatch(target: PickerTarget) {
-        runCatching { graph.metadata.choices.undo(choice(target)) }
+        runCatching { withContext(io) { graph.metadata.choices.undo(choice(target)) } }
     }
 
-    override fun cachedFilmMetadata(film: FilmRecord): TitleMetadata? = metadata.cached(request(film))?.let(::toMetadata)
+    override fun cachedFilmMetadata(film: FilmRecord): TitleMetadata? = graph.metadata.cached(request(film))?.let(::toMetadata)
 
     override suspend fun filmMetadata(film: FilmRecord): TitleMetadata? {
-        val record = metadata.filmDetails(request(film)) ?: return null
+        val record = withContext(io) { metadata.filmDetails(request(film)) } ?: return null
         // A missing library poster is repaired from the details record (VOD-FR-60, META-FR-71).
         val poster = record.poster
         if (film.posterUrl.isNullOrBlank() && poster != null) titles.repairPoster(film.key, poster)
@@ -102,20 +104,20 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
             SimilarCard(found.key, reference.title, reference.year, Artwork.url(reference.poster, Artwork.POSTER_WALL) ?: found.libraryPoster)
         }
 
-    override fun cachedSeriesMetadata(series: SeriesRecord): TitleMetadata? = metadata.cached(request(series))?.let(::toMetadata)
+    override fun cachedSeriesMetadata(series: SeriesRecord): TitleMetadata? = graph.metadata.cached(request(series))?.let(::toMetadata)
 
     override suspend fun seriesMetadata(series: SeriesRecord): TitleMetadata? {
-        val record = metadata.seriesDetails(request(series)) ?: return null
+        val record = withContext(io) { metadata.seriesDetails(request(series)) } ?: return null
         val poster = record.poster
         if (series.posterUrl.isNullOrBlank() && poster != null) titles.repairPoster(series.key, poster)
         return withContext(format) { toMetadata(record) }
     }
 
     override fun cachedEpisodeMetadata(series: SeriesRecord, season: Int, episode: Int): TitleMetadata? =
-        metadata.cached(episodeRequest(series, season, episode))?.let { toMetadata(it, still = true) }
+        graph.metadata.cached(episodeRequest(series, season, episode))?.let { toMetadata(it, still = true) }
 
     override suspend fun episodeMetadata(series: SeriesRecord, season: Int, episode: Int): TitleMetadata? {
-        val record = metadata.episode(request(series), season, episode) ?: return null
+        val record = withContext(io) { metadata.episode(request(series), season, episode) } ?: return null
         return withContext(format) { toMetadata(record, still = true) }
     }
 

@@ -50,6 +50,15 @@ interface GuideEnvironment {
 
     /** Adds or removes the reminder (REM-FR-04); true when it was added. */
     suspend fun toggleReminder(reminder: Reminder): Boolean
+
+    /** The hero's programme metadata from the memory cache, never blocking (GUIDE-FR-64). */
+    fun cachedProgramme(programmeId: Long, title: String): HeroMetadata?
+
+    /** The hero's programme lookup; null when metadata is off, nothing matched, or it failed. */
+    suspend fun programmeMetadata(programmeId: Long, title: String): HeroMetadata?
+
+    /** "Source: …" opens the record's page; nothing happens on a TV without a browser (GUIDE-FR-65). */
+    fun openUrl(url: String)
 }
 
 /** Where the guide sends the viewer; implemented by the app's router. */

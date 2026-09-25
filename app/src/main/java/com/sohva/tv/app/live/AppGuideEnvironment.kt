@@ -1,13 +1,20 @@
 package com.sohva.tv.app.live
 
+import android.content.Intent
+import androidx.core.net.toUri
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.core.data.live.ChannelList
 import com.sohva.tv.core.data.live.ListSpec
 import com.sohva.tv.core.data.live.LiveReads
+import com.sohva.tv.core.model.metadata.MediaType
 import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
+import com.sohva.tv.core.net.metadata.Artwork
+import com.sohva.tv.core.net.metadata.MetadataRecord
+import com.sohva.tv.core.sync.metadata.MetadataRequest
 import com.sohva.tv.feature.live.GuideEnvironment
+import com.sohva.tv.feature.live.HeroMetadata
 import com.sohva.tv.feature.live.SavedSource
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
@@ -53,4 +60,25 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
     override val reminderIds: Flow<Set<String>> get() = graph.reminders.ids
 
     override suspend fun toggleReminder(reminder: Reminder): Boolean = graph.reminders.toggle(reminder)
+
+    override fun cachedProgramme(programmeId: Long, title: String): HeroMetadata? =
+        graph.metadata.cached(MetadataRequest(MediaType.PROGRAMME, title))?.let { hero(programmeId, it) }
+
+    override suspend fun programmeMetadata(programmeId: Long, title: String): HeroMetadata? =
+        graph.metadata.enrich(MetadataRequest(MediaType.PROGRAMME, title))?.let { hero(programmeId, it) }
+
+    /** The backdrop, else the poster, at `w780` for the 16:9 still (spec 41 §9.5). */
+    private fun hero(programmeId: Long, record: MetadataRecord) = HeroMetadata(
+        programmeId = programmeId,
+        year = record.year,
+        rating = record.rating,
+        overview = record.overview,
+        stillUrl = Artwork.url(record.backdrop, Artwork.BACKDROP) ?: Artwork.url(record.poster, Artwork.BACKDROP),
+        sourceName = record.provider.displayName,
+        sourceUrl = record.attributionUrl ?: record.provider.home,
+    )
+
+    override fun openUrl(url: String) {
+        runCatching { graph.app.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
 }

@@ -7,14 +7,17 @@ import com.sohva.tv.core.data.metadata.MetadataSettings
 import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.net.metadata.MetadataHttp
+import com.sohva.tv.core.net.metadata.MetadataRecord
 import com.sohva.tv.core.net.metadata.TmdbClient
 import com.sohva.tv.core.net.metadata.TvmazeClient
 import com.sohva.tv.core.sync.metadata.Enrichment
 import com.sohva.tv.core.sync.metadata.EnrichmentScheduler
 import com.sohva.tv.core.sync.metadata.MatchChoices
+import com.sohva.tv.core.sync.metadata.MetadataRequest
 import com.sohva.tv.core.sync.metadata.MetadataReset
 import com.sohva.tv.core.sync.metadata.MetadataService
 import java.util.Locale
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
@@ -47,6 +50,21 @@ class MetadataGraph(private val graph: AppGraph) {
                 graph.clock, graph.dispatchers.io, graph.appScope,
             ).also { built = it }
         }
+
+    /**
+     * The memory cache's answer for a screen's first frame, on the main thread: nothing is built or
+     * read here. Before the settings have been read once (by a lookup on the io dispatcher), or
+     * with metadata off, there is no answer.
+     */
+    fun cached(request: MetadataRequest): MetadataRecord? {
+        if (settings.config.value?.enabled != true) return null
+        return built?.cached(request)
+    }
+
+    /** A lookup on the io dispatcher; null when metadata is off (spec 41 META-FR-43). */
+    suspend fun enrich(request: MetadataRequest): MetadataRecord? = withContext(graph.dispatchers.io) {
+        if (!settings.current().enabled) null else service.enrich(request)
+    }
 
     /**
      * Device tests answer TMDB and TVmaze from their own server: the next lookup builds a service

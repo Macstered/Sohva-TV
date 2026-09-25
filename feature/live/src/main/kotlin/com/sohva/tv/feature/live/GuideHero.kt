@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,20 +24,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +50,7 @@ import androidx.tracing.trace
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.LiveDot
+import com.sohva.tv.ui.design.components.LocalArtwork
 import com.sohva.tv.ui.design.components.LogoTile
 import com.sohva.tv.ui.design.components.TagTone
 import com.sohva.tv.ui.design.components.TvActionButton
@@ -59,23 +66,27 @@ internal val HERO_HEIGHT = 136.dp
 
 /**
  * The hero (guide.md §1): a 16:9 still and the detail column for the selection. The area is kept
- * even while nothing is selected (guide.md §12 item 7). Metadata (backdrops, TMDB) arrives in M4;
- * until then the still is the channel's tile, as beta 23 shows when no metadata service is on.
+ * even while nothing is selected (guide.md §12 item 7). With metadata the still is the programme's
+ * backdrop (else poster), and the year, the TMDB rating, the overview and "Source" join in
+ * (GUIDE-FR-62…65); without it the still is the channel's tile.
  */
 @Composable
 internal fun GuideHero(model: GuideModel, actions: RowActions, watch: FocusRequester, modifier: Modifier = Modifier) = trace("Guide:Hero") {
     val selection by model.selection.collectAsStateWithLifecycle()
+    val found by model.heroMetadata.collectAsStateWithLifecycle()
     val current = selection
     Row(modifier.fillMaxWidth().height(HERO_HEIGHT)) {
         if (current == null) return@Row
-        HeroStill(model, current)
+        // Only the selected programme's answer is shown, never one that arrived late for another.
+        val metadata = found?.takeIf { it.programmeId == current.programme?.id }
+        HeroStill(model, current, metadata?.stillUrl)
         Spacer(Modifier.width(16.dp))
-        HeroDetail(model, current, actions, watch, Modifier.weight(1f))
+        HeroDetail(model, current, metadata, actions, watch, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun HeroStill(model: GuideModel, selection: GuideSelection) {
+private fun HeroStill(model: GuideModel, selection: GuideSelection, still: String?) {
     val palette = Sohva.palette
     val numbers by model.showNumbers.collectAsStateWithLifecycle()
     val programme = selection.programme
@@ -83,6 +94,7 @@ private fun HeroStill(model: GuideModel, selection: GuideSelection) {
     val live = programme?.isLive(now) == true
     Box(Modifier.fillMaxHeight().aspectRatio(16f / 9f).roundFill(palette.surfaceSubtle, Sohva.shapes.large)) {
         LogoTile(selection.row.name, selection.row.channel.logoUrl, 56.dp, Modifier.align(Alignment.Center), fontSize = Sohva.typography.caption.fontSize)
+        if (still != null) StillImage(still)
         val ground = palette.background
         Canvas(Modifier.fillMaxSize()) {
             drawRect(Brush.verticalGradient(0.46f to ground.copy(alpha = 0f), 1f to ground.copy(alpha = 0.92f)))
@@ -117,8 +129,24 @@ private fun HeroStill(model: GuideModel, selection: GuideSelection) {
     }
 }
 
+/** The metadata still over the channel tile, decoded at the still's size as RGB_565 (spec 41 §9.5). */
 @Composable
-private fun HeroDetail(model: GuideModel, selection: GuideSelection, actions: RowActions, watch: FocusRequester, modifier: Modifier) {
+private fun StillImage(url: String) {
+    val loader = LocalArtwork.current
+    val px = with(LocalDensity.current) { IntSize((HERO_HEIGHT * 16f / 9f).roundToPx(), HERO_HEIGHT.roundToPx()) }
+    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(url) { image = loader.load(url, px.width, px.height, opaque = true) }
+    val bitmap = image ?: return
+    Canvas(Modifier.fillMaxSize().clip(RoundedCornerShape(Sohva.shapes.large)).testTag("guide-hero-still")) {
+        val scale = maxOf(size.width / bitmap.width, size.height / bitmap.height)
+        val w = (size.width / scale).toInt().coerceAtMost(bitmap.width)
+        val h = (size.height / scale).toInt().coerceAtMost(bitmap.height)
+        drawImage(bitmap, IntOffset((bitmap.width - w) / 2, (bitmap.height - h) / 2), IntSize(w, h), dstSize = IntSize(size.width.toInt(), size.height.toInt()))
+    }
+}
+
+@Composable
+private fun HeroDetail(model: GuideModel, selection: GuideSelection, metadata: HeroMetadata?, actions: RowActions, watch: FocusRequester, modifier: Modifier) {
     val palette = Sohva.palette
     val type = Sohva.typography
     val labels by model.labels.collectAsStateWithLifecycle()
@@ -129,31 +157,32 @@ private fun HeroDetail(model: GuideModel, selection: GuideSelection, actions: Ro
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (programme?.isLive(now) == true) TvTagChip(stringResource(R.string.guide_live), tone = TagTone.LIVE)
-            val facts = listOfNotNull(programme?.let { labels.guideRange(it.start, it.stop) }, programme?.firstCategory)
+            val facts = listOfNotNull(programme?.let { labels.guideRange(it.start, it.stop) }, programme?.firstCategory, metadata?.year?.toString())
             if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = type.label, color = palette.textMuted, maxLines = 1)
+            metadata?.rating?.let { TvTagChip(stringResource(R.string.guide_rating, it), Modifier.testTag("guide-hero-rating"), tone = TagTone.RATING) }
         }
         Spacer(Modifier.height(8.dp))
-        Synopsis(model, programme, Modifier.weight(1f))
-        HeroButtons(model, selection, actions, watch)
+        Synopsis(model, programme, metadata?.overview, Modifier.weight(1f))
+        HeroButtons(model, selection, metadata, actions, watch)
     }
 }
 
-/** Description read by id off the main thread (GUIDE-NFR-13), else the subtitle, else "no details". */
+/** The metadata overview, else the description read by id off the main thread (GUIDE-NFR-13), else the subtitle, else "no details". */
 @Composable
-private fun Synopsis(model: GuideModel, programme: GuideProgramme?, modifier: Modifier) {
+private fun Synopsis(model: GuideModel, programme: GuideProgramme?, overview: String?, modifier: Modifier) {
     var text by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(programme?.id) {
         text = null
         if (programme != null && programme.hasDescription) text = model.description(programme.id)
     }
-    val shown = text?.takeIf { it.isNotBlank() } ?: programme?.subtitle?.takeIf { it.isNotBlank() }
+    val shown = overview ?: text?.takeIf { it.isNotBlank() } ?: programme?.subtitle?.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.guide_programme_no_details)
     // Two lines fit at font scale 1 (guide.md §12 item 3).
     Text(shown, modifier, style = Sohva.typography.label, color = Sohva.palette.textMuted, maxLines = 2)
 }
 
 @Composable
-private fun HeroButtons(model: GuideModel, selection: GuideSelection, actions: RowActions, watch: FocusRequester) {
+private fun HeroButtons(model: GuideModel, selection: GuideSelection, metadata: HeroMetadata?, actions: RowActions, watch: FocusRequester) {
     val favourites by model.favourites.collectAsStateWithLifecycle()
     val search by model.overlays.search.collectAsStateWithLifecycle()
     val favourite = selection.row.key in favourites
@@ -193,6 +222,15 @@ private fun HeroButtons(model: GuideModel, selection: GuideSelection, actions: R
             state = SurfaceState(selected = search.visible),
             compact = true,
         )
+        if (metadata != null) {
+            TvActionButton(
+                stringResource(R.string.metadata_source, metadata.sourceName),
+                { model.openSource(metadata.sourceUrl) },
+                Modifier.testTag("guide-metadata-attribution"),
+                icon = TvIcons.Info,
+                compact = true,
+            )
+        }
     }
 }
 
