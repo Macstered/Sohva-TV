@@ -98,6 +98,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun library(): LibraryDao
 
+    abstract fun metadata(): MetadataDao
+
     abstract fun manager(): ManagerDao
 
     /**

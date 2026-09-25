@@ -72,7 +72,7 @@ data class MetadataPinEntity(
 @Entity(
     tableName = "metadata_queue",
     primaryKeys = ["content_key"],
-    indices = [Index(value = ["state", "priority", "next_attempt_at", "content_key"]), Index(value = ["stamp"])],
+    indices = [Index(value = ["state", "priority", "content_key"]), Index(value = ["stamp"])],
 )
 data class MetadataQueueEntity(
     @ColumnInfo(name = "content_key") val contentKey: String,

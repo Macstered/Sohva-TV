@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "7d48fa5b278e81f8e51f5d6dc52a246e",
+    "identityHash": "99568216b56da0d1bd5db58b97251324",
     "entities": [
       {
         "tableName": "app_meta",
@@ -1706,6 +1706,15 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_profile_id_series_key_updated_at` ON `${TABLE_NAME}` (`profile_id`, `series_key`, `updated_at`)"
+          },
+          {
+            "name": "index_watch_progress_content_key",
+            "unique": false,
+            "columnNames": [
+              "content_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_watch_progress_content_key` ON `${TABLE_NAME}` (`content_key`)"
           }
         ]
       },
@@ -2008,16 +2017,15 @@
         },
         "indices": [
           {
-            "name": "index_metadata_queue_state_priority_next_attempt_at_content_key",
+            "name": "index_metadata_queue_state_priority_content_key",
             "unique": false,
             "columnNames": [
               "state",
               "priority",
-              "next_attempt_at",
               "content_key"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_queue_state_priority_next_attempt_at_content_key` ON `${TABLE_NAME}` (`state`, `priority`, `next_attempt_at`, `content_key`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_metadata_queue_state_priority_content_key` ON `${TABLE_NAME}` (`state`, `priority`, `content_key`)"
           },
           {
             "name": "index_metadata_queue_stamp",
@@ -2064,7 +2072,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7d48fa5b278e81f8e51f5d6dc52a246e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '99568216b56da0d1bd5db58b97251324')"
     ]
   }
 }

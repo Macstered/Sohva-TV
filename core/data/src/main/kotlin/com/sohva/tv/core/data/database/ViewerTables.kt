@@ -49,6 +49,8 @@ const val RECENT_LIMIT: Int = 20
         Index(value = ["profile_id", "content_type", "updated_at", "content_key"]),
         Index(value = ["profile_id", "work_key", "updated_at"]),
         Index(value = ["profile_id", "series_key", "updated_at"]),
+        // The metadata queue puts watched titles first, whoever watched them (spec 41 META-FR-65).
+        Index(value = ["content_key"]),
     ],
 )
 data class WatchProgressEntity(
