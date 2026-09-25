@@ -22,6 +22,7 @@ object ModuleRules {
         ":feature:trakt" to setOf(":ui:design", ":core:model", ":core:data", ":core:sync", ":core:net"),
         ":feature:*" to setOf(":ui:design", ":core:model", ":core:data", ":core:sync"),
         ":spike:*" to setOf(":ui:design", ":core:model"),
+        ":measure:*" to setOf(":core:model", ":core:data"),
         ":benchmark" to emptySet(),
         ":lint-checks" to emptySet(),
         ":app" to setOf("*"),

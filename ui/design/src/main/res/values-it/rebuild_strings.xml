@@ -12,4 +12,13 @@
     <string name="error_source_limit_reached">Non è possibile aggiungere altre sorgenti (massimo %1$d)</string>
     <string name="action_cancel">Annulla</string>
     <string name="source_delete_confirm">Rimuovere %1$s con canali, guida e film? Non si può annullare.</string>
+    <string name="player_cause_network">Impossibile raggiungere il fornitore. Controlla la rete.</string>
+    <string name="player_cause_refused">Il fornitore ha rifiutato il flusso. L’account potrebbe essere in uso altrove o scaduto.</string>
+    <string name="player_cause_gone">Il fornitore non ha più questo flusso.</string>
+    <string name="player_cause_server">Il server del fornitore non ha funzionato.</string>
+    <string name="player_cause_broke_off">La connessione con il fornitore si è interrotta.</string>
+    <string name="player_cause_not_a_stream">Il fornitore ha inviato qualcosa che non è un flusso riproducibile.</string>
+    <string name="player_cause_decoder">Questo televisore non riesce a decodificare il formato video o audio del flusso.</string>
+    <string name="player_cause_too_heavy">Questo televisore non riesce a riprodurre fluidamente il video di questo flusso (%1$s).</string>
+    <string name="player_cause_other">La riproduzione del flusso si è interrotta.</string>
 </resources>

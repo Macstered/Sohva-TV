@@ -4,6 +4,7 @@ import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.diagnostics.Redactor
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
+import com.sohva.tv.core.model.player.UserAgents
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,8 @@ enum class ProviderRequest {
  * unblocks a read that would otherwise wait out the 90-second timeout.
  */
 class ProviderHttp(
-    private val client: OkHttpClient,
+    /** Shared with the playback client, which derives its own from it (plan/03 §4.12). */
+    val client: OkHttpClient,
     private val log: DiagnosticsLog,
     private val maxBodyBytes: Long = MAX_BODY_BYTES,
 ) {
@@ -119,7 +121,7 @@ class ProviderHttp(
             .build()
 
         /** `Sohva TV/<version> (Android TV <release>)`. */
-        fun userAgent(versionName: String, androidRelease: String): String = "Sohva TV/$versionName (Android TV $androidRelease)"
+        fun userAgent(versionName: String, androidRelease: String): String = UserAgents.sohva(versionName, androidRelease)
 
         /** The exception text without addresses, host names or credentials (SRC-FR-48). */
         internal fun transportDetail(e: IOException, host: String): String? {

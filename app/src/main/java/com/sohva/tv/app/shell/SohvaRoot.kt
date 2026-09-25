@@ -17,12 +17,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.IntSize
+import androidx.tracing.trace
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRouteCodec
 import com.sohva.tv.app.navigation.startRoutes
 import com.sohva.tv.core.data.device.DeviceTierReader
 import com.sohva.tv.core.model.device.DeviceTier
 import com.sohva.tv.core.model.settings.StartSnapshot
+import com.sohva.tv.ui.design.components.LocalArtwork
 import com.sohva.tv.ui.design.ground.GroundCache
 import com.sohva.tv.ui.design.ground.LocalRenderDispatcher
 import com.sohva.tv.ui.design.navigation.NavHost
@@ -30,7 +32,6 @@ import com.sohva.tv.ui.design.navigation.rememberBackStack
 import com.sohva.tv.ui.design.theme.InterfaceScaled
 import com.sohva.tv.ui.design.theme.Palettes
 import com.sohva.tv.ui.design.theme.SohvaTheme
-import androidx.tracing.trace
 import kotlinx.coroutines.withContext
 
 /** What the first app frame needs, read once off the main thread (plan/03 §4.9). */
@@ -87,8 +88,10 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
         InterfaceScaled(scale) {
             // Test tags double as resource ids, so UiAutomator journeys (profiles, benchmarks) find them.
             Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
-                val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen) }
-                NavHost(stack) { route -> AppDestination(route, stack, graph) }
+                val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen, start.snapshot.lastChannel) }
+                CompositionLocalProvider(LocalArtwork provides graph.artwork) {
+                    NavHost(stack) { route -> AppDestination(route, stack, graph) }
+                }
             }
         }
     }

@@ -1,0 +1,178 @@
+package com.sohva.tv.feature.player
+
+import android.view.SurfaceView
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.activity.compose.BackHandler
+import androidx.annotation.OptIn
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.Player
+import androidx.media3.common.text.CueGroup
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.SubtitleView
+import com.sohva.tv.core.model.player.PictureShape
+import com.sohva.tv.ui.design.R
+import com.sohva.tv.ui.design.components.BufferingIndicator
+import com.sohva.tv.ui.design.components.FullScreenMessage
+import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
+
+/**
+ * The live player (spec 30 §5): a black ground, the video, and overlays composed only while shown
+ * (§9 "nothing composed while hidden"). The key host is a sibling of the overlays, not their
+ * parent, so a focused button receives its own keys.
+ */
+@OptIn(UnstableApi::class)
+@Composable
+fun PlayerScreen(model: PlayerModel) {
+    val connection by model.connection.collectAsStateWithLifecycle()
+    KeepScreenOn()
+    PlayerLifecycle(model)
+    DisplayRateMatch(model)
+    Box(Modifier.fillMaxSize().background(Color.Black).testTag("screen-player")) {
+        when (connection) {
+            Connection.CONNECTING -> FullScreenMessage(stringResource(R.string.player_connecting))
+            Connection.FAILED -> FullScreenMessage(stringResource(R.string.player_service_disconnected))
+            Connection.READY -> PlayerContent(model)
+        }
+    }
+}
+
+@OptIn(UnstableApi::class)
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: PlayerModel) {
+    val host = remember { FocusRequester() }
+    val box by model.boxVisible.collectAsStateWithLifecycle()
+    val listOpen by model.channels.open.collectAsStateWithLifecycle()
+    val picker by model.picker.collectAsStateWithLifecycle()
+    val quick by model.quickActions.collectAsStateWithLifecycle()
+    val stats by model.statsOn.collectAsStateWithLifecycle()
+    val buffering by model.buffering.collectAsStateWithLifecycle()
+    val banner by model.banner.collectAsStateWithLifecycle()
+    val dial by model.dial.state.collectAsStateWithLifecycle()
+    VideoSurface(model)
+    // The clean screen's key handler (PLAY-FR-30).
+    Box(
+        Modifier.fillMaxSize().focusRequester(host).onKeyEvent { model.keys.onKey(it.nativeKeyEvent) }.focusable().testTag("player-video"),
+    )
+    if (box || listOpen) ChromeScrim()
+    if (stats) InfoLine(model)
+    DialReadout(dial, stats)
+    if (box) LiveInfoBox(model, Modifier.align(Alignment.BottomStart))
+    if (buffering) BufferingIndicator(Modifier.align(Alignment.Center))
+    if (listOpen) ChannelListPanel(model, Modifier.align(Alignment.CenterEnd))
+    picker?.let { TrackPicker(model, it) }
+    if (quick) QuickActions(model)
+    banner?.let { ErrorBanner(model, it, Modifier.align(Alignment.BottomCenter)) }
+    // Back peels one layer per press (spec 30 §3.2); the channel list takes its own keys.
+    BackHandler(enabled = !listOpen) {
+        when {
+            picker != null -> model.closePicker()
+            quick -> model.closeQuickActions()
+            box -> model.hideBox()
+            else -> model.playing.value?.channel?.key?.let { model.navigation.leave(it) }
+        }
+    }
+    // Closing any overlay returns focus to the video (PLAY-FR-09).
+    LaunchedEffect(box, picker, quick, banner?.stopped) {
+        if (!box && picker == null && !quick && banner?.stopped != true) host.requestFocusWhenAttached()
+    }
+}
+
+/** A SurfaceView in an aspect frame with a subtitle view (spec 30 §9 "Surface"): no TextureView, no layers. */
+@OptIn(UnstableApi::class)
+@Composable
+private fun VideoSurface(model: PlayerModel) {
+    val shape by model.shape.collectAsStateWithLifecycle()
+    val size by model.videoSize.collectAsStateWithLifecycle()
+    val controller = model.controller
+    val holder = remember { Views() }
+    AndroidView(
+        factory = { context ->
+            val frame = AspectRatioFrameLayout(context)
+            val surface = SurfaceView(context)
+            val subtitles = SubtitleView(context)
+            frame.addView(surface, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            frame.addView(subtitles, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            holder.subtitles = subtitles
+            SubtitleLook.apply(subtitles, model.settings)
+            controller?.setVideoSurfaceView(surface)
+            frame
+        },
+        modifier = Modifier.fillMaxSize(),
+        update = { frame ->
+            frame.resizeMode = when (shape) {
+                PictureShape.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                PictureShape.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                PictureShape.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+            if (size.width > 0 && size.height > 0) frame.setAspectRatio(size.width * size.pixelWidthHeightRatio / size.height)
+        },
+    )
+    DisposableEffect(controller) {
+        val listener = object : Player.Listener {
+            override fun onCues(cueGroup: CueGroup) {
+                holder.subtitles?.setCues(cueGroup.cues)
+            }
+        }
+        controller?.addListener(listener)
+        onDispose { controller?.removeListener(listener) }
+    }
+}
+
+/** The subtitle view the factory made, for the cue listener. */
+@OptIn(UnstableApi::class)
+private class Views {
+    var subtitles: SubtitleView? = null
+}
+
+/** The screen never sleeps while the player is open; the previous value comes back (PLAY-FR-24). */
+@Composable
+private fun KeepScreenOn() {
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val before = view.keepScreenOn
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = before }
+    }
+}
+
+/** Leaving the app stops the stream; returning resumes it (PLAY-FR-20). */
+@Composable
+private fun PlayerLifecycle(model: PlayerModel) {
+    val owner = LocalLifecycleOwner.current
+    DisposableEffect(owner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> model.onStop()
+                Lifecycle.Event.ON_START -> model.onStart()
+                else -> Unit
+            }
+        }
+        owner.lifecycle.addObserver(observer)
+        onDispose { owner.lifecycle.removeObserver(observer) }
+    }
+}
+

@@ -83,14 +83,18 @@ android {
     }
 }
 
-// The guide-grid spike (M0) lives only in the measurement builds: Lab and benchmarkRelease.
+// The guide-grid spike (M0) and the owner-scale fixture live only in the measurement builds: Lab and benchmarkRelease.
 // The baseline-profile plugin creates benchmarkRelease after this script runs.
 configurations.configureEach {
-    if (name == "benchmarkReleaseImplementation") dependencies.add(project.dependencies.create(project(":spike:guidegrid")))
+    if (name == "benchmarkReleaseImplementation") {
+        dependencies.add(project.dependencies.create(project(":spike:guidegrid")))
+        dependencies.add(project.dependencies.create(project(":measure:fixture")))
+    }
 }
 
 dependencies {
     "labImplementation"(project(":spike:guidegrid"))
+    "labImplementation"(project(":measure:fixture"))
     implementation(project(":core:model"))
     implementation(project(":core:data"))
     implementation(project(":core:net"))
@@ -98,6 +102,9 @@ dependencies {
     implementation(project(":ui:design"))
     implementation(project(":feature:home"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:live"))
+    implementation(project(":feature:player"))
+    implementation(project(":core:player"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
@@ -105,6 +112,8 @@ dependencies {
     implementation(libs.androidx.tracing)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.coil.core)
+    implementation(libs.coil.network.okhttp)
 
     testImplementation(libs.junit)
 
@@ -112,6 +121,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.androidx.room.runtime)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

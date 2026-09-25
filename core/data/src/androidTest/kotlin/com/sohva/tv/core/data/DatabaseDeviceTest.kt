@@ -56,6 +56,22 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom2To3KeepingSourcesAndChannels() {
+        helper.createDatabase(name, 2).use {
+            it.execSQL(
+                "INSERT INTO source (id, name, type, enabled, priority, connection_limit, import_scope, epg_offset_minutes, created_at, updated_at) " +
+                    "VALUES ('s1', 'Fixture', 'M3U', 1, 0, 1, 'BOTH', 0, 0, 0)",
+            )
+        }
+        helper.runMigrationsAndValidate(name, 3, true).use { db ->
+            db.query("SELECT name FROM source WHERE id = 's1'").use { it.moveToFirst(); assertEquals("Fixture", it.getString(0)) }
+            for (table in listOf("favourite_channel", "recent_channel")) {
+                db.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); assertEquals(table, 0, it.getInt(0)) }
+            }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

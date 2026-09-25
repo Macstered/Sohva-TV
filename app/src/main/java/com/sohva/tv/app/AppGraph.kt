@@ -47,8 +47,38 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val sync: SyncGraph by lazy { SyncGraph(this) }
 
+    /** The playback engine's and player screen's view of the graph; built on first playback. */
+    val player: com.sohva.tv.app.player.PlayerGraph by lazy { com.sohva.tv.app.player.PlayerGraph(this) }
+
+    /** Logos and artwork, decoded at their drawn size; the loader is built on first use. */
+    val artwork: com.sohva.tv.app.artwork.CoilArtwork by lazy { com.sohva.tv.app.artwork.CoilArtwork(this) }
+
     /** The phone setup page (spec 11); built on first use. */
     val phone: PhoneSetup by lazy { PhoneSetup(this) }
+
+    /**
+     * The channel last played from the guide in this process: the guide opens on it (spec 20 §3.1,
+     * session memory, never stored).
+     */
+    @Volatile
+    var guideFocusChannel: String? = null
+
+    /**
+     * The live reads the guide and player use: [DataGraph.live], unless a device test wraps it to
+     * gate one read and prove that slow data never moves focus (AGENTS.md §8).
+     */
+    @Volatile
+    var liveReadsOverride: com.sohva.tv.core.data.live.LiveReads? = null
+
+    val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
+
+    /** The guide's rows kept between visits (spec 20 GUIDE-FR-120). */
+    val keptRows: com.sohva.tv.app.live.KeptRows by lazy { com.sohva.tv.app.live.KeptRows({ liveReads }, clock, appScope) }
+
+    /** Options that open screens of later milestones say so briefly (the shell's placeholder toast). */
+    fun notYetAvailable() {
+        android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()
+    }
 
     private val started = AtomicBoolean(false)
 

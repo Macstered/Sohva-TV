@@ -35,7 +35,8 @@ class ShellNavigationTest {
 
     // Destination, and the control that takes focus there (placeholders focus their Back button).
     private val items = listOf(
-        Triple(RailItem.LIVE_TV, "screen-guide", "placeholder-back"),
+        // With no source the guide shows its empty card, "Open settings" focused (GUIDE-FR-101).
+        Triple(RailItem.LIVE_TV, "screen-guide", "guide-empty-settings"),
         Triple(RailItem.SPORT, "screen-today", "placeholder-back"),
         Triple(RailItem.MOVIES, "screen-movies", "placeholder-back"),
         Triple(RailItem.SERIES, "screen-series", "placeholder-back"),

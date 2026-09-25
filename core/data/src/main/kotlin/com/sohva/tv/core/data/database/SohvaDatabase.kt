@@ -25,11 +25,14 @@ import androidx.room.Upsert
         EpisodeEntity::class,
         EpgChannelEntity::class,
         ProgrammeEntity::class,
+        FavouriteChannelEntity::class,
+        RecentChannelEntity::class,
     ],
     version = SohvaDatabase.VERSION,
     exportSchema = true,
-    // 1 -> 2 (M1) only adds tables, which Room's generated migration does exactly.
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    // 1 -> 2 (M1) and 2 -> 3 (M2: favourites, recents) only add tables, which Room's generated
+    // migrations do exactly.
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class SohvaDatabase : RoomDatabase() {
     abstract fun appMeta(): AppMetaDao
@@ -50,8 +53,12 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun guideImport(): GuideImportDao
 
+    abstract fun live(): LiveDao
+
+    abstract fun viewer(): ViewerDao
+
     companion object {
-        const val VERSION: Int = 2
+        const val VERSION: Int = 3
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

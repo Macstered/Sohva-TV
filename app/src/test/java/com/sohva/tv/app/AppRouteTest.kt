@@ -33,6 +33,10 @@ class AppRouteTest {
         assertEquals(listOf(AppRoute.Home, AppRoute.Guide), startRoutes(StartupScreen.GUIDE))
         // Until channels exist (M2) the last channel falls back to the guide, as for a missing channel.
         assertEquals(listOf(AppRoute.Home, AppRoute.Guide), startRoutes(StartupScreen.LAST_CHANNEL))
+        assertEquals(
+            listOf(AppRoute.Home, AppRoute.Guide, AppRoute.Player("s:c1", returnToGuide = true)),
+            startRoutes(StartupScreen.LAST_CHANNEL, "s:c1"),
+        )
     }
 
     @Test

@@ -16,6 +16,12 @@ sealed interface AppRoute {
     data object Discover : AppRoute
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
+
+    /**
+     * Live playback of a channel (spec 30 §3.1). [returnToGuide]: Back from the bare picture
+     * leaves to `[Home, Guide]` on this channel. Never restored after process death (spec 01).
+     */
+    data class Player(val channelKey: String, val returnToGuide: Boolean) : AppRoute
 }
 
 enum class CatalogueMode { MOVIES, SERIES }
@@ -30,6 +36,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         AppRoute.Discover -> "discover"
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
+        is AppRoute.Player -> "player"
     }
 
     override fun decode(value: String): AppRoute? = when (value) {
@@ -42,15 +49,18 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         "discover" -> AppRoute.Discover
         "profiles" -> AppRoute.ProfilePicker
         "settings" -> AppRoute.Settings
+        // A playback route restores to the screen underneath it (spec 01 §4.4).
         else -> null
     }
 }
 
 /**
- * The stack a cold start opens (spec 01 SHELL-FR-11..12). Last channel needs the channel store
- * (M2); until then it opens the guide, which is also its fallback for a missing channel.
+ * The stack a cold start opens (spec 01 SHELL-FR-11..12): Last channel plays [lastChannel] over
+ * `[Home, Guide]`; without one it opens the guide, which is also the player's fallback when the
+ * channel is gone.
  */
-fun startRoutes(screen: StartupScreen): List<AppRoute> = when (screen) {
+fun startRoutes(screen: StartupScreen, lastChannel: String? = null): List<AppRoute> = when (screen) {
     StartupScreen.HOME -> listOf(AppRoute.Home)
-    StartupScreen.GUIDE, StartupScreen.LAST_CHANNEL -> listOf(AppRoute.Home, AppRoute.Guide)
+    StartupScreen.GUIDE -> listOf(AppRoute.Home, AppRoute.Guide)
+    StartupScreen.LAST_CHANNEL -> listOfNotNull(AppRoute.Home, AppRoute.Guide, lastChannel?.let { AppRoute.Player(it, returnToGuide = true) })
 }

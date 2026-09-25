@@ -69,8 +69,9 @@ fun OptionsSheet(
     Box(
         modifier
             .fillMaxSize()
-            .padding(horizontal = spacing.safeHorizontal, vertical = spacing.safeVertical)
-            .roundFill(Sohva.palette.background.copy(alpha = 0.86f), 0.dp),
+            // The scrim covers the safe margins too (guide.md §12 item 5).
+            .roundFill(Sohva.palette.background.copy(alpha = 0.86f), 0.dp)
+            .padding(horizontal = spacing.safeHorizontal, vertical = spacing.safeVertical),
         contentAlignment = Alignment.Center,
     ) {
         Column(

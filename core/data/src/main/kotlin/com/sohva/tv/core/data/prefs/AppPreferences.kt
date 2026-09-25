@@ -2,8 +2,16 @@ package com.sohva.tv.core.data.prefs
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.sohva.tv.core.model.player.BufferProfile
+import com.sohva.tv.core.model.player.PlaybackSettings
+import com.sohva.tv.core.model.player.ReconnectPolicy
+import com.sohva.tv.core.model.player.SkipStep
+import com.sohva.tv.core.model.player.SubtitleBackground
+import com.sohva.tv.core.model.player.SubtitleColor
+import com.sohva.tv.core.model.player.SubtitleSize
 import com.sohva.tv.core.model.settings.ColorThemeId
 import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
@@ -25,6 +33,43 @@ class AppPreferences(private val store: DataStore<Preferences>) {
     val startupScreen: Flow<StartupScreen> = key(STARTUP_SCREEN) { StartupScreen.fromStored(it) }
     val refreshInterval: Flow<RefreshInterval> = key(REFRESH_INTERVAL) { RefreshInterval.fromStored(it) }
 
+    /** The guide's source across launches (spec 20 GUIDE-FR-12), global, not per profile. */
+    val lastGuideSource: Flow<String?> = key(LAST_GUIDE_SOURCE) { it }
+    val showChannelNumbers: Flow<Boolean> = store.data.map { it[SHOW_CHANNEL_NUMBERS] ?: true }.distinctUntilChanged()
+
+    /** Absent = the TV's zone (spec 20 GUIDE-FR-110). */
+    val timeZone: Flow<String?> = key(TIME_ZONE) { it }
+
+    /** The profile's last channel (spec 30 PLAY-FR-57); profile-scoped keys arrive with profiles (M6). */
+    val lastChannel: Flow<String?> = key(LAST_CHANNEL) { it }
+
+    /** The player's settings in one read, once per playback (spec 30 §6). */
+    suspend fun playback(): PlaybackSettings {
+        val p = store.data.first()
+        return PlaybackSettings(
+            buffer = BufferProfile.fromStored(p[BUFFER_PROFILE]),
+            reconnect = ReconnectPolicy.fromStored(p[RECONNECT_POLICY]),
+            skipStep = SkipStep.fromStored(p[SEEK_STEP]),
+            matchFrameRate = p[AUTO_FRAME_RATE] ?: true,
+            pictureInPicture = p[PICTURE_IN_PICTURE] ?: false,
+            subtitleSize = SubtitleSize.fromStored(p[SUBTITLE_SIZE]),
+            subtitleColor = SubtitleColor.fromStored(p[SUBTITLE_COLOR]),
+            subtitleBackground = SubtitleBackground.fromStored(p[SUBTITLE_BACKGROUND]),
+            showChannelNumbers = p[SHOW_CHANNEL_NUMBERS] ?: true,
+            timeZone = p[TIME_ZONE],
+        )
+    }
+
+    /** Trimmed, cut to 128 characters; blank removes the key (GUIDE-FR-12). */
+    suspend fun setLastGuideSource(id: String?) {
+        val value = id?.trim()?.take(128)
+        store.edit { if (value.isNullOrEmpty()) it.remove(LAST_GUIDE_SOURCE) else it[LAST_GUIDE_SOURCE] = value }
+    }
+
+    suspend fun setLastChannel(key: String) {
+        store.edit { it[LAST_CHANNEL] = key }
+    }
+
     /** One read for the first frame. Call off the main thread. */
     suspend fun startSnapshot(): StartSnapshot {
         val prefs = store.data.first()
@@ -32,6 +77,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
             theme = ColorThemeId.fromStored(prefs[THEME]),
             scale = InterfaceScale.fromStored(prefs[SCALE]),
             startupScreen = StartupScreen.fromStored(prefs[STARTUP_SCREEN]),
+            lastChannel = prefs[LAST_CHANNEL],
         )
     }
 
@@ -68,5 +114,17 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val SCALE = stringPreferencesKey("interface_scale")
         private val STARTUP_SCREEN = stringPreferencesKey("startup_screen")
         private val REFRESH_INTERVAL = stringPreferencesKey("playlist_epg_refresh_interval")
+        private val LAST_GUIDE_SOURCE = stringPreferencesKey("last_guide_source_id")
+        private val SHOW_CHANNEL_NUMBERS = booleanPreferencesKey("show_channel_numbers")
+        private val TIME_ZONE = stringPreferencesKey("time_zone")
+        private val LAST_CHANNEL = stringPreferencesKey("last_channel_id")
+        private val BUFFER_PROFILE = stringPreferencesKey("playback_buffer_profile")
+        private val RECONNECT_POLICY = stringPreferencesKey("playback_reconnect_policy")
+        private val SEEK_STEP = stringPreferencesKey("playback_seek_step")
+        private val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
+        private val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
+        private val SUBTITLE_SIZE = stringPreferencesKey("subtitle_text_size")
+        private val SUBTITLE_COLOR = stringPreferencesKey("subtitle_text_color")
+        private val SUBTITLE_BACKGROUND = stringPreferencesKey("subtitle_background")
     }
 }

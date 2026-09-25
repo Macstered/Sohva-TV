@@ -11,4 +11,13 @@
     <string name="error_source_limit_reached">Lähteitä ei voi lisätä enempää (enintään %1$d)</string>
     <string name="action_cancel">Peruuta</string>
     <string name="source_delete_confirm">Poistetaanko %1$s kanavineen, ohjelmaoppaineen ja elokuvineen? Tätä ei voi perua.</string>
+    <string name="player_cause_network">Palveluntarjoajaan ei saada yhteyttä. Tarkista verkkoyhteys.</string>
+    <string name="player_cause_refused">Palveluntarjoaja hylkäsi lähetyksen. Tili voi olla käytössä muualla tai vanhentunut.</string>
+    <string name="player_cause_gone">Palveluntarjoajalla ei enää ole tätä lähetystä.</string>
+    <string name="player_cause_server">Palveluntarjoajan palvelin ei toiminut.</string>
+    <string name="player_cause_broke_off">Yhteys palveluntarjoajaan katkesi.</string>
+    <string name="player_cause_not_a_stream">Palveluntarjoaja lähetti jotain, mikä ei ole toistettava lähetys.</string>
+    <string name="player_cause_decoder">Tämä televisio ei osaa purkaa lähetyksen kuva- tai äänimuotoa.</string>
+    <string name="player_cause_too_heavy">Tämä televisio ei pysty toistamaan lähetyksen kuvaa sujuvasti (%1$s).</string>
+    <string name="player_cause_other">Lähetyksen toisto pysähtyi.</string>
 </resources>
