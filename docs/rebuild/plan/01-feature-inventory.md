@@ -292,7 +292,7 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-09** All channels: every visible channel of the source in guide order.
 - [x] **GUIDE-10** Favourites: the active profile's favourite channels of the selected source, in guide order.
 - [x] **GUIDE-11** Recently watched: the active profile's last 20 channels of the selected source, most recent first.
-- [ ] **GUIDE-12** Custom list: the list's channels of the selected source, in the list's own order.
+- [x] **GUIDE-12** Custom list: the list's channels of the selected source, in the list's own order.
 - [ ] **GUIDE-13** Channel order within a list follows the organisation rules (provider order by default; manual or A–Z per group from the Library manager; positions set in Channel management).
 - [x] **GUIDE-14** Channel cell: number, logo (or two-letter initials), name (wraps to two lines when long), feed line (quality/language tags from the name, else group, else source).
 - [ ] **GUIDE-15** Channel numbers can be switched off (Settings > General > Channel numbers).
@@ -307,16 +307,16 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-24** Fast forward / Rewind page ±90 min; Next / Previous page ±1 day.
 - [x] **GUIDE-25** Paging reaches one day back and seven days ahead; a paged window stays where it is while the clock moves; the window at now follows the clock.
 - [x] **GUIDE-26** Held Left/Right pages continuously; focus waits on the channel during a slow read and lands on the adjacent programme when it arrives.
-- [ ] **GUIDE-27** OK on a channel plays it live; OK on an airing or past programme plays catch-up from its start when the channel supports it, otherwise live; OK on a future programme opens its actions.
+- [x] **GUIDE-27** OK on a channel plays it live; OK on an airing or past programme plays catch-up from its start when the channel supports it, otherwise live; OK on a future programme opens its actions.
 - [x] **GUIDE-28** OK held on any programme opens its actions once.
-- [ ] **GUIDE-29** Programme actions dialog: Watch / Watch the channel now, Watch from start / Watch recording, Remind me / Reminder set, Favourite / Add favourite.
+- [x] **GUIDE-29** Programme actions dialog: Watch / Watch the channel now, Watch from start / Watch recording, Remind me / Reminder set, Favourite / Add favourite.
 - [x] **GUIDE-30** Favourite toggles from the hero and the actions dialog (per profile).
-- [ ] **GUIDE-31** Reminders for future programmes (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
+- [x] **GUIDE-31** Reminders for future programmes (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
 - [x] **GUIDE-32** Number dialling: overlay "Channel 12", up to 4 digits, commits 2 s after the last digit, "No channel 12" for 1.5 s; own numbers first, then list positions; focus moves to the channel.
 - [x] **GUIDE-33** Find programme: a search field on the rail filters the rows by channel name or by a programme title in the three hours shown.
 - [x] **GUIDE-34** Options sheet (Menu, or Options on the rail): Source, Sort, Edit (groups), Edit (channels), Settings, Back, Close.
 - [ ] **GUIDE-35** Sort and Edit (groups) open the Library manager at the current group and source; back from it the guide reopens with the options open on that group.
-- [ ] **GUIDE-36** Edit (channels) opens [Channel management](../specs/21-channel-management.md).
+- [x] **GUIDE-36** Edit (channels) opens [Channel management](../specs/21-channel-management.md).
 - [x] **GUIDE-37** Key-hint bar listing only working bindings.
 - [x] **GUIDE-38** "Reading the guide…" while the first rows are read.
 - [x] **GUIDE-39** The previous rows stay on screen while another list is read; a reading notice appears above them after 400 ms.
@@ -339,35 +339,35 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 Spec: [specs/21-channel-management.md](../specs/21-channel-management.md) · Milestone: M3 · 30 items
 
 - [ ] **CHAN-01** Channel management screen, opened from the guide's Options > "Edit" (Channels icon) and from the Library manager's Live room > "Advanced" (the Library manager itself is reached from Settings > Library > "Manage groups & content").
-- [ ] **CHAN-02** Header: "Channel management", subtitle, Back button.
-- [ ] **CHAN-03** Source filter button "Source: All" / "Source: <name>", cycling All → each source → All.
-- [ ] **CHAN-04** Sort button "Sort: Playlist" / "Sort: A–Z".
-- [ ] **CHAN-05** "Show hidden" toggle; the choice is kept and shared with the Library manager (default on).
-- [ ] **CHAN-06** Search field "Search channels or groups" (name or group contains the text).
-- [ ] **CHAN-07** Group chips: All and every group of the chosen source; the chosen chip is marked "●".
-- [ ] **CHAN-08** Create a custom channel list: name field and "Create list".
-- [ ] **CHAN-09** Channel list with a count ("N channels"): number, logo or initials, name, group (or source), "HIDDEN" marker.
-- [ ] **CHAN-10** Moving focus onto a channel opens it in the editor pane: logo, name, source, original name, status message.
-- [ ] **CHAN-11** Custom name (blank = the playlist's name).
-- [ ] **CHAN-12** Custom group (blank = the playlist's group); the channel moves to that group everywhere.
-- [ ] **CHAN-13** Own logo by address (blank = the playlist's logo).
-- [ ] **CHAN-14** Own logo from a phone: a QR page on the phone sends a picture, kept on the TV.
-- [ ] **CHAN-15** Own channel number (digits, blank = the playlist's), with the playlist's number shown beside it.
-- [ ] **CHAN-16** Programme guide mapping: Automatic (the playlist's `tvg-id`) or a chosen channel of the source's XMLTV feed.
-- [ ] **CHAN-17** Custom channel lists: pick a list, Add to list / Remove from list, Delete list.
-- [ ] **CHAN-18** Save stores name, group, logo, number and guide mapping together.
-- [ ] **CHAN-19** Hide from guide / Show in guide (immediate).
+- [x] **CHAN-02** Header: "Channel management", subtitle, Back button.
+- [x] **CHAN-03** Source filter button "Source: All" / "Source: <name>", cycling All → each source → All.
+- [x] **CHAN-04** Sort button "Sort: Playlist" / "Sort: A–Z".
+- [x] **CHAN-05** "Show hidden" toggle; the choice is kept and shared with the Library manager (default on).
+- [x] **CHAN-06** Search field "Search channels or groups" (name or group contains the text).
+- [x] **CHAN-07** Group chips: All and every group of the chosen source; the chosen chip is marked "●".
+- [x] **CHAN-08** Create a custom channel list: name field and "Create list".
+- [x] **CHAN-09** Channel list with a count ("N channels"): number, logo or initials, name, group (or source), "HIDDEN" marker.
+- [x] **CHAN-10** Moving focus onto a channel opens it in the editor pane: logo, name, source, original name, status message.
+- [x] **CHAN-11** Custom name (blank = the playlist's name).
+- [x] **CHAN-12** Custom group (blank = the playlist's group); the channel moves to that group everywhere.
+- [x] **CHAN-13** Own logo by address (blank = the playlist's logo).
+- [x] **CHAN-14** Own logo from a phone: a QR page on the phone sends a picture, kept on the TV.
+- [x] **CHAN-15** Own channel number (digits, blank = the playlist's), with the playlist's number shown beside it.
+- [x] **CHAN-16** Programme guide mapping: Automatic (the playlist's `tvg-id`) or a chosen channel of the source's XMLTV feed.
+- [x] **CHAN-17** Custom channel lists: pick a list, Add to list / Remove from list, Delete list.
+- [x] **CHAN-18** Save stores name, group, logo, number and guide mapping together.
+- [x] **CHAN-19** Hide from guide / Show in guide (immediate).
 - [ ] **CHAN-20** Lock with PIN / Remove PIN lock (immediate, per profile); without a parental PIN the button reads "Configure PIN in Settings" and is disabled.
-- [ ] **CHAN-21** Move up (↑) / Move down (↓), only while sorted by Playlist.
-- [ ] **CHAN-22** Reset removes the channel's customisation.
-- [ ] **CHAN-23** A status line confirms every action.
-- [ ] **CHAN-24** Favourite channels per profile, toggled from the guide's hero and programme actions; the guide rail's Favourites list.
+- [x] **CHAN-21** Move up (↑) / Move down (↓), only while sorted by Playlist.
+- [x] **CHAN-22** Reset removes the channel's customisation.
+- [x] **CHAN-23** A status line confirms every action.
+- [x] **CHAN-24** Favourite channels per profile, toggled from the guide's hero and programme actions; the guide rail's Favourites list.
 - [ ] **CHAN-25** Recently watched channels per profile (last 20, most recent first): the guide rail's Recently watched list and Home's recent channels row.
 - [ ] **CHAN-26** A locked channel asks for the PIN before live, catch-up and zapped playback and at a Last-channel start.
 - [ ] **CHAN-27** Customisations apply in the guide, the player's channel list and dial, Home, Search, Sohva Sport stream matching and the stored programme guide.
-- [ ] **CHAN-28** Custom lists appear on the guide rail (each can be switched off in the Library manager).
+- [x] **CHAN-28** Custom lists appear on the guide rail (each can be switched off in the Library manager).
 - [ ] **CHAN-29** Backups carry channel customisations, lists, memberships, phone-sent logos (as picture bytes) and each profile's favourites, recents and (with a PIN) locks.
-- [ ] **CHAN-30** Removing a source removes its channels' customisations and list memberships.
+- [x] **CHAN-30** Removing a source removes its channels' customisations and list memberships.
 
 ## Catch-up and reminders
 
@@ -375,43 +375,43 @@ Spec: [specs/22-catchup-and-reminders.md](../specs/22-catchup-and-reminders.md) 
 
 **Catch-up**
 
-- [ ] **CATCH-01** Catch-up is offered only for channels whose playlist declares it (M3U `catchup` / `catchup-type` / `timeshift` attributes; Xtream `tv_archive`) and only for programmes that started no longer ago than the channel's catch-up days.
-- [ ] **CATCH-02** "Watch from start" for the programme on air (guide hero and programme actions).
-- [ ] **CATCH-03** "Watch recording" for a finished programme (guide hero and programme actions).
-- [ ] **CATCH-04** OK on an airing or past programme of a catch-up channel in the guide plays it from its start.
-- [ ] **CATCH-05** Archive address schemes: `default`, `vod`, `append`, `shift`, `timeshift`, `xtream`, `xc`.
-- [ ] **CATCH-06** Template tokens: `{utc}` `{start}` `{utcend}` `{end}` `{lutc}` `{now}` `{timestamp}` (each also with a `:format`), `{duration}` and `{duration:N}`, `{offset:N}`, `{Y}` `{m}` `{d}` `{H}` `{M}` `{S}`, with an optional leading `$`.
-- [ ] **CATCH-07** Xtream archive address built from the live address: `/timeshift/<user>/<pass>/ <minutes>/<yyyy-MM-dd:HH-mm>/<stream>.ts`.
-- [ ] **CATCH-08** Formatted times use the channel's catch-up time zone (an Xtream panel's server zone), else the TV's zone.
-- [ ] **CATCH-09** Unsafe or unusable templates are refused (non-http(s) result, `{catchup-id}`, unknown tokens, bad formats).
-- [ ] **CATCH-10** Catch-up playback shows transport controls (pause, seek) and no channel up/down; its title reads "Arkisto · <channel>".
-- [ ] **CATCH-11** Back from catch-up playback returns to the screen it was started from.
+- [x] **CATCH-01** Catch-up is offered only for channels whose playlist declares it (M3U `catchup` / `catchup-type` / `timeshift` attributes; Xtream `tv_archive`) and only for programmes that started no longer ago than the channel's catch-up days.
+- [x] **CATCH-02** "Watch from start" for the programme on air (guide hero and programme actions).
+- [x] **CATCH-03** "Watch recording" for a finished programme (guide hero and programme actions).
+- [x] **CATCH-04** OK on an airing or past programme of a catch-up channel in the guide plays it from its start.
+- [x] **CATCH-05** Archive address schemes: `default`, `vod`, `append`, `shift`, `timeshift`, `xtream`, `xc`.
+- [x] **CATCH-06** Template tokens: `{utc}` `{start}` `{utcend}` `{end}` `{lutc}` `{now}` `{timestamp}` (each also with a `:format`), `{duration}` and `{duration:N}`, `{offset:N}`, `{Y}` `{m}` `{d}` `{H}` `{M}` `{S}`, with an optional leading `$`.
+- [x] **CATCH-07** Xtream archive address built from the live address: `/timeshift/<user>/<pass>/ <minutes>/<yyyy-MM-dd:HH-mm>/<stream>.ts`.
+- [x] **CATCH-08** Formatted times use the channel's catch-up time zone (an Xtream panel's server zone), else the TV's zone.
+- [x] **CATCH-09** Unsafe or unusable templates are refused (non-http(s) result, `{catchup-id}`, unknown tokens, bad formats).
+- [x] **CATCH-10** Catch-up playback shows transport controls (pause, seek) and no channel up/down; its title reads "Arkisto · <channel>".
+- [x] **CATCH-11** Back from catch-up playback returns to the screen it was started from.
 - [ ] **CATCH-12** Catch-up respects the PIN lock, profile restrictions and the source's connection limit, and records the channel as recently watched.
 
 **Reminders**
 
-- [ ] **REM-01** "Remind me" / "Reminder set" on a guide programme that has not started (hero and programme actions).
+- [x] **REM-01** "Remind me" / "Reminder set" on a guide programme that has not started (hero and programme actions).
 - [ ] **REM-02** "Remind me" / "Reminder set" on a Sohva Sport match card for a scheduled match that has not started.
-- [ ] **REM-03** A reminder fires one minute before its start, by an exact alarm, whether the app is running or not.
-- [ ] **REM-04** In-app alert over any screen: "<title> starts in a minute" / "starts now", subtitle, Watch (or "Open the match card") and Not now; goes away by itself 2 minutes after the start (at least 20 s after it appeared).
-- [ ] **REM-05** Several due reminders queue; one alert at a time.
+- [x] **REM-03** A reminder fires one minute before its start, by an exact alarm, whether the app is running or not.
+- [x] **REM-04** In-app alert over any screen: "<title> starts in a minute" / "starts now", subtitle, Watch (or "Open the match card") and Not now; goes away by itself 2 minutes after the start (at least 20 s after it appeared).
+- [x] **REM-05** Several due reminders queue; one alert at a time.
 - [ ] **REM-06** Watch plays the programme's channel (or opens the match card when the match has no known channel); Back returns to where the viewer was.
-- [ ] **REM-07** A notification in the TV's panel ("<title> starts now", "Press to watch." / "Press to open the match card and choose a channel.") that opens the channel or the match card.
+- [x] **REM-07** A notification in the TV's panel ("<title> starts now", "Press to watch." / "Press to open the match card and choose a channel.") that opens the channel or the match card.
 - [ ] **REM-08** When another app is on screen, Sohva TV comes to the front with the alert if the viewer allowed "display over other apps".
-- [ ] **REM-09** The first reminder ever set explains once how reminders can open the app and offers to open the TV's setting.
-- [ ] **REM-10** Android 13+: the notification permission is asked when a reminder is set.
-- [ ] **REM-11** Settings > General shows "Reminders can open Sohva TV: Allowed / Not allowed" and opens the TV's setting.
-- [ ] **REM-12** Reminders survive leaving the app, a restart of the app, an update and a reboot.
-- [ ] **REM-13** A reminder missed by more than 30 minutes (TV off) is dropped, not fired late; a fired reminder is removed.
-- [ ] **REM-14** Reminders stay on the TV: not in backups, nothing sent anywhere.
-- [ ] **REM-15** No reminders in the Lab build.
+- [x] **REM-09** The first reminder ever set explains once how reminders can open the app and offers to open the TV's setting.
+- [x] **REM-10** Android 13+: the notification permission is asked when a reminder is set.
+- [x] **REM-11** Settings > General shows "Reminders can open Sohva TV: Allowed / Not allowed" and opens the TV's setting.
+- [x] **REM-12** Reminders survive leaving the app, a restart of the app, an update and a reboot.
+- [x] **REM-13** A reminder missed by more than 30 minutes (TV off) is dropped, not fired late; a fired reminder is removed.
+- [x] **REM-14** Reminders stay on the TV: not in backups, nothing sent anywhere.
+- [x] **REM-15** No reminders in the Lab build.
 
 ## Player: live, catch-up and VOD playback
 
 Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 
 - [ ] **PLAY-01** Live channel playback full screen, opened from the guide, Home, Search, Sohva Sport, a reminder or the start screen.
-- [ ] **PLAY-02** Catch-up playback of a past programme ("Watch from start") with transport controls.
+- [x] **PLAY-02** Catch-up playback of a past programme ("Watch from start") with transport controls.
 - [ ] **PLAY-03** Film and episode (VOD) playback from a resume position.
 - [x] **PLAY-04** Black video ground and letterbox bars in every colour theme.
 - [x] **PLAY-05** "Connecting to playback service…" screen, and a full-screen message with Back when the service fails.
@@ -419,7 +419,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-07** Live information box hides after 5 s idle, stays while its buttons have focus, and does not reappear by itself when the programme changes or the guide refreshes.
 - [x] **PLAY-08** Live action row: hide controls, picture shape, audio, subtitles, channel list, stream details, quick actions, open in another player.
 - [ ] **PLAY-09** Transport controls for catch-up and VOD: title, Back, picture, audio, subtitles, progress bar, position / duration, rewind, play/pause, forward (buttons name the skip step).
-- [ ] **PLAY-10** Transport controls hide after 5 s idle unless focused or a track picker is open.
+- [x] **PLAY-10** Transport controls hide after 5 s idle unless focused or a track picker is open.
 - [x] **PLAY-11** Channel list down the right edge: the playing channel's group, numbers (setting), logos, what is on now.
 - [x] **PLAY-12** Group list beside the channel list with channel counts; browsing another group is temporary until a channel is tuned.
 - [x] **PLAY-13** Channel up / down within the playing channel's group, wrapping at the ends.
@@ -462,23 +462,23 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 
 Spec: [specs/31-remote-button-mapping.md](../specs/31-remote-button-mapping.md) · Milestone: M3 · 19 items
 
-- [ ] **REMOTE-01** Twelve buttons, each with a Press slot and a Hold slot (23 mappable slots).
-- [ ] **REMOTE-02** A press acts on release; a hold acts on the first auto-repeat; a hold never also acts as a press.
-- [ ] **REMOTE-03** Twenty-five actions in five groups, plus Nothing.
-- [ ] **REMOTE-04** Actions marked "Live TV only" or "Catch-up and films only"; mapped where they do not apply, a press shows the player's chrome instead.
-- [ ] **REMOTE-05** Defaults that keep pre-mapping behaviour and add zap-back (Back hold, Left hold) and guide at this channel (Right hold).
-- [ ] **REMOTE-06** Back press fixed: dismiss the top layer, then leave the player.
-- [ ] **REMOTE-07** Back hold mappable, for remotes that pass a long Back press to the app.
-- [ ] **REMOTE-08** CH+, CH−, Info, Audio, Captions and Menu under "If your remote has them".
-- [ ] **REMOTE-09** Mapping applies only on the player's clean screen; overlays, menus and other screens keep their own keys.
-- [ ] **REMOTE-10** Up/Down presses step into an open information box, or into the catch-up/film controls, before the mapping is consulted.
-- [ ] **REMOTE-11** Digits dial a channel on live TV (not mappable).
-- [ ] **REMOTE-12** Keys outside the grid show the chrome and are left to Android.
-- [ ] **REMOTE-13** Settings grid: one row per button, Press and Hold cells naming the assigned action.
-- [ ] **REMOTE-14** Choosing a cell replaces the grid with the grouped action list; the current action is marked and focused; scope suffixes on restricted actions.
-- [ ] **REMOTE-15** A read-back line names the focused cell and its action.
-- [ ] **REMOTE-16** Reset to defaults with a confirmation step.
-- [ ] **REMOTE-17** Focus returns to the edited cell after a choice or Back.
+- [x] **REMOTE-01** Twelve buttons, each with a Press slot and a Hold slot (23 mappable slots).
+- [x] **REMOTE-02** A press acts on release; a hold acts on the first auto-repeat; a hold never also acts as a press.
+- [x] **REMOTE-03** Twenty-five actions in five groups, plus Nothing.
+- [x] **REMOTE-04** Actions marked "Live TV only" or "Catch-up and films only"; mapped where they do not apply, a press shows the player's chrome instead.
+- [x] **REMOTE-05** Defaults that keep pre-mapping behaviour and add zap-back (Back hold, Left hold) and guide at this channel (Right hold).
+- [x] **REMOTE-06** Back press fixed: dismiss the top layer, then leave the player.
+- [x] **REMOTE-07** Back hold mappable, for remotes that pass a long Back press to the app.
+- [x] **REMOTE-08** CH+, CH−, Info, Audio, Captions and Menu under "If your remote has them".
+- [x] **REMOTE-09** Mapping applies only on the player's clean screen; overlays, menus and other screens keep their own keys.
+- [x] **REMOTE-10** Up/Down presses step into an open information box, or into the catch-up/film controls, before the mapping is consulted.
+- [x] **REMOTE-11** Digits dial a channel on live TV (not mappable).
+- [x] **REMOTE-12** Keys outside the grid show the chrome and are left to Android.
+- [x] **REMOTE-13** Settings grid: one row per button, Press and Hold cells naming the assigned action.
+- [x] **REMOTE-14** Choosing a cell replaces the grid with the grouped action list; the current action is marked and focused; scope suffixes on restricted actions.
+- [x] **REMOTE-15** A read-back line names the focused cell and its action.
+- [x] **REMOTE-16** Reset to defaults with a confirmation step.
+- [x] **REMOTE-17** Focus returns to the edited cell after a choice or Back.
 - [ ] **REMOTE-18** Mappings kept on the device for all profiles, tolerant of unknown entries, included in backups.
 - [ ] **REMOTE-19** One-time migration from the old "Remote channel browser" setting.
 

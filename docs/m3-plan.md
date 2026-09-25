@@ -92,3 +92,40 @@ Recorded in `docs/decisions.md` as they are built:
 5. Reminders: store, alarm, receiver, alert, notification, overlay prompt, Settings row.
 6. Channel management screen, phone logo, custom lists on the guide rail.
 7. Owner-scale measurement of the channel manager; exit check.
+
+## Exit check (25 September 2026)
+
+Exit criteria:
+
+1. The catch-up address builder's unit tests cover every scheme — **met** (`CatchupAddressTest`
+   and the `CatchupRules` tests: `default`, `vod`, `append`, `shift`, `timeshift`, `xtream`,
+   `xc`, every token and format, and the refusals of CATCH-09).
+2. A reminder fires while another screen of the app is open and after a process restart —
+   **met** (`ReminderTest`, 6 tests, green on API 30 and API 34: the alert over any screen, the
+   queue, the real alarm ringing through the receiver, and the receiver restoring the alarm after
+   a boot or update). The alarm is held by the system and the reminder by the database, so a
+   restarted process needs nothing in memory; an instrumentation test cannot kill its own
+   process, so the restart itself is covered by the receiver path, not by a killed process.
+3. Channel edits survive a re-import — **met** (`LiveImportTest.channelEditsSurviveAReImport`;
+   the import re-applies edit rows in pages of 2,000 before counting groups).
+4. The channel manager reads in pages, a press in its list meets the key-press budget at owner
+   scale and the heap stays under 64 MB — **met** (`ChannelsBenchmark`, benchmarkRelease with
+   R8 on the API 30 stand-in: 3.92 ms main-thread CPU per press, budget 11, crossing a page
+   boundary; `ChannelsOwnerScaleTest`: Java heap at most 45 MB, open 402 ms, A–Z 215 ms). The
+   first move in a 56,000-channel source takes 19 s once (it positions the whole source in
+   pages, as CHAN-NFR-04 prescribes); later moves take 61 ms. Recorded in `docs/decisions.md`.
+
+The whole API 34 device suite passed on 25 September (73 tests; the two owner-scale tests run
+only with `ownerScale=true` and were run separately on API 30). Unit tests and lint are clean.
+
+Inventory (ticked in `rebuild/plan/01-feature-inventory.md`, 25 September 2026):
+
+- Done: CHAN-02…19, 21…24, 28, 30; CATCH-01…11; REM-01, 03, 04, 05, 07, 09…15; REMOTE-01…17;
+  GUIDE-12, 27, 29, 31, 36; PLAY-02, 10.
+- Built in M3, finished later (see "What waits" above): CHAN-01 (the Library manager entry, M4),
+  CHAN-20 and -26 and CATCH-12's PIN part (M6), CHAN-25 (Home's row, M5), CHAN-27 (Home, Search
+  and Sohva Sport consumers arrive with those screens), CHAN-29 and REMOTE-18's backup part (M7),
+  REM-02, -06's match-card side and REM-08 (the bring-forward is built; the match card is M8, and
+  bring-forward over another app is not testable on the emulator without the owner's go to grant
+  the overlay setting by hand), REMOTE-19 (the codec reads the old setting; the beta 23 import
+  hands it over in M7), PLAY-09 and -16 (catch-up has them; films in M4).
