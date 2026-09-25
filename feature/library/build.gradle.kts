@@ -20,4 +20,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // The wall model traces its loads (androidx.tracing), which needs the Android stubs.
+    testImplementation(libs.robolectric)
 }

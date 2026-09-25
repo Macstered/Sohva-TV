@@ -249,7 +249,13 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
             // From the request to the published first page: the wall's open time in traces (spec 40 §9.1).
             Trace.beginAsyncSection(LOAD_SECTION, mine)
             try {
-                val page = env.page(destination, _search.value, null, true, WallWindow.PAGE)
+                var page = env.page(destination, _search.value, null, true, WallWindow.PAGE)
+                if (page.isEmpty() && expectsTitles(destination)) {
+                    // An import or metadata write may be mid-change: ask once more before saying "no titles" (VOD-FR-16).
+                    delay(TRANSIENT_EMPTY_MS)
+                    if (mine != serial) return@launch
+                    page = env.page(destination, _search.value, null, true, WallWindow.PAGE)
+                }
                 if (mine == serial) _wall.value = WallState(destination, WallWindow.of(page), current = true, failed = false)
             } catch (e: CancellationException) {
                 throw e
@@ -320,9 +326,23 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
             from = page.last()
         }
         if (mine != serial) return
+        if (reread.isEmpty() && state.window.items.isNotEmpty() && expectsTitles(destination)) {
+            // A transient empty never replaces a wall with titles unless it is still empty 500 ms later (VOD-FR-16).
+            delay(TRANSIENT_EMPTY_MS)
+            val again = runCatching { env.page(destination, _search.value, null, true, WallWindow.PAGE) }.getOrNull() ?: return
+            if (mine != serial) return
+            if (again.isNotEmpty()) {
+                _wall.value = state.copy(window = WallWindow.of(again))
+                return
+            }
+        }
         val atEnd = reread.size < wanted || (reread.size == wanted && state.window.atEnd)
         _wall.value = state.copy(window = WallWindow(state.window.first, reread.take(WallWindow.MAX_ITEMS), atEnd))
     }
+
+    /** A provider group whose count says it has titles, read without a search (VOD-FR-16). */
+    private fun expectsTitles(destination: WallDestination): Boolean =
+        destination is WallDestination.Group && _search.value.isBlank() && (_rail.value.firstOrNull { it.destination == destination }?.count ?: 0) > 0
 
     /** A cursor that sorts just before [item], so a forward read includes it. */
     private fun justBefore(item: WallItem): WallItem =
@@ -357,6 +377,7 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         const val CHANGE_QUIET_MS: Long = 500
         const val LOAD_SECTION: String = "Library:Load"
         const val TICK_SPAN: Int = 200
+        const val TRANSIENT_EMPTY_MS: Long = 500
         const val VISIBLE_REST_MS: Long = 1_000
         const val VISIBLE_SPAN: Int = 24
     }
