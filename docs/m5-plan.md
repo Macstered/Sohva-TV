@@ -54,5 +54,12 @@ Built, with tests (unit, query plans, device tests on API 30):
   playback), recent channels with the programme at entry, the hero with its 180 ms rest and
   plate backdrop, the focus line, the structure lock, hold-OK actions, Welcome, focus hand-offs.
 
-Next: the Home benchmark on the stand-in (cold start to the first card; presses along a row),
-then the M5 exit.
+Exit (25 September 2026, evening), measured on the stand-in with the owner-scale fixture
+(docs/performance-log.md):
+- `home: cached resume ready` 973 ms from process start (median of 5 cold starts; budget 1 s);
+  the first card is focused well inside 4 s.
+- Along the Continue watching row: 5.24 ms main-thread CPU per press (budget 7 ms); Home's
+  screen composes 0 times over 30 presses; only the focused card and the hero redraw.
+- Search: every group ≤ 55 ms (budget 100 ms).
+- The whole device suite (25 classes) is green on API 30. Inventory ticked; HOME-11, HOME-31 and
+  META-20 carry notes for their Trakt and Discover parts.
