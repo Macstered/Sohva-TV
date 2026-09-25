@@ -17,6 +17,8 @@ import org.junit.Test
 
 /** A Library section that remembers what it was asked to do. */
 internal class FakeLibrary : LibrarySettingsServices {
+    override fun openManager() = Unit
+
     val view = MutableStateFlow(MetadataSettingsView(tmdbSwitch = false, credential = "", tvmaze = false, language = "en-US", keyRefused = false))
     val calls = mutableListOf<String>()
     var testResult: Outcome<Unit> = Outcome.Ok(Unit)

@@ -73,8 +73,11 @@ interface GuideNavigation {
     /** Options › Edit (channels): channel management (spec 21 CHAN-01). */
     fun openChannels()
 
-    /** Options › Sort, Edit (groups) and Edit (channels) until their milestones (M3, M4). */
-    fun notYetAvailable()
+    /**
+     * Options › Sort and Edit (groups): the library manager's Live room at [group] (a group name or
+     * an `@` shortcut key; null for All channels) and [source] (GUIDE-FR-94, spec 42 §3).
+     */
+    fun openManager(group: String?, source: String?)
 
     fun leave()
 }

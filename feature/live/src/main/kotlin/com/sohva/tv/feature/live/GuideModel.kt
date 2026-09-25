@@ -12,6 +12,7 @@ import com.sohva.tv.core.model.guide.CatchupRules
 import com.sohva.tv.core.model.guide.GuideProgramme
 import com.sohva.tv.core.model.guide.GuideRules
 import com.sohva.tv.core.model.guide.GuideWindow
+import com.sohva.tv.core.model.org.OrgKeys
 import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.reminder.ReminderIds
 import com.sohva.tv.core.model.reminder.ReminderKind
@@ -56,6 +57,15 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
 
     private val _list = MutableStateFlow<ListView?>(null)
     val list: StateFlow<ListView?> = _list.asStateFlow()
+
+    /** The group the library manager opens at (spec 42 §3): the rail entry shown, null for All channels. */
+    fun managerGroup(): String? = when (val entry = _list.value?.entry) {
+        RailEntry.Favourites -> OrgKeys.FAVOURITES
+        RailEntry.Recent -> OrgKeys.RECENT
+        is RailEntry.Group -> entry.group.name
+        is RailEntry.CustomList -> OrgKeys.list(entry.listId)
+        else -> null
+    }
 
     private val _reading = MutableStateFlow(false)
 

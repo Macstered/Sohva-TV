@@ -52,15 +52,19 @@ private val KEY_FIELD = FieldInput(keyboard = KeyboardType.Password, transformat
 /**
  * Settings › Library (spec 41 §5.1): metadata and images with the TMDB mark, the metadata language
  * and the preferred copy, and Maintenance. The TMDB switch takes focus when the section opens.
- * Groups of your own, "Manage groups & content" and the image cache join with their milestones.
+ * "Manage groups & content" opens the library manager; groups of your own and the image cache join
+ * with their milestones.
  */
 @Composable
 internal fun LibraryPane(library: LibrarySettings, start: FocusRequester) {
     val state by library.state.collectAsStateWithLifecycle()
     val stored = state.stored ?: return
     val clearCache = remember { FocusRequester() }
-    MetadataGroup(library, state, stored, start)
-    ChoicesGroup(library, state, stored, clearCache)
+    // Back from the manager: the section's start is its row, so Settings puts focus there.
+    val fromManager = remember { library.takeManagerReturn() }
+    val unused = remember { FocusRequester() }
+    MetadataGroup(library, state, stored, if (fromManager) unused else start)
+    ChoicesGroup(library, state, stored, clearCache, managerRow = if (fromManager) start else unused)
     SettingsGroup {
         SettingsOverline(stringResource(R.string.maintenance_title))
         Row(Modifier.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -128,7 +132,7 @@ private fun MetadataGroup(library: LibrarySettings, state: LibrarySettingsState,
 
 /** The metadata language (META-FR-09) and the preferred copy (spec 40 VOD-FR-32), each with its picker. */
 @Composable
-private fun ChoicesGroup(library: LibrarySettings, state: LibrarySettingsState, stored: MetadataSettingsView, below: FocusRequester) {
+private fun ChoicesGroup(library: LibrarySettings, state: LibrarySettingsState, stored: MetadataSettingsView, below: FocusRequester, managerRow: FocusRequester) {
     var picking by remember { mutableStateOf<Picking?>(null) }
     // Set only when a picker closes, so focus returns to its row and never lands there unasked.
     var returnTo by remember { mutableStateOf<Picking?>(null) }
@@ -148,11 +152,19 @@ private fun ChoicesGroup(library: LibrarySettings, state: LibrarySettingsState, 
             title = stringResource(R.string.preferred_copy_title),
             value = stringResource(copyLabel(state.preferredCopy)),
             onClick = { picking = Picking.COPY },
-            // Down goes to the first button under the row, not the one nearest its middle.
-            modifier = Modifier.focusRequester(copyRow).focusProperties { down = below }.testTag("settings-preferred-copy"),
+            modifier = Modifier.focusRequester(copyRow).testTag("settings-preferred-copy"),
             icon = TvIcons.Channels,
             subtitle = stringResource(R.string.preferred_copy_help),
             divider = true,
+        )
+        SettingsValueRow(
+            title = stringResource(R.string.manager_title),
+            value = "",
+            onClick = library::openManager,
+            // Down goes to the first button under the row, not the one nearest its middle.
+            modifier = Modifier.focusRequester(managerRow).focusProperties { down = below }.testTag("settings-manage-groups"),
+            icon = TvIcons.Settings,
+            subtitle = stringResource(R.string.manager_row_help),
         )
     }
     val close = { which: Picking ->

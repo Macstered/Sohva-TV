@@ -21,8 +21,10 @@ import kotlinx.coroutines.withContext
  * Settings › Library from the app graph (spec 41 §4.1, §4.15; spec 40 VOD-FR-32). Settings are
  * read and written on the io dispatcher; resets and the standing-copy pass run on the bulk one.
  */
-class AppLibrarySettings(private val graph: AppGraph) : LibrarySettingsServices {
+class AppLibrarySettings(private val graph: AppGraph, private val onOpenManager: () -> Unit = {}) : LibrarySettingsServices {
     private val io get() = graph.dispatchers.io
+
+    override fun openManager() = onOpenManager()
     private val metadata get() = graph.metadata
 
     override fun metadata(): Flow<MetadataSettingsView> = flow {

@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
 interface LibraryNavigation {
     fun open(room: WallRoom, item: WallItem)
 
-    fun openManager(room: WallRoom)
+    fun openManager(room: WallRoom, group: String?)
 
     fun leave()
 }
@@ -78,7 +78,7 @@ class AppLibraryEnvironment(
 
     override fun open(item: WallItem) = navigation.open(room, item)
 
-    override fun openManager() = navigation.openManager(room)
+    override fun openManager(group: String?) = navigation.openManager(room, group)
 
     override fun leave() = navigation.leave()
 }

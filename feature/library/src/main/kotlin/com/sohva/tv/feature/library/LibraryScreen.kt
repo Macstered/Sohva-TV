@@ -93,6 +93,8 @@ fun LibraryScreen(model: LibraryModel) = trace("Library:Screen") {
         if (model.firstEntry) {
             rail.focusRail()
             model.entryPlaced()
+        } else if (model.takeManagerReturn()) {
+            options.requestFocusWhenAttached()
         }
     }
     // Focus goes to Options before the sheet hides, so Compose never hands it elsewhere.

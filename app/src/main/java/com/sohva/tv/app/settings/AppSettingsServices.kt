@@ -33,10 +33,10 @@ import kotlinx.coroutines.withContext
  * lazy stores open files (secret store, database, preferences) on first touch, which must never
  * happen on the main thread (AGENTS.md §4 rule 1).
  */
-class AppSettingsServices(private val graph: AppGraph) : SettingsServices {
+class AppSettingsServices(private val graph: AppGraph, openManager: () -> Unit = {}) : SettingsServices {
     private val io get() = graph.dispatchers.io
 
-    override val library: LibrarySettingsServices = AppLibrarySettings(graph)
+    override val library: LibrarySettingsServices = AppLibrarySettings(graph, openManager)
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
 

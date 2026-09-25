@@ -73,6 +73,21 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         store.edit { it[EDITORS_SHOW_HIDDEN] = value }
     }
 
+    /** The library manager's last group and source per room (spec 42 ORG-28): `manager_group_<ROOM>`, `manager_source_<ROOM>`. */
+    suspend fun managerLocation(room: String): Pair<String?, String?> {
+        val p = store.data.first()
+        return p[stringPreferencesKey("manager_group_$room")] to p[stringPreferencesKey("manager_source_$room")]
+    }
+
+    suspend fun setManagerLocation(room: String, group: String?, source: String?) {
+        store.edit {
+            val g = stringPreferencesKey("manager_group_$room")
+            val s = stringPreferencesKey("manager_source_$room")
+            if (group == null) it.remove(g) else it[g] = group.take(2_048)
+            if (source == null) it.remove(s) else it[s] = source.take(2_048)
+        }
+    }
+
     /** Whether the "Let reminders open Sohva TV" prompt was shown; once per installation (REM-FR-05). */
     suspend fun reminderOverlayAsked(): Boolean = store.data.first()[REMINDER_OVERLAY_ASKED] ?: false
 

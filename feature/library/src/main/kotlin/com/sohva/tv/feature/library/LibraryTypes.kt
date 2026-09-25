@@ -78,8 +78,11 @@ interface LibraryEnvironment {
     /** Opens a card's details page (spec 40 §3). */
     fun open(item: WallItem)
 
-    /** Options › Edit: the library manager for this room (spec 42). */
-    fun openManager()
+    /**
+     * Options › Edit: the library manager for this room (spec 42 §3) at [group]: the provider
+     * group's name, `@history`, or null for genre and other destinations.
+     */
+    fun openManager(group: String?)
 
     /** Options › Back leaves the screen like the Back key (VOD-FR-48). */
     fun leave()

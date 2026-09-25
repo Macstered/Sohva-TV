@@ -32,7 +32,7 @@ object LibraryFixture {
             val groupId = db.groupImport().insert(
                 ContentGroupEntity(
                     sourceId = SOURCE, room = "MOVIES", groupKey = "id:$g", name = groupName, providerOrder = g,
-                    itemCount = perGroup, shown = true, position = g, sortMode = null,
+                    itemCount = perGroup, shown = true, position = g, sortMode = null, totalCount = perGroup,
                 ),
             )
             val films = (0 until perGroup).map { n ->

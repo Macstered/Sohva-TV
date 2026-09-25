@@ -48,7 +48,7 @@ class TransientEmptyTest {
         override suspend fun tvmazeCredit(): Boolean = false
         override suspend fun refresh(): RefreshNote = RefreshNote.NoSource
         override fun open(item: WallItem) = Unit
-        override fun openManager() = Unit
+        override fun openManager(group: String?) = Unit
         override fun leave() = Unit
     }
 

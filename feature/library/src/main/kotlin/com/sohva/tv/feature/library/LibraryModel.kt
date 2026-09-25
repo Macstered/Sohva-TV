@@ -222,9 +222,22 @@ class LibraryModel(private val env: LibraryEnvironment) : ViewModel() {
         _sheetOpen.value = false
     }
 
+    /** Set while the manager is open over the wall: Back returns to Options (spec 42 §3). */
+    private var managerOpened = false
+
+    fun takeManagerReturn(): Boolean = managerOpened.also { managerOpened = false }
+
     fun openManager() {
         _sheetOpen.value = false
-        env.openManager()
+        managerOpened = true
+        val destination = _rail.value.firstOrNull { it.key == _selected.value }?.destination
+        env.openManager(
+            when (destination) {
+                WallDestination.History -> "@history"
+                is WallDestination.Group -> destination.name
+                else -> null
+            },
+        )
     }
 
     fun leave() {

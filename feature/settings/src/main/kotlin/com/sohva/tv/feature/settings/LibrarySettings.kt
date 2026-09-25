@@ -52,6 +52,9 @@ interface LibrarySettingsServices {
 
     /** The TMDB and TVmaze buttons (META-FR-11); a TV without a browser does nothing. */
     fun openWeb(url: String)
+
+    /** "Manage groups & content": the library manager's Live room (spec 42 §3). */
+    fun openManager()
 }
 
 /** Settings › Library's state (spec 41 §5.1): the typed key is the viewer's until they save it. */
@@ -115,6 +118,16 @@ class LibrarySettings internal constructor(private val services: LibrarySettings
     }
 
     fun openWeb(url: String) = services.openWeb(url)
+
+    private var managerOpened = false
+
+    fun openManager() {
+        managerOpened = true
+        services.openManager()
+    }
+
+    /** Whether the pane is shown again on the way back from the manager: its row takes focus (spec 42 §3). */
+    internal fun takeManagerReturn(): Boolean = managerOpened.also { managerOpened = false }
 
     private fun act(block: suspend () -> Any?) {
         if (_state.value.busy) return

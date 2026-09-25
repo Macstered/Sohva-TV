@@ -11,6 +11,8 @@ import com.sohva.tv.core.data.database.DatabaseFactory
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.live.LiveStore
 import com.sohva.tv.core.data.migration.Beta23SourceImport
+import com.sohva.tv.core.data.org.OrgManager
+import com.sohva.tv.core.data.org.OrgRules
 import com.sohva.tv.core.data.prefs.AppPreferences
 import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.reminder.ReminderStore
@@ -87,6 +89,9 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val walls: WallReads by lazy { WallReads(database, dispatchers.io) { DEFAULT_PROFILE } }
     val progress: ProgressStore by lazy { ProgressStore(database, dispatchers.io, SystemClock) { DEFAULT_PROFILE } }
     val titles: TitleReads by lazy { TitleReads(database, dispatchers.io, SystemClock) }
+
+    /** The library manager's reads (spec 42 §4.9); its writes go through [OrgRules] and [OrgPass]. */
+    val organization: OrgManager by lazy { OrgManager(database, OrgRules(database), dispatchers.io) }
 
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }

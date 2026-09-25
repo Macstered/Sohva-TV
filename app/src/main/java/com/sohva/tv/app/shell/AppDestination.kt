@@ -17,11 +17,14 @@ import com.sohva.tv.app.library.TitleNavigation
 import com.sohva.tv.app.live.AppGuideEnvironment
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.navigation.CatalogueMode
+import com.sohva.tv.app.organize.AppManagerEnvironment
+import com.sohva.tv.app.organize.ManagerNavigation
 import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.core.data.vod.ContentKeys
 import com.sohva.tv.core.data.vod.WallItem
 import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.core.model.FeatureFlags
+import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.feature.channels.ChannelsModel
 import com.sohva.tv.feature.channels.ChannelsScreen
 import com.sohva.tv.feature.home.HomeScreen
@@ -35,6 +38,9 @@ import com.sohva.tv.feature.library.SeriesPage
 import com.sohva.tv.feature.live.GuideModel
 import com.sohva.tv.feature.live.GuideNavigation
 import com.sohva.tv.feature.live.GuideScreen
+import com.sohva.tv.feature.organize.LibraryManagerScreen
+import com.sohva.tv.feature.organize.ManagerModel
+import com.sohva.tv.feature.organize.ManagerStart
 import com.sohva.tv.feature.player.ArchiveWindow
 import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerModel
@@ -88,6 +94,12 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel { ChannelsModel(AppChannelsEnvironment(graph)) }
             ChannelsScreen(model, onBack = { back() })
         }
+        is AppRoute.LibraryManager -> {
+            // Scoped to this stack entry: popped with the screen (plan/03 §4.5).
+            val navigation = remember(stack) { managerNavigation(stack) }
+            val model = viewModel { ManagerModel(AppManagerEnvironment(graph, navigation), ManagerStart(route.room, route.group, route.source)) }
+            LibraryManagerScreen(model)
+        }
         is AppRoute.FilmDetails -> {
             val play = remember(stack, graph) { vodStarter(stack, graph) }
             val model = viewModel { FilmModel(AppTitleEnvironment(graph, play), route.key) }
@@ -108,7 +120,8 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
         }
         AppRoute.Settings -> {
             // Scoped to this stack entry: popped with Settings (plan/03 §4.5). Accounts waits for Trakt (M6).
-            val model = viewModel { SettingsModel(AppSettingsServices(graph), accounts = false) }
+            val openManager: () -> Unit = remember(stack) { { stack.push(AppRoute.LibraryManager(OrgRoom.LIVE)) } }
+            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager), accounts = false) }
             SettingsScreen(model, onBack = { back() })
         }
     }
@@ -134,8 +147,9 @@ private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = objec
         stack.push(AppRoute.Channels)
     }
 
-    override fun notYetAvailable() {
-        graph.notYetAvailable()
+    // The options sheet stays open underneath, so Back returns to it (GUIDE-FR-95).
+    override fun openManager(group: String?, source: String?) {
+        stack.push(AppRoute.LibraryManager(OrgRoom.LIVE, group, source))
     }
 
     override fun leave() {
@@ -236,13 +250,25 @@ private fun vodNavigation(route: AppRoute.VodPlayer, stack: BackStack<AppRoute>,
     }
 }
 
+/** "Advanced" opens channel management over the manager; Back returns to it (spec 42 §3). */
+private fun managerNavigation(stack: BackStack<AppRoute>) = object : ManagerNavigation {
+    override fun openAdvanced() {
+        stack.push(AppRoute.Channels)
+    }
+
+    override fun leave() {
+        stack.pop()
+    }
+}
+
 private fun libraryNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = object : LibraryNavigation {
     override fun open(room: WallRoom, item: WallItem) {
         stack.push(if (room == WallRoom.MOVIES) AppRoute.FilmDetails(item.row.key) else AppRoute.SeriesDetails(item.row.key))
     }
 
-    // The library manager arrives with spec 42 (M4c).
-    override fun openManager(room: WallRoom) = graph.notYetAvailable()
+    override fun openManager(room: WallRoom, group: String?) {
+        stack.push(AppRoute.LibraryManager(if (room == WallRoom.MOVIES) OrgRoom.MOVIES else OrgRoom.SERIES, group))
+    }
 
     override fun leave() {
         stack.pop()
