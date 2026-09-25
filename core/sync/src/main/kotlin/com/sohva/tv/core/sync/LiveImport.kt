@@ -2,6 +2,8 @@ package com.sohva.tv.core.sync
 
 import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.KeyRange
+import com.sohva.tv.core.data.database.SearchIndex
+import com.sohva.tv.core.data.database.SearchTable
 import com.sohva.tv.core.data.live.ChannelEffects
 import com.sohva.tv.core.data.org.OrgPass
 import com.sohva.tv.core.data.org.OrgRules
@@ -112,6 +114,8 @@ internal class LiveImport(private val env: ImportEnvironment) {
         env.db.runInTransaction { target.groups.finish(complete = true) }
         // The organisation rules over the new rows (spec 42 §9.1): hidden groups and channels, then their counts.
         OrgPass(env.db, OrgRules(env.db), LibraryPasses(env.db)).resolveLive(sourceId)
+        // New channels into Search's index, in one statement (decision "Search index").
+        SearchIndex.catchUp(env.db, SearchTable.CHANNEL)
         val range = KeyRange.channels(sourceId)
         env.db.channelImport().count(range.from, range.until)
     }

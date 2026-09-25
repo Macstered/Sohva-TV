@@ -107,6 +107,7 @@ dependencies {
     implementation(project(":feature:channels"))
     implementation(project(":feature:library"))
     implementation(project(":feature:organize"))
+    implementation(project(":feature:search"))
     implementation(project(":core:player"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)
