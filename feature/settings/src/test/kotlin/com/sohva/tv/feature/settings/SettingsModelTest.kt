@@ -4,6 +4,10 @@ import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
+import com.sohva.tv.core.model.player.Gesture
+import com.sohva.tv.core.model.player.RemoteAction
+import com.sohva.tv.core.model.player.RemoteButton
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.source.RefreshKind
@@ -20,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -70,6 +75,12 @@ class SettingsModelTest {
         override suspend fun catalogueCounts(sourceId: String): Pair<Int, Int> = films
         override suspend fun testPlaylist(address: String): SourceChecks.Result = playlistResult
         override suspend fun testXtream(account: XtreamAccount): SourceChecks.Result = SourceChecks.Result.Account(4)
+        override fun remoteMapping(): Flow<RemoteMapping> = flowOf(RemoteMapping.DEFAULTS)
+
+        override suspend fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) = Unit
+
+        override suspend fun resetRemoteMapping() = Unit
+
         override suspend fun setRefreshInterval(interval: RefreshInterval) {
             this.interval.value = interval
         }

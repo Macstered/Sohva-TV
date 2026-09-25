@@ -115,6 +115,7 @@ class PlayerModel(private val env: PlayerEnvironmentUi, firstChannel: String, va
     private val listener = Listener()
 
     init {
+        viewModelScope.launch { env.remoteMapping.collect(keys::useMapping) }
         viewModelScope.launch {
             settings = env.settings()
             try {

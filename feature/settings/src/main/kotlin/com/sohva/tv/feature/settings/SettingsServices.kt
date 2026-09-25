@@ -4,6 +4,10 @@ import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import com.sohva.tv.core.model.phone.PhoneSetupState
 import com.sohva.tv.core.model.phone.QrMatrix
+import com.sohva.tv.core.model.player.Gesture
+import com.sohva.tv.core.model.player.RemoteAction
+import com.sohva.tv.core.model.player.RemoteButton
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.model.source.Source
@@ -49,6 +53,13 @@ interface SettingsServices {
     suspend fun testXtream(account: XtreamAccount): SourceChecks.Result
 
     suspend fun setRefreshInterval(interval: RefreshInterval)
+
+    /** The player's remote mapping (spec 31 §4.7). */
+    fun remoteMapping(): Flow<RemoteMapping>
+
+    suspend fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction)
+
+    suspend fun resetRemoteMapping()
 
     /** The phone setup page (spec 11); it closes itself after 15 minutes. */
     fun phoneSetup(): Flow<PhoneSetupState>

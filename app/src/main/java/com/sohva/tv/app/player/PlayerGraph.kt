@@ -7,6 +7,7 @@ import com.sohva.tv.app.BuildConfig
 import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.player.PlaybackSettings
+import com.sohva.tv.core.model.player.RemoteMapping
 import com.sohva.tv.core.model.player.UserAgents
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.player.PlaybackClient
@@ -16,6 +17,8 @@ import com.sohva.tv.feature.player.ExternalStream
 import com.sohva.tv.feature.player.PlayerEnvironmentUi
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 
@@ -64,6 +67,8 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
         override suspend fun settings(): PlaybackSettings = this@PlayerGraph.settings()
+
+        override val remoteMapping: Flow<RemoteMapping> = graph.data.preferences.remoteMapping.flowOn(io)
 
         override suspend fun recordWatched(channelKey: String) = withContext(io) {
             graph.data.live.recordWatched(channelKey)
