@@ -11,6 +11,7 @@ import com.sohva.tv.core.data.database.SohvaDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -120,6 +121,35 @@ class DatabaseDeviceTest {
                 assertEquals(42L, it.getLong(4))
             }
             db.query("SELECT COUNT(*) FROM watch_progress").use { it.moveToFirst(); assertEquals(0, it.getInt(0)) }
+        }
+    }
+
+    @Test
+    fun migratesFrom5To6AddingTheMetadataTables() {
+        helper.createDatabase(name, 5).use {
+            it.execSQL(
+                "INSERT INTO movie (id, key, source_id, provider_id, group_id, name, sort_name, year, rating, rating_x10, poster_url, " +
+                    "stream_url_enc, plot, provider_order, quality_mask, claim_mask, picture_rank, genre, work_key, primary_copy, group_primary, " +
+                    "visible, item_position, content_hash, generation) VALUES (1, 'vod:movie:s1:9', 's1', '9', 3, 'Quiet Harbour', " +
+                    "'quiet harbour', 2020, NULL, NULL, NULL, 'sealed', NULL, 0, 0, 0, 0, NULL, NULL, 1, 1, 1, NULL, 42, 1)",
+            )
+            it.execSQL(
+                "INSERT INTO watch_progress (profile_id, content_key, source_id, content_type, work_key, series_key, position_ms, " +
+                    "duration_ms, completed, updated_at) VALUES ('default', 'vod:movie:s1:9', 's1', 'MOVIE', NULL, NULL, 60000, 600000, 0, 5)",
+            )
+        }
+        helper.runMigrationsAndValidate(name, 6, true).use { db ->
+            db.query("SELECT name, replacement_title, replace_poster, similar_key FROM movie WHERE id = 1").use {
+                it.moveToFirst()
+                assertEquals("Quiet Harbour", it.getString(0))
+                assertTrue(it.isNull(1))
+                assertEquals(0, it.getInt(2))
+                assertTrue(it.isNull(3))
+            }
+            db.query("SELECT COUNT(*) FROM watch_progress").use { it.moveToFirst(); assertEquals(1, it.getInt(0)) }
+            for (table in listOf("metadata_match", "metadata_cache", "metadata_pin", "metadata_queue", "genre_count")) {
+                db.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); assertEquals(table, 0, it.getInt(0)) }
+            }
         }
     }
 

@@ -71,6 +71,8 @@ data class ChannelEntity(
         Index(value = ["visible", "primary_copy", "sort_name"]),
         Index(value = ["genre", "visible", "primary_copy", "sort_name"]),
         Index(value = ["work_key"]),
+        Index(value = ["similar_key"]),
+        Index(value = ["replacement_key"]),
     ],
 )
 data class MovieEntity(
@@ -94,6 +96,16 @@ data class MovieEntity(
     @ColumnInfo(name = "claim_mask", defaultValue = "0") val claimMask: Int = 0,
     /** The "largest picture" rank of spec 40 VOD-FR-29. */
     @ColumnInfo(name = "picture_rank", defaultValue = "0") val pictureRank: Int = 0,
+    /** Metadata's title (spec 40 VOD-FR-22) and its search form; null until matched. */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
+    @ColumnInfo(name = "replacement_sort") val replacementSort: String? = null,
+    /** Metadata's poster (a TMDB path or an https address) and whether it replaces the provider's (VOD-FR-34). */
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String? = null,
+    @ColumnInfo(name = "replace_poster", defaultValue = "0") val replacePoster: Boolean = false,
+    @ColumnInfo(name = "external_id") val externalId: String? = null,
+    /** [com.sohva.tv.core.model.metadata.TitleCleaner.normalizeTitle] of the provider and the replacement title: Similar looks titles up by these (spec 40 §9.7). */
+    @ColumnInfo(name = "similar_key") val similarKey: String? = null,
+    @ColumnInfo(name = "replacement_key") val replacementKey: String? = null,
     val genre: String?,
     @ColumnInfo(name = "work_key") val workKey: String?,
     @ColumnInfo(name = "primary_copy") val primaryCopy: Boolean,
@@ -135,6 +147,16 @@ data class SeriesEntity(
     val plot: String?,
     @ColumnInfo(name = "provider_order") val providerOrder: Int,
     @ColumnInfo(name = "quality_mask", defaultValue = "0") val qualityMask: Int = 0,
+    /** Metadata's title (spec 40 VOD-FR-22) and its search form; null until matched. */
+    @ColumnInfo(name = "replacement_title") val replacementTitle: String? = null,
+    @ColumnInfo(name = "replacement_sort") val replacementSort: String? = null,
+    /** Metadata's poster (a TMDB path or an https address) and whether it replaces the provider's (VOD-FR-34). */
+    @ColumnInfo(name = "replacement_poster") val replacementPoster: String? = null,
+    @ColumnInfo(name = "replace_poster", defaultValue = "0") val replacePoster: Boolean = false,
+    @ColumnInfo(name = "external_id") val externalId: String? = null,
+    /** [com.sohva.tv.core.model.metadata.TitleCleaner.normalizeTitle] of the provider and the replacement title: Similar looks titles up by these (spec 40 §9.7). */
+    @ColumnInfo(name = "similar_key") val similarKey: String? = null,
+    @ColumnInfo(name = "replacement_key") val replacementKey: String? = null,
     val genre: String?,
     @ColumnInfo(name = "work_key") val workKey: String?,
     @ColumnInfo(name = "primary_copy") val primaryCopy: Boolean,

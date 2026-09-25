@@ -22,6 +22,7 @@ import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
+import com.sohva.tv.core.model.vod.PreferredCopy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -99,6 +100,9 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         )
     }
 
+    /** "When a film has more than one version" (spec 40 VOD-FR-32); unknown → whichever comes first. */
+    suspend fun preferredCopy(): PreferredCopy = PreferredCopy.of(store.data.first()[PREFERRED_COPY])
+
     /** "Continue to the next episode" (spec 70 SET-34, spec 30 PLAY-FR-132); on by default. */
     suspend fun autoPlayNextEpisode(): Boolean = store.data.first()[AUTO_PLAY_NEXT] ?: true
 
@@ -170,6 +174,7 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         private val RECONNECT_POLICY = stringPreferencesKey("playback_reconnect_policy")
         private val SEEK_STEP = stringPreferencesKey("playback_seek_step")
         private val AUTO_PLAY_NEXT = booleanPreferencesKey("auto_play_next_episode")
+        private val PREFERRED_COPY = stringPreferencesKey("preferred_catalogue_copy")
         private val AUTO_FRAME_RATE = booleanPreferencesKey("auto_frame_rate")
         private val PICTURE_IN_PICTURE = booleanPreferencesKey("picture_in_picture")
         private val SUBTITLE_SIZE = stringPreferencesKey("subtitle_text_size")

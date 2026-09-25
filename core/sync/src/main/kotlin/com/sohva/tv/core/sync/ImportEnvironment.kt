@@ -5,6 +5,7 @@ import com.sohva.tv.core.model.concurrent.AppDispatchers
 import com.sohva.tv.core.model.concurrent.PauseGate
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.time.Clock
+import com.sohva.tv.core.model.vod.PreferredCopy
 import com.sohva.tv.core.net.http.ProviderHttp
 
 /** Seals a stream address for storage (spec 73: stream addresses are stored encrypted). */
@@ -33,4 +34,6 @@ class ImportEnvironment(
     val pauseGate: PauseGate,
     val log: DiagnosticsLog,
     val names: FallbackNames,
+    /** The copy preference that decides which copy stands for a film (spec 40 VOD-FR-29). */
+    val preferredCopy: suspend () -> PreferredCopy = { PreferredCopy.NONE },
 )

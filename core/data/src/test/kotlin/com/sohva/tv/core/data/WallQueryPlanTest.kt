@@ -1,5 +1,6 @@
 package com.sohva.tv.core.data
 
+import com.sohva.tv.core.data.database.LibrarySql
 import com.sohva.tv.core.data.database.ProgressSql
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.WallSql
@@ -68,6 +69,13 @@ class WallQueryPlanTest {
                 "season" to ProgressSql.SEASON,
                 "ticks own" to ProgressSql.TICKS_OWN,
                 "ticks work" to ProgressSql.TICKS_WORK,
+                "matches page" to LibrarySql.MATCHES_PAGE,
+                "film keys page" to LibrarySql.FILM_KEYS_PAGE,
+                "copies" to LibrarySql.COPIES,
+                "film genre count" to LibrarySql.FILM_GENRE_COUNT,
+                "film unsorted count" to LibrarySql.FILM_UNSORTED_COUNT,
+                "series genre count" to LibrarySql.SERIES_GENRE_COUNT,
+                "series unsorted count" to LibrarySql.SERIES_UNSORTED_COUNT,
             )
             for ((name, sql) in lookups) {
                 val plan = db.plan(sql).joinToString(" | ")

@@ -4,9 +4,12 @@ import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.KeyRange
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SeriesEntity
+import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.model.concurrent.WorkOrigin
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.AppException
+import com.sohva.tv.core.model.metadata.TitleCleaner
+import com.sohva.tv.core.model.metadata.WorkKeys
 import com.sohva.tv.core.model.source.ImportRoute
 import com.sohva.tv.core.model.source.ImportScope
 import com.sohva.tv.core.model.text.Keys
@@ -131,8 +134,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         job.advance(batch.films.size + batch.series.size + batch.episodes.size)
     }
 
-    private suspend fun finish(target: Target, sourceId: String, sweepFilms: Boolean, sweepSeries: Boolean, sweepEpisodes: Boolean): Int =
-        withContext(env.dispatchers.bulkWrite) {
+    private suspend fun finish(target: Target, sourceId: String, sweepFilms: Boolean, sweepSeries: Boolean, sweepEpisodes: Boolean): Int {
+        val preferred = env.preferredCopy()
+        return withContext(env.dispatchers.bulkWrite) {
             if (sweepFilms) target.films.sweep(env.db)
             if (sweepSeries) target.series.sweep(env.db)
             if (sweepEpisodes) target.episodes.sweep(env.db)
@@ -146,8 +150,13 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                 target.filmGroups.finish(complete = sweepFilms)
                 target.seriesGroups.finish(complete = sweepSeries)
             }
+            // Matches back into rewritten rows, then standing copies and folded group counts (spec 41 §9.3).
+            val passes = LibraryPasses(env.db)
+            passes.refreshSource(sourceId, preferred)
+            passes.recountGenres()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
                 KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }
+        }
         }
 
     private fun xtreamFilm(job: ImportJob, f: XtreamFilm, index: Int, categories: Map<String, String>, urls: XtreamUrls): Row<MovieEntity> {
@@ -163,8 +172,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                 sortName = SortNames.of(f.name), year = VodText.year(f.year, f.name), rating = f.rating,
                 ratingX10 = VodText.ratingTenths(f.rating), posterUrl = f.posterUrl, streamUrlEnc = env.sealer.seal(address),
                 plot = f.plot, providerOrder = index, qualityMask = claims.qualityMask, claimMask = claims.languageMask,
-                pictureRank = claims.pictureRank, genre = null, workKey = null, primaryCopy = true, visible = true, itemPosition = null, contentHash = hash,
-                generation = job.generation,
+                pictureRank = claims.pictureRank, similarKey = TitleCleaner.normalizeTitle(f.name), genre = null,
+                workKey = WorkKeys.of(f.name, VodText.year(f.year, f.name)), primaryCopy = true, visible = true, itemPosition = null,
+                contentHash = hash, generation = job.generation,
             )
         }
     }
@@ -222,8 +232,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
                     id = id, key = key, sourceId = job.sourceId, providerId = e.id, groupId = groupId, name = name,
                     sortName = SortNames.of(name), year = year, rating = null, ratingX10 = null, posterUrl = e.logoUrl,
                     streamUrlEnc = env.sealer.seal(e.streamUrl), plot = null, providerOrder = e.index,
-                    qualityMask = claims.qualityMask, claimMask = claims.languageMask, pictureRank = claims.pictureRank, genre = null,
-                    workKey = null, primaryCopy = true, visible = true, itemPosition = null, contentHash = hash,
+                    qualityMask = claims.qualityMask, claimMask = claims.languageMask, pictureRank = claims.pictureRank,
+                    similarKey = TitleCleaner.normalizeTitle(name), genre = null, workKey = WorkKeys.of(name, year), primaryCopy = true,
+                    visible = true, itemPosition = null, contentHash = hash,
                     generation = job.generation,
                 )
             }
@@ -267,9 +278,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
     private companion object {
         /**
          * Part of every film and series hash: bumped when the columns an import derives change
-         * (5 = the claim columns of schema v5), so the next import rewrites every row once.
+         * (5 = the claim columns of schema v5, 6 = work and similar keys), so the next import rewrites every row once.
          */
-        const val KEYS_VERSION = 5
+        const val KEYS_VERSION = 6
     }
 }
 

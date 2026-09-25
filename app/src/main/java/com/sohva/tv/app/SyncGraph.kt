@@ -34,6 +34,7 @@ class SyncGraph(private val graph: AppGraph) {
             pauseGate = graph.pauseGate,
             log = graph.diagnostics,
             names = ResourceFallbackNames(graph.app),
+            preferredCopy = { data.preferences.preferredCopy() },
         )
     }
 
