@@ -1,7 +1,9 @@
 package com.sohva.tv.feature.library
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -48,6 +51,7 @@ import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvListRow
 import com.sohva.tv.ui.design.components.TvUrlField
 import com.sohva.tv.ui.design.components.errorMessage
+import com.sohva.tv.ui.design.focus.KeepVisibleBringIntoViewSpec
 import com.sohva.tv.ui.design.focus.SurfaceState
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
 import com.sohva.tv.ui.design.ground.ScreenBackground
@@ -59,6 +63,7 @@ import kotlinx.coroutines.launch
  * The Movies or Series wall (spec 40 §5 "Wall", layout §1): header, then the 216 dp rail and the
  * poster grid, and the Options sheet above both. Back closes the sheet, else the app pops.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LibraryScreen(model: LibraryModel) = trace("Library:Screen") {
     val sheetOpen by model.sheetOpen.collectAsStateWithLifecycle()
@@ -97,9 +102,13 @@ fun LibraryScreen(model: LibraryModel) = trace("Library:Screen") {
     ScreenBackground(Modifier.fillMaxSize().testTag(if (model.room == WallRoom.MOVIES) "screen-movies" else "screen-series")) {
         Column(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 24.dp)) {
             LibraryHeader(model)
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                LibraryRail(model, railList, destination, options, Modifier.width(216.dp).fillMaxHeight())
-                LibraryWall(model, grid, rail, back, Modifier.weight(1f).fillMaxHeight())
+            // Scroll only as far as the focused card or row needs; the TV default pivots it to 30 %,
+            // which cut the wall's top row off on entry (design/02 §20).
+            CompositionLocalProvider(LocalBringIntoViewSpec provides KeepVisibleBringIntoViewSpec) {
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                    LibraryRail(model, railList, destination, options, Modifier.width(216.dp).fillMaxHeight())
+                    LibraryWall(model, grid, rail, back, Modifier.weight(1f).fillMaxHeight())
+                }
             }
         }
         if (sheetOpen) {
