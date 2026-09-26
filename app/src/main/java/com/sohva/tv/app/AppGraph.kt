@@ -22,7 +22,9 @@ import com.sohva.tv.feature.library.BrowseSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -52,6 +54,22 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     /** True while an activity is started; set by [MainActivity]. */
     val inForeground: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
+    /** The TV's own zone id, read again on its change broadcast and on return (spec 74 L10N-FR-33). */
+    private val deviceZone: MutableStateFlow<String> = MutableStateFlow(java.time.ZoneId.systemDefault().id)
+
+    fun refreshDeviceZone() {
+        deviceZone.value = java.util.TimeZone.getDefault().id
+    }
+
+    /**
+     * The zone screens write times in: the chosen one, else the TV's own as it is now, so a change of
+     * the TV's zone reaches the guide and Home without a restart.
+     */
+    val appZone: kotlinx.coroutines.flow.Flow<String?> by lazy {
+        kotlinx.coroutines.flow.combine(kotlinx.coroutines.flow.flow { emitAll(data.preferences.timeZone) }, deviceZone) { chosen, device -> chosen ?: device }
+            .distinctUntilChanged()
+    }
 
     /** True while video plays; the player (M2) sets it. */
     val playbackActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -158,7 +176,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     /** Options that open screens of later milestones say so briefly (the shell's placeholder toast). */
     fun notYetAvailable() {
-        android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(app, AppLocales.texts(app).getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private val started = AtomicBoolean(false)
@@ -201,7 +219,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         appScope.launch {
             if (data.backup.unfinished()) {
                 withContext(dispatchers.main) {
-                    android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.backup_restore_incomplete), android.widget.Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(app, AppLocales.texts(app).getString(com.sohva.tv.ui.design.R.string.backup_restore_incomplete), android.widget.Toast.LENGTH_LONG).show()
                 }
             }
         }

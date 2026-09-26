@@ -4,7 +4,6 @@ import androidx.annotation.VisibleForTesting
 import androidx.work.WorkManager
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.core.data.metadata.MetadataSettings
-import com.sohva.tv.core.data.prefs.LocaleStore
 import com.sohva.tv.core.data.vod.LibraryPasses
 import com.sohva.tv.core.net.metadata.MetadataHttp
 import com.sohva.tv.core.net.metadata.MetadataRecord
@@ -17,7 +16,6 @@ import com.sohva.tv.core.sync.metadata.MetadataRequest
 import com.sohva.tv.core.sync.metadata.MetadataReset
 import com.sohva.tv.core.sync.metadata.MetadataService
 import com.sohva.tv.core.sync.metadata.VisibleTitle
-import java.util.Locale
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -34,7 +32,8 @@ class MetadataGraph(private val graph: AppGraph) {
         MetadataSettings(
             graph.data.secrets,
             graph.data.preferences,
-            { LocaleStore(graph.app).languageTag() ?: Locale.getDefault().language },
+            // The chosen interface language only: System default gives English metadata (spec 74 L10N-FR-22, Q-02).
+            { com.sohva.tv.app.AppLocales.chosen(graph.app).orEmpty() },
             graph.dispatchers.io,
         )
     }

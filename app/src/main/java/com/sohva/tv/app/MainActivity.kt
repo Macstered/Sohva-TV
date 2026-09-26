@@ -22,7 +22,7 @@ import com.sohva.tv.app.shell.SohvaRoot
  */
 class MainActivity : ComponentActivity(), RootHost {
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLocales.wrap(newBase))
+        super.attachBaseContext(AppLocales.attach(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,9 +38,20 @@ class MainActivity : ComponentActivity(), RootHost {
         androidx.core.content.ContextCompat.registerReceiver(
             this, closeCorner, android.content.IntentFilter(ACTION_CLOSE_CORNER), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
         )
+        // The TV's own zone changed (spec 74 L10N-FR-33): times on screen follow at once.
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, zoneChanged, android.content.IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    private val zoneChanged = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            (application as SohvaApplication).graph.refreshDeviceZone()
+        }
     }
 
     override fun onDestroy() {
+        unregisterReceiver(zoneChanged)
         unregisterReceiver(closeCorner)
         super.onDestroy()
     }
@@ -55,6 +66,8 @@ class MainActivity : ComponentActivity(), RootHost {
         super.onStart()
         val graph = (application as SohvaApplication).graph
         graph.inForeground.value = true
+        // A zone changed while the app was away arrives with no broadcast to this activity.
+        graph.refreshDeviceZone()
         // The enrichment gives way while the viewer is here (spec 41 META-FR-62).
         if (graph.flags.metadataWorker) graph.metadata.scheduler.onReturn()
     }

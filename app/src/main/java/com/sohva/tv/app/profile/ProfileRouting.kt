@@ -18,7 +18,7 @@ suspend fun AppGraph.admit(channelKey: String): ChannelAdmission = when {
 
 /** The refusal toast (spec 01 SHELL-FR-34). */
 fun AppGraph.refuseChannel() {
-    Toast.makeText(app, app.getString(R.string.profile_content_blocked), Toast.LENGTH_SHORT).show()
+    Toast.makeText(app, com.sohva.tv.app.AppLocales.texts(app).getString(R.string.profile_content_blocked), Toast.LENGTH_SHORT).show()
 }
 
 /**

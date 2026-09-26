@@ -44,3 +44,14 @@ table), META-34, SEC-22, SEC-24.
   stand-in with `tools/update_e2e.py`: build 9101 installed through the app,
   `[status=speed-profile] [reason=install-dm]`. Device suite `SettingsAboutTest` green (the link
   dialog check skips on an emulator image with a browser).
+- Part 4 (Languages): done. One time format everywhere (the interface language's clock and the
+  TV's 12/24-hour setting, spec 74 Q-01); texts outside the activity, the JVM default locale and the
+  metadata default follow the chosen language; the TV's own zone is followed when it changes; a
+  translation parity test over every string file in every language.
+- Exit: all four criteria met. A beta 23 `.smbak` restores (`SettingsBackupTest`); the updater
+  installs a test release with `reason=install-dm` (`tools/update_e2e.py`); diagnostics hold no
+  secret (`DiagnosticsReportTest`, `SettingsAboutTest`); every string is present in every language
+  (`TranslationParityTest`). Full device run on the API 30 stand-in: 30 classes, 123 tests passed;
+  `GuideTimingTest` held-Right and `PlayerControlsTest` channel list each failed once in the long
+  run and passed alone. Open for later milestones: SET-53 (Trakt, M10), SET-54 (Sohva Sport, M8),
+  SEC-24 (published privacy policy and SECURITY.md, M11).

@@ -103,7 +103,7 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     val remindersOn: Boolean get() = env.remindersOn
     val health = env.health.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _labels = MutableStateFlow(TimeLabels(TimeLabels.zoneOf(null), env.locale))
+    private val _labels = MutableStateFlow(TimeLabels(TimeLabels.zoneOf(null), env.timeStyle))
     val labels: StateFlow<TimeLabels> = _labels.asStateFlow()
 
     val overlays = GuideOverlays(this, viewModelScope)
@@ -124,7 +124,7 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private var lastVisible = 0 to 0
 
     init {
-        viewModelScope.launch { env.timeZone.collect { _labels.value = TimeLabels(TimeLabels.zoneOf(it), env.locale) } }
+        viewModelScope.launch { env.timeZone.collect { _labels.value = TimeLabels(TimeLabels.zoneOf(it), env.timeStyle) } }
         viewModelScope.launch { tick() }
         viewModelScope.launch { watchSources() }
         viewModelScope.launch {

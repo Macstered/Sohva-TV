@@ -3,26 +3,25 @@ package com.sohva.tv.core.model.time
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
- * Times as the guide and player write them, in the chosen time zone (spec 20 GUIDE-FR-110..111,
- * spec 30 PLAY-FR-42): the guide uses `HH.mm` in every language with an en dash for ranges, the
- * player `HH:mm`. Formatting happens once per data change, off the main thread where it can.
+ * Times as the guide, Home, the player and Search write them, in the chosen time zone (spec 20
+ * GUIDE-FR-110..111, spec 30 PLAY-FR-42) and one [TimeStyle] everywhere (spec 74 L10N-FR-41, Q-01:
+ * beta 23 mixed a fixed `HH.mm` with `HH:mm` and the TV's 12-hour clock). Ranges join with an en dash.
+ * Formatting happens once per data change, off the main thread where it can.
  */
-class TimeLabels(val zone: ZoneId, locale: Locale) {
-    private val guideClock = DateTimeFormatter.ofPattern("HH.mm", Locale.ROOT).withZone(zone)
-    private val playerClock = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT).withZone(zone)
-    private val day = DateTimeFormatter.ofPattern("EEE d.M.", locale).withZone(zone)
+class TimeLabels(val zone: ZoneId, style: TimeStyle) {
+    private val clock = DateTimeFormatter.ofPattern(style.clockPattern, style.locale).withZone(zone)
+    private val day = DateTimeFormatter.ofPattern(style.dayPattern, style.locale).withZone(zone)
 
-    fun guideTime(epochMillis: Long): String = guideClock.format(Instant.ofEpochMilli(epochMillis))
+    fun guideTime(epochMillis: Long): String = clock.format(Instant.ofEpochMilli(epochMillis))
 
-    /** "20.00–21.30". */
+    /** "20.00–21.30" in Finnish, "20:00–21:30" in English. */
     fun guideRange(start: Long, stop: Long): String = guideTime(start) + "–" + guideTime(stop)
 
-    fun playerTime(epochMillis: Long): String = playerClock.format(Instant.ofEpochMilli(epochMillis))
+    fun playerTime(epochMillis: Long): String = guideTime(epochMillis)
 
-    /** "Thu 24.9." (GUIDE-FR-46). */
+    /** "to 24.9." in Finnish, "Thu, 9/24" in US English (GUIDE-FR-46, the locale's own order). */
     fun dayLabel(epochMillis: Long): String = day.format(Instant.ofEpochMilli(epochMillis))
 
     /** The relative day of [start] seen from [now] by calendar day in the zone; null beyond ±1 day. */

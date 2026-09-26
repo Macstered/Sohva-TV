@@ -1,6 +1,5 @@
 package com.sohva.tv.app.live
 
-import com.sohva.tv.core.model.org.OrgRoom
 import android.content.Intent
 import androidx.core.net.toUri
 import com.sohva.tv.app.AppGraph
@@ -8,15 +7,18 @@ import com.sohva.tv.core.data.live.ChannelList
 import com.sohva.tv.core.data.live.ListSpec
 import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.metadata.MediaType
+import com.sohva.tv.core.model.org.OrgRoom
 import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
+import com.sohva.tv.core.model.time.TimeStyle
 import com.sohva.tv.core.net.metadata.Artwork
 import com.sohva.tv.core.net.metadata.MetadataRecord
 import com.sohva.tv.core.sync.metadata.MetadataRequest
 import com.sohva.tv.feature.live.GuideEnvironment
 import com.sohva.tv.feature.live.HeroMetadata
 import com.sohva.tv.feature.live.SavedSource
+import com.sohva.tv.ui.design.text.TimeStyles
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +36,7 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
 
     override val reads: LiveReads = graph.liveReads
     override val clock: Clock get() = graph.clock
+    override val timeStyle: TimeStyle = TimeStyles.of(graph.app, locale)
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
     override val lastGuideSource: Flow<String?> = flow { emitAll(prefs.lastGuideSource) }.flowOn(io)
@@ -41,7 +44,7 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
 
     override val lastChannel: Flow<String?> = flow { emitAll(prefs.lastChannel(graph.data.profiles.activeId)) }.flowOn(io)
     override val showChannelNumbers: Flow<Boolean> = flow { emitAll(prefs.showChannelNumbers) }.flowOn(io)
-    override val timeZone: Flow<String?> = flow { emitAll(prefs.timeZone) }.flowOn(io)
+    override val timeZone: Flow<String?> = graph.appZone.flowOn(io)
 
     override val savedSources: Flow<List<SavedSource>> =
         flow { emitAll(graph.data.sources.observe()) }.map { list -> list.map { SavedSource(it.id, it.name, it.enabled) } }.flowOn(io)

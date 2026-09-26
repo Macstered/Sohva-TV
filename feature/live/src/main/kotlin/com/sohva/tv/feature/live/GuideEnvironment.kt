@@ -6,6 +6,7 @@ import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.reminder.Reminder
 import com.sohva.tv.core.model.source.SourceHealth
 import com.sohva.tv.core.model.time.Clock
+import com.sohva.tv.core.model.time.TimeStyle
 import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,9 @@ interface GuideEnvironment {
     /** Formatting and mapping of one page (AppDispatchers.ui). */
     val format: CoroutineDispatcher
     val locale: Locale
+
+    /** How times read (spec 74 L10N-FR-41); the app passes the interface language's and the TV's setting. */
+    val timeStyle: TimeStyle get() = TimeStyle.fixed24(locale)
 
     /** Whether the active profile is limited to chosen live groups (spec 04 PROF-FR-24). */
     suspend fun liveRestricted(): Boolean = false

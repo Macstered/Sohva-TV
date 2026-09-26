@@ -34,6 +34,9 @@ import kotlinx.coroutines.launch
  */
 class ReminderCenter(private val graph: AppGraph) {
     private val app = graph.app
+
+    /** Notification texts in the interface language, below Android 13 too (spec 74 L10N-FR-05). */
+    private val texts get() = com.sohva.tv.app.AppLocales.texts(app)
     private val store get() = graph.data.reminders
     private val alarm = ReminderAlarm(app) { graph.diagnostics.info("reminders", it) }
     private val queue = RingingQueue()
@@ -185,7 +188,7 @@ class ReminderCenter(private val graph: AppGraph) {
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL, app.getString(R.string.reminders_channel_name), NotificationManager.IMPORTANCE_HIGH)
+            val channel = NotificationChannel(CHANNEL, texts.getString(R.string.reminders_channel_name), NotificationManager.IMPORTANCE_HIGH)
             app.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
         val open = Intent(app, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -197,10 +200,10 @@ class ReminderCenter(private val graph: AppGraph) {
             R.string.reminder_notification_open_card
         }
         val tap = PendingIntent.getActivity(app, notificationId(reminder.id), open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val text = listOfNotNull(reminder.subtitle?.takeIf { it.isNotBlank() }, app.getString(action)).joinToString(" · ")
+        val text = listOfNotNull(reminder.subtitle?.takeIf { it.isNotBlank() }, texts.getString(action)).joinToString(" · ")
         val notification = NotificationCompat.Builder(app, CHANNEL)
             .setSmallIcon(R.drawable.ic_tv_epg)
-            .setContentTitle(app.getString(R.string.reminder_notification_title, reminder.title))
+            .setContentTitle(texts.getString(R.string.reminder_notification_title, reminder.title))
             .setContentText(text)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
