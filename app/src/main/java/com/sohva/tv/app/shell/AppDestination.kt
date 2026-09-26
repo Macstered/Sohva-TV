@@ -7,7 +7,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.core.net.toUri
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -124,7 +126,30 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel { SearchModel(AppSearchEnvironment(graph, stack, locale)) }
             SearchScreen(model)
         }
-        AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
+        AppRoute.Discover -> {
+            val host = graph.discover
+            if (host == null) {
+                PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
+            } else {
+                val household by graph.data.profiles.household.collectAsState()
+                val navigation = remember(stack, host) {
+                    com.sohva.tv.feature.discover.ui.DiscoverNavigation(
+                        leave = { stack.pop() },
+                        openTitle = { request ->
+                            host.keepTitle(request)
+                            stack.push(AppRoute.DiscoverTitle(request.owner, request.preview.type, request.preview.id, request.videoId))
+                        },
+                    )
+                }
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().testTag("screen-discover")) {
+                    // Keyed by the profile: a switch disposes all of Discover's state (spec 50 §3).
+                    androidx.compose.runtime.key(household.active.id) {
+                        com.sohva.tv.feature.discover.ui.DiscoverScreen(host, household.active.id, navigation)
+                    }
+                }
+            }
+        }
+        is AppRoute.DiscoverTitle -> PlaceholderScreen(R.string.addon_title, { back() }, "screen-discover-title")
         AppRoute.ProfilePicker -> ProfilePickerDestination(stack, graph)
         is AppRoute.PinGate -> PinGateDestination(route, stack, graph)
         is AppRoute.ProfileGate -> ProfileGateDestination(route, stack, graph)

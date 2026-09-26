@@ -102,6 +102,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** Sohva Sport (spec 60); built on first use. */
     val sport: com.sohva.tv.app.sport.SportGraph by lazy { com.sohva.tv.app.sport.SportGraph(this) }
 
+    /** Discover (spec 50): null where the build has no addons (the demo); built on first use. */
+    val discover: com.sohva.tv.feature.discover.DiscoverHost? by lazy { if (flags.discover) com.sohva.tv.app.discover.DiscoverGraph.build(this) else null }
+
     /**
      * The public updater (spec 72 §4): only the release package checks, downloads or installs
      * (ABOUT-FR-01); built on first use, after the first frame, on the shared HTTP client.

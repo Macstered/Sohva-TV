@@ -16,6 +16,13 @@ sealed interface AppRoute {
     data class Catalogue(val mode: CatalogueMode) : AppRoute
     data object Search : AppRoute
     data object Discover : AppRoute
+
+    /**
+     * A Discover title page (spec 50 §4.10) for the catalog's [owner] addon, [type] and [id], opened
+     * on [videoId] when one was playing. The catalog's preview travels in memory
+     * ([com.sohva.tv.feature.discover.DiscoverHost.keepTitle]); after process death the page restores to Discover.
+     */
+    data class DiscoverTitle(val owner: String?, val type: String, val id: String, val videoId: String? = null) : AppRoute
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
 
@@ -88,6 +95,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         is AppRoute.Catalogue -> "catalogue:${route.mode.name.lowercase()}"
         AppRoute.Search -> "search"
         AppRoute.Discover -> "discover"
+        is AppRoute.DiscoverTitle -> "discover"
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
         AppRoute.Legal -> "legal"
