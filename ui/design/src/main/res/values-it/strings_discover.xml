@@ -314,4 +314,6 @@
     <string name="addon_ui_episode_short">E%1$d</string>
     <string name="addon_ui_no_matching_series">Nessuna serie corrispondente.</string>
     <string name="addon_ui_no_saved_series">Nessuna serie salvata.</string>
+    <string name="addon_ui_language">Lingua</string>
+    <string name="addon_ui_apply">Applica</string>
 </resources>

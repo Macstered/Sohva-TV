@@ -60,6 +60,9 @@ class DiscoverHost(
     val progress: ProgressStore by lazy { ProgressStore(database.progress(), cipher, clock) }
     val library: LibraryStore by lazy { LibraryStore(database.library(), cipher, clock) }
     val client: AddonClient by lazy { AddonClient(http()) }
+
+    /** Subtitle files (FR-101): their own client, built on first choice. */
+    val subtitleFiles: com.sohva.tv.feature.discover.net.SubtitleDownloader by lazy { com.sohva.tv.feature.discover.net.SubtitleDownloader(http()) }
     val cache: ResponseCache by lazy { ResponseCache(File(app.noBackupFilesDir, ResponseCache.DIR), cipher, clock) }
     val manager: AddonManager by lazy { AddonManager(access, installations, client, dispatchers.io) { testAllowHttp } }
     val browser: AddonBrowser by lazy { AddonBrowser(access, installations, client, cache, clock, dispatchers.io) }

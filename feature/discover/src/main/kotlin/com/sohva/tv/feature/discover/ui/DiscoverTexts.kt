@@ -8,17 +8,18 @@ import com.sohva.tv.ui.design.R
 
 /** The one sentence a viewer reads for a failure (spec 50 §4.20); never the provider's own text. */
 @Composable
-fun failureText(failure: AddonFailure): String = stringResource(
-    when (failure) {
-        AddonFailure.INVALID_URL, AddonFailure.INSECURE_URL -> R.string.addon_error_url
-        AddonFailure.CONFIGURATION_REQUIRED -> R.string.addon_error_configuration
-        AddonFailure.INVALID_MANIFEST, AddonFailure.INVALID_RESPONSE, AddonFailure.RESPONSE_TOO_LARGE -> R.string.addon_error_manifest
-        AddonFailure.NETWORK, AddonFailure.TIMEOUT, AddonFailure.HTTP_ERROR -> R.string.addon_error_network
-        AddonFailure.REDIRECT -> R.string.addon_error_redirect
-        AddonFailure.ACCESS_DENIED -> R.string.addon_access_denied
-        else -> R.string.addon_error_operation
-    },
-)
+fun failureText(failure: AddonFailure): String = stringResource(failureRes(failure))
+
+/** The string resource of [failureText], for text built outside composition. */
+fun failureRes(failure: AddonFailure): Int = when (failure) {
+    AddonFailure.INVALID_URL, AddonFailure.INSECURE_URL -> R.string.addon_error_url
+    AddonFailure.CONFIGURATION_REQUIRED -> R.string.addon_error_configuration
+    AddonFailure.INVALID_MANIFEST, AddonFailure.INVALID_RESPONSE, AddonFailure.RESPONSE_TOO_LARGE -> R.string.addon_error_manifest
+    AddonFailure.NETWORK, AddonFailure.TIMEOUT, AddonFailure.HTTP_ERROR -> R.string.addon_error_network
+    AddonFailure.REDIRECT -> R.string.addon_error_redirect
+    AddonFailure.ACCESS_DENIED -> R.string.addon_access_denied
+    else -> R.string.addon_error_operation
+}
 
 /** "Movie", "Series", or a provider's own type as supplied (FR-56, -127). */
 @Composable

@@ -22,7 +22,8 @@ internal object PlayerFactory {
         // Addon streams go through their own transport (spec 50 ADDON-FR-95), marked by the registry.
         val addon = (env.callFactory as? okhttp3.OkHttpClient)?.let(AddonTransport::client) ?: env.callFactory
         val http = OkHttpDataSource.Factory(AddonTransport.route(env.callFactory, addon))
-        val sources = DefaultMediaSourceFactory(ResolvingDataSource.Factory(http, registry.resolver))
+        // An addon subtitle is served from memory (spec 50 ADDON-FR-101).
+        val sources = DefaultMediaSourceFactory(ResolvingDataSource.Factory(SideSubtitleDataSource.Factory(http), registry.resolver))
         val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
         val audio = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()
         return ExoPlayer.Builder(context, renderers, sources)

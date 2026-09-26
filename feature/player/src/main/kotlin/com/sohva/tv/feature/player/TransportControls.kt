@@ -75,6 +75,7 @@ internal fun TransportControls(model: PlayerModel, modifier: Modifier = Modifier
             TvActionButton(
                 stringResource(R.string.player_subtitle_track, subtitleLabel(tracks)),
                 { model.openPicker(Picker.SUBTITLES) },
+                Modifier.testTag("player-transport-subtitles"),
                 icon = TvIcons.Subtitles,
                 compact = true,
             )

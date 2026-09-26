@@ -136,7 +136,16 @@ data class Banner(val reason: BannerReason, val attempt: Int, val max: Int, val 
 
 /** One selectable track (PLAY-FR-70): its parts, joined in the interface language by the screen. */
 @Immutable
-data class TrackItem(val group: Int, val index: Int, val label: String?, val language: String?, val channels: Int, val selected: Boolean)
+data class TrackItem(
+    val group: Int,
+    val index: Int,
+    val label: String?,
+    val language: String?,
+    val channels: Int,
+    val selected: Boolean,
+    /** The addon subtitle side-loaded by Sohva (spec 50 FR-101), not one of the stream's own. */
+    val sideLoaded: Boolean = false,
+)
 
 @Immutable
 data class Tracks(val audio: List<TrackItem> = emptyList(), val text: List<TrackItem> = emptyList())
@@ -173,4 +182,18 @@ interface AddonPlaybackEnv {
 
     /** Start-up milestones for diagnostics (FR-86): names and milliseconds, never titles or URLs. */
     fun milestone(name: String, sinceStartMs: Long)
+
+    /**
+     * FR-100: the stream's inline subtitles at once, then every subtitle addon's results as they
+     * arrive. Each collection asks the providers once; nothing is cached.
+     */
+    fun subtitles(token: String): kotlinx.coroutines.flow.Flow<SubtitleResults>
+
+    /** FR-101: downloads and recognises a candidate, re-checking its provider afterwards. */
+    suspend fun downloadSubtitle(token: String, key: String): SubtitleDownload
+
+    /** "Show all languages" (FR-97): global and persisted. */
+    val showAllLanguages: kotlinx.coroutines.flow.StateFlow<Boolean>
+
+    suspend fun setShowAllLanguages(on: Boolean)
 }

@@ -93,7 +93,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     skipped?.let { SkipFeedbackLabel(it, Modifier.align(Alignment.BottomCenter)) }
     if (buffering) BufferingIndicator(Modifier.align(Alignment.Center))
     if (listOpen) ChannelListPanel(model, Modifier.align(Alignment.CenterEnd))
-    picker?.let { TrackPicker(model, it) }
+    picker?.let { Pickers(model, it) }
     model.ticker?.let { ScoreTicker(it, stats, Modifier.align(Alignment.TopEnd)) }
     if (quick) QuickActions(model)
     banner?.let { ErrorBanner(model, it, Modifier.align(Alignment.BottomCenter)) }
@@ -126,11 +126,18 @@ private fun addonStartUp(model: PlayerModel, session: AddonSession, picker: Pick
     val current = stage
     if (current != null) {
         AddonLoading(model, session, current, picker != null)
-        picker?.let { TrackPicker(model, it) }
+        picker?.let { Pickers(model, it) }
         BackHandler { if (picker != null) model.closePicker() else model.currentKey()?.let { model.navigation.leave(it) } }
         return true
     }
     return false
+}
+
+/** An addon playback has its own subtitle picker (spec 50 FR-97); everything else the shared one. */
+@Composable
+private fun Pickers(model: PlayerModel, which: Picker) {
+    val addon = model.addon
+    if (addon != null && which == Picker.SUBTITLES) AddonSubtitleLayers(model, addon.subtitles) else TrackPicker(model, which)
 }
 
 /** A SurfaceView in an aspect frame with a subtitle view (spec 30 §9 "Surface"): no TextureView, no layers. */

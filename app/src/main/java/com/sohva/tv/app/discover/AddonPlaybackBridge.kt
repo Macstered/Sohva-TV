@@ -8,7 +8,21 @@ import com.sohva.tv.feature.discover.protocol.StreamKind
 import com.sohva.tv.feature.player.AddonPlay
 import com.sohva.tv.feature.player.AddonPlaybackEnv
 import java.util.UUID
+import com.sohva.tv.app.AppLocales
+import com.sohva.tv.core.model.player.SubtitleText
+import com.sohva.tv.feature.discover.net.SubtitleDownloader
+import com.sohva.tv.feature.discover.protocol.Hashes
+import com.sohva.tv.feature.discover.ui.failureRes
+import com.sohva.tv.feature.player.SubtitleCandidate
+import com.sohva.tv.feature.player.SubtitleDownload
+import com.sohva.tv.feature.player.SubtitleResults
+import com.sohva.tv.ui.design.R
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -64,4 +78,90 @@ class AddonPlaybackBridge(private val graph: AppGraph, private val host: Discove
     }
 
     override fun milestone(name: String, sinceStartMs: Long) = graph.diagnostics.info("addon", "$name ${sinceStartMs}ms")
+
+    // ---- Subtitles (spec 50 §4.13) ----
+
+    /** A candidate behind its session-only key: its address and provider (null: the stream's own). */
+    private class Candidate(val url: String, val provider: String?)
+
+    /** Keys of the latest playback only (performance rule 4: one playback's candidates at a time). */
+    private val candidates = HashMap<String, Candidate>()
+    private var candidatesOf: String? = null
+
+    private fun remember(token: String, key: String, candidate: Candidate) = synchronized(candidates) {
+        if (candidatesOf != token) {
+            candidates.clear()
+            candidatesOf = token
+        }
+        candidates[key] = candidate
+    }
+
+    private fun key(token: String, url: String): String = Hashes.parts(token, url).take(KEY_LENGTH)
+
+    override fun subtitles(token: String): Flow<SubtitleResults> = channelFlow {
+        val p = host.playback(token) ?: return@channelFlow send(SubtitleResults())
+        val inline = p.stream.subtitles.mapIndexed { i, s ->
+            val k = key(token, s.url)
+            remember(token, k, Candidate(s.url, null))
+            SubtitleCandidate(k, null, s.lang, i + 1)
+        }
+        val providers = runCatching {
+            withContext(io) { host.sources.providers(p.profile, p.videoType, p.identity.videoId, "subtitles") }
+        }.getOrDefault(emptyList())
+        val answers = arrayOfNulls<List<SubtitleCandidate>>(providers.size)
+        val errors = arrayOfNulls<String>(providers.size)
+        val lock = Mutex()
+        suspend fun publish() = lock.withLock {
+            val done = providers.indices.count { answers[it] != null || errors[it] != null }
+            send(SubtitleResults(inline + answers.filterNotNull().flatten(), providers.size - done, errors.filterNotNull()))
+        }
+        publish()
+        val texts = AppLocales.texts(graph.app)
+        providers.forEachIndexed { index, inst ->
+            launch {
+                try {
+                    val found = host.sources.subtitles(p.profile, inst, p.videoType, p.identity.videoId, p.stream)
+                    answers[index] = found.mapIndexed { i, s ->
+                        val k = key(token, s.url)
+                        remember(token, k, Candidate(s.url, inst.id))
+                        SubtitleCandidate(k, inst.name, s.lang, i + 1)
+                    }
+                } catch (e: AddonException) {
+                    errors[index] = "${inst.name}: ${texts.getString(failureRes(e.failure))}"
+                }
+                publish()
+            }
+        }
+    }
+
+    override suspend fun downloadSubtitle(token: String, key: String): SubtitleDownload {
+        val texts = AppLocales.texts(graph.app)
+        val failed = SubtitleDownload.Failed(texts.getString(R.string.addon_error_operation))
+        val p = host.playback(token) ?: return failed
+        val candidate = synchronized(candidates) { candidates[key].takeIf { candidatesOf == token } } ?: return failed
+        val url = SubtitleDownloader.parse(candidate.url) ?: return failed
+        return try {
+            val bytes = host.subtitleFiles.get(url)
+            // FR-101: the provider may have gone while the file came.
+            val provider = candidate.provider
+            if (provider != null) {
+                val still = withContext(io) { host.installations.find(p.profile, provider) }
+                if (still == null || !still.enabled || !host.access.allowed(p.profile)) return failed
+            }
+            val decoded = withContext(graph.dispatchers.ui) {
+                SubtitleText.decode(bytes)?.let { text -> SubtitleText.detect(text)?.let { SubtitleDownload.Ready(text, it) } }
+            }
+            decoded ?: SubtitleDownload.Failed(texts.getString(R.string.addon_error_manifest))
+        } catch (e: AddonException) {
+            SubtitleDownload.Failed(texts.getString(failureRes(e.failure)))
+        }
+    }
+
+    override val showAllLanguages: StateFlow<Boolean> get() = host.settings.allLanguages
+
+    override suspend fun setShowAllLanguages(on: Boolean) = withContext(io) { host.settings.setAllLanguages(on) }
+
+    private companion object {
+        const val KEY_LENGTH = 16
+    }
 }

@@ -124,7 +124,7 @@ class PlayerModel(
     val dial = PlayerDial(this, reads, viewModelScope)
     val keys = PlayerKeys(this)
     val transport = PlayerTransport(this, viewModelScope)
-    val addon: AddonSession? = addonPlay?.let { play -> env.addon?.let { AddonSession(this, it, play, viewModelScope) } }
+    val addon: AddonSession? = addonPlay?.let { play -> env.addon?.let { AddonSession(this, it, play, viewModelScope, env.format) } }
 
     /** The action row asks for focus when Up/Down step into the box (PLAY-FR-45); serial = a new request. */
     private val _boxFocus = MutableStateFlow(0)
@@ -351,6 +351,12 @@ class PlayerModel(
     }
 
     fun openPicker(which: Picker) {
+        // The addon subtitle picker pauses (spec 50 FR-97); closing it plays again if it paused a running stream.
+        if (addon != null && which == Picker.SUBTITLES && _picker.value == null) {
+            val c = controller
+            resumeAfterPicker = addon.stage.value == null && c?.playWhenReady == true
+            c?.pause()
+        }
         _quick.value = false
         _picker.value = which
     }
@@ -365,13 +371,14 @@ class PlayerModel(
     /** Whether closing the picker plays again: it paused a running addon stream (spec 50 FR-97). */
     private var resumeAfterPicker = false
 
-    /** The addon player's Subtitles (FR-87, -97): pauses, then opens the picker; start-up continues underneath. */
-    fun pauseAndPick(which: Picker) {
-        val c = controller ?: return
-        resumeAfterPicker = addon?.stage?.value == null && c.playWhenReady
-        c.pause()
-        openPicker(which)
+    /** "Show all languages" in the addon subtitle picker (spec 50 FR-97): global, persisted. */
+    fun setShowAllLanguages(on: Boolean) {
+        val addonEnv = env.addon ?: return
+        viewModelScope.launch { addonEnv.setShowAllLanguages(on) }
     }
+
+    /** The addon player's Subtitles (FR-87, -97): pauses, then opens the picker; start-up continues underneath. */
+    fun pauseAndPick(which: Picker) = openPicker(which)
 
     fun openQuickActions() {
         if (_picker.value != null) return
@@ -410,7 +417,7 @@ class PlayerModel(
 
     /** Once the audio tracks of a film or episode are known (PLAY-FR-75); live and catch-up keep the stream's own. */
     private fun applyLanguages(tracks: Tracks) {
-        if ((vod == null && addon == null) || languagesApplied || tracks.audio.isEmpty()) return
+        if (vod == null || languagesApplied || tracks.audio.isEmpty()) return
         languagesApplied = true
         viewModelScope.launch {
             val prefs = env.settings().vodLanguages
@@ -579,6 +586,8 @@ class PlayerModel(
 
         override fun onTracksChanged(tracks: MediaTracks) {
             _tracks.value = tracksOf(tracks)
+            // An addon playback's text follows its subtitle pick (spec 50 §4.13).
+            addon?.subtitles?.select()
             applyLanguages(_tracks.value)
             _frameRate.value = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
                 ?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).frameRate } }
@@ -612,7 +621,7 @@ class PlayerModel(
             for (i in 0 until group.length) {
                 if (!group.isTrackSupported(i)) continue
                 val f = group.getTrackFormat(i)
-                target += TrackItem(g, i, f.label, f.language, if (f.channelCount > 0) f.channelCount else 0, group.isTrackSelected(i))
+                target += TrackItem(g, i, f.label, f.language, if (f.channelCount > 0) f.channelCount else 0, group.isTrackSelected(i), f.id?.endsWith(com.sohva.tv.core.player.SideSubtitles.TRACK_ID) == true)
             }
         }
         return Tracks(audio, text)

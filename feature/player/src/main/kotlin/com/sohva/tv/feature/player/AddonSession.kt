@@ -7,7 +7,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import com.sohva.tv.core.player.PlaybackService
+import com.sohva.tv.core.model.player.AddonLanguages
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,8 @@ class AddonSession internal constructor(
     private val env: AddonPlaybackEnv,
     val play: AddonPlay,
     private val scope: CoroutineScope,
+    /** Where subtitle text is shifted: off the main thread (performance rule 1). */
+    work: CoroutineDispatcher,
 ) {
     private val _stage = MutableStateFlow<AddonStage?>(AddonStage.PREPARING)
     val stage: StateFlow<AddonStage?> = _stage.asStateFlow()
@@ -59,8 +63,14 @@ class AddonSession internal constructor(
     private var loop: Job? = null
     private var traktApplied = false
     private var waitingForPicker = false
+    private var trackPrefsSet = false
 
     val key: String get() = "addon:$token"
+
+    val subtitles: AddonSubtitles = AddonSubtitles(
+        env, { token }, { model.controller }, { model.tracks.value }, { model.settings.vodLanguages }, scope, work,
+        reload = ::reload, readyAgain = ::readyAgain,
+    )
 
     /** FR-86: prepare paused, subtitles within 5 s (M9 part 4), the first frame, access again, then play. */
     fun start(c: MediaController, from: Long = play.startMs) {
@@ -70,19 +80,24 @@ class AddonSession internal constructor(
         scope.launch {
             startedAt = SystemClock.elapsedRealtime()
             if (!env.stillAllowed(token)) return@launch fail()
-            ready.value = false
-            firstFrame.value = false
-            failed.value = false
-            c.stop()
-            c.clearMediaItems()
-            val extras = Bundle().apply { putBoolean(PlaybackService.EXTRA_ADDON, true) }
-            c.setMediaItem(MediaItem.Builder().setMediaId(token).setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build(), from)
-            c.playWhenReady = false
-            c.prepare()
-            withTimeoutOrNull(PREPARE_MS) { combine(ready, failed) { r, f -> r || f }.first { it } }
-            if (!ready.value || failed.value) return@launch fail()
+            if (!trackPrefsSet) {
+                trackPrefsSet = true
+                trackPreferences(c)
+            }
+            prepare(c, from, playWhenReady = false)
+            if (!readyAgain(PREPARE_MS)) return@launch fail()
             env.milestone("stream-ready", elapsed())
             _stage.value = AddonStage.SUBTITLES
+            // FR-98: one bounded automatic attempt; a retry keeps the choice already made.
+            if (subtitles.pick.value == null) {
+                val loaded = withTimeoutOrNull(SUBTITLE_MS) { subtitles.auto() }
+                if (loaded == null) subtitles.embeddedFallback()
+                if (loaded == true) {
+                    prepare(c, c.currentPosition, playWhenReady = false)
+                    if (!readyAgain(PREPARE_MS)) return@launch fail()
+                }
+            }
+            subtitles.select()
             env.milestone("subtitles-ready", elapsed())
             _stage.value = AddonStage.STARTING
             val audioOnly = !c.currentTracks.isTypeSelected(C.TRACK_TYPE_VIDEO)
@@ -97,6 +112,44 @@ class AddonSession internal constructor(
             model.reveal()
             startLoop()
         }
+    }
+
+    /**
+     * FR-85: audio follows the primary and secondary audio preferences; text starts disabled so no
+     * unrelated default track flashes while the automatic choice runs.
+     */
+    private fun trackPreferences(c: MediaController) {
+        val prefs = model.settings.vodLanguages
+        val audio = listOfNotNull(prefs.audio, prefs.audioSecond).mapNotNull(AddonLanguages::normalise).distinct()
+        c.trackSelectionParameters = c.trackSelectionParameters.buildUpon()
+            .setPreferredAudioLanguages(*audio.toTypedArray())
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            .build()
+    }
+
+    /** The stream by its token, with the current side-loaded subtitle, at [from]. */
+    private fun prepare(c: MediaController, from: Long, playWhenReady: Boolean) {
+        ready.value = false
+        firstFrame.value = false
+        failed.value = false
+        c.stop()
+        c.clearMediaItems()
+        val extras = Bundle().apply { putBoolean(PlaybackService.EXTRA_ADDON, true) }
+        subtitles.extras(extras)
+        c.setMediaItem(MediaItem.Builder().setMediaId(token).setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build(), from)
+        c.playWhenReady = playWhenReady
+        c.prepare()
+    }
+
+    /** A subtitle choice or new timing (FR-97, -102): the same place, playing or paused as it was. */
+    private fun reload() {
+        val c = model.controller ?: return
+        prepare(c, c.currentPosition.coerceAtLeast(0), c.playWhenReady)
+    }
+
+    private suspend fun readyAgain(timeoutMs: Long): Boolean {
+        withTimeoutOrNull(timeoutMs) { combine(ready, failed) { r, f -> r || f }.first { it } }
+        return ready.value && !failed.value
     }
 
     private fun elapsed(): Long = SystemClock.elapsedRealtime() - startedAt
@@ -205,6 +258,7 @@ class AddonSession internal constructor(
     }
 
     fun release() {
+        subtitles.release()
         loop?.cancel()
         snapshot(force = true)
     }
@@ -218,6 +272,7 @@ class AddonSession internal constructor(
     private companion object {
         const val PREPARE_MS = 45_000L
         const val FIRST_FRAME_MS = 20_000L
+        const val SUBTITLE_MS = 5_000L
         const val CHECK_MS = 5_000L
         const val MOVED_MS = 5_000L
     }
