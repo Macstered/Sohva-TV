@@ -41,3 +41,21 @@ Inventory: PROF-01…22, HOME-36, SEARCH-18. Later: PROF-23 (the backup, M7).
    what this profile may see, the group pickers, the note), Parental controls, the lock button in
    Channel management.
 6. Device tests (spec 04 §11), the clear-state rule, measurements, inventory, exit.
+
+## Status (26 September 2026)
+
+Built, with tests (unit, query plans, device tests on API 30):
+- The household in the start snapshot; the active profile behind every per-profile read and
+  write; allowed groups joined in the guide, player, walls, Search, Home and Continue watching
+  queries (migration 8→9); locks; the PIN encrypted, checked off the main thread, changed without
+  losing the locks.
+- Who is watching at start and on the rail; the PIN screen; the gates in front of locked channels
+  (guide, Home, Search, reminders, zapping, the Last-channel start), Settings and the managers
+  for a restricted profile, and entering an unrestricted profile; the refusal toast.
+- Settings › General › Profiles, Settings › Parental controls, Channel management's lock.
+
+Exit measurements (docs/performance-log.md): a switch from the rail shows the new profile's Home in
+189 ms (median, budget 1 s); a restricted profile's guide opens its first group in 434 ms and All
+channels in 322 ms (screen-open budget 700 ms). The whole device suite (27 classes) is green.
+
+Later: PROF-23 (the backup, M7); the Discover, Trakt and sport parts of PROF-09 and PROF-14.

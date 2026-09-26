@@ -859,4 +859,5 @@
     <string name="sports_channel_priority_codes">Koodit, esimerkiksi FI, EN, SE</string>
     <string name="sports_channel_priority_save">Tallenna järjestys</string>
     <string name="sports_channel_priority_saved">Kanavien järjestys tallennettu</string>
+    <string name="profile_groups_missing">Tämän profiilin ryhmiä ei ole nykyisissä lähteissä. Vanhempien PIN-koodin tietävä voi valita uudet ryhmät Asetuksista.</string>
 </resources>

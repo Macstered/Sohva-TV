@@ -61,10 +61,15 @@ class ProfileStore(
     /** Whenever what the active profile sees may have changed: a switch or an edited restriction. */
     val changes: Flow<Unit> = merge(activeChanges.map { }, restrictionsChanged)
 
-    /** The household read for the first frame; from then on the preferences are followed. */
+    /**
+     * The household read for the first frame; from then on the preferences are followed. Once
+     * followed, a later seed changes nothing: its snapshot may be older than what the preferences
+     * already delivered, and they would not deliver it again.
+     */
     fun seed(household: Household) {
+        if (!following.compareAndSet(false, true)) return
         state.value = household
-        if (following.compareAndSet(false, true)) scope.launch { prefs.household.collect { state.value = it } }
+        scope.launch { prefs.household.collect { state.value = it } }
     }
 
     suspend fun add(name: String): Boolean {

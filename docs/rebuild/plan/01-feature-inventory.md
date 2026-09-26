@@ -48,7 +48,7 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-05** The whole interface is drawn at the chosen interface size (100, 90, 80 or 70 %); the launch picture stays at device density.
 - [x] **SHELL-06** The chosen interface language is applied before any text is resolved (below Android 13 by the app, from Android 13 by the platform's per-app language).
 - [ ] **SHELL-07** Start screen setting: Home (default), Programme guide, or Last channel.
-- [ ] **SHELL-08** Last channel start opens the guide on that channel and plays it; a PIN-locked channel asks for the PIN first; a channel that no longer exists falls back to the guide.
+- [x] **SHELL-08** Last channel start opens the guide on that channel and plays it; a PIN-locked channel asks for the PIN first; a channel that no longer exists falls back to the guide.
 - [ ] **SHELL-09** Who is watching at start when the household has more than one profile and the question is switched on (details in [Profiles](../specs/04-profiles-parental.md)).
 - [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
 - [ ] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
@@ -62,9 +62,9 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [ ] **SHELL-19** Returning to Movies or Series restores the browse position; returning to Sohva Sport restores the open match card; returning to the guide focuses the channel.
 - [x] **SHELL-20** Home navigation rail down the left edge: icons only at rest, widening over the content with labels when it takes focus.
 - [x] **SHELL-21** Rail destinations: Live TV, Sohva Sport, Movies, Series, Search, Discover (only when available), Who is watching (only with two or more profiles), Settings, under a Home marker.
-- [ ] **SHELL-22** Settings sits behind the parental PIN for a restricted profile.
-- [ ] **SHELL-23** A channel outside a restricted profile's groups is refused with a short toast "This profile cannot watch that channel".
-- [ ] **SHELL-24** A PIN-locked channel asks for the PIN before live, catch-up and zapped playback.
+- [x] **SHELL-22** Settings sits behind the parental PIN for a restricted profile.
+- [x] **SHELL-23** A channel outside a restricted profile's groups is refused with a short toast "This profile cannot watch that channel".
+- [x] **SHELL-24** A PIN-locked channel asks for the PIN before live, catch-up and zapped playback.
 - [ ] **SHELL-25** A reminder notification opens its channel or its match card, whether the app was closed or already running.
 - [ ] **SHELL-26** A fired reminder appears as a dialog over any screen; the first reminder ever set explains, once, how to let reminders open the app; Android 13+ asks for the notification permission when a reminder is first set (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
 - [ ] **SHELL-27** Picture in picture (off by default): pressing Home while a stream plays shrinks it to a 16:9 corner with its own Close button; opening the app again restores full screen.
@@ -135,7 +135,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 **Profiles**
 
 - [x] **HOME-35** Every row is the active profile's own; switching profile resets Home to that profile's rows, focus and hero.
-- [ ] **HOME-36** A restricted profile sees no Trakt rows, no Discover cards and no first-sync note; its recent channels are limited to its allowed groups.
+- [x] **HOME-36** A restricted profile sees no Trakt rows, no Discover cards and no first-sync note; its recent channels are limited to its allowed groups. *(done in M6; Trakt rows and Discover cards do not exist yet, their checks join in M9 and M10.)*
 
 ## Search
 
@@ -158,7 +158,7 @@ Spec: [specs/03-search.md](../specs/03-search.md) · Milestone: M5 · 19 items
 - [x] **SEARCH-15** OK on an episode plays it from its saved position; when it ends the next episode plays (autoplay on) or the series page opens.
 - [ ] **SEARCH-16** OK on a sport result opens Sohva Sport.
 - [x] **SEARCH-17** Only enabled sources, their active snapshots and what the device's organisation rules show (hidden channels, groups and titles never appear).
-- [ ] **SEARCH-18** A restricted profile finds only channels, programmes, films and series in its allowed groups.
+- [x] **SEARCH-18** A restricted profile finds only channels, programmes, films and series in its allowed groups.
 - [x] **SEARCH-19** Leaving Search forgets the text and the results.
 
 ## Profiles and parental controls
@@ -167,35 +167,35 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 
 **Profiles**
 
-- [ ] **PROF-01** The implicit first profile "Everyone" (`profile_default_name`) always exists and cannot be removed.
-- [ ] **PROF-02** Add a profile in Settings › General › Profiles: a name (1–24 characters) and Add profile; up to 6 profiles in total.
-- [ ] **PROF-03** Each new profile gets the next of six avatar colours automatically.
-- [ ] **PROF-04** Remove a profile (any but the first) from a picker, immediately, with everything it kept.
-- [ ] **PROF-05** "Who is watching" row in Settings shows the active profile and opens a picker to switch.
-- [ ] **PROF-06** "Ask who is watching at start" switch (default on), shown once there is more than one profile.
-- [ ] **PROF-07** Who is watching at start: a full-screen picker of large tiles, the last active profile focused, when the household has more than one profile and the switch is on.
-- [ ] **PROF-08** Who is watching on the Home rail (only with two or more profiles), opening the same picker.
-- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress.
+- [x] **PROF-01** The implicit first profile "Everyone" (`profile_default_name`) always exists and cannot be removed.
+- [x] **PROF-02** Add a profile in Settings › General › Profiles: a name (1–24 characters) and Add profile; up to 6 profiles in total.
+- [x] **PROF-03** Each new profile gets the next of six avatar colours automatically.
+- [x] **PROF-04** Remove a profile (any but the first) from a picker, immediately, with everything it kept.
+- [x] **PROF-05** "Who is watching" row in Settings shows the active profile and opens a picker to switch.
+- [x] **PROF-06** "Ask who is watching at start" switch (default on), shown once there is more than one profile.
+- [x] **PROF-07** Who is watching at start: a full-screen picker of large tiles, the last active profile focused, when the household has more than one profile and the switch is on.
+- [x] **PROF-08** Who is watching on the Home rail (only with two or more profiles), opening the same picker.
+- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches M8, Discover M9, Trakt M10.)*
 
 **What this profile may see**
 
-- [ ] **PROF-10** "What this profile may see": choose the profile to limit, then Live TV groups, Film groups and Series groups, each "Everything" or "N groups".
-- [ ] **PROF-11** Multi-choice group pickers ("Groups for <name>"), one row per group across sources, with the sources named; changes apply at once.
-- [ ] **PROF-12** A restricted profile sees only its groups in the guide, the player's channel list, Movies, Series, Search and Home's recent channels.
-- [ ] **PROF-13** Playing, catching up or zapping to a channel outside the groups is refused with the toast "This profile cannot watch that channel".
-- [ ] **PROF-14** A restricted profile never sees Discover (no rail item, no Continue watching cards, direct access denied) or Trakt (no Accounts section, no Trakt rows, no first-sync note).
-- [ ] **PROF-15** A note under the group rows says whether the PIN guards the restriction (red when no PIN is set).
+- [x] **PROF-10** "What this profile may see": choose the profile to limit, then Live TV groups, Film groups and Series groups, each "Everything" or "N groups".
+- [x] **PROF-11** Multi-choice group pickers ("Groups for <name>"), one row per group across sources, with the sources named; changes apply at once.
+- [x] **PROF-12** A restricted profile sees only its groups in the guide, the player's channel list, Movies, Series, Search and Home's recent channels.
+- [x] **PROF-13** Playing, catching up or zapping to a channel outside the groups is refused with the toast "This profile cannot watch that channel".
+- [ ] **PROF-14** A restricted profile never sees Discover (no rail item, no Continue watching cards, direct access denied) or Trakt (no Accounts section, no Trakt rows, no first-sync note). *(the rail's Discover item and the Accounts section's place done in M6; Discover (M9) and Trakt (M10) add their own checks.)*
+- [x] **PROF-15** A note under the group rows says whether the PIN guards the restriction (red when no PIN is set).
 
 **Parental PIN**
 
-- [ ] **PROF-16** Set a household PIN of 4–8 digits in Settings › Parental controls; stored encrypted.
-- [ ] **PROF-17** Remove (or change) the PIN by entering the current one; removing it unlocks every locked channel of every profile.
-- [ ] **PROF-18** Lock or unlock a channel for the active profile in Channel management (only with a PIN set).
-- [ ] **PROF-19** A locked channel asks for the PIN before live playback, catch-up, zapping and a last-channel start.
-- [ ] **PROF-20** With a restricted profile and a PIN in the household, entering any unrestricted profile asks for the PIN (at start, from the rail, from Settings); entering a restricted profile never does.
-- [ ] **PROF-21** A restricted profile opens Settings only past the PIN.
-- [ ] **PROF-22** PIN screen: title, what is locked, prompt, masked numeric field, Back and Unlock; a wrong PIN clears the field and says "Incorrect PIN code"; unlimited retries.
-- [ ] **PROF-23** Profiles, their sets and the PIN travel in the encrypted `.smbak` backup.
+- [x] **PROF-16** Set a household PIN of 4–8 digits in Settings › Parental controls; stored encrypted.
+- [x] **PROF-17** Remove (or change) the PIN by entering the current one; removing it unlocks every locked channel of every profile.
+- [x] **PROF-18** Lock or unlock a channel for the active profile in Channel management (only with a PIN set).
+- [x] **PROF-19** A locked channel asks for the PIN before live playback, catch-up, zapping and a last-channel start.
+- [x] **PROF-20** With a restricted profile and a PIN in the household, entering any unrestricted profile asks for the PIN (at start, from the rail, from Settings); entering a restricted profile never does.
+- [x] **PROF-21** A restricted profile opens Settings only past the PIN.
+- [x] **PROF-22** PIN screen: title, what is locked, prompt, masked numeric field, Back and Unlock; a wrong PIN clears the field and says "Incorrect PIN code"; unlimited retries.
+- [ ] **PROF-23** Profiles, their sets and the PIN travel in the encrypted `.smbak` backup. *(M7, with the backup.)*
 
 ## Sources and import
 
@@ -357,13 +357,13 @@ Spec: [specs/21-channel-management.md](../specs/21-channel-management.md) · Mil
 - [x] **CHAN-17** Custom channel lists: pick a list, Add to list / Remove from list, Delete list.
 - [x] **CHAN-18** Save stores name, group, logo, number and guide mapping together.
 - [x] **CHAN-19** Hide from guide / Show in guide (immediate).
-- [ ] **CHAN-20** Lock with PIN / Remove PIN lock (immediate, per profile); without a parental PIN the button reads "Configure PIN in Settings" and is disabled.
+- [x] **CHAN-20** Lock with PIN / Remove PIN lock (immediate, per profile); without a parental PIN the button reads "Configure PIN in Settings" and is disabled.
 - [x] **CHAN-21** Move up (↑) / Move down (↓), only while sorted by Playlist.
 - [x] **CHAN-22** Reset removes the channel's customisation.
 - [x] **CHAN-23** A status line confirms every action.
 - [x] **CHAN-24** Favourite channels per profile, toggled from the guide's hero and programme actions; the guide rail's Favourites list.
 - [ ] **CHAN-25** Recently watched channels per profile (last 20, most recent first): the guide rail's Recently watched list and Home's recent channels row.
-- [ ] **CHAN-26** A locked channel asks for the PIN before live, catch-up and zapped playback and at a Last-channel start.
+- [x] **CHAN-26** A locked channel asks for the PIN before live, catch-up and zapped playback and at a Last-channel start.
 - [ ] **CHAN-27** Customisations apply in the guide, the player's channel list and dial, Home, Search, Sohva Sport stream matching and the stored programme guide.
 - [x] **CHAN-28** Custom lists appear on the guide rail (each can be switched off in the Library manager).
 - [ ] **CHAN-29** Backups carry channel customisations, lists, memberships, phone-sent logos (as picture bytes) and each profile's favourites, recents and (with a PIN) locks.

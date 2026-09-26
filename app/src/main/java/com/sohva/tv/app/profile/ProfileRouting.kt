@@ -87,6 +87,7 @@ fun AppGraph.switchProfile(targetId: String, stack: BackStack<AppRoute>, fromSet
  * Home and Continue watching re-read on the switch themselves.
  */
 suspend fun AppGraph.enterProfile(profileId: String) {
+    if (profileId != data.profiles.activeId) switchedAt.set(android.os.SystemClock.elapsedRealtime())
     data.profiles.switchTo(profileId)
     guideFocusChannel = null
     keptRows.clear()

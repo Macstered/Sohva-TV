@@ -849,4 +849,5 @@
     <string name="sports_channel_priority_codes">Codes, z. B. DE, EN, UK</string>
     <string name="sports_channel_priority_save">Reihenfolge speichern</string>
     <string name="sports_channel_priority_saved">Senderreihenfolge gespeichert</string>
+    <string name="profile_groups_missing">Die Gruppen dieses Profils sind in den aktuellen Quellen nicht vorhanden. Wer die Eltern-PIN kennt, kann in den Einstellungen neue wählen.</string>
 </resources>

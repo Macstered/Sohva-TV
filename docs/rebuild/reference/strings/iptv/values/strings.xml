@@ -868,4 +868,5 @@
     <string name="sports_channel_priority_codes">Codes, for example ES, EN, UK</string>
     <string name="sports_channel_priority_save">Save order</string>
     <string name="sports_channel_priority_saved">Channel order saved</string>
+    <string name="profile_groups_missing">This profile\'s groups are not in the current sources. Whoever knows the parental PIN can choose new ones in Settings.</string>
 </resources>

@@ -49,7 +49,10 @@ class ProfilesTest {
     private fun start(household: suspend () -> Unit = {}, body: () -> Unit) {
         runBlocking {
             household()
-            graph.data.profiles.seed(graph.data.preferences.household.first())
+            val stored = graph.data.preferences.household.first()
+            graph.data.profiles.seed(stored)
+            // Once seeded, the store follows the preferences on its own: wait until it has.
+            kotlinx.coroutines.withTimeout(5_000) { graph.data.profiles.household.first { it == stored } }
         }
         ActivityScenario.launch(MainActivity::class.java).use { body() }
     }
@@ -138,6 +141,19 @@ class ProfilesTest {
         assertTrue(exists(RailItem.PROFILES.tag))
     }
 
+    /** PROF-FR-16: a profile added while the app runs puts Who is watching on the rail. */
+    @Test
+    fun aProfileAddedWhileRunningPutsWhoIsWatchingOnTheRail() = start {
+        awaitHome()
+        assertFalse(exists(RailItem.PROFILES.tag))
+        runBlocking { twoProfiles() }
+        try {
+            compose.waitUntil(10_000) { exists(RailItem.PROFILES.tag) }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("store: ${graph.data.profiles.household.value}; prefs: ${runBlocking { graph.data.preferences.household.first() }}", e)
+        }
+    }
+
     /** PROF-FR-19, -22, SHELL-FR-20, -23: a locked channel meets the PIN; a wrong PIN says so, the right one plays. */
     @Test
     fun aLockedChannelMeetsThePinAndTheRightPinPlaysIt() = start({
@@ -155,6 +171,25 @@ class ProfilesTest {
         enterPin("2468")
         compose.waitUntil(10_000) { exists("screen-player") }
         assertFalse(exists("screen-pin"))
+    }
+
+    /** SHELL-FR-22, -23: zapping onto a locked channel asks for the PIN over the player; unlocking replaces both. */
+    @Test
+    fun zappingOntoALockedChannelMeetsThePin() = start({
+        graph.data.profiles.setPin("2468")
+        graph.data.profiles.setLocked("fixture-0:c1", true)
+    }) {
+        openGuide()
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("screen-player") }
+        // CH− steps to the next channel (REMOTE-FR-13): the locked one.
+        press(KeyEvent.KEYCODE_CHANNEL_DOWN)
+        enterPin("2468")
+        compose.waitUntil(10_000) { exists("screen-player") && !exists("screen-pin") }
+        // Back leaves to the guide on the channel just unlocked (SHELL-FR-23 rememberForGuide).
+        repeat(3) { if (!exists("screen-guide")) press(KeyEvent.KEYCODE_BACK) }
+        compose.waitUntil(10_000) { exists("screen-guide") }
+        awaitFocus("guide-row-1")
     }
 
     /** PROF-FR-20, -21, SHELL-FR-32, -33: a restricted profile meets the PIN for Settings and for leaving; entering it does not. */

@@ -51,7 +51,10 @@ class ClearStateRule : ExternalResource() {
             graph.metadata.settings.reload()
             // Profiles (M6): the household went with the preferences; the PIN is a secret; the store follows both.
             graph.data.secrets.write(ProfileStore.PIN_KEY, null)
-            graph.data.profiles.seed(graph.data.preferences.household.first())
+            val stored = graph.data.preferences.household.first()
+            graph.data.profiles.seed(stored)
+            // Once seeded, the store follows the preferences on its own: wait until it has.
+            kotlinx.coroutines.withTimeout(5_000) { graph.data.profiles.household.first { it == stored } }
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())
         }
         graph.guideFocusChannel = null

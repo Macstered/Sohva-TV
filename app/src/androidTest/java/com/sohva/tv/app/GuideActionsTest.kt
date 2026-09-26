@@ -123,6 +123,12 @@ class GuideActionsTest {
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(5_000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasSetTextAction()).performTextReplacement("summit")
+        // The matches arrive 250 ms after the last change, while the keyboard is still up: the field
+        // and its keyboard must stay (decision "Find programme keeps focus in the field").
+        compose.waitForIdle()
+        Thread.sleep(800)
+        compose.waitForIdle()
+        compose.waitUntil(3_000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitForIdle()
         compose.waitUntil(8_000) {

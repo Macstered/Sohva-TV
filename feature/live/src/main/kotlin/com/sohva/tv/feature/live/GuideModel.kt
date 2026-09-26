@@ -283,7 +283,10 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
                 _selection.value = null
             } else {
                 pages.peek(target)?.let { selectChannel(it) }
-                focusRow(target, CHANNEL)
+                // Find programme's matches arrive while the viewer types: focus stays in the field, since
+                // a focused row closes the rail and with it the field and its keyboard (GUIDE-FR-92). The
+                // last request goes too: the grid composed again for the matches would replay it.
+                if (searching) _focus.value = null else focusRow(target, CHANNEL)
             }
         }
         listJob = job
