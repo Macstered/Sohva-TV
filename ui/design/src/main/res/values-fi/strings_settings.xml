@@ -199,4 +199,5 @@
     <string name="update_install">Asenna</string>
     <string name="update_open_permission">Salli asennukset</string>
     <string name="update_help">Lataukset tarkistetaan julkaistua tarkistussummaa vasten; soittolistat ja asetukset säilyvät.</string>
+    <string name="profile_groups_missing">Tämän profiilin ryhmiä ei ole nykyisissä lähteissä. Vanhempien PIN-koodin tietävä voi valita uudet ryhmät Asetuksista.</string>
 </resources>

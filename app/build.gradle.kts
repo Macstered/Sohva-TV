@@ -108,6 +108,7 @@ dependencies {
     implementation(project(":feature:library"))
     implementation(project(":feature:organize"))
     implementation(project(":feature:search"))
+    implementation(project(":feature:profiles"))
     implementation(project(":core:player"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.activity.compose)

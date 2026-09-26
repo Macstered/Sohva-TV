@@ -49,6 +49,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EpisodeSearchEntity::class,
         ChannelSearchEntity::class,
         ProgrammeSearchEntity::class,
+        ProfileAllowedGroupEntity::class,
     ],
     version = SohvaDatabase.VERSION,
     exportSchema = true,
@@ -62,7 +63,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     // organisation rules and the indexes of the other content orders. 7 -> 8 (M5) adds Search's
     // full-text tables; [SearchTablesCreated] installs their triggers and indexes existing rows once,
     // inside the migration: no released install holds version 7 data, so the one-time cost falls
-    // only on test installs (decision "Search index").
+    // only on test installs (decision "Search index"). 8 -> 9 (M6) adds the profiles' allowed groups.
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -71,6 +72,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
         AutoMigration(from = 7, to = 8, spec = SohvaDatabase.SearchTablesCreated::class),
+        AutoMigration(from = 8, to = 9),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -120,6 +122,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun home(): HomeDao
 
+    abstract fun profiles(): ProfileDao
+
     /**
      * v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied, and
      * ranks move to M3's scheme (playlist order above every viewer position), or channels an import
@@ -141,7 +145,7 @@ abstract class SohvaDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION: Int = 8
+        const val VERSION: Int = 9
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

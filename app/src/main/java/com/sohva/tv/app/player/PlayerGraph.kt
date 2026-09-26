@@ -1,5 +1,7 @@
 package com.sohva.tv.app.player
 
+import com.sohva.tv.app.profile.admit
+import com.sohva.tv.core.model.profile.ChannelAdmission
 import android.app.ActivityManager
 import android.os.Build
 import com.sohva.tv.app.AppGraph
@@ -108,8 +110,10 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
         override suspend fun recordWatched(channelKey: String) = withContext(io) {
             graph.data.live.recordWatched(channelKey)
-            graph.data.preferences.setLastChannel(channelKey)
+            graph.data.preferences.setLastChannel(graph.data.profiles.activeId, channelKey)
         }
+
+        override suspend fun admit(channelKey: String): ChannelAdmission = graph.admit(channelKey)
 
         override fun logFailure(line: String) = graph.diagnostics.info("player", line)
 

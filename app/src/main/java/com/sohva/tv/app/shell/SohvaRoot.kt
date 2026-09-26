@@ -10,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -21,6 +22,7 @@ import androidx.tracing.trace
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRouteCodec
 import com.sohva.tv.app.navigation.startRoutes
+import com.sohva.tv.app.profile.StartQuestion
 import com.sohva.tv.app.reminder.ReminderLayer
 import com.sohva.tv.core.data.device.DeviceTierReader
 import com.sohva.tv.core.model.device.DeviceTier
@@ -43,6 +45,9 @@ data class StartState(val snapshot: StartSnapshot, val tier: DeviceTier)
 interface RootHost {
     /** The app has drawn two frames: the window's launch picture can go (spec 01 SHELL-FR-04). */
     fun onAppDrawn()
+
+    /** Back on the start-time picker: the app closes (decision "Start-time picker"). */
+    fun leave()
 }
 
 /**
@@ -58,6 +63,8 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
             // Timing marks: to the diagnostics log (counts and durations only) and as trace sections.
             val t0 = graph.clock.monotonicNanos()
             val snapshot = trace("Startup:Snapshot") { graph.data.preferences.startSnapshot() }
+            // Every per-profile read that follows uses the active profile (spec 04 PROF-FR-07).
+            graph.data.profiles.seed(snapshot.household)
             val t1 = graph.clock.monotonicNanos()
             val tier = trace("Startup:Tier") { DeviceTier.decide(DeviceTierReader(graph.app).read()) }
             val t2 = graph.clock.monotonicNanos()
@@ -89,12 +96,22 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
         InterfaceScaled(scale) {
             // Test tags double as resource ids, so UiAutomator journeys (profiles, benchmarks) find them.
             Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
-                val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen, start.snapshot.lastChannel) }
-                CompositionLocalProvider(LocalArtwork provides graph.artwork) {
-                    NavHost(stack) { route -> AppDestination(route, stack, graph) }
+                // Asked once per process and kept across an activity recreation (spec 04 PROF-FR-10).
+                var answered by rememberSaveable { mutableStateOf(graph.startAnswered || !start.snapshot.household.askNeeded) }
+                var lastChannel by rememberSaveable { mutableStateOf(start.snapshot.lastChannel) }
+                if (!answered) {
+                    StartQuestion(graph, onAnswered = { last ->
+                        lastChannel = last
+                        answered = true
+                    }, onLeave = host::leave)
+                } else {
+                    val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen, lastChannel) }
+                    CompositionLocalProvider(LocalArtwork provides graph.artwork) {
+                        NavHost(stack) { route -> AppDestination(route, stack, graph) }
+                    }
+                    // Due reminders and notification taps, over whatever screen is up (spec 22 REM-FR-21).
+                    ReminderLayer(graph, stack)
                 }
-                // Due reminders and notification taps, over whatever screen is up (spec 22 REM-FR-21).
-                ReminderLayer(graph, stack)
             }
         }
     }

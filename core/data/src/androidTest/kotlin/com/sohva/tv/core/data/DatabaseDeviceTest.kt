@@ -190,6 +190,20 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom8To9KeepingViewerDataAndAddingAllowedGroups() {
+        helper.createDatabase(name, 8).use {
+            it.execSQL("INSERT INTO favourite_channel (profile_id, channel_key, added_at) VALUES ('default', 's1:c1', 1)")
+            it.execSQL("INSERT INTO locked_channel (profile_id, channel_key) VALUES ('default', 's1:c2')")
+        }
+        helper.runMigrationsAndValidate(name, 9, true).use { db ->
+            db.query("SELECT channel_key FROM favourite_channel").use { assertEquals(1, it.count) }
+            db.query("SELECT channel_key FROM locked_channel").use { assertEquals(1, it.count) }
+            db.execSQL("INSERT INTO profile_allowed_group (profile_id, room, group_key) VALUES ('p1', 'LIVE', 'name:news')")
+            db.query("SELECT group_key FROM profile_allowed_group WHERE profile_id = 'p1' AND room = 'LIVE'").use { assertEquals(1, it.count) }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

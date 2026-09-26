@@ -36,7 +36,13 @@ import kotlinx.coroutines.withContext
  * §9). Every call runs on [io]; nothing here holds a catalogue: lists are [ChannelList] indexes,
  * schedules come for at most 80 guide ids and four hours at a time.
  */
-class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatcher, private val clock: Clock) : LiveReads {
+/** Favourites, recents and what may be seen belong to the active profile, which [profile] names at each call (spec 04 PROF-FR-07). */
+class LiveStore(
+    private val db: SohvaDatabase,
+    private val io: CoroutineDispatcher,
+    private val clock: Clock,
+    private val profile: () -> String = { DEFAULT_PROFILE },
+) : LiveReads {
     private val live = db.live()
     private val viewer = db.viewer()
 
@@ -53,7 +59,8 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     /** A new guide snapshot or a source edit re-reads the visible programmes (§8 "Import while open"). */
     override fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }
 
-    override suspend fun rail(sourceId: String): List<LiveGroup> = withContext(io) { live.rail(sourceId) }
+    /** The source's groups the active profile may see (spec 04 PROF-FR-23). */
+    override suspend fun rail(sourceId: String): List<LiveGroup> = withContext(io) { live.rail(sourceId, profile()) }
 
     override fun railRuleChanges(): Flow<LiveRailRules> =
         db.invalidationTracker.createFlow("organization_rule").map { railRules() }.distinctUntilChanged()
@@ -71,7 +78,15 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
         )
     }
 
-    override suspend fun open(spec: ListSpec): ChannelList = withContext(io) { ChannelList.open(spec, live) }
+    /** A group the profile may not see opens empty (a remembered group after a switch, spec 04 PROF-FR-23). */
+    override suspend fun open(spec: ListSpec): ChannelList = withContext(io) {
+        val profileId = profile()
+        val allowed = spec !is ListSpec.Group || db.profiles().groupAllowed(profileId, OrgRoom.LIVE.wire, spec.groupId)
+        ChannelList.open(if (allowed) spec else ListSpec.Named(spec.sourceId, LongArray(0)), live, profileId)
+    }
+
+    /** Whether the active profile may watch [key] (spec 01 SHELL-FR-20); an unknown channel is not refused here. */
+    suspend fun allowed(key: String): Boolean = withContext(io) { db.profiles().channelAllowed(profile(), key) ?: true }
 
     override suspend fun page(list: ChannelList, page: Int): List<LiveChannel> = withContext(io) { list.page(page) }
 
@@ -83,16 +98,16 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     suspend fun playable(key: String): PlayableChannel? = withContext(io) { live.playable(key) }
 
     /** Favourites of the profile in [sourceId], in display order (GUIDE-FR-33, GUIDE-NFR-12). */
-    override suspend fun favourites(sourceId: String, profileId: String): ListSpec.Named = withContext(io) {
-        val keys = viewer.favouriteKeys(profileId)
-        val found = keys.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it) }
+    override suspend fun favourites(sourceId: String): ListSpec.Named = withContext(io) {
+        val keys = viewer.favouriteKeys(profile())
+        val found = keys.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it, profile()) }
         ListSpec.Named(sourceId, found.sortedWith(compareBy({ it.rank }, { it.id })).map { it.id }.toLongArray())
     }
 
     /** The profile's last 20 channels of [sourceId], most recent first (GUIDE-FR-34). */
-    override suspend fun recents(sourceId: String, profileId: String): ListSpec.Named = withContext(io) {
-        val keys = viewer.recentKeys(profileId)
-        val byKey = live.keysByChannelKey(sourceId, keys).associateBy { it.key }
+    override suspend fun recents(sourceId: String): ListSpec.Named = withContext(io) {
+        val keys = viewer.recentKeys(profile())
+        val byKey = live.keysByChannelKey(sourceId, keys, profile()).associateBy { it.key }
         ListSpec.Named(sourceId, keys.mapNotNull { byKey[it]?.id }.toLongArray())
     }
 
@@ -106,7 +121,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
      */
     override suspend fun customList(listId: String, sourceId: String): ListSpec.Named = withContext(io) {
         val places = db.channelLists().members(listId, sourceId)
-        val byKey = places.map { it.key }.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it) }.associateBy { it.key }
+        val byKey = places.map { it.key }.chunked(BATCH).flatMap { live.keysByChannelKey(sourceId, it, profile()) }.associateBy { it.key }
         val resolver = OrgResolver(OrgRules(db).of(OrgRoom.LIVE))
         val view = OrgKeys.list(listId)
         val members = places.mapIndexedNotNull { i, m -> byKey[m.key]?.let { row -> ListMember(row, i, m.sortOrder, resolver.memberRule(item(sourceId, m.key), view)) } }
@@ -126,13 +141,12 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     // A list view names its members by channel key; the channel's own groups do not take part.
     private fun item(sourceId: String, key: String) = OrgItem(OrgRoom.LIVE, sourceId, "", "", key)
 
-    override fun favouriteKeys(profileId: String): Flow<Set<String>> =
-        viewer.observeFavouriteKeys(profileId).map { it.toHashSet() }.flowOn(io)
-
-    fun recentsChanged(profileId: String = DEFAULT_PROFILE): Flow<List<String>> = viewer.observeRecentKeys(profileId).flowOn(io)
+    override fun favouriteKeys(): Flow<Set<String>> =
+        viewer.observeFavouriteKeys(profile()).map { it.toHashSet() }.flowOn(io)
 
     /** Toggles a favourite; returns whether the channel is a favourite afterwards (GUIDE-FR-30). */
-    override suspend fun toggleFavourite(key: String, profileId: String): Boolean = withContext(io) {
+    override suspend fun toggleFavourite(key: String): Boolean = withContext(io) {
+        val profileId = profile()
         if (viewer.removeFavourite(profileId, key) > 0) {
             false
         } else {
@@ -142,8 +156,8 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
     }
 
     /** Front of the recents, trimmed to 20 (spec 30 PLAY-FR-57). */
-    override suspend fun recordWatched(key: String, profileId: String): Unit = withContext(io) {
-        viewer.recordRecent(RecentChannelEntity(profileId, key, clock.wallMillis()))
+    override suspend fun recordWatched(key: String): Unit = withContext(io) {
+        viewer.recordRecent(RecentChannelEntity(profile(), key, clock.wallMillis()))
     }
 
     /**
@@ -179,7 +193,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
         val title = "%" + escape(query.trim()) + "%"
         val keys = when (spec) {
             is ListSpec.Group -> live.groupMatches(spec.groupId, source.id, snapshot, name, title, from, to, from - longest)
-            is ListSpec.All -> live.sourceMatches(source.id, snapshot, name, title, from, to, from - longest)
+            is ListSpec.All -> live.sourceMatches(source.id, profile(), snapshot, name, title, from, to, from - longest)
             is ListSpec.Ungrouped, is ListSpec.Named -> emptyList()
         }
         ListSpec.Named(source.id, keys.map { it.id }.toLongArray())
@@ -193,7 +207,7 @@ class LiveStore(private val db: SohvaDatabase, private val io: CoroutineDispatch
             byOwnNumber = { n ->
                 when (spec) {
                     is ListSpec.Group -> live.groupByNumber(spec.groupId, n)?.let { list.indexOf(it.id, it.rank) }
-                    is ListSpec.All -> live.sourceByNumber(spec.sourceId, n)?.let { list.indexOf(it.id, it.rank) }
+                    is ListSpec.All -> live.sourceByNumber(spec.sourceId, n, profile())?.let { list.indexOf(it.id, it.rank) }
                     is ListSpec.Named -> spec.ids.toList().chunked(BATCH).firstNotNullOfOrNull { live.idsByNumber(it, n).firstOrNull() }
                         ?.let { id -> spec.ids.indexOf(id) }
                     is ListSpec.Ungrouped -> null

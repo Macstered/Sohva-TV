@@ -38,8 +38,24 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsModelTest {
+    private class FakeProfiles : ProfileSettingsServices {
+        override val household = MutableStateFlow(com.sohva.tv.core.model.profile.Household())
+        override suspend fun add(name: String): Boolean = false
+        override suspend fun remove(profileId: String) = Unit
+        override fun switchTo(profileId: String) = Unit
+        override suspend fun setAskAtStart(on: Boolean) = Unit
+        override suspend fun restriction(profileId: String) = com.sohva.tv.core.model.profile.Restriction.NONE
+        override suspend fun anyRestricted(): Boolean = false
+        override suspend fun groupChoices(room: com.sohva.tv.core.model.org.OrgRoom) = emptyList<com.sohva.tv.core.data.profile.GroupChoice>()
+        override suspend fun setAllowed(profileId: String, room: com.sohva.tv.core.model.org.OrgRoom, groupKey: String, allowed: Boolean) = Unit
+        override suspend fun setPin(pin: String): Outcome<Unit> = Outcome.Ok(Unit)
+        override suspend fun removePin(current: String): Boolean = false
+        override suspend fun changePin(current: String, next: String): Outcome<Boolean> = Outcome.Ok(false)
+    }
+
     private class FakeServices : SettingsServices {
         override val library: LibrarySettingsServices = FakeLibrary()
+        override val profiles: ProfileSettingsServices = FakeProfiles()
 
         val sources = MutableStateFlow<List<Source>>(emptyList())
         val health = MutableStateFlow<List<SourceHealth>>(emptyList())

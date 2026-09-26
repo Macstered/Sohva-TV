@@ -44,14 +44,35 @@ sealed interface AppRoute {
      * Playback of a channel (spec 30 §3.1): live, or with [archive] a programme from the
      * provider's archive (spec 22). [returnToGuide]: Back from the bare picture leaves to
      * `[Home, Guide]` on this channel; catch-up always pops. [recordWatched] is false for playback
-     * a reminder or a notification started (spec 21 CHAN-FR-61). Never restored after process death.
+     * a reminder or a notification started (spec 21 CHAN-FR-61). [admitted]: the first channel
+     * already passed the profile's group check and lock (spec 01 SHELL-FR-20); a start route's
+     * last channel is checked by the player. Never restored after process death.
      */
     data class Player(
         val channelKey: String,
         val returnToGuide: Boolean,
         val archive: ArchiveWindow? = null,
         val recordWatched: Boolean = true,
+        val admitted: Boolean = false,
     ) : AppRoute
+
+    /**
+     * The PIN in front of a locked channel (spec 01 SHELL-FR-20…23): unlocking plays it with the
+     * catch-up [archive] if any; with [replacePlayer] the player underneath is replaced too (a zap).
+     */
+    data class PinGate(
+        val channelKey: String,
+        val archive: ArchiveWindow?,
+        val replacePlayer: Boolean,
+        val rememberForGuide: Boolean,
+        val recordWatched: Boolean,
+    ) : AppRoute
+
+    /**
+     * The PIN in front of entering [targetId] (spec 01 SHELL-FR-33), or, with a null target, in front
+     * of [then] for a restricted profile: Settings and the managers (SHELL-FR-32, spec 04 PROF-FR-35).
+     */
+    data class ProfileGate(val targetId: String?, val then: AppRoute?) : AppRoute
 }
 
 enum class CatalogueMode { MOVIES, SERIES }
@@ -72,12 +93,15 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         is AppRoute.SeriesDetails -> "seriespage:${route.key}"
         is AppRoute.Player -> "player"
         is AppRoute.VodPlayer -> "player"
+        // A gate restores to the screen underneath: it never opens by itself after a restart.
+        is AppRoute.PinGate, is AppRoute.ProfileGate -> "gate"
     }
 
     override fun decode(value: String): AppRoute? = when {
         value.startsWith("film:") -> AppRoute.FilmDetails(value.removePrefix("film:"))
         value.startsWith("seriespage:") -> AppRoute.SeriesDetails(value.removePrefix("seriespage:"))
-        value.startsWith("manager:") -> OrgRoom.entries.firstOrNull { it.name == value.removePrefix("manager:") }?.let { AppRoute.LibraryManager(it) }
+        value.startsWith("manager:") ->
+            OrgRoom.entries.firstOrNull { it.name == value.removePrefix("manager:") }?.let { AppRoute.ProfileGate(null, AppRoute.LibraryManager(it)) }
         else -> decodePlain(value)
     }
 
@@ -90,8 +114,9 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         "search" -> AppRoute.Search
         "discover" -> AppRoute.Discover
         "profiles" -> AppRoute.ProfilePicker
-        "settings" -> AppRoute.Settings
-        "channels" -> AppRoute.Channels
+        // Behind the management gate: a restricted profile meets the PIN again after a restart (spec 04 PROF-FR-34).
+        "settings" -> AppRoute.ProfileGate(null, AppRoute.Settings)
+        "channels" -> AppRoute.ProfileGate(null, AppRoute.Channels)
         // A playback route restores to the screen underneath it (spec 01 §4.4).
         else -> null
     }

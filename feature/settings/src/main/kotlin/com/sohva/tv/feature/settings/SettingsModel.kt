@@ -79,6 +79,9 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     /** Settings › Library: its own state and status line (spec 41 §5.1). */
     val library: LibrarySettings = LibrarySettings(services.library, viewModelScope)
 
+    /** Settings › General › Profiles and Parental controls (spec 04 §5.3). */
+    val profiles: ProfileSettings = ProfileSettings(services.profiles, viewModelScope)
+
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
 

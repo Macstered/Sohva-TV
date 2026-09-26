@@ -3,6 +3,9 @@ package com.sohva.tv.app.shell
 import android.content.Intent
 import android.os.Bundle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.net.toUri
@@ -21,6 +24,13 @@ import com.sohva.tv.app.navigation.CatalogueMode
 import com.sohva.tv.app.organize.AppManagerEnvironment
 import com.sohva.tv.app.organize.ManagerNavigation
 import com.sohva.tv.app.search.AppSearchEnvironment
+import com.sohva.tv.app.profile.ChannelStarter
+import com.sohva.tv.app.profile.PinGateDestination
+import com.sohva.tv.app.profile.ProfileGateDestination
+import com.sohva.tv.app.profile.ProfilePickerDestination
+import com.sohva.tv.app.profile.openManaged
+import com.sohva.tv.app.profile.refuseChannel
+import com.sohva.tv.app.profile.switchProfile
 import com.sohva.tv.app.settings.AppSettingsServices
 import com.sohva.tv.core.data.vod.ContentKeys
 import com.sohva.tv.core.data.vod.WallItem
@@ -65,10 +75,17 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
     val back = { stack.pop() }
     when (route) {
         AppRoute.Home -> {
-            val items = remember(flags) { railItems(flags) }
-            // Scoped to this stack entry: every arrival on Home is fresh (spec 02 §3.4).
-            val model = viewModel { HomeModel(AppHomeEnvironment(graph, stack)) }
-            HomeScreen(model, items, onOpen = { stack.push(it.route()) }, lowMemory = graph.player.lowMemory)
+            val household by graph.data.profiles.household.collectAsState()
+            val active = household.active.id
+            // Discover leaves the rail for a restricted profile (spec 04 PROF-FR-23); one small read per switch.
+            val restricted by produceState(false, household) { value = active in graph.data.profiles.restrictedIds() }
+            val items = remember(flags, household.several, restricted) { railItems(flags, household.several, restricted) }
+            // Scoped to this stack entry and the profile: every arrival on Home is fresh (spec 02 §3.4),
+            // and a switch gives the new profile its own rows, focus and hero (HOME-FR-27).
+            val model = viewModel(key = "home:$active") { HomeModel(AppHomeEnvironment(graph, stack)) }
+            HomeScreen(model, items, onOpen = { item ->
+                if (item == RailItem.SETTINGS) graph.openManaged(AppRoute.Settings, stack) else stack.push(item.route())
+            }, lowMemory = graph.player.lowMemory)
         }
         AppRoute.Guide -> {
             val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
@@ -82,7 +99,9 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             // One model per player session: zaps happen inside it, so the controller, the picture
             // shape and the previous channel carry across them (spec 30 PLAY-FR-23, -58, -81).
             val navigation = remember(stack, graph, route) { playerNavigation(route, stack, graph) }
-            val model = viewModel { PlayerModel(graph.player.screen(locale), route.channelKey, navigation, route.archive, route.recordWatched) }
+            val model = viewModel {
+                PlayerModel(graph.player.screen(locale), route.channelKey, navigation, route.archive, route.recordWatched, firstAdmitted = route.admitted)
+            }
             PlayerScreen(model)
         }
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
@@ -100,7 +119,9 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             SearchScreen(model)
         }
         AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
-        AppRoute.ProfilePicker -> PlaceholderScreen(R.string.profile_active_title, { back() }, "screen-profiles")
+        AppRoute.ProfilePicker -> ProfilePickerDestination(stack, graph)
+        is AppRoute.PinGate -> PinGateDestination(route, stack, graph)
+        is AppRoute.ProfileGate -> ProfileGateDestination(route, stack, graph)
         AppRoute.Channels -> {
             // Scoped to this stack entry: popped with the screen (plan/03 §4.5).
             val model = viewModel { ChannelsModel(AppChannelsEnvironment(graph)) }
@@ -132,37 +153,29 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
         }
         AppRoute.Settings -> {
             // Scoped to this stack entry: popped with Settings (plan/03 §4.5). Accounts waits for Trakt (M6).
+            // Settings is already past the PIN, so its manager opens directly.
             val openManager: () -> Unit = remember(stack) { { stack.push(AppRoute.LibraryManager(OrgRoom.LIVE)) } }
-            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager), accounts = false) }
+            val switchProfile: (String) -> Unit = remember(stack) { { id -> graph.switchProfile(id, stack, fromSettings = true) } }
+            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager, switchProfile), accounts = false) }
             SettingsScreen(model, onBack = { back() })
         }
     }
 }
 
 private fun guideNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = object : GuideNavigation {
-    override fun play(channelKey: String) {
-        graph.guideFocusChannel = channelKey
-        stack.push(AppRoute.Player(channelKey, returnToGuide = true))
-    }
+    private val starter = ChannelStarter(graph, stack)
+
+    override fun play(channelKey: String) = starter.play(channelKey, forGuide = true)
 
     /** Catch-up opens the player over the guide; Back pops to it (spec 22 §3). */
-    override fun playArchive(channelKey: String, start: Long, stop: Long) {
-        graph.guideFocusChannel = channelKey
-        stack.push(AppRoute.Player(channelKey, returnToGuide = false, archive = ArchiveWindow(start, stop)))
-    }
+    override fun playArchive(channelKey: String, start: Long, stop: Long) = starter.play(channelKey, forGuide = true, archive = ArchiveWindow(start, stop))
 
-    override fun openSettings() {
-        stack.push(AppRoute.Settings)
-    }
+    override fun openSettings() = graph.openManaged(AppRoute.Settings, stack)
 
-    override fun openChannels() {
-        stack.push(AppRoute.Channels)
-    }
+    override fun openChannels() = graph.openManaged(AppRoute.Channels, stack)
 
     // The options sheet stays open underneath, so Back returns to it (GUIDE-FR-95).
-    override fun openManager(group: String?, source: String?) {
-        stack.push(AppRoute.LibraryManager(OrgRoom.LIVE, group, source))
-    }
+    override fun openManager(group: String?, source: String?) = graph.openManaged(AppRoute.LibraryManager(OrgRoom.LIVE, group, source), stack)
 
     override fun leave() {
         stack.pop()
@@ -189,6 +202,13 @@ private fun playerNavigation(route: AppRoute.Player, stack: BackStack<AppRoute>,
     override fun guide() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
 
     override fun sport() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Today))
+
+    override fun refused() = graph.refuseChannel()
+
+    override fun unlock(channelKey: String) {
+        if (stack.top.route != route) return
+        stack.push(AppRoute.PinGate(channelKey, route.archive, replacePlayer = true, rememberForGuide = true, recordWatched = true))
+    }
 
     // Live and catch-up have no completion (spec 30 Q-06).
     override fun finished(contentKey: String) = Unit
@@ -244,6 +264,10 @@ private fun vodNavigation(route: AppRoute.VodPlayer, stack: BackStack<AppRoute>,
 
     override fun openExternal(stream: ExternalStream): Throwable? = UnsupportedOperationException("live only")
 
+    override fun refused() = Unit
+
+    override fun unlock(channelKey: String) = Unit
+
     override fun finished(contentKey: String) {
         graph.appScope.launch(graph.dispatchers.main) {
             if (stack.top.route != route) return@launch
@@ -278,9 +302,8 @@ private fun libraryNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = obj
         stack.push(if (room == WallRoom.MOVIES) AppRoute.FilmDetails(item.row.key) else AppRoute.SeriesDetails(item.row.key))
     }
 
-    override fun openManager(room: WallRoom, group: String?) {
-        stack.push(AppRoute.LibraryManager(if (room == WallRoom.MOVIES) OrgRoom.MOVIES else OrgRoom.SERIES, group))
-    }
+    override fun openManager(room: WallRoom, group: String?) =
+        graph.openManaged(AppRoute.LibraryManager(if (room == WallRoom.MOVIES) OrgRoom.MOVIES else OrgRoom.SERIES, group), stack)
 
     override fun leave() {
         stack.pop()
@@ -288,13 +311,13 @@ private fun libraryNavigation(stack: BackStack<AppRoute>, graph: AppGraph) = obj
 }
 
 /**
- * Rail items for this build (spec 01 SHELL-FR-61): Discover where the build allows addons (the
- * restricted-profile check joins in M6); Who is watching only with more than one profile (M6).
+ * Rail items (spec 01 SHELL-FR-61): Discover where the build allows addons and the profile is not
+ * restricted (spec 04 PROF-FR-14); Who is watching only with more than one profile (PROF-FR-16).
  */
-internal fun railItems(flags: FeatureFlags): List<RailItem> = RailItem.entries.filter { item ->
+internal fun railItems(flags: FeatureFlags, severalProfiles: Boolean, restricted: Boolean): List<RailItem> = RailItem.entries.filter { item ->
     when (item) {
-        RailItem.DISCOVER -> flags.discover
-        RailItem.PROFILES -> false
+        RailItem.DISCOVER -> flags.discover && !restricted
+        RailItem.PROFILES -> severalProfiles
         else -> true
     }
 }

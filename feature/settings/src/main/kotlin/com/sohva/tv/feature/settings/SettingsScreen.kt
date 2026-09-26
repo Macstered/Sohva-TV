@@ -154,6 +154,7 @@ private fun SettingsPane(
             SettingsSection.GENERAL -> GeneralPane(state, model, start)
             SettingsSection.REMOTE -> RemotePane(state, model, start)
             SettingsSection.METADATA -> LibraryPane(model.library, start)
+            SettingsSection.PARENTAL -> ParentalPane(model.profiles, start)
             else -> PendingSection(state.section)
         }
     }

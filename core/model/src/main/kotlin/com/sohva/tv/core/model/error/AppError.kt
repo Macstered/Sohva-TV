@@ -36,6 +36,9 @@ sealed interface AppError {
     /** The Keystore key cannot unwrap the stored data key (spec 73 §8): secrets are unreadable. */
     data object SecretsUnreadable : AppError { override val code = "secrets_unreadable" }
 
+    /** A parental PIN of another shape than 4–8 digits (spec 04 PROF-FR-30). */
+    data object PinFormat : AppError { override val code = "pin_format" }
+
     /** A running import stopped with the process; the previous data is intact. */
     data object Interrupted : AppError { override val code = "interrupted" }
 

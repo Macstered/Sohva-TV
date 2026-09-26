@@ -51,6 +51,8 @@ class MainActivity : ComponentActivity(), RootHost {
         super.onStop()
     }
 
+    override fun leave() = finish()
+
     override fun onAppDrawn() {
         // A flat colour costs a tile-based GPU nothing; the launch picture would be repainted
         // under every later frame (design/01 §2, lessons of beta 23).

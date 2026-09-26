@@ -199,4 +199,5 @@
     <string name="update_install">Instalar</string>
     <string name="update_open_permission">Permitir instalaciones</string>
     <string name="update_help">Las descargas se verifican con la suma de comprobación publicada; las listas y los ajustes se conservan.</string>
+    <string name="profile_groups_missing">Los grupos de este perfil no están en las fuentes actuales. Quien conozca el PIN parental puede elegir otros en Ajustes.</string>
 </resources>

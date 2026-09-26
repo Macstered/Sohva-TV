@@ -849,4 +849,5 @@
     <string name="sports_channel_priority_codes">Koder, till exempel SE, EN, UK</string>
     <string name="sports_channel_priority_save">Spara ordning</string>
     <string name="sports_channel_priority_saved">Kanalordning sparad</string>
+    <string name="profile_groups_missing">Den här profilens grupper finns inte i de nuvarande källorna. Den som kan föräldra-PIN-koden kan välja nya i Inställningar.</string>
 </resources>

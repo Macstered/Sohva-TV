@@ -56,6 +56,13 @@ class ChannelsModel(private val env: ChannelsEnvironment) : ViewModel() {
     private val _selected = MutableStateFlow<ChannelRow?>(null)
     val selected: StateFlow<ChannelRow?> = _selected.asStateFlow()
 
+    private val _locked = MutableStateFlow(false)
+
+    /** Whether the selected channel is locked for the active profile (spec 04 PROF-FR-40). */
+    val locked: StateFlow<Boolean> = _locked.asStateFlow()
+
+    val pinConfigured: StateFlow<Boolean> get() = env.pinConfigured
+
     private val _fields = MutableStateFlow(EditorFields())
     val fields: StateFlow<EditorFields> = _fields.asStateFlow()
 
@@ -232,6 +239,10 @@ class ChannelsModel(private val env: ChannelsEnvironment) : ViewModel() {
     fun select(row: ChannelRow?) {
         if (row?.key != _selected.value?.key) _status.value = null
         _selected.value = row
+        viewModelScope.launch {
+            val lock = row?.let { env.isLocked(it.key) } ?: false
+            if (_selected.value?.key == row?.key) _locked.value = lock
+        }
         val channel = row?.channel ?: run {
             _fields.value = EditorFields()
             return
@@ -270,6 +281,18 @@ class ChannelsModel(private val env: ChannelsEnvironment) : ViewModel() {
     }
 
     fun reset() = act(R.string.channels_reset_done) { env.reset(it) }
+
+    /** Lock with PIN / Remove PIN lock for the active profile; neither asks for the PIN (PROF-FR-40). */
+    fun toggleLock() {
+        if (!env.pinConfigured.value) return
+        val key = _selected.value?.key ?: return
+        val lock = !_locked.value
+        viewModelScope.launch {
+            env.setLocked(key, lock)
+            if (_selected.value?.key == key) _locked.value = lock
+            _status.value = Status(if (lock) R.string.channels_locked else R.string.channels_unlocked, (_status.value?.serial ?: 0) + 1)
+        }
+    }
 
     /** Move up / down; only with Playlist order (CHAN-FR-29). */
     fun move(up: Boolean) {

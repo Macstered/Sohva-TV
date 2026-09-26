@@ -64,6 +64,7 @@ fun errorMessage(error: AppError): String = when (error) {
     AppError.Unknown -> stringResource(R.string.error_unknown)
     AppError.SourceResponseTooLarge -> stringResource(R.string.error_source_response_too_large)
     AppError.SecretsUnreadable -> stringResource(R.string.error_secrets_unreadable)
+    AppError.PinFormat -> stringResource(R.string.error_pin_format)
     AppError.Interrupted -> stringResource(R.string.error_import_interrupted)
     AppError.SourceNameRequired -> stringResource(R.string.settings_source_name_required)
     is AppError.SourceNameTooLong -> pluralStringResource(R.plurals.error_source_name_too_long, error.max, error.max)

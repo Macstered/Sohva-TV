@@ -43,6 +43,11 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private val _phase = MutableStateFlow(GuidePhase.LOADING)
     val phase: StateFlow<GuidePhase> = _phase.asStateFlow()
 
+    private val _groupsMissing = MutableStateFlow(false)
+
+    /** A restricted profile none of whose groups this source has: the empty list says why (spec 04 PROF-FR-24). */
+    val groupsMissing: StateFlow<Boolean> = _groupsMissing.asStateFlow()
+
     private val _sources = MutableStateFlow<List<LiveSource>>(emptyList())
     val sources: StateFlow<List<LiveSource>> = _sources.asStateFlow()
 
@@ -198,6 +203,7 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private suspend fun refreshRail() {
         val source = _source.value ?: return
         val groups = reads.rail(source.id)
+        _groupsMissing.value = groups.isEmpty() && env.liveRestricted()
         val ungrouped = reads.open(ListSpec.Ungrouped(source.id)).size
         val all = groups.sumOf { it.itemCount } + ungrouped
         val favouriteCount = favourites.value.size
@@ -277,7 +283,10 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
                 _selection.value = null
             } else {
                 pages.peek(target)?.let { selectChannel(it) }
-                focusRow(target, CHANNEL)
+                // Find programme's matches arrive while the viewer types: focus stays in the field, since
+                // a focused row closes the rail and with it the field and its keyboard (GUIDE-FR-92). The
+                // last request goes too: the grid composed again for the matches would replay it.
+                if (searching) _focus.value = null else focusRow(target, CHANNEL)
             }
         }
         listJob = job

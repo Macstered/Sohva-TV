@@ -1,5 +1,6 @@
 package com.sohva.tv.app.home
 
+import com.sohva.tv.app.profile.ChannelStarter
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.library.AppTitleEnvironment
 import com.sohva.tv.app.library.TitleNavigation
@@ -112,10 +113,7 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
     /** Deletes this copy's progress for the profile, not marked watched. */
     override suspend fun remove(card: ResumeCard) = graph.data.progress.forget(card.item.contentKey)
 
-    override fun playChannel(card: ChannelCard) {
-        graph.guideFocusChannel = card.channel.key
-        stack.push(AppRoute.Player(card.channel.key, returnToGuide = true))
-    }
+    override fun playChannel(card: ChannelCard) = ChannelStarter(graph, stack).play(card.channel.key, forGuide = true)
 
     override fun openGuide() {
         stack.push(AppRoute.Guide)

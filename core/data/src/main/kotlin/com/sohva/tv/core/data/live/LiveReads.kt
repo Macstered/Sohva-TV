@@ -1,6 +1,5 @@
 package com.sohva.tv.core.data.live
 
-import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.data.database.LiveGroup
 import com.sohva.tv.core.data.database.LiveSource
@@ -48,11 +47,11 @@ interface LiveReads {
 
     suspend fun channel(key: String): LiveChannel?
 
-    suspend fun favourites(sourceId: String, profileId: String = DEFAULT_PROFILE): ListSpec.Named
+    suspend fun favourites(sourceId: String): ListSpec.Named
 
-    suspend fun recents(sourceId: String, profileId: String = DEFAULT_PROFILE): ListSpec.Named
+    suspend fun recents(sourceId: String): ListSpec.Named
 
-    fun favouriteKeys(profileId: String = DEFAULT_PROFILE): Flow<Set<String>>
+    fun favouriteKeys(): Flow<Set<String>>
 
     /** The household's channel lists for the rail, in their order (spec 21 CHAN-28). */
     fun customLists(): Flow<List<CustomListRef>>
@@ -60,9 +59,9 @@ interface LiveReads {
     /** A list's channels of [sourceId], in the list's own order (GUIDE-FR-35). */
     suspend fun customList(listId: String, sourceId: String): ListSpec.Named
 
-    suspend fun toggleFavourite(key: String, profileId: String = DEFAULT_PROFILE): Boolean
+    suspend fun toggleFavourite(key: String): Boolean
 
-    suspend fun recordWatched(key: String, profileId: String = DEFAULT_PROFILE)
+    suspend fun recordWatched(key: String)
 
     suspend fun schedules(source: LiveSource, epgIds: Collection<String>, windowStart: Long): Map<String, List<GuideProgramme>>
 

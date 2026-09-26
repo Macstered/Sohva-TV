@@ -29,6 +29,11 @@ class KeptRows(private val reads: () -> LiveReads, private val clock: Clock, pri
         kept = Entry(list, clock.wallMillis(), writes.get())
     }
 
+    /** A profile switch: the kept list may hold channels the next profile may not see. */
+    fun clear() {
+        kept = null
+    }
+
     fun get(spec: ListSpec): ChannelList? {
         val entry = kept ?: return null
         val fresh = entry.list.spec == spec && clock.wallMillis() - entry.at < TTL_MS && entry.writes == writes.get()

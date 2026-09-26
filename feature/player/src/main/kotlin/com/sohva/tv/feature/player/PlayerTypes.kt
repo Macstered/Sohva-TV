@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.player
 
+import com.sohva.tv.core.model.profile.ChannelAdmission
 import androidx.compose.runtime.Immutable
 import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.data.live.LiveReads
@@ -29,6 +30,9 @@ interface PlayerEnvironmentUi {
     /** Front of the profile's recents and the last channel (spec 30 PLAY-FR-57). */
     suspend fun recordWatched(channelKey: String)
 
+    /** The profile's group check, then the lock (spec 01 SHELL-FR-22), before any channel starts. */
+    suspend fun admit(channelKey: String): ChannelAdmission
+
     /** A playback failure for the diagnostics log: ids, codes and redacted text only (PLAY-FR-90, spec 73). */
     fun logFailure(line: String)
 
@@ -53,6 +57,12 @@ interface PlayerNavigation {
     fun guide()
 
     fun sport()
+
+    /** A channel the profile may not watch: the refusal toast (spec 01 SHELL-FR-34). */
+    fun refused()
+
+    /** A locked channel: the PIN over the player; unlocking replaces both (SHELL-FR-22, -23). */
+    fun unlock(channelKey: String)
 
     /** Starts another player app with the stream; returns why it failed, or null (PLAY-FR-115..116). */
     fun openExternal(stream: ExternalStream): Throwable?

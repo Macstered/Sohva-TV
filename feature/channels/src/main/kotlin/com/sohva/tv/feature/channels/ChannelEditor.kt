@@ -163,9 +163,9 @@ private fun ListsBlock(model: ChannelsModel) {
 }
 
 /**
- * Save, Hide/Show, Lock, ↑, ↓, Reset (CHAN-FR-25…31). Lock needs the parental PIN (M6): until a
- * PIN exists it reads "Configure PIN in Settings" and is disabled, as in beta 23. The moves need
- * Playlist order.
+ * Save, Hide/Show, Lock, ↑, ↓, Reset (CHAN-FR-25…31). Lock needs the parental PIN (spec 04
+ * PROF-FR-40): without one it reads "Configure PIN in Settings" and is disabled; with one it locks
+ * or unlocks the channel for the active profile. The moves need Playlist order.
  */
 @Composable
 private fun ActionRow(model: ChannelsModel, row: ChannelRow) {
@@ -178,7 +178,14 @@ private fun ActionRow(model: ChannelsModel, row: ChannelRow) {
             model::toggleHidden,
             Modifier.testTag("channels-hide"),
         )
-        TvActionButton(stringResource(R.string.channels_configure_pin), {}, Modifier.testTag("channels-lock"), state = SurfaceState(enabled = false))
+        val pin by model.pinConfigured.collectAsStateWithLifecycle()
+        val locked by model.locked.collectAsStateWithLifecycle()
+        val lockLabel = when {
+            !pin -> R.string.channels_configure_pin
+            locked -> R.string.channels_remove_pin_lock
+            else -> R.string.channels_lock_with_pin
+        }
+        TvActionButton(stringResource(lockLabel), model::toggleLock, Modifier.testTag("channels-lock"), icon = TvIcons.Lock, state = SurfaceState(enabled = pin))
         TvActionButton("↑", { model.move(up = true) }, Modifier.testTag("channels-up"), state = SurfaceState(enabled = playlist, keepsFocus = true))
         TvActionButton("↓", { model.move(up = false) }, Modifier.testTag("channels-down"), state = SurfaceState(enabled = playlist, keepsFocus = true))
         TvActionButton(stringResource(R.string.action_reset), model::reset, Modifier.testTag("channels-reset"))

@@ -32,6 +32,14 @@ interface ChannelsEnvironment {
     /** Formatting and mapping of one page (AppDispatchers.ui). */
     val format: CoroutineDispatcher
 
+    /** Whether a parental PIN exists: the lock button needs one (spec 04 PROF-FR-40). */
+    val pinConfigured: kotlinx.coroutines.flow.StateFlow<Boolean>
+
+    /** The active profile's lock on [key] (PROF-FR-41). */
+    suspend fun isLocked(key: String): Boolean
+
+    suspend fun setLocked(key: String, locked: Boolean)
+
     suspend fun sources(): List<ManagerSource>
 
     suspend fun groupNames(sourceId: String): List<String>

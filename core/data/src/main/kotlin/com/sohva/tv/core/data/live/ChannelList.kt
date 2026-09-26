@@ -36,6 +36,7 @@ class ChannelList private constructor(
     private val afterRank: LongArray,
     private val afterId: LongArray,
     private val dao: LiveDao,
+    private val profile: String,
 ) {
     val pageCount: Int get() = (size + PAGE - 1) / PAGE
 
@@ -49,8 +50,8 @@ class ChannelList private constructor(
                 ids.mapNotNull { byId[it] }
             }
             is ListSpec.Group -> dao.groupRows(s.groupId, afterRank[page], afterId[page], PAGE)
-            is ListSpec.All -> dao.sourceRows(s.sourceId, afterRank[page], afterId[page], PAGE)
-            is ListSpec.Ungrouped -> dao.ungroupedRows(s.sourceId, afterRank[page], afterId[page], PAGE)
+            is ListSpec.All -> dao.sourceRows(s.sourceId, profile, afterRank[page], afterId[page], PAGE)
+            is ListSpec.Ungrouped -> dao.ungroupedRows(s.sourceId, profile, afterRank[page], afterId[page], PAGE)
         }
     }
 
@@ -80,11 +81,14 @@ class ChannelList private constructor(
     companion object {
         const val PAGE: Int = LiveSql.PAGE
 
-        /** Builds the index; checks for cancellation between key pages (GUIDE-NFR-14). */
-        suspend fun open(spec: ListSpec, dao: LiveDao): ChannelList {
+        /**
+         * Builds the index; checks for cancellation between key pages (GUIDE-NFR-14). [profile]'s
+         * restriction narrows All channels and the ungrouped list; a group's own check is the caller's.
+         */
+        suspend fun open(spec: ListSpec, dao: LiveDao, profile: String): ChannelList {
             if (spec is ListSpec.Named) {
                 val pages = (spec.ids.size + PAGE - 1) / PAGE
-                return ChannelList(spec, spec.ids.size, LongArray(pages), LongArray(pages), dao)
+                return ChannelList(spec, spec.ids.size, LongArray(pages), LongArray(pages), dao, profile)
             }
             val ranks = ArrayList<Long>()
             val ids = ArrayList<Long>()
@@ -97,8 +101,8 @@ class ChannelList private constructor(
                 coroutineContext.ensureActive()
                 val keys = when (spec) {
                     is ListSpec.Group -> dao.groupKeys(spec.groupId, lastRank, lastId, LiveSql.KEY_PAGE)
-                    is ListSpec.All -> dao.sourceKeys(spec.sourceId, lastRank, lastId, LiveSql.KEY_PAGE)
-                    is ListSpec.Ungrouped -> dao.ungroupedKeys(spec.sourceId, lastRank, lastId, LiveSql.KEY_PAGE)
+                    is ListSpec.All -> dao.sourceKeys(spec.sourceId, profile, lastRank, lastId, LiveSql.KEY_PAGE)
+                    is ListSpec.Ungrouped -> dao.ungroupedKeys(spec.sourceId, profile, lastRank, lastId, LiveSql.KEY_PAGE)
                     is ListSpec.Named -> error("handled above")
                 }
                 for (k in keys) {
@@ -114,7 +118,7 @@ class ChannelList private constructor(
             }
             // A full last page leaves one "after" key too many.
             val pages = (count + PAGE - 1) / PAGE
-            return ChannelList(spec, count, ranks.take(maxOf(pages, 1)).toLongArray(), ids.take(maxOf(pages, 1)).toLongArray(), dao)
+            return ChannelList(spec, count, ranks.take(maxOf(pages, 1)).toLongArray(), ids.take(maxOf(pages, 1)).toLongArray(), dao, profile)
         }
     }
 }

@@ -57,6 +57,8 @@ internal fun GeneralPane(state: SettingsState, model: SettingsModel, start: Focu
         }
     }
     StatusGroup(listOfNotNull(state.messages[SettingsSection.GENERAL]?.resolve()), securityNote = false)
+    // The General section's last group (spec 04 §5.3).
+    ProfilesGroup(model.profiles)
     if (picking) {
         val choices = RefreshInterval.entries.map { PickerChoice(it, it.label(), tag = "settings-refresh-interval-${it.hours}") }
         val close = {

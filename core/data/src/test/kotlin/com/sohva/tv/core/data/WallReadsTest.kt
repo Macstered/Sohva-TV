@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.MovieEntity
+import com.sohva.tv.core.data.database.ProfileAllowedGroupEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.org.Field
@@ -81,6 +82,20 @@ class WallReadsTest {
     }
 
     private fun names(items: List<WallItem>) = items.map { it.row.key.substringAfterLast(':') }
+
+    /** Spec 04 PROF-FR-23: a restricted profile's walls and rail hold only its groups. */
+    @Test
+    fun aRestrictedProfileSeesOnlyItsFilmGroups() = runBlocking {
+        seed()
+        db.profiles().allow(ProfileAllowedGroupEntity("kids", "MOVIES", "name:drama"))
+        val kids = WallReads(db, Dispatchers.Unconfined) { "kids" }
+        assertEquals(listOf("Drama"), kids.rail(WallRoom.MOVIES).groups.map { it.name })
+        assertEquals(listOf(dramaA), kids.rail(WallRoom.MOVIES).groups.single().groupIds)
+        assertEquals(listOf("3", "1", "2"), names(kids.page(WallRoom.MOVIES, WallDestination.AllGroups, "", null, forward = true, limit = 10)))
+        assertEquals(emptyList<String>(), names(kids.page(WallRoom.MOVIES, WallDestination.Group("Drama", listOf(dramaB)), "", null, forward = true, limit = 10)))
+        // The unrestricted profile still sees every group.
+        assertEquals(listOf("3", "4", "5", "1", "2"), names(reads.page(WallRoom.MOVIES, WallDestination.AllGroups, "", null, forward = true, limit = 10)))
+    }
 
     @Test
     fun groupsMergeByNameAcrossEnabledSources() = runBlocking {
