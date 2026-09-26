@@ -11,6 +11,8 @@ dependencies {
     api(project(":core:model"))
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.datastore.preferences)
+    // Streaming JSON for the backup payload (spec 71 §9: no tree).
+    implementation(libs.moshi)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

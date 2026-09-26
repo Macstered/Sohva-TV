@@ -88,6 +88,9 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     /** Settings › Playback (spec 70 §4.7). */
     val playback: PlaybackSettingsHolder = PlaybackSettingsHolder(services.playback, viewModelScope)
 
+    /** Settings › Backup & tools (spec 71 §5). */
+    val backup: BackupSettings = BackupSettings(services.backup, viewModelScope)
+
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
 

@@ -72,6 +72,20 @@ class SettingsModelTest {
             override fun startupScreen() = flowOf(com.sohva.tv.core.model.settings.StartupScreen.HOME)
             override suspend fun setStartupScreen(value: com.sohva.tv.core.model.settings.StartupScreen) = Unit
         }
+        override val backup: BackupSettingsServices = object : BackupSettingsServices {
+            override suspend fun save(target: android.net.Uri, password: CharArray): BackupOutcome = BackupOutcome.Saved
+
+            override suspend fun open(target: android.net.Uri, password: CharArray): BackupOutcome = BackupOutcome.Opened(emptyList())
+
+            override suspend fun restore(): BackupOutcome = BackupOutcome.Restored
+
+            override fun discard() = Unit
+
+            override suspend fun unfinished(): Boolean = false
+
+            override suspend fun clearGuide() = Unit
+        }
+
         override val playback: PlaybackSettingsServices = object : PlaybackSettingsServices {
             override fun settings() = flowOf(com.sohva.tv.core.model.player.PlaybackSettings())
             override fun autoPlayNext() = flowOf(true)

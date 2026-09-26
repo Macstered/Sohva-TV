@@ -15,7 +15,7 @@ enum class SettingsSection(@StringRes val label: Int, @DrawableRes val icon: Int
     ACCOUNTS(R.string.settings_section_accounts, TvIcons.Link, "accounts", built = false),
     SPORT(R.string.settings_section_sport, TvIcons.Target, "sport", built = false),
     PARENTAL(R.string.settings_section_parental, TvIcons.Lock, "parental", built = true),
-    BACKUP(R.string.settings_section_backup, TvIcons.Save, "backup", built = false),
+    BACKUP(R.string.settings_section_backup, TvIcons.Save, "backup", built = true),
     ABOUT(R.string.settings_section_about, TvIcons.Guide, "about", built = false),
     ;
 

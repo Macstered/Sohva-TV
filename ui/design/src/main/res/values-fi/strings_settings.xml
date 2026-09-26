@@ -200,4 +200,10 @@
     <string name="update_open_permission">Salli asennukset</string>
     <string name="update_help">Lataukset tarkistetaan julkaistua tarkistussummaa vasten; soittolistat ja asetukset säilyvät.</string>
     <string name="profile_groups_missing">Tämän profiilin ryhmiä ei ole nykyisissä lähteissä. Vanhempien PIN-koodin tietävä voi valita uudet ryhmät Asetuksista.</string>
+    <string name="backup_status_saving">Tallennetaan varmuuskopiota…</string>
+    <string name="backup_status_restoring">Palautetaan varmuuskopiota…</string>
+    <string name="backup_restore_removes">Palautus poistaa tästä televisiosta lähteet %1$s kanavineen, elokuvineen ja katselukohtineen.</string>
+    <string name="backup_no_picker">Tässä televisiossa ei ole tiedostonvalitsinta varmuuskopion tallentamiseen tai avaamiseen.</string>
+    <string name="backup_restore_incomplete">Edellinen palautus jäi kesken. Palauta varmuuskopio uudelleen.</string>
+    <string name="backup_partial_file_kept">%1$s Keskeneräistä tiedostoa ei voitu poistaa.</string>
 </resources>

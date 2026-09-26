@@ -972,21 +972,21 @@ Spec: [specs/70-settings.md](../specs/70-settings.md) · Milestone: M7 · 40 ite
 
 Spec: [specs/71-backup-restore.md](../specs/71-backup-restore.md) · Milestone: M7 · 15 items
 
-- [ ] **BACKUP-01** Settings › Backup & tools shows an "Encrypted backup" group: title, description, password field, **Save backup**, **Restore backup**, and the warning that the password cannot be recovered.
-- [ ] **BACKUP-02** Password field: masked, edit-on-click, 8–128 characters; both buttons are disabled below 8 characters and while a backup operation runs.
-- [ ] **BACKUP-03** **Save backup** opens the system "create document" picker with the suggested name `sohva-tv-backup.smbak` and MIME type `application/vnd.streammate.backup`.
-- [ ] **BACKUP-04** The file is encrypted with a key derived from the password (PBKDF2-HMAC-SHA256, 210,000 iterations, AES-256-GCM); the password is never stored.
-- [ ] **BACKUP-05** The backup carries: IPTV sources with credentials, the parental PIN, every setting listed in §6.2, profiles and each profile's favourites/recents/last channel/locked channels/ allowed groups, channel customisations (name, group, hidden, order, EPG id, logo, number), custom channel lists and members, organisation rules with the film identities they depend on, and the viewer's own genre groups.
-- [ ] **BACKUP-06** A logo sent from a phone travels inside the backup as image bytes and is recreated on the target TV.
-- [ ] **BACKUP-07** The backup never contains Discover data, Trakt, the TMDB token, the TVmaze switch, the API-Sports key, watch progress, reminders, guide/catalogue content, sports match decisions, the interface language, the image-cache size or "Match the display to the picture" (§6.3).
-- [ ] **BACKUP-08** **Restore backup** opens the system "open document" picker filtered to `application/vnd.streammate.backup` and `application/octet-stream`.
-- [ ] **BACKUP-09** Restore checks the whole file (envelope, password, structure, limits) before it changes anything; each failure has its own message (§4.6).
-- [ ] **BACKUP-10** Restore replaces the sources (sources the backup lacks are deleted with all their data), the channel customisations, custom lists, organisation rules, all settings, profiles and the PIN; anything the backup does not carry stays as it was.
-- [ ] **BACKUP-11** After a restore the Playlists list shows the restored sources and the message "Backup restored. Refresh channels and the programme guide."; nothing syncs by itself and the app does not restart; theme, interface size and the other settings apply at once.
-- [ ] **BACKUP-12** Every backup written by any build since StreamMate (format versions 1 and 2) restores; settings the older file lacks take the defaults of §6.4 (an old backup without a colour theme restores Original).
+- [x] **BACKUP-01** Settings › Backup & tools shows an "Encrypted backup" group: title, description, password field, **Save backup**, **Restore backup**, and the warning that the password cannot be recovered.
+- [x] **BACKUP-02** Password field: masked, edit-on-click, 8–128 characters; both buttons are disabled below 8 characters and while a backup operation runs.
+- [x] **BACKUP-03** **Save backup** opens the system "create document" picker with the suggested name `sohva-tv-backup.smbak` and MIME type `application/vnd.streammate.backup`.
+- [x] **BACKUP-04** The file is encrypted with a key derived from the password (PBKDF2-HMAC-SHA256, 210,000 iterations, AES-256-GCM); the password is never stored.
+- [x] **BACKUP-05** The backup carries: IPTV sources with credentials, the parental PIN, every setting listed in §6.2, profiles and each profile's favourites/recents/last channel/locked channels/ allowed groups, channel customisations (name, group, hidden, order, EPG id, logo, number), custom channel lists and members, organisation rules with the film identities they depend on, and the viewer's own genre groups.
+- [x] **BACKUP-06** A logo sent from a phone travels inside the backup as image bytes and is recreated on the target TV.
+- [x] **BACKUP-07** The backup never contains Discover data, Trakt, the TMDB token, the TVmaze switch, the API-Sports key, watch progress, reminders, guide/catalogue content, sports match decisions, the interface language, the image-cache size or "Match the display to the picture" (§6.3).
+- [x] **BACKUP-08** **Restore backup** opens the system "open document" picker filtered to `application/vnd.streammate.backup` and `application/octet-stream`.
+- [x] **BACKUP-09** Restore checks the whole file (envelope, password, structure, limits) before it changes anything; each failure has its own message (§4.6).
+- [x] **BACKUP-10** Restore replaces the sources (sources the backup lacks are deleted with all their data), the channel customisations, custom lists, organisation rules, all settings, profiles and the PIN; anything the backup does not carry stays as it was.
+- [x] **BACKUP-11** After a restore the Playlists list shows the restored sources and the message "Backup restored. Refresh channels and the programme guide."; nothing syncs by itself and the app does not restart; theme, interface size and the other settings apply at once.
+- [x] **BACKUP-12** Every backup written by any build since StreamMate (format versions 1 and 2) restores; settings the older file lacks take the defaults of §6.4 (an old backup without a colour theme restores Original).
 - [ ] **BACKUP-13** A backup of a TV with a 200,000-film catalogue stays small (tens of kilobytes) and its export never runs the app out of memory (the beta 17 repair, §10).
-- [ ] **BACKUP-14** The password field is emptied after every save or restore attempt, successful or not.
-- [ ] **BACKUP-15** Save shows "Encrypted backup saved" or the failure; restore shows the restored message or the failure (the rebuild shows both in the section itself, §5).
+- [x] **BACKUP-14** The password field is emptied after every save or restore attempt, successful or not.
+- [x] **BACKUP-15** Save shows "Encrypted backup saved" or the failure; restore shows the restored message or the failure (the rebuild shows both in the section itself, §5).
 
 ## Updates, About and diagnostics
 

@@ -24,6 +24,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -172,6 +173,14 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
             data.beta23Categories.run()
+        }
+        // A restore the process did not finish is said at start (spec 71 §8); Backup's status line says it too.
+        appScope.launch {
+            if (data.backup.unfinished()) {
+                withContext(dispatchers.main) {
+                    android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.backup_restore_incomplete), android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
         }
         appScope.launch { data.preferences.refreshInterval.collect { sync.scheduler.schedule(it) } }
         // An update or a force-stop drops the alarm; each start sets it again (spec 22 REM-FR-14).

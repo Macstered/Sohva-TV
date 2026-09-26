@@ -200,4 +200,10 @@
     <string name="update_open_permission">Consenti le installazioni</string>
     <string name="update_help">I download vengono verificati con il checksum pubblicato; playlist e impostazioni vengono conservate.</string>
     <string name="profile_groups_missing">I gruppi di questo profilo non sono nelle fonti attuali. Chi conosce il PIN parentale può sceglierne altri nelle Impostazioni.</string>
+    <string name="backup_status_saving">Salvataggio del backup…</string>
+    <string name="backup_status_restoring">Ripristino del backup…</string>
+    <string name="backup_restore_removes">Il ripristino rimuove %1$s da questo TV, con canali, film e avanzamento.</string>
+    <string name="backup_no_picker">Questo TV non ha un selettore di file per salvare o aprire un backup.</string>
+    <string name="backup_restore_incomplete">L\'ultimo ripristino non è terminato. Ripristina di nuovo il backup.</string>
+    <string name="backup_partial_file_kept">%1$s Non è stato possibile rimuovere il file incompleto.</string>
 </resources>

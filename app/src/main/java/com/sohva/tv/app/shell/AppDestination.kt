@@ -161,7 +161,9 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val activity = androidx.activity.compose.LocalActivity.current
             // The platform (Android 13+) or the app recreates the activity in the new language (spec 70 SET-FR-50).
             val applyLanguage: (String?) -> Unit = remember(activity) { { tag -> activity?.let { com.sohva.tv.app.AppLocales.set(it, tag) } } }
-            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage), accounts = false) }
+            // A restore that makes a restricted profile active leaves Settings for Home (spec 71 §8).
+            val afterRestore: () -> Unit = remember(stack) { { stack.resetTo(listOf(AppRoute.Home)) } }
+            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore), accounts = false) }
             SettingsScreen(model, onBack = { back() })
         }
     }

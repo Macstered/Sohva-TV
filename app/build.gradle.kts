@@ -126,6 +126,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    // Answers the document pickers in the backup test (spec 71 §11).
+    androidTestImplementation(libs.androidx.test.espresso.intents)
     androidTestImplementation(libs.androidx.room.runtime)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.test.manifest)

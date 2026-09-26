@@ -69,7 +69,10 @@ object OrgKeys {
     fun groupKey(providerId: String?, name: String?): String = providerId?.takeIf { it.isNotBlank() }?.let { "id:$it" } ?: nameKey(name)
 
     /** A film's identity in rules: its work key (decision "Film identity in rules"). */
-    fun film(workKey: String): String = "work:$workKey"
+    /** A film rule's item key prefix: the film's work key follows. */
+    const val WORK_PREFIX: String = "work:"
+
+    fun film(workKey: String): String = "$WORK_PREFIX$workKey"
 }
 
 /** An item as the resolver sees it (ORG-FR-06): its room, source, group keys, id and identity. */

@@ -163,6 +163,12 @@ class ProfileStore(
         return withContext(io) { ParentalPin.same(stored, pin) }
     }
 
+    /** The PIN's digits for a backup (spec 71 BACKUP-FR-07 step 3); null without one or when unreadable. */
+    suspend fun pinForBackup(): String? = (secrets.read(PIN_KEY) as? Outcome.Ok)?.value
+
+    /** A restore's PIN (spec 71 BACKUP-FR-18 steps 7, 10): stored when the backup has one, removed when not. */
+    suspend fun restorePin(pin: String?): Outcome<Unit> = secrets.write(PIN_KEY, pin)
+
     /** Removes the PIN after the current one, dropping every profile's locks (PROF-FR-33). */
     suspend fun removePin(current: String): Boolean {
         if (!verifyPin(current)) return false

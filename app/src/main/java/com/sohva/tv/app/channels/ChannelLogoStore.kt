@@ -44,6 +44,28 @@ class ChannelLogoStore(context: Context) {
     }
 
     /** Deletes the channel's phone-sent logos (Reset, a new picture; spec 21 §10 rebuild rule). */
+    /**
+     * A logo's picture bytes when [url] is a file this store wrote (spec 71 BACKUP-FR-07 step 5),
+     * so a backup carries phone logos to another TV; any other address has none.
+     */
+    fun read(url: String): ByteArray? {
+        val file = fileOf(url) ?: return null
+        return runCatching { file.readBytes() }.getOrNull()
+    }
+
+    /** [url] when it is not a file, or a file of this store that exists (spec 71 BACKUP-FR-18 step 6). */
+    fun kept(url: String): String? = when {
+        !url.startsWith("file:") -> url
+        fileOf(url)?.isFile == true -> url
+        else -> null
+    }
+
+    private fun fileOf(url: String): File? {
+        if (!url.startsWith("file:")) return null
+        val file = runCatching { File(java.net.URI(url)) }.getOrNull() ?: return null
+        return file.takeIf { it.parentFile?.canonicalPath == dir.canonicalPath }
+    }
+
     fun delete(channelKey: String) {
         val prefix = prefix(channelKey) + "-"
         dir.listFiles()?.filter { it.name.startsWith(prefix) }?.forEach { it.delete() }

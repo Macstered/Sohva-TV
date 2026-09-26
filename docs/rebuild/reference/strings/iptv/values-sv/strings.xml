@@ -850,4 +850,10 @@
     <string name="sports_channel_priority_save">Spara ordning</string>
     <string name="sports_channel_priority_saved">Kanalordning sparad</string>
     <string name="profile_groups_missing">Den här profilens grupper finns inte i de nuvarande källorna. Den som kan föräldra-PIN-koden kan välja nya i Inställningar.</string>
+    <string name="backup_status_saving">Sparar säkerhetskopian…</string>
+    <string name="backup_status_restoring">Återställer säkerhetskopian…</string>
+    <string name="backup_restore_removes">Återställningen tar bort %1$s från den här tv:n, med kanaler, filmer och tittarframsteg.</string>
+    <string name="backup_no_picker">Den här tv:n har ingen filväljare för att spara eller öppna en säkerhetskopia.</string>
+    <string name="backup_restore_incomplete">Den senaste återställningen blev inte klar. Återställ säkerhetskopian igen.</string>
+    <string name="backup_partial_file_kept">%1$s Den ofärdiga filen kunde inte tas bort.</string>
 </resources>

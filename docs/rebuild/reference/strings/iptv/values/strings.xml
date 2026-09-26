@@ -869,4 +869,10 @@
     <string name="sports_channel_priority_save">Save order</string>
     <string name="sports_channel_priority_saved">Channel order saved</string>
     <string name="profile_groups_missing">This profile\'s groups are not in the current sources. Whoever knows the parental PIN can choose new ones in Settings.</string>
+    <string name="backup_status_saving">Saving the backup…</string>
+    <string name="backup_status_restoring">Restoring the backup…</string>
+    <string name="backup_restore_removes">Restoring removes %1$s from this TV, with their channels, films and watch progress.</string>
+    <string name="backup_no_picker">This TV has no file picker for saving or opening a backup.</string>
+    <string name="backup_restore_incomplete">The last restore did not finish. Restore the backup again.</string>
+    <string name="backup_partial_file_kept">%1$s The unfinished file could not be removed.</string>
 </resources>

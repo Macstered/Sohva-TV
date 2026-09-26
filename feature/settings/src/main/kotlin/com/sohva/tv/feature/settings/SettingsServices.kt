@@ -35,6 +35,9 @@ interface SettingsServices {
     /** Settings › Playback (spec 70 §4.7). */
     val playback: PlaybackSettingsServices
 
+    /** Settings › Backup & tools (spec 71). */
+    val backup: BackupSettingsServices
+
     fun sources(): Flow<List<Source>>
 
     /** Why beta 23's sources could not be imported, when that happened (plan/04 §17 failure path). */

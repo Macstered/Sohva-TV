@@ -200,4 +200,10 @@
     <string name="update_open_permission">Installationen erlauben</string>
     <string name="update_help">Downloads werden mit der veröffentlichten Prüfsumme verglichen; Playlists und Einstellungen bleiben erhalten.</string>
     <string name="profile_groups_missing">Die Gruppen dieses Profils sind in den aktuellen Quellen nicht vorhanden. Wer die Eltern-PIN kennt, kann in den Einstellungen neue wählen.</string>
+    <string name="backup_status_saving">Sicherung wird gespeichert…</string>
+    <string name="backup_status_restoring">Sicherung wird wiederhergestellt…</string>
+    <string name="backup_restore_removes">Die Wiederherstellung entfernt %1$s von diesem Fernseher, mit Sendern, Filmen und Wiedergabeständen.</string>
+    <string name="backup_no_picker">Dieser Fernseher hat keine Dateiauswahl zum Speichern oder Öffnen einer Sicherung.</string>
+    <string name="backup_restore_incomplete">Die letzte Wiederherstellung wurde nicht abgeschlossen. Stellen Sie die Sicherung erneut wieder her.</string>
+    <string name="backup_partial_file_kept">%1$s Die unvollständige Datei konnte nicht entfernt werden.</string>
 </resources>

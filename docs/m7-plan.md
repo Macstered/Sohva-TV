@@ -31,3 +31,10 @@ table), META-34, SEC-22, SEC-24.
 4. **Languages** (spec 74): the language picker's restart path, the remaining strings audit in all
    seven languages, formats.
 5. Measurements, inventory, exit.
+
+## Status
+
+- Part 1 (Settings, part A): done, commit 5141206.
+- Part 2 (Backup): done. `.smbak` read and written by an independent test encryptor too; save,
+  restore with the question naming removed sources, the restore marker, Clear all guide data
+  (programmes only). Device suite `SettingsBackupTest` 5/5 on the API 30 stand-in.

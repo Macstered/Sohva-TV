@@ -3,6 +3,7 @@ package com.sohva.tv.core.data
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.sohva.tv.core.data.backup.BackupStore
 import com.sohva.tv.core.data.channels.ChannelEditStore
 import com.sohva.tv.core.data.channels.ChannelListStore
 import com.sohva.tv.core.data.channels.ChannelManagerReads
@@ -115,4 +116,7 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
 
     /** Beta 23's hidden categories as rules, once (spec 42 ORG-15); after the first frame. */
     val beta23Categories: Beta23HiddenCategories by lazy { Beta23HiddenCategories(app, database, dispatchers.io) }
+
+    /** The backup's database side (spec 71). */
+    val backup: BackupStore by lazy { BackupStore(database, dispatchers.io) }
 }
