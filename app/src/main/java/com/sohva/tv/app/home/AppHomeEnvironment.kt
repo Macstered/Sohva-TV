@@ -66,10 +66,26 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
     }
 
     override suspend fun heroDetails(subject: HeroSubject): HeroDetails? = when (subject) {
-        is HeroSubject.Resume -> if (subject.card.isEpisode) episode(subject.card) else film(subject.card)
+        is HeroSubject.Resume -> when {
+            subject.card.isDiscover -> discover(subject.card)
+            subject.card.isEpisode -> episode(subject.card)
+            else -> film(subject.card)
+        }
         is HeroSubject.Channel -> channel(subject.card)
         // The crests are the picture (SPORT-FR-97); no lookup.
         is HeroSubject.Sport, HeroSubject.Welcome -> null
+    }
+
+    /**
+     * HOME-FR-68: the synopsis from the addon's cached details only (the episode's overview, else
+     * the title's description; no request); the stored backdrop, no lookup.
+     */
+    private suspend fun discover(card: ResumeCard): HeroDetails? {
+        val d = card.item.discover ?: return null
+        val host = graph.discover ?: return null
+        val details = runCatching { host.browser.cachedDetails(graph.data.profiles.activeId, d.owner, d.mediaType, d.mediaId, freshOnly = false) }.getOrNull()
+        val synopsis = details?.videos?.firstOrNull { it.id == d.videoId }?.overview?.takeIf { it.isNotBlank() } ?: details?.preview?.description
+        return HeroDetails(synopsis, d.backdrop)
     }
 
     /** HOME-FR-66: the match's overview, else the provider's plot; the match's backdrop only. */
@@ -109,6 +125,11 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
      * the title's pages; from the saved position, or the start.
      */
     override fun resume(card: ResumeCard, fromStart: Boolean) {
+        // A Discover card opens its title page on the saved video, over Home (spec 02 §3.2, HOME-15).
+        card.item.discover?.let { d ->
+            stack.push(AppRoute.DiscoverTitle(d.owner, d.mediaType, d.mediaId, d.videoId))
+            return
+        }
         val start = if (fromStart) 0L else card.item.positionMs
         val player = AppRoute.VodPlayer(card.item.contentKey, start)
         stack.resetTo(

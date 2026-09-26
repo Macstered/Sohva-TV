@@ -61,6 +61,10 @@ class ProgressStore(private val dao: ProgressDao, private val cipher: DiscoverCi
 
     suspend fun get(profile: String, identity: WatchIdentity): WatchEntry? = dao.get(identity.key(profile))?.let(::decode)
 
+    /** Home's Continue watching (spec 02 HOME-FR-17): the newest resumable entry per title; only these are decrypted. */
+    suspend fun continueEntries(profile: String, limit: Int): List<WatchEntry> =
+        dao.resumableTitles(profile, limit * 2).distinctBy { it.titleKey }.take(limit).mapNotNull(::decode)
+
     /**
      * One snapshot (FR-106, -107): the position clamped to a known duration, an unknown duration
      * keeps the last known one, completed at the end or from 95 %, durations over a week refused.
@@ -85,7 +89,8 @@ class ProgressStore(private val dao: ProgressDao, private val cipher: DiscoverCi
         val position = positionMs.coerceAtLeast(0).let { p -> duration?.let { p.coerceAtMost(it) } ?: p }
         val completed = ended || (duration != null && position >= duration * COMPLETE_PERCENT / 100)
         val entry = WatchEntry(identity, title, position, duration, clock.wallMillis(), completed, artwork)
-        dao.put(ProgressEntity(key, profile, encode(entry), entry.updatedAt))
+        val titleKey = Hashes.parts(profile, identity.installation, identity.mediaType, identity.mediaId)
+        dao.put(ProgressEntity(key, profile, encode(entry), entry.updatedAt, titleKey, !completed && position > 0))
         if (old == null) dao.prune(profile, MAX_ENTRIES)
         lastWrite[key] = session to sequence
         _changes.tryEmit(profile)

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "05520d254ac53da49a21d05e381e8ea0",
+    "identityHash": "803a8ea275b7de78040fb7beb95edfd9",
     "entities": [
       {
         "tableName": "addon_installation",
@@ -124,7 +124,7 @@
       },
       {
         "tableName": "addon_progress",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `profile_id` TEXT NOT NULL, `payload` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`key`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `profile_id` TEXT NOT NULL, `payload` TEXT NOT NULL, `updated_at` INTEGER NOT NULL, `title_key` TEXT NOT NULL, `resumable` INTEGER NOT NULL, PRIMARY KEY(`key`))",
         "fields": [
           {
             "fieldPath": "key",
@@ -149,6 +149,18 @@
             "columnName": "updated_at",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "titleKey",
+            "columnName": "title_key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "resumable",
+            "columnName": "resumable",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -167,6 +179,17 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_addon_progress_profile_id_updated_at` ON `${TABLE_NAME}` (`profile_id`, `updated_at`)"
+          },
+          {
+            "name": "index_addon_progress_profile_id_resumable_title_key",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "resumable",
+              "title_key"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_addon_progress_profile_id_resumable_title_key` ON `${TABLE_NAME}` (`profile_id`, `resumable`, `title_key`)"
           }
         ]
       },
@@ -221,7 +244,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '05520d254ac53da49a21d05e381e8ea0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '803a8ea275b7de78040fb7beb95edfd9')"
     ]
   }
 }

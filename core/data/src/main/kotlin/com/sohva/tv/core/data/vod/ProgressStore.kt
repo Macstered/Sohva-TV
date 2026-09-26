@@ -42,6 +42,8 @@ data class ContinueItem(
     val positionMs: Long,
     val durationMs: Long,
     val updatedAt: Long,
+    /** Set for a title paused in Discover (spec 02 HOME-FR-18): what its card opens. */
+    val discover: DiscoverResume? = null,
 ) {
     companion object {
         fun of(row: ContinueRow): ContinueItem = ContinueItem(
@@ -61,6 +63,22 @@ data class ContinueItem(
             updatedAt = row.updatedAt,
         )
     }
+}
+
+/**
+ * A Discover title in Continue watching (spec 02 HOME-FR-18, -23): the metadata installation
+ * ([owner]), the catalog's type and id, the video that was playing, the episode's own title as
+ * the subtitle, and the stored backdrop. Nothing here reaches a log.
+ */
+data class DiscoverResume(
+    val owner: String,
+    val mediaType: String,
+    val mediaId: String,
+    val videoId: String,
+    val subtitle: String?,
+    val backdrop: String?,
+) {
+    override fun toString(): String = "DiscoverResume($mediaType)"
 }
 
 /**

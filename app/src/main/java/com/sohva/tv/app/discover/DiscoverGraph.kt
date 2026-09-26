@@ -17,6 +17,33 @@ import kotlinx.coroutines.withContext
  * around every addon request cost no I/O (§9).
  */
 object DiscoverGraph {
+    /**
+     * Home's Discover part (spec 02 HOME-FR-17, -18): only where addons are allowed and for a
+     * profile that may use them; the newest resumable entry per title, decrypted only for these.
+     * No addon client, cache or repository is built for it (§9.1).
+     */
+    suspend fun continueItems(graph: AppGraph, limit: Int): List<com.sohva.tv.core.data.vod.ContinueItem> {
+        val host = graph.discover ?: return emptyList()
+        val profile = graph.data.profiles.activeId
+        if (!host.access.allowed(profile)) return emptyList()
+        return withContext(graph.dispatchers.io) { host.progress.continueEntries(profile, limit) }.map { e ->
+            val id = e.identity
+            val name = e.artwork.name.ifBlank { e.title }
+            com.sohva.tv.core.data.vod.ContinueItem(
+                contentKey = "discover:${id.installation}:${id.mediaId}:${id.videoId}",
+                groupKey = "discover:${id.installation}:${id.mediaType}:${id.mediaId}",
+                title = name, year = null, posterUrl = e.artwork.poster, replacementPoster = null, replacePoster = false,
+                season = null, episode = null, episodeTitle = null, tmdbId = null,
+                positionMs = e.positionMs, durationMs = e.durationMs ?: 0, updatedAt = e.updatedAt,
+                discover = com.sohva.tv.core.data.vod.DiscoverResume(
+                    id.installation, id.mediaType, id.mediaId, id.videoId,
+                    subtitle = e.title.takeIf { it.isNotBlank() && it != name },
+                    backdrop = e.artwork.background ?: e.artwork.poster,
+                ),
+            )
+        }
+    }
+
     fun build(graph: AppGraph): DiscoverHost {
         val access = CachedAccess(graph)
         val cipher = object : DiscoverCipher {

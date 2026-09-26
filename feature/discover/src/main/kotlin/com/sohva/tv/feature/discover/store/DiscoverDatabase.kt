@@ -68,13 +68,24 @@ data class CatalogPrefEntity(
     val hidden: Boolean,
 )
 
-/** Watch progress of one title or episode (ADDON-FR-105); [key] hashes its identity. */
-@Entity(tableName = "addon_progress", indices = [Index(value = ["profile_id", "updated_at"])])
+/**
+ * Watch progress of one title or episode (ADDON-FR-105); [key] hashes its identity. Home's
+ * Continue watching reads only the plaintext-free columns ([titleKey], [resumable], the time) and
+ * decrypts just the rows that become cards (spec 02 §9.1).
+ */
+@Entity(
+    tableName = "addon_progress",
+    indices = [Index(value = ["profile_id", "updated_at"]), Index(value = ["profile_id", "resumable", "title_key"])],
+)
 data class ProgressEntity(
     @PrimaryKey val key: String,
     @ColumnInfo(name = "profile_id") val profileId: String,
     val payload: String,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    /** Hashes the profile, metadata installation, media type and id: episodes of one series share it (HOME-FR-19). */
+    @ColumnInfo(name = "title_key") val titleKey: String,
+    /** Not completed and past the start (HOME-FR-17). */
+    val resumable: Boolean,
 )
 
 /** A Library title (ADDON-FR-110). */
@@ -153,6 +164,17 @@ interface ProgressDao {
 
     @Query("DELETE FROM addon_progress WHERE profile_id = :profile")
     suspend fun deleteProfile(profile: String)
+
+    /**
+     * Home's Discover part (HOME-FR-17, -19): per title the newest resumable row, newest first. At
+     * most 200 rows per profile are scanned, through the index; ties within a title are removed by the caller.
+     */
+    @Query(
+        "SELECT * FROM addon_progress AS p WHERE p.profile_id = :profile AND p.resumable = 1 AND p.updated_at = " +
+            "(SELECT MAX(q.updated_at) FROM addon_progress AS q WHERE q.profile_id = :profile AND q.resumable = 1 AND q.title_key = p.title_key) " +
+            "ORDER BY p.updated_at DESC, p.key LIMIT :limit",
+    )
+    suspend fun resumableTitles(profile: String, limit: Int): List<ProgressEntity>
 }
 
 @Dao

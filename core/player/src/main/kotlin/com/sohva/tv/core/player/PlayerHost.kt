@@ -28,6 +28,9 @@ interface PlayerEnvironment {
     /** Resolves a film or an episode by its content key (spec 30 PLAY-FR-14, spec 40 VOD-FR-102); null when gone. */
     suspend fun resolveVod(contentKey: String): ResolvedStream?
 
+    /** An addon stream chosen on a Discover title page (spec 50 §4.11), by its in-memory token; null when gone. */
+    suspend fun resolveAddon(token: String): ResolvedStream? = null
+
     /** Saves where a film or an episode got to (spec 30 PLAY-FR-130..131); the store applies the watched rule. */
     suspend fun saveProgress(contentKey: String, positionMs: Long, durationMs: Long)
 
@@ -66,6 +69,10 @@ data class ResolvedStream(
     val title: String,
     val userAgent: String?,
     val referrer: String?,
+    /** An addon stream (spec 50 ADDON-FR-95): its own request headers, sent only to its origin. */
+    val addonHeaders: Map<String, String>? = null,
 ) {
+    val addon: Boolean get() = addonHeaders != null
+
     override fun toString(): String = "ResolvedStream(key=$key, source=$sourceId)"
 }

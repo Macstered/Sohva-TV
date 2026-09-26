@@ -19,7 +19,9 @@ import com.sohva.tv.core.model.player.BufferProfile
 internal object PlayerFactory {
     fun create(context: Context, env: PlayerEnvironment, registry: StreamRegistry, profile: BufferProfile): ExoPlayer {
         // Every request of the stream, manifest and segments, goes through the resolver (L-23).
-        val http = OkHttpDataSource.Factory(env.callFactory)
+        // Addon streams go through their own transport (spec 50 ADDON-FR-95), marked by the registry.
+        val addon = (env.callFactory as? okhttp3.OkHttpClient)?.let(AddonTransport::client) ?: env.callFactory
+        val http = OkHttpDataSource.Factory(AddonTransport.route(env.callFactory, addon))
         val sources = DefaultMediaSourceFactory(ResolvingDataSource.Factory(http, registry.resolver))
         val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
         val audio = AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build()

@@ -21,6 +21,9 @@ data class ResumeCard(
     val minutesLeft: Int?,
 ) {
     val isEpisode: Boolean get() = item.season != null
+
+    /** A title paused in Discover (HOME-10): it opens its Discover page and has no actions dialog. */
+    val isDiscover: Boolean get() = item.discover != null
 }
 
 /** A Recently watched channels card (HOME-FR-26). */

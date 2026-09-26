@@ -9,6 +9,8 @@ import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.feature.discover.cache.ResponseCache
 import com.sohva.tv.feature.discover.data.AddonBrowser
 import com.sohva.tv.feature.discover.data.AddonManager
+import com.sohva.tv.feature.discover.data.AddonSourcesResolver
+import com.sohva.tv.feature.discover.play.AddonPlayback
 import com.sohva.tv.feature.discover.net.AddonClient
 import com.sohva.tv.feature.discover.store.CatalogPrefs
 import com.sohva.tv.feature.discover.store.DiscoverAccess
@@ -62,6 +64,20 @@ class DiscoverHost(
     val manager: AddonManager by lazy { AddonManager(access, installations, client, dispatchers.io) { testAllowHttp } }
     val browser: AddonBrowser by lazy { AddonBrowser(access, installations, client, cache, clock, dispatchers.io) }
     val settings: DiscoverSettings by lazy { DiscoverSettings(app) }
+    val sources: AddonSourcesResolver by lazy { AddonSourcesResolver(access, installations, client, dispatchers.io) }
+
+    private val playbacks = object : LinkedHashMap<String, AddonPlayback>(4, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AddonPlayback>?): Boolean = size > MAX_PLAYBACKS
+    }
+    private val sessions = java.util.concurrent.atomic.AtomicLong(clock.wallMillis())
+
+    /** A new progress session number, always larger than the last (FR-106). */
+    fun nextSession(): Long = sessions.incrementAndGet()
+
+    /** Keeps [playback] for the engine to resolve by its token; only the last few are kept. */
+    fun keepPlayback(playback: AddonPlayback) = synchronized(playbacks) { playbacks[playback.token] = playback }
+
+    fun playback(token: String): AddonPlayback? = synchronized(playbacks) { playbacks[token] }
 
     /** Profile ids whose installations, order or visibility changed; screens re-read on these (FR-57). */
     private val _setupChanged = MutableStateFlow(0L)
@@ -96,6 +112,7 @@ class DiscoverHost(
 
     private companion object {
         const val MAX_TITLES = 16
+        const val MAX_PLAYBACKS = 4
     }
 
     /** Tests start from nothing: every profile's rows, the cache and the preference. Not on the main thread. */

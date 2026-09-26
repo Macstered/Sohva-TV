@@ -78,6 +78,9 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     VideoSurface(model)
     // In the corner only the picture is drawn; the overlays' state stays in the model (PLAY-FR-111).
     if (LocalPictureInPicture.current) return
+    model.addon?.let { session ->
+        if (addonStartUp(model, session, picker)) return
+    }
     // The clean screen's key handler (PLAY-FR-30).
     Box(
         Modifier.fillMaxSize().focusRequester(host).onKeyEvent { model.keys.onKey(it.nativeKeyEvent) }.focusable().testTag("player-video"),
@@ -94,6 +97,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     model.ticker?.let { ScoreTicker(it, stats, Modifier.align(Alignment.TopEnd)) }
     if (quick) QuickActions(model)
     banner?.let { ErrorBanner(model, it, Modifier.align(Alignment.BottomCenter)) }
+    val addonStop = model.addon?.stop?.collectAsStateWithLifecycle()?.value
+    model.addon?.let { session -> addonStop?.let { AddonStopBanner(session, it, Modifier.align(Alignment.BottomCenter)) } }
     // Back peels one layer per press (spec 30 §3.2); the channel list takes its own keys.
     BackHandler(enabled = !listOpen) {
         when {
@@ -106,9 +111,26 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     }
     // Closing any overlay returns focus to the video (PLAY-FR-09).
     // The transport controls open unfocused (PLAY-FR-08); when they go, so does any focus in them.
-    LaunchedEffect(box, controls, picker, quick, banner?.stopped) {
-        if (!box && !controls && picker == null && !quick && banner?.stopped != true) host.requestFocusWhenAttached()
+    LaunchedEffect(box, controls, picker, quick, banner?.stopped, addonStop) {
+        if (!box && !controls && picker == null && !quick && banner?.stopped != true && addonStop == null) host.requestFocusWhenAttached()
     }
+}
+
+/**
+ * The addon loading screen during start-up (spec 50 §4.12), with only Back and Cancel acting.
+ * True while it is shown: then nothing else of the player is composed.
+ */
+@Composable
+private fun addonStartUp(model: PlayerModel, session: AddonSession, picker: Picker?): Boolean {
+    val stage by session.stage.collectAsStateWithLifecycle()
+    val current = stage
+    if (current != null) {
+        AddonLoading(model, session, current, picker != null)
+        picker?.let { TrackPicker(model, it) }
+        BackHandler { if (picker != null) model.closePicker() else model.currentKey()?.let { model.navigation.leave(it) } }
+        return true
+    }
+    return false
 }
 
 /** A SurfaceView in an aspect frame with a subtitle view (spec 30 §9 "Surface"): no TextureView, no layers. */

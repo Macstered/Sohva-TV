@@ -140,7 +140,8 @@ private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: Ho
                     card,
                     Modifier.card(model, focus, req, card.key, rowIndex, index, HeroSubject.Resume(card)).testTag("home-resume-${card.key}"),
                     onClick = { model.open(card) },
-                    onLongClick = { actions = true },
+                    // Discover cards have no long press (spec 02 §3.2).
+                    onLongClick = { if (!card.isDiscover) actions = true },
                 )
                 if (actions) {
                     ResumeActionsDialog(card) { action ->

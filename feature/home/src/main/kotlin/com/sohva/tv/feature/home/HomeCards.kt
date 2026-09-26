@@ -72,7 +72,9 @@ internal fun ResumeCardView(card: ResumeCard, modifier: Modifier, onClick: () ->
 @Composable
 internal fun resumeSubtitle(card: ResumeCard): String {
     val item = card.item
-    val label = if (item.season != null && item.episode != null) {
+    val label = if (item.discover != null) {
+        item.discover?.subtitle
+    } else if (item.season != null && item.episode != null) {
         val code = stringResource(R.string.series_episode_label, item.season!!, item.episode!!)
         item.episodeTitle?.takeIf { it.isNotBlank() }?.let { "$code · $it" } ?: code
     } else {

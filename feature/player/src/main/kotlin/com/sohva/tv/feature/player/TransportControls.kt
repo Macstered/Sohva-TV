@@ -62,7 +62,7 @@ internal fun TransportControls(model: PlayerModel, modifier: Modifier = Modifier
             .testTag("player-transport"),
     ) {
         Text(
-            if (model.vod != null) title.orEmpty() else stringResource(R.string.player_archive_title, playing?.channel?.name.orEmpty()),
+            model.addon?.play?.title ?: if (model.vod != null) title.orEmpty() else stringResource(R.string.player_archive_title, playing?.channel?.name.orEmpty()),
             Modifier.fillMaxWidth(0.62f),
             style = Sohva.typography.headline.copy(fontSize = 22.sp, lineHeight = 27.sp, fontWeight = FontWeight.Black),
             color = Sohva.palette.textPrimary,

@@ -22,7 +22,13 @@ sealed interface AppRoute {
      * on [videoId] when one was playing. The catalog's preview travels in memory
      * ([com.sohva.tv.feature.discover.DiscoverHost.keepTitle]); after process death the page restores to Discover.
      */
-    data class DiscoverTitle(val owner: String?, val type: String, val id: String, val videoId: String? = null) : AppRoute
+    data class DiscoverTitle(val owner: String?, val type: String, val id: String, val videoId: String? = null, val autoplay: Boolean = false) : AppRoute
+
+    /**
+     * An addon stream (spec 50 §4.12) by the in-memory token Discover keeps for it. Never restored
+     * after process death: the token is gone, so it restores to the page underneath.
+     */
+    data class AddonPlayer(val token: String) : AppRoute
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
 
@@ -105,6 +111,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         is AppRoute.SeriesDetails -> "seriespage:${route.key}"
         is AppRoute.Player -> "player"
         is AppRoute.VodPlayer -> "player"
+        is AppRoute.AddonPlayer -> "player"
         // A gate restores to the screen underneath: it never opens by itself after a restart.
         is AppRoute.PinGate, is AppRoute.ProfileGate -> "gate"
     }
