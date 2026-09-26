@@ -45,6 +45,10 @@ class LibraryStore(private val dao: LibraryDao, private val cipher: DiscoverCiph
         return dao.add(LibraryEntity(key, profile, encode(row), kept), CAPACITY)
     }
 
+    /** Beta 23's title with its own added time (decision A1); false when the Library is full. */
+    suspend fun restore(profile: String, title: LibraryTitle): Boolean =
+        dao.add(LibraryEntity(LibraryTitle.key(profile, title.installation, title.type, title.id), profile, encode(title), title.addedAt), CAPACITY)
+
     suspend fun remove(profile: String, installation: String, type: String, id: String) = dao.delete(LibraryTitle.key(profile, installation, type, id))
 
     suspend fun forgetProfile(profile: String) = dao.deleteProfile(profile)

@@ -67,6 +67,16 @@ class CatalogPrefs(private val dao: CatalogPrefDao) {
         dao.replace(profile, rows)
     }
 
+    /**
+     * Beta 23's order and hidden set (decision A1), same keys: saved catalogs in their order, the
+     * others after them in provider order, as beta 23 showed them; unknown keys dropped.
+     */
+    suspend fun restore(profile: String, installations: List<Installation>, order: List<String>, hidden: Set<String>) = lock.withLock {
+        val current = ordered(profile, installations).map { it.key }
+        val keys = order.filter { it in current }.distinct() + current.filter { it !in order }
+        dao.replace(profile, keys.mapIndexed { i, k -> CatalogPrefEntity(profile, k, i, k in hidden) })
+    }
+
     suspend fun forget(profile: String) = lock.withLock { dao.clear(profile) }
 
     private companion object {

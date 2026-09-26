@@ -78,6 +78,23 @@ class InstallationStore(private val dao: InstallationDao, private val cipher: Di
     }
 
     /**
+     * Beta 23's installation under its own id (decision A1): progress, Library and catalog keys
+     * hash that id, so they stay valid. False when the id or the URL is already there.
+     */
+    suspend fun restore(profile: String, id: String, endpoint: AddonEndpoint, manifest: AddonManifest, enabled: Boolean, position: Int): Boolean = lock.withLock {
+        if (snapshot(profile).any { it.id == id || it.endpoint.fingerprint == endpoint.fingerprint }) return@withLock false
+        val row = InstallationEntity(id, profile, endpoint.fingerprint, payload(endpoint, manifest), enabled, position, revision = 1, updatedAt = clock.wallMillis())
+        try {
+            dao.insert(row)
+        } catch (e: android.database.sqlite.SQLiteConstraintException) {
+            return@withLock false
+        } finally {
+            snapshots.remove(profile)
+        }
+        true
+    }
+
+    /**
      * Writes [change] only if [of] still has the revision read before (FR-30, -31): a stale answer
      * never overwrites a newer change or resurrects a removed addon.
      */

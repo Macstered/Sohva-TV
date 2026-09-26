@@ -113,6 +113,9 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val organization: OrgManager by lazy { OrgManager(database, OrgRules(database), dispatchers.io) }
 
     /** The one-time import of beta 23's sources and keys (decision A1); after the first frame. */
+    /** One-time markers (`app_meta`), for the app's importers of other modules' data (decision A1). */
+    val appMeta: com.sohva.tv.core.data.database.AppMetaDao by lazy { database.appMeta() }
+
     val beta23Import: Beta23SourceImport by lazy { Beta23SourceImport(app, sources, serviceKeys, database.appMeta(), dispatchers.io) }
 
     /** Beta 23's hidden categories as rules, once (spec 42 ORG-15); after the first frame. */

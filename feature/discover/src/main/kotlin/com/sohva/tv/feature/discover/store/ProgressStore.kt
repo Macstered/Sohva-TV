@@ -97,6 +97,15 @@ class ProgressStore(private val dao: ProgressDao, private val cipher: DiscoverCi
         true
     }
 
+    /** Beta 23's entry as it was (decision A1): same key, same time; no session guard applies. */
+    suspend fun restore(profile: String, entry: WatchEntry) = lock.withLock {
+        val id = entry.identity
+        val titleKey = Hashes.parts(profile, id.installation, id.mediaType, id.mediaId)
+        dao.put(ProgressEntity(id.key(profile), profile, encode(entry), entry.updatedAt, titleKey, !entry.completed && entry.positionMs > 0))
+        dao.prune(profile, MAX_ENTRIES)
+        _changes.tryEmit(profile)
+    }
+
     /** FR-65: a found poster is written into an entry that still exists; nothing else changes. */
     suspend fun repairArtwork(profile: String, identity: WatchIdentity, artwork: Artwork) = lock.withLock {
         val key = identity.key(profile)

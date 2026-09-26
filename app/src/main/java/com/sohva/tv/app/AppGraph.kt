@@ -233,6 +233,8 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
             data.beta23Categories.run()
+            // Beta 23's Discover data (decision A1); Discover itself is built only when old files exist.
+            if (flags.discover) com.sohva.tv.app.discover.Beta23DiscoverImport(this@AppGraph).run()
         }
         // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
         if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)

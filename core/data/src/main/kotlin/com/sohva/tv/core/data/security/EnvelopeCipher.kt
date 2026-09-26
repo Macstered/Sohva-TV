@@ -36,6 +36,15 @@ data class EnvelopeSpec(
             keystoreAad = "streammate-secret-v1",
             valueAad = "streammate-secret-v2",
         )
+
+        /** Beta 23's Discover store (its own Keystore key and wrapped data key), read only by the importer. */
+        val BETA23_DISCOVER: EnvelopeSpec = EnvelopeSpec(
+            keystoreAlias = "sohva.addons.v1",
+            prefsFile = "sohva_addon_secret_envelope",
+            wrappedKeyName = "data_key",
+            keystoreAad = "streammate-secret-v1",
+            valueAad = "streammate-secret-v2",
+        )
     }
 }
 
