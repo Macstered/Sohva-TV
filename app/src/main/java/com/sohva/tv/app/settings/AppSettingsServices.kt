@@ -39,6 +39,8 @@ class AppSettingsServices(
     switchProfile: (String) -> Unit = {},
     applyLanguage: (String?) -> Unit = {},
     afterRestore: () -> Unit = {},
+    activity: android.content.Context? = null,
+    openLegal: () -> Unit = {},
 ) : SettingsServices {
     private val io get() = graph.dispatchers.io
 
@@ -51,6 +53,8 @@ class AppSettingsServices(
     override val playback: com.sohva.tv.feature.settings.PlaybackSettingsServices = AppPlaybackSettings(graph)
 
     override val backup: com.sohva.tv.feature.settings.BackupSettingsServices = AppBackupSettings(graph, afterRestore)
+
+    override val about: com.sohva.tv.feature.settings.AboutSettingsServices = AppAboutSettings(graph, activity, openLegal)
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
 

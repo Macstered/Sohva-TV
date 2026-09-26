@@ -38,3 +38,9 @@ table), META-34, SEC-22, SEC-24.
 - Part 2 (Backup): done. `.smbak` read and written by an independent test encryptor too; save,
   restore with the question naming removed sources, the restore marker, Clear all guide data
   (programmes only). Device suite `SettingsBackupTest` 5/5 on the API 30 stand-in.
+- Part 3 (Updates, About, legal, diagnostics): done. The updater with its PackageInstaller session
+  and `.dm` profile, kept across the process Android kills when installs are allowed; About; the
+  legal screen card by card; Save diagnostics with no secret. Exit criterion met on the API 30
+  stand-in with `tools/update_e2e.py`: build 9101 installed through the app,
+  `[status=speed-profile] [reason=install-dm]`. Device suite `SettingsAboutTest` green (the link
+  dialog check skips on an emulator image with a browser).

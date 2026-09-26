@@ -39,6 +39,9 @@ interface SourceStatusDao {
     @Query("SELECT * FROM source_status")
     fun observeAll(): Flow<List<SourceStatusEntity>>
 
+    @Query("SELECT * FROM source_status")
+    fun all(): List<SourceStatusEntity>
+
     @Query("SELECT * FROM source_status WHERE source_id = :sourceId AND kind = :kind")
     fun get(sourceId: String, kind: String): SourceStatusEntity?
 

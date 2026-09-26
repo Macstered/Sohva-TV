@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -75,6 +76,26 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
     val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }
+
+    /**
+     * The public updater (spec 72 §4): only the release package checks, downloads or installs
+     * (ABOUT-FR-01); built on first use, after the first frame, on the shared HTTP client.
+     */
+    val updater: com.sohva.tv.core.sync.update.Updater by lazy {
+        val config = com.sohva.tv.core.sync.update.UpdaterConfig(
+            enabled = flags.publicUpdates && app.packageName == RELEASE_PACKAGE,
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE,
+            sdk = android.os.Build.VERSION.SDK_INT,
+            feed = BuildConfig.UPDATE_FEED.toHttpUrl(),
+        )
+        com.sohva.tv.core.sync.update.Updater(
+            config, com.sohva.tv.core.net.update.UpdateHttp(sync.http.client), com.sohva.tv.app.update.AppUpdateMemory(app, dispatchers.io),
+            java.io.File(app.cacheDir, "updates"), com.sohva.tv.app.update.AndroidUpdateInstaller(app, diagnostics, dispatchers.io), diagnostics, clock, appScope,
+            // Notes in the interface language (ABOUT-FR-21): the chosen one, else the TV's.
+            language = { data.locale.languageTag() ?: java.util.Locale.getDefault().toLanguageTag() },
+        )
+    }
 
     /** The playback engine's and player screen's view of the graph; built on first playback. */
     val player: com.sohva.tv.app.player.PlayerGraph by lazy { com.sohva.tv.app.player.PlayerGraph(this) }
@@ -174,6 +195,8 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             sync.runner.recoverAfterRestart()
             data.beta23Categories.run()
         }
+        // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
+        if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)
         // A restore the process did not finish is said at start (spec 71 §8); Backup's status line says it too.
         appScope.launch {
             if (data.backup.unfinished()) {
@@ -189,5 +212,6 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     private companion object {
         const val LOG_TAG = "SohvaTV"
+        const val RELEASE_PACKAGE = "com.streammate.tv"
     }
 }

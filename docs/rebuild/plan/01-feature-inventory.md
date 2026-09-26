@@ -994,41 +994,41 @@ Spec: [specs/72-updates-about-diagnostics.md](../specs/72-updates-about-diagnost
 
 **Updates**
 
-- [ ] **ABOUT-01** The UPDATES group shows the installed version: "Installed: 0.1.0-beta.23".
-- [ ] **ABOUT-02** An automatic update check runs at most once per 24 hours, at app start, only in the release package `com.streammate.tv`; nothing is downloaded without a press.
-- [ ] **ABOUT-03** **Check for updates** checks now.
-- [ ] **ABOUT-04** One status line names the phase: not checked, checking, newest, available, downloading with percent, downloaded and verified, permission needed, or one of four failures (in `danger`).
-- [ ] **ABOUT-05** The newest published release whose stated Android build is above the installed one is offered: "Sohva TV X is available." with **Download**.
-- [ ] **ABOUT-06** The download goes to the app's cache with a live percentage and is verified against the release's `SHA256SUMS.txt`; a mismatch deletes it; a release without a checksum file is refused.
-- [ ] **ABOUT-07** The release's install-time profile for the device's Android (`.api31.dm` or `.api28.dm`) is downloaded, verified the same way and installed together with the APK in one PackageInstaller session, so Android compiles the update while installing (`reason=install-dm`).
-- [ ] **ABOUT-08** Without a usable profile, or when the session cannot be used, the APK is handed to the system installer screen as before.
-- [ ] **ABOUT-09** When Android needs the "install unknown apps" permission, **Allow installs** opens that page for Sohva TV and **Install** tries again.
-- [ ] **ABOUT-10** "What's new in X" shows the offered release's notes, otherwise the installed build's own release notes, remembered for offline use (at most 4,000 characters).
-- [ ] **ABOUT-11** Debug, demo and Lab builds never check, download or install; About says public updates are disabled (Lab also shows its safety notice as the notes).
-- [ ] **ABOUT-12** Help line: downloads are verified; playlists and settings are kept.
+- [x] **ABOUT-01** The UPDATES group shows the installed version: "Installed: 0.1.0-beta.23".
+- [x] **ABOUT-02** An automatic update check runs at most once per 24 hours, at app start, only in the release package `com.streammate.tv`; nothing is downloaded without a press.
+- [x] **ABOUT-03** **Check for updates** checks now.
+- [x] **ABOUT-04** One status line names the phase: not checked, checking, newest, available, downloading with percent, downloaded and verified, permission needed, or one of four failures (in `danger`).
+- [x] **ABOUT-05** The newest published release whose stated Android build is above the installed one is offered: "Sohva TV X is available." with **Download**.
+- [x] **ABOUT-06** The download goes to the app's cache with a live percentage and is verified against the release's `SHA256SUMS.txt`; a mismatch deletes it; a release without a checksum file is refused.
+- [x] **ABOUT-07** The release's install-time profile for the device's Android (`.api31.dm` or `.api28.dm`) is downloaded, verified the same way and installed together with the APK in one PackageInstaller session, so Android compiles the update while installing (`reason=install-dm`).
+- [x] **ABOUT-08** Without a usable profile, or when the session cannot be used, the APK is handed to the system installer screen as before.
+- [x] **ABOUT-09** When Android needs the "install unknown apps" permission, **Allow installs** opens that page for Sohva TV and **Install** tries again.
+- [x] **ABOUT-10** "What's new in X" shows the offered release's notes, otherwise the installed build's own release notes, remembered for offline use (at most 4,000 characters).
+- [x] **ABOUT-11** Debug, demo and Lab builds never check, download or install; About says public updates are disabled (Lab also shows its safety notice as the notes).
+- [x] **ABOUT-12** Help line: downloads are verified; playlists and settings are kept.
 
 **About and legal**
 
-- [ ] **ABOUT-13** **About, privacy and licences** (centred button) opens the legal screen.
-- [ ] **ABOUT-14** Legal screen: brand, title, subtitle, Back; the version and the non-commercial statement.
-- [ ] **ABOUT-15** On-device privacy summary (five paragraphs).
-- [ ] **ABOUT-16** Support and privacy contact with **Send email** (`mailto:` the public address).
-- [ ] **ABOUT-17** TMDB attribution: notice, the unmodified TMDB logo, **Open TMDB**.
-- [ ] **ABOUT-18** TVmaze (CC BY-SA): notice, **Open TVmaze**, **TVmaze licence**.
-- [ ] **ABOUT-19** API-Sports: notice, provider-rights statement, **API-Sports terms**.
-- [ ] **ABOUT-20** Notes on services and connections (HTTP, metadata and sports disclosures).
-- [ ] **ABOUT-21** Discover addons notice.
-- [ ] **ABOUT-22** Open-source notice with **Apache 2.0** licence link.
-- [ ] **ABOUT-23** No-affiliation statement.
-- [ ] **ABOUT-24** The MIT notices of the Nord, Everforest and Kanagawa palettes ship inside the APK (`theme-licenses.txt`); beta 23 does not show them on screen.
-- [ ] **ABOUT-25** TRANSLATIONS: **Help translate Sohva TV** opens the public repository.
+- [x] **ABOUT-13** **About, privacy and licences** (centred button) opens the legal screen.
+- [x] **ABOUT-14** Legal screen: brand, title, subtitle, Back; the version and the non-commercial statement.
+- [x] **ABOUT-15** On-device privacy summary (five paragraphs).
+- [x] **ABOUT-16** Support and privacy contact with **Send email** (`mailto:` the public address).
+- [x] **ABOUT-17** TMDB attribution: notice, the unmodified TMDB logo, **Open TMDB**.
+- [x] **ABOUT-18** TVmaze (CC BY-SA): notice, **Open TVmaze**, **TVmaze licence**.
+- [x] **ABOUT-19** API-Sports: notice, provider-rights statement, **API-Sports terms**.
+- [x] **ABOUT-20** Notes on services and connections (HTTP, metadata and sports disclosures).
+- [x] **ABOUT-21** Discover addons notice.
+- [x] **ABOUT-22** Open-source notice with **Apache 2.0** licence link.
+- [x] **ABOUT-23** No-affiliation statement.
+- [x] **ABOUT-24** The MIT notices of the Nord, Everforest and Kanagawa palettes ship inside the APK (`theme-licenses.txt`); beta 23 does not show them on screen.
+- [x] **ABOUT-25** TRANSLATIONS: **Help translate Sohva TV** opens the public repository.
 
 **Diagnostics**
 
-- [ ] **ABOUT-26** DIAGNOSTICS: **Save diagnostics** opens the system "create document" picker with the name `sohva-tv-diagnostics-yyyyMMdd-HHmm.txt` (text/plain).
-- [ ] **ABOUT-27** The file holds app, device, Android, locale, time zones, a Display line, SQLite version, key settings, sources by name, every refresh state and the app's last 600 event lines, including start-up and channel-loading timings.
-- [ ] **ABOUT-28** Addresses, user names, passwords, keys and tokens are removed before a line is kept and again before the file is written.
-- [ ] **ABOUT-29** The result shows under the button: "Diagnostics saved. Share the file with the developer if asked." or the failure.
+- [x] **ABOUT-26** DIAGNOSTICS: **Save diagnostics** opens the system "create document" picker with the name `sohva-tv-diagnostics-yyyyMMdd-HHmm.txt` (text/plain).
+- [x] **ABOUT-27** The file holds app, device, Android, locale, time zones, a Display line, SQLite version, key settings, sources by name, every refresh state and the app's last 600 event lines, including start-up and channel-loading timings.
+- [x] **ABOUT-28** Addresses, user names, passwords, keys and tokens are removed before a line is kept and again before the file is written.
+- [x] **ABOUT-29** The result shows under the button: "Diagnostics saved. Share the file with the developer if asked." or the failure.
 
 ## Security and privacy
 

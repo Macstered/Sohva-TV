@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+    <!-- Public updates (spec 72 §4.4): Android asks the viewer before each install. The Lab build
+         removes it and the updates provider. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <uses-feature
         android:name="android.software.leanback"
         android:required="true" />
@@ -74,6 +78,17 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
+        </provider>
+
+        <!-- Hands the verified update to the system installer (spec 72 ABOUT-FR-15). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
         </provider>
 
         <!-- TV launchers remember favourites and pinned apps by component name, so the launcher

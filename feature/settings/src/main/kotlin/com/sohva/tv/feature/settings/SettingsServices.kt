@@ -38,6 +38,9 @@ interface SettingsServices {
     /** Settings › Backup & tools (spec 71). */
     val backup: BackupSettingsServices
 
+    /** Settings › About (spec 72). */
+    val about: AboutSettingsServices
+
     fun sources(): Flow<List<Source>>
 
     /** Why beta 23's sources could not be imported, when that happened (plan/04 §17 failure path). */

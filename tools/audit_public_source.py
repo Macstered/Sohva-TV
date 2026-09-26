@@ -52,6 +52,8 @@ PRIVATE_ADDRESS = re.compile(r"\b(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1
 EMULATOR_HOST_ALIAS = "10.0.2.2"
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 ALLOWED_EMAILS = {"hello@luontra.fi", "noreply@anthropic.com"}
+# Licence texts reproduced verbatim: MIT requires the copyright notice, its author address included.
+LICENCE_TEXTS = {"app/src/main/assets/theme-licenses.txt"}
 # Kotlin labels (`this@drawBehind.size`) look like addresses.
 KOTLIN_LABELS = ("this", "return", "super", "continue", "break")
 ALLOWED_EMAIL_DOMAINS = (".example", ".test", ".invalid", "example.com", "example.org")
@@ -99,7 +101,7 @@ def audit(path: str) -> list[str]:
             lower = email.lower()
             if lower.split("@")[0] in KOTLIN_LABELS:
                 continue
-            if lower in ALLOWED_EMAILS or lower.endswith(ALLOWED_EMAIL_DOMAINS):
+            if lower in ALLOWED_EMAILS or lower.endswith(ALLOWED_EMAIL_DOMAINS) or path in LICENCE_TEXTS:
                 continue
             findings.append(f"{where}: e-mail address not on the allow-list")
     return findings

@@ -206,4 +206,10 @@
     <string name="backup_no_picker">Esta TV não tem um seletor de arquivos para salvar ou abrir um backup.</string>
     <string name="backup_restore_incomplete">A última restauração não terminou. Restaure o backup novamente.</string>
     <string name="backup_partial_file_kept">%1$s Não foi possível remover o arquivo incompleto.</string>
+    <string name="update_failed_download">Não foi possível transferir a atualização. Verifique a ligação e tente novamente.</string>
+    <string name="update_permission_where">Esta TV não tem um atalho para essa página. Nas definições da TV, abra Apps › Acesso especial de apps › Instalar apps desconhecidas e permita o Sohva TV.</string>
+    <string name="diagnostics_open_failed">Não foi possível abrir a localização escolhida.</string>
+    <string name="diagnostics_no_picker">Esta TV não tem um seletor de ficheiros para guardar o ficheiro de diagnóstico.</string>
+    <string name="link_open_elsewhere">Esta TV não consegue abrir a ligação. Leia o código ou escreva o endereço noutro dispositivo.</string>
+    <string name="about_palettes_title">Licenças das paletas de cores</string>
 </resources>

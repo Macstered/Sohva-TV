@@ -19,6 +19,9 @@ sealed interface AppRoute {
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
 
+    /** About, privacy and licences (spec 72 §5.2), from Settings › About. */
+    data object Legal : AppRoute
+
     /** Channel management (spec 21), over the guide. */
     data object Channels : AppRoute
 
@@ -87,6 +90,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         AppRoute.Discover -> "discover"
         AppRoute.ProfilePicker -> "profiles"
         AppRoute.Settings -> "settings"
+        AppRoute.Legal -> "legal"
         AppRoute.Channels -> "channels"
         is AppRoute.LibraryManager -> "manager:${route.room.name}"
         is AppRoute.FilmDetails -> "film:${route.key}"
@@ -117,6 +121,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         // Behind the management gate: a restricted profile meets the PIN again after a restart (spec 04 PROF-FR-34).
         "settings" -> AppRoute.ProfileGate(null, AppRoute.Settings)
         "channels" -> AppRoute.ProfileGate(null, AppRoute.Channels)
+        "legal" -> AppRoute.Legal
         // A playback route restores to the screen underneath it (spec 01 §4.4).
         else -> null
     }

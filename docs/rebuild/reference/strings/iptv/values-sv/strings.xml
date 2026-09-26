@@ -856,4 +856,10 @@
     <string name="backup_no_picker">Den här tv:n har ingen filväljare för att spara eller öppna en säkerhetskopia.</string>
     <string name="backup_restore_incomplete">Den senaste återställningen blev inte klar. Återställ säkerhetskopian igen.</string>
     <string name="backup_partial_file_kept">%1$s Den ofärdiga filen kunde inte tas bort.</string>
+    <string name="update_failed_download">Uppdateringen kunde inte laddas ner. Kontrollera anslutningen och försök igen.</string>
+    <string name="update_permission_where">Den här tv:n har ingen genväg till sidan. Öppna Appar › Särskild appåtkomst › Installera okända appar i tv:ns inställningar och tillåt Sohva TV.</string>
+    <string name="diagnostics_open_failed">Den valda platsen kunde inte öppnas.</string>
+    <string name="diagnostics_no_picker">Den här tv:n har ingen filväljare för att spara diagnostikfilen.</string>
+    <string name="link_open_elsewhere">Den här tv:n kan inte öppna länken. Skanna koden eller skriv adressen på en annan enhet.</string>
+    <string name="about_palettes_title">Licenser för färgpaletter</string>
 </resources>

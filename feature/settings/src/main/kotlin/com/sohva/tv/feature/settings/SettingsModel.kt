@@ -91,6 +91,9 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     /** Settings › Backup & tools (spec 71 §5). */
     val backup: BackupSettings = BackupSettings(services.backup, viewModelScope)
 
+    /** Settings › About (spec 72 §5.1). */
+    val about: AboutSettings = AboutSettings(services.about, viewModelScope)
+
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
 

@@ -163,8 +163,16 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val applyLanguage: (String?) -> Unit = remember(activity) { { tag -> activity?.let { com.sohva.tv.app.AppLocales.set(it, tag) } } }
             // A restore that makes a restricted profile active leaves Settings for Home (spec 71 §8).
             val afterRestore: () -> Unit = remember(stack) { { stack.resetTo(listOf(AppRoute.Home)) } }
-            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore), accounts = false) }
+            val openLegal: () -> Unit = remember(stack) { { stack.push(AppRoute.Legal) } }
+            val model = viewModel {
+                SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore, activity, openLegal), accounts = false)
+            }
             SettingsScreen(model, onBack = { back() })
+        }
+        AppRoute.Legal -> {
+            val activity = androidx.activity.compose.LocalActivity.current
+            val model = viewModel { com.sohva.tv.feature.settings.LegalModel(com.sohva.tv.app.settings.AppAboutSettings(graph, activity, openLegalScreen = {})) }
+            com.sohva.tv.feature.settings.LegalScreen(model, onBack = { back() })
         }
     }
 }

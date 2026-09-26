@@ -157,6 +157,7 @@ private fun SettingsPane(
             SettingsSection.METADATA -> LibraryPane(model.library, start)
             SettingsSection.PARENTAL -> ParentalPane(model.profiles, start)
             SettingsSection.BACKUP -> BackupPane(model.backup, start)
+            SettingsSection.ABOUT -> AboutPane(model.about, start)
             else -> PendingSection(state.section)
         }
     }

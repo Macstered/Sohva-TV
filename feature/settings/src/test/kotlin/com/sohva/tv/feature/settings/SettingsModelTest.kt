@@ -72,6 +72,32 @@ class SettingsModelTest {
             override fun startupScreen() = flowOf(com.sohva.tv.core.model.settings.StartupScreen.HOME)
             override suspend fun setStartupScreen(value: com.sohva.tv.core.model.settings.StartupScreen) = Unit
         }
+        override val about: AboutSettingsServices = object : AboutSettingsServices {
+            override val installedVersion: String = "0.2.0-test"
+
+            override val labNotice: Boolean = false
+
+            override val updates = kotlinx.coroutines.flow.MutableStateFlow(com.sohva.tv.core.model.update.UpdateState(com.sohva.tv.core.model.update.UpdatePhase.DISABLED))
+
+            override fun check() = Unit
+
+            override fun download() = Unit
+
+            override fun install() = Unit
+
+            override fun openPermission(): Boolean = false
+
+            override fun openLegal() = Unit
+
+            override suspend fun paletteLicences(): String? = null
+
+            override fun openLink(url: String): Boolean = true
+
+            override suspend fun qrCode(url: String): com.sohva.tv.core.model.phone.QrMatrix? = null
+
+            override suspend fun saveDiagnostics(target: android.net.Uri): DiagnosticsOutcome = DiagnosticsOutcome.Saved
+        }
+
         override val backup: BackupSettingsServices = object : BackupSettingsServices {
             override suspend fun save(target: android.net.Uri, password: CharArray): BackupOutcome = BackupOutcome.Saved
 
