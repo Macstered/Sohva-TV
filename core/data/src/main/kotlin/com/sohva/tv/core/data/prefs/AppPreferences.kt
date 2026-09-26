@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.sohva.tv.core.data.metadata.MetadataPreferences
 import com.sohva.tv.core.model.player.BufferProfile
+import com.sohva.tv.core.model.profile.Household
+import com.sohva.tv.core.model.profile.Profiles
 import com.sohva.tv.core.model.player.Gesture
 import com.sohva.tv.core.model.player.PlaybackSettings
 import com.sohva.tv.core.model.player.ReconnectPolicy
@@ -50,8 +52,29 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
     /** Absent = the TV's zone (spec 20 GUIDE-FR-110). */
     val timeZone: Flow<String?> = key(TIME_ZONE) { it }
 
-    /** The profile's last channel (spec 30 PLAY-FR-57); profile-scoped keys arrive with profiles (M6). */
-    val lastChannel: Flow<String?> = key(LAST_CHANNEL) { it }
+    /** [profileId]'s last channel (spec 30 PLAY-FR-57), under `last_channel_id[:id]` (spec 04 §6). */
+    fun lastChannel(profileId: String): Flow<String?> = key(stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId))) { it }
+
+    /** The household (spec 04 §6): profiles, the active one, ask at start, "a PIN exists". */
+    val household: Flow<Household> = store.data.map(::householdOf).distinctUntilChanged()
+
+    /** Changes the household in one write; [change] runs inside the edit, so concurrent changes do not lose each other. */
+    suspend fun editHousehold(change: (Household) -> Household) {
+        store.edit { prefs ->
+            val next = change(householdOf(prefs))
+            prefs[PROFILES] = Profiles.encode(next.stored)
+            if (next.activeId == Profiles.DEFAULT_ID) prefs.remove(ACTIVE_PROFILE) else prefs[ACTIVE_PROFILE] = next.activeId
+            prefs[ASK_PROFILE] = next.askAtStart
+            prefs[PIN_CONFIGURED] = next.pinConfigured
+            if (next.stored.isEmpty()) prefs.remove(PROFILES)
+        }
+    }
+
+    /** Removes [profileId]'s own keys (PROF-FR-06); its database rows go separately. */
+    suspend fun forgetProfile(profileId: String) {
+        if (profileId == Profiles.DEFAULT_ID) return
+        store.edit { it.remove(stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId))) }
+    }
 
     /**
      * The remote mapping (spec 31 REMOTE-FR-30…32), decoded once per change into the player's
@@ -168,18 +191,20 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         store.edit { if (value.isNullOrEmpty()) it.remove(LAST_GUIDE_SOURCE) else it[LAST_GUIDE_SOURCE] = value }
     }
 
-    suspend fun setLastChannel(key: String) {
-        store.edit { it[LAST_CHANNEL] = key }
+    suspend fun setLastChannel(profileId: String, key: String) {
+        store.edit { it[stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId))] = key }
     }
 
     /** One read for the first frame. Call off the main thread. */
     suspend fun startSnapshot(): StartSnapshot {
         val prefs = store.data.first()
+        val household = householdOf(prefs)
         return StartSnapshot(
             theme = ColorThemeId.fromStored(prefs[THEME]),
             scale = InterfaceScale.fromStored(prefs[SCALE]),
             startupScreen = StartupScreen.fromStored(prefs[STARTUP_SCREEN]),
-            lastChannel = prefs[LAST_CHANNEL],
+            lastChannel = prefs[stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, household.active.id))],
+            household = household,
         )
     }
 
@@ -204,6 +229,13 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         store.edit { it.clear() }
     }
 
+    private fun householdOf(prefs: Preferences): Household = Household(
+        stored = Profiles.decode(prefs[PROFILES]),
+        activeId = prefs[ACTIVE_PROFILE] ?: Profiles.DEFAULT_ID,
+        askAtStart = prefs[ASK_PROFILE] ?: true,
+        pinConfigured = prefs[PIN_CONFIGURED] ?: false,
+    )
+
     private fun <T> key(key: Preferences.Key<String>, parse: (String?) -> T): Flow<T> =
         store.data.map { parse(it[key]) }.distinctUntilChanged()
 
@@ -219,7 +251,11 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         private val LAST_GUIDE_SOURCE = stringPreferencesKey("last_guide_source_id")
         private val SHOW_CHANNEL_NUMBERS = booleanPreferencesKey("show_channel_numbers")
         private val TIME_ZONE = stringPreferencesKey("time_zone")
-        private val LAST_CHANNEL = stringPreferencesKey("last_channel_id")
+        private const val LAST_CHANNEL_KEY = "last_channel_id"
+        private val PROFILES = stringPreferencesKey("profiles")
+        private val ACTIVE_PROFILE = stringPreferencesKey("active_profile_id")
+        private val ASK_PROFILE = booleanPreferencesKey("ask_profile_at_start")
+        private val PIN_CONFIGURED = booleanPreferencesKey("parental_pin_configured")
         private val REMOTE_MAPPINGS = stringSetPreferencesKey("remote_mappings")
         private val REMINDER_OVERLAY_ASKED = booleanPreferencesKey("reminder_overlay_asked")
         private val EDITORS_SHOW_HIDDEN = booleanPreferencesKey("editors_show_hidden")

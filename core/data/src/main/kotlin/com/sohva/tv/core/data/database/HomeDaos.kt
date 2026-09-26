@@ -32,7 +32,8 @@ data class NowProgrammeRow(
  */
 object HomeSql {
     const val CHANNELS_OF_KEYS = "SELECT c.id, c.key, c.name, c.logo_url, c.number, c.source_id, c.epg_id, src.epg_offset_minutes AS offset_minutes " +
-        "FROM channel c CROSS JOIN source src ON src.id = c.source_id WHERE c.key IN (:keys) AND c.visible = 1 AND src.enabled = 1"
+        "FROM channel c CROSS JOIN source src ON src.id = c.source_id WHERE c.key IN (:keys) AND c.visible = 1 AND src.enabled = 1 " +
+        "AND ${AllowedSql.LIVE_C}"
 
     // The last programme to start at or before [at] in the source's active guide, if it has not ended.
     const val PROGRAMME_AT = "SELECT p.id, p.title, p.subtitle, p.start_at, p.stop_at FROM source_status st " +
@@ -44,7 +45,7 @@ object HomeSql {
 @Dao
 interface HomeDao {
     @Query(HomeSql.CHANNELS_OF_KEYS)
-    suspend fun channelsOfKeys(keys: List<String>): List<RecentChannelRow>
+    suspend fun channelsOfKeys(keys: List<String>, profile: String): List<RecentChannelRow>
 
     @Query(HomeSql.PROGRAMME_AT)
     suspend fun programmeAt(sourceId: String, epgId: String, at: Long): NowProgrammeRow?

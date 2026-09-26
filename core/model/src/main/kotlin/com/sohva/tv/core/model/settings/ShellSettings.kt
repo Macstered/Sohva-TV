@@ -1,5 +1,7 @@
 package com.sohva.tv.core.model.settings
 
+import com.sohva.tv.core.model.profile.Household
+
 /** The seven colour themes, in picker order. [id] is what preferences and backups store (design/01 §3). */
 enum class ColorThemeId(val id: String) {
     ORIGINAL("original"),
@@ -50,8 +52,10 @@ data class StartSnapshot(
     val theme: ColorThemeId,
     val scale: InterfaceScale,
     val startupScreen: StartupScreen,
-    /** For the "Last channel" start screen (spec 01 SHELL-FR-11). */
+    /** The active profile's, for the "Last channel" start screen (spec 01 SHELL-FR-11). */
     val lastChannel: String? = null,
+    /** Who is watching at start (spec 04 §9): profiles, the active one, ask at start, the PIN flag. */
+    val household: Household = Household(),
 )
 
 /** How often playlists and guides refresh in the background (spec 70 SET-26). Stored by [name]. */

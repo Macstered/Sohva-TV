@@ -6,6 +6,7 @@ import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.EpisodeEntity
 import com.sohva.tv.core.data.database.MovieEntity
+import com.sohva.tv.core.data.database.ProfileAllowedGroupEntity
 import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SearchIndex
 import com.sohva.tv.core.data.database.SearchTable
@@ -35,7 +36,8 @@ class SearchReadsTest {
         .addCallback(SearchIndex.Callback)
         .allowMainThreadQueries()
         .build()
-    private val reads = SearchReads(db, Dispatchers.Unconfined)
+    private var profile = "default"
+    private val reads = SearchReads(db, Dispatchers.Unconfined) { profile }
 
     @After
     fun close() = db.close()
@@ -99,6 +101,25 @@ class SearchReadsTest {
         // Only the active guide snapshot, reached through the channel's EPG id.
         assertEquals(listOf("Match of the Day" to "News"), live.programmes.map { it.title to it.channelName })
         // A series name finds its episodes.
+        assertEquals(listOf("Part 1", "Part 2"), reads.episodes("hearts").map { it.name })
+    }
+
+    /** Spec 04 PROF-FR-23, SEARCH-18: a restricted profile finds only what its groups hold, episodes included. */
+    @Test
+    fun aRestrictedProfileFindsOnlyItsGroups() = runBlocking {
+        seed()
+        profile = "kids"
+        db.profiles().allow(ProfileAllowedGroupEntity("kids", "MOVIES", "id:9"))
+        db.profiles().allow(ProfileAllowedGroupEntity("kids", "SERIES", "id:9"))
+        db.profiles().allow(ProfileAllowedGroupEntity("kids", "LIVE", "id:9"))
+        assertEquals(emptyList<String>(), reads.films("match").map { it.name })
+        assertEquals(emptyList<String>(), reads.series("matching").map { it.name })
+        assertEquals(emptyList<String>(), reads.episodes("hearts").map { it.name })
+        val live = reads.live("match")
+        assertEquals(emptyList<String>(), live.channels.map { it.name } + live.programmes.map { it.title })
+        db.profiles().allow(ProfileAllowedGroupEntity("kids", "MOVIES", "id:1"))
+        assertEquals(listOf("Mätch Point", "The Matchmaker"), reads.films("match").map { it.name })
+        profile = "default"
         assertEquals(listOf("Part 1", "Part 2"), reads.episodes("hearts").map { it.name })
     }
 

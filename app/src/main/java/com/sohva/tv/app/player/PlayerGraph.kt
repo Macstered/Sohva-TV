@@ -108,7 +108,7 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
         override suspend fun recordWatched(channelKey: String) = withContext(io) {
             graph.data.live.recordWatched(channelKey)
-            graph.data.preferences.setLastChannel(channelKey)
+            graph.data.preferences.setLastChannel(graph.data.profiles.activeId, channelKey)
         }
 
         override fun logFailure(line: String) = graph.diagnostics.info("player", line)

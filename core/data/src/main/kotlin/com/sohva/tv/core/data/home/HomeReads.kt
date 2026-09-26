@@ -20,7 +20,7 @@ class HomeReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
     suspend fun recentChannels(now: Long): List<RecentChannel> = withContext(io) {
         val keys = db.viewer().recentKeys(profile())
         if (keys.isEmpty()) return@withContext emptyList()
-        val byKey = db.home().channelsOfKeys(keys).associateBy { it.key }
+        val byKey = db.home().channelsOfKeys(keys, profile()).associateBy { it.key }
         keys.mapNotNull(byKey::get).take(RECENT_CARDS).map { c ->
             val offset = c.offsetMinutes * MINUTE_MS
             val programme = c.epgId?.takeIf { it.isNotBlank() }

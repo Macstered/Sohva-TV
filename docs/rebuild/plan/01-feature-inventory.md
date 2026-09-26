@@ -95,7 +95,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-08** Library episodes paused locally; one card per series, the newest episode standing for the series.
 - [ ] **HOME-09** Library copies paused on Trakt (unrestricted profiles with Trakt), merged with the local positions; a newer local position of the same copy wins.
 - [ ] **HOME-10** Discover titles paused in Discover (not completed, position > 0), one card per addon title (series: newest episode).
-- [ ] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M10.)*
+- [ ] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M9.)*
 - [x] **HOME-12** At most 12 cards, newest first.
 - [x] **HOME-13** Landscape card: artwork (or initials), progress bar, title, "episode label or year · N min left".
 - [x] **HOME-14** OK on a library card resumes playback at the saved position, with the title's library page and details page placed underneath the player.
@@ -124,7 +124,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-28** The hero describes the focused card once focus has rested for 180 ms.
 - [x] **HOME-29** With nothing focused, or the rail focused, the hero shows the idle subject at once: the newest Continue watching title with progress, else a recent channel, else Welcome.
 - [x] **HOME-30** Kicker line per subject (Continue watching / Live now with a red dot / Live TV / Today's sport / Watch next / Recommended for you / Welcome), a large title, a facts line, an optional progress bar and an optional two-line synopsis.
-- [ ] **HOME-31** Synopsis and backdrop come from the same sources as the details pages (metadata match first, provider text second); a Trakt title's text comes from TMDB in the metadata language, never English first. *(library and channel part done in M5; Trakt part in M8.)*
+- [ ] **HOME-31** Synopsis and backdrop come from the same sources as the details pages (metadata match first, provider text second); a Trakt title's text comes from TMDB in the metadata language, never English first. *(library and channel part done in M5; Trakt part in M10.)*
 - [x] **HOME-32** Backdrop artwork at the top right, fading into the ground at its bottom and left edge, over the bundled Live TV artwork; a match shows its two crests large and faint instead.
 - [x] **HOME-33** The backdrop crossfades (250 ms) when the subject's artwork changes; the hero text changes without animation.
 
@@ -596,7 +596,7 @@ Spec: [specs/41-metadata-enrichment.md](../specs/41-metadata-enrichment.md) · M
 - [x] **META-17** Series page: TMDB series with details (runtime, rating, cast), TVmaze as a fallback.
 - [x] **META-18** Selected episode: TMDB episode or TVmaze episode by number, 350 ms after the selection rests.
 - [x] **META-19** Guide hero: programme lookup by title 350 ms after the selection rests (synopsis, year, still, "TMDB x.x" rating chip).
-- [ ] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language. *(film, series and programme lookups done in M5; Trakt part in M8.)*
+- [ ] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language. *(film, series and programme lookups done in M5; Trakt part in M10.)*
 - [x] **META-21** A missing library poster is repaired from the details record when a page opens.
 - [x] **META-22** "Source: TMDB" / "Source: TVmaze" opens the matched record's web page (film page, series page, guide hero).
 

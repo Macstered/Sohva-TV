@@ -36,7 +36,7 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
     override val lastGuideSource: Flow<String?> = flow { emitAll(prefs.lastGuideSource) }.flowOn(io)
-    override val lastChannel: Flow<String?> = flow { emitAll(prefs.lastChannel) }.flowOn(io)
+    override val lastChannel: Flow<String?> = flow { emitAll(prefs.lastChannel(graph.data.profiles.activeId)) }.flowOn(io)
     override val showChannelNumbers: Flow<Boolean> = flow { emitAll(prefs.showChannelNumbers) }.flowOn(io)
     override val timeZone: Flow<String?> = flow { emitAll(prefs.timeZone) }.flowOn(io)
 

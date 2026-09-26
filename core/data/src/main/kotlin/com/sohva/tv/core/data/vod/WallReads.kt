@@ -85,7 +85,9 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
      * merged group's sources (none last, then by name). Hidden groups are not read at all.
      */
     suspend fun rail(room: WallRoom): Rail = withContext(io) {
-        val rows = dao.groups(room.groupRoom, dao.enabledSources())
+        val who = profile()
+        // Only the groups the active profile may see (spec 04 PROF-FR-23).
+        val rows = dao.groups(who, room.groupRoom, dao.enabledSources())
         val merged = rows.groupBy { it.name.trim().lowercase(Locale.ROOT) }
             .map { (_, same) ->
                 RailGroup(
@@ -122,8 +124,13 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
         withContext(io) {
             val sources = dao.enabledSources()
             if (sources.isEmpty()) return@withContext emptyList()
+            val who = profile()
             val query = search.trim().takeIf { it.isNotEmpty() }?.let(SortNames::of)
             if (destination == WallDestination.History) return@withContext history(room, query, from, forward, limit, sources)
+            // A group the profile may not see (remembered from before a switch) shows nothing; each id checked once.
+            if (destination is WallDestination.Group && destination.groupIds.any { !db.profiles().groupAllowed(who, room.groupRoom, it) }) {
+                return@withContext emptyList()
+            }
             if (destination is WallDestination.Group && orders.serves(destination.sort)) {
                 // A group's other order: each source's group pages in that order, merged by the same tuple.
                 val order = orders.comparator(destination.sort)
@@ -142,21 +149,21 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
                     }
                 }
                 WallDestination.AllGroups -> when (room) {
-                    WallRoom.MOVIES -> if (forward) dao.filmAllAfter(name, id, sources, query, limit) else dao.filmAllBefore(name, id, sources, query, limit)
-                    WallRoom.SERIES -> if (forward) dao.seriesAllAfter(name, id, sources, query, limit) else dao.seriesAllBefore(name, id, sources, query, limit)
+                    WallRoom.MOVIES -> if (forward) dao.filmAllAfter(who, name, id, sources, query, limit) else dao.filmAllBefore(who, name, id, sources, query, limit)
+                    WallRoom.SERIES -> if (forward) dao.seriesAllAfter(who, name, id, sources, query, limit) else dao.seriesAllBefore(who, name, id, sources, query, limit)
                 }
                 is WallDestination.OfGenre -> {
                     val g = destination.genre.wire
                     when (room) {
-                        WallRoom.MOVIES -> if (forward) dao.filmGenreAfter(g, name, id, sources, query, limit) else dao.filmGenreBefore(g, name, id, sources, query, limit)
-                        WallRoom.SERIES -> if (forward) dao.seriesGenreAfter(g, name, id, sources, query, limit) else dao.seriesGenreBefore(g, name, id, sources, query, limit)
+                        WallRoom.MOVIES -> if (forward) dao.filmGenreAfter(who, g, name, id, sources, query, limit) else dao.filmGenreBefore(who, g, name, id, sources, query, limit)
+                        WallRoom.SERIES -> if (forward) dao.seriesGenreAfter(who, g, name, id, sources, query, limit) else dao.seriesGenreBefore(who, g, name, id, sources, query, limit)
                     }
                 }
                 WallDestination.Unsorted -> when (room) {
-                    WallRoom.MOVIES -> if (forward) dao.filmUnsortedAfter(name, id, sources, query, limit) else dao.filmUnsortedBefore(name, id, sources, query, limit)
-                    WallRoom.SERIES -> if (forward) dao.seriesUnsortedAfter(name, id, sources, query, limit) else dao.seriesUnsortedBefore(name, id, sources, query, limit)
+                    WallRoom.MOVIES -> if (forward) dao.filmUnsortedAfter(who, name, id, sources, query, limit) else dao.filmUnsortedBefore(who, name, id, sources, query, limit)
+                    WallRoom.SERIES -> if (forward) dao.seriesUnsortedAfter(who, name, id, sources, query, limit) else dao.seriesUnsortedBefore(who, name, id, sources, query, limit)
                 }
-                is WallDestination.Custom -> custom(room, destination.group, name, id, sources, query, forward, limit)
+                is WallDestination.Custom -> custom(who, room, destination.group, name, id, sources, query, forward, limit)
                 WallDestination.History -> error("handled above")
             }
             val ordered = if (forward) rows else rows.asReversed()
@@ -190,19 +197,19 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
      * A group of your own: each genre index walked with the bounds and merged (a title has one
      * genre, so the walks never overlap); without genres, the all-titles index with the bounds.
      */
-    private fun custom(room: WallRoom, g: CustomGroup, name: String, id: Long, sources: List<String>, query: String?, forward: Boolean, limit: Int): List<WallRow> {
+    private fun custom(who: String, room: WallRoom, g: CustomGroup, name: String, id: Long, sources: List<String>, query: String?, forward: Boolean, limit: Int): List<WallRow> {
         val (from, to, min) = Triple(g.fromYear, g.toYear, g.minRatingTenths)
         if (g.genres.isEmpty()) {
             return when (room) {
-                WallRoom.MOVIES -> if (forward) dao.filmAllBoundedAfter(from, to, min, name, id, sources, query, limit) else dao.filmAllBoundedBefore(from, to, min, name, id, sources, query, limit)
-                WallRoom.SERIES -> if (forward) dao.seriesAllBoundedAfter(from, to, min, name, id, sources, query, limit) else dao.seriesAllBoundedBefore(from, to, min, name, id, sources, query, limit)
+                WallRoom.MOVIES -> if (forward) dao.filmAllBoundedAfter(who, from, to, min, name, id, sources, query, limit) else dao.filmAllBoundedBefore(who, from, to, min, name, id, sources, query, limit)
+                WallRoom.SERIES -> if (forward) dao.seriesAllBoundedAfter(who, from, to, min, name, id, sources, query, limit) else dao.seriesAllBoundedBefore(who, from, to, min, name, id, sources, query, limit)
             }
         }
         val walks = g.genres.sortedBy { it.ordinal }.map { genre ->
             val w = genre.wire
             when (room) {
-                WallRoom.MOVIES -> if (forward) dao.filmGenreBoundedAfter(w, from, to, min, name, id, sources, query, limit) else dao.filmGenreBoundedBefore(w, from, to, min, name, id, sources, query, limit)
-                WallRoom.SERIES -> if (forward) dao.seriesGenreBoundedAfter(w, from, to, min, name, id, sources, query, limit) else dao.seriesGenreBoundedBefore(w, from, to, min, name, id, sources, query, limit)
+                WallRoom.MOVIES -> if (forward) dao.filmGenreBoundedAfter(who, w, from, to, min, name, id, sources, query, limit) else dao.filmGenreBoundedBefore(who, w, from, to, min, name, id, sources, query, limit)
+                WallRoom.SERIES -> if (forward) dao.seriesGenreBoundedAfter(who, w, from, to, min, name, id, sources, query, limit) else dao.seriesGenreBoundedBefore(who, w, from, to, min, name, id, sources, query, limit)
             }
         }
         val order = compareBy<WallRow>({ it.sortName }, { it.id })

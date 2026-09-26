@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.LiveSource
+import com.sohva.tv.core.data.database.ProfileAllowedGroupEntity
 import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.SourceEntity
@@ -93,6 +94,34 @@ class LiveStoreTest {
         assertEquals(1, store.open(ListSpec.Ungrouped("s")).size)
         assertEquals(listOf("News", "Sport"), store.rail("s").map { it.name })
         assertEquals(listOf("s"), store.sources.first().map { it.id })
+    }
+
+    /** Spec 04 PROF-FR-23: a restricted profile sees only its groups; widening restores the rest. */
+    @Test
+    fun aRestrictedProfileSeesOnlyItsGroups() = runBlocking {
+        val (news, sport) = seed(channels = 5)
+        val kids = LiveStore(db, Dispatchers.Unconfined, clock) { "kids" }
+        db.profiles().allow(ProfileAllowedGroupEntity("kids", "LIVE", "sport"))
+        assertEquals(listOf("Sport"), kids.rail("s").map { it.name })
+        // All channels holds only the allowed group's visible channel; channels without a group are out.
+        assertEquals(listOf("s:x0"), kids.page(kids.open(ListSpec.All("s")), 0).map { it.key })
+        assertEquals(0, kids.open(ListSpec.Ungrouped("s")).size)
+        assertEquals(0, kids.open(ListSpec.Group("s", news)).size)
+        assertEquals(1, kids.open(ListSpec.Group("s", sport)).size)
+        assertTrue(kids.allowed("s:x0"))
+        assertFalse(kids.allowed("s:c1"))
+        // Favourites and recents are the profile's own, and narrowed.
+        kids.toggleFavourite("s:c1")
+        kids.toggleFavourite("s:x0")
+        assertEquals(1, kids.favourites("s").ids.size)
+        assertEquals(0, store.favourites("s").ids.size)
+        // Numbers dial only allowed channels.
+        assertEquals(-1, kids.dial(kids.open(ListSpec.All("s")), 12))
+        // The unrestricted profile is untouched, and widening restores the rest.
+        assertEquals(7, store.open(ListSpec.All("s")).size)
+        db.profiles().disallow("kids", "LIVE", "sport")
+        assertEquals(7, kids.open(ListSpec.All("s")).size)
+        assertTrue(kids.allowed("s:c1"))
     }
 
     @Test

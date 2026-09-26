@@ -1,14 +1,14 @@
 # M5 plan: Home and Search
 
 Scope (plan/02 M5): [specs/02](rebuild/specs/02-home.md) (fixed hero, focus line, Continue
-watching from library progress, Recently watched channels; the Trakt, Discover and sport rows
+watching from library progress, Recently watched channels; the sport, Discover and Trakt rows
 are added by M8–M10) and [specs/03](rebuild/specs/03-search.md) (channels, programmes, films,
 series, episodes; sport added in M8). Branch `m5-home`, from `main` after the M4 merge
 (25 September 2026).
 
 Inventory: HOME-01…08, -11 (library part), -12…19, -26…30, -31 (library and channel part),
--32…35; SEARCH-01…07, -09…15, -17, -19. Later: HOME-09, -20…23 (Trakt, M8), HOME-10, -15
-(Discover, M10), HOME-24, -25, SEARCH-08, -16 (sport, M9), HOME-36, SEARCH-18 (restricted
+-32…35; SEARCH-01…07, -09…15, -17, -19. Later: HOME-09, -20…23 (Trakt, M10), HOME-10, -15
+(Discover, M9), HOME-24, -25, SEARCH-08, -16 (sport, M8), HOME-36, SEARCH-18 (restricted
 profiles, M6), VOD-50 and META-20 from M4.
 
 ## Exit criteria (plan/02)

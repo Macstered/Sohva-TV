@@ -20,31 +20,31 @@ interface LiveDao {
     fun observeSources(): Flow<List<LiveSource>>
 
     @Query(LiveSql.RAIL)
-    suspend fun rail(sourceId: String): List<LiveGroup>
+    suspend fun rail(sourceId: String, profile: String): List<LiveGroup>
 
     @Query(LiveSql.GROUP_KEYS)
     suspend fun groupKeys(groupId: Long, afterRank: Long, afterId: Long, limit: Int): List<RankKey>
 
     @Query(LiveSql.SOURCE_KEYS)
-    suspend fun sourceKeys(sourceId: String, afterRank: Long, afterId: Long, limit: Int): List<RankKey>
+    suspend fun sourceKeys(sourceId: String, profile: String, afterRank: Long, afterId: Long, limit: Int): List<RankKey>
 
     @Query(LiveSql.UNGROUPED_KEYS)
-    suspend fun ungroupedKeys(sourceId: String, afterRank: Long, afterId: Long, limit: Int): List<RankKey>
+    suspend fun ungroupedKeys(sourceId: String, profile: String, afterRank: Long, afterId: Long, limit: Int): List<RankKey>
 
     @Query(LiveSql.GROUP_ROWS)
     suspend fun groupRows(groupId: Long, afterRank: Long, afterId: Long, limit: Int): List<LiveChannel>
 
     @Query(LiveSql.SOURCE_ROWS)
-    suspend fun sourceRows(sourceId: String, afterRank: Long, afterId: Long, limit: Int): List<LiveChannel>
+    suspend fun sourceRows(sourceId: String, profile: String, afterRank: Long, afterId: Long, limit: Int): List<LiveChannel>
 
     @Query(LiveSql.UNGROUPED_ROWS)
-    suspend fun ungroupedRows(sourceId: String, afterRank: Long, afterId: Long, limit: Int): List<LiveChannel>
+    suspend fun ungroupedRows(sourceId: String, profile: String, afterRank: Long, afterId: Long, limit: Int): List<LiveChannel>
 
     @Query(LiveSql.ROWS_BY_ID)
     suspend fun rowsById(ids: List<Long>): List<LiveChannel>
 
     @Query(LiveSql.KEYS_BY_CHANNEL_KEY)
-    suspend fun keysByChannelKey(sourceId: String, keys: List<String>): List<ChannelRankKey>
+    suspend fun keysByChannelKey(sourceId: String, keys: List<String>, profile: String): List<ChannelRankKey>
 
     @Query(LiveSql.BY_KEY)
     suspend fun byKey(key: String): LiveChannel?
@@ -53,7 +53,7 @@ interface LiveDao {
     suspend fun groupByNumber(groupId: Long, number: Int): RankKey?
 
     @Query(LiveSql.SOURCE_BY_NUMBER)
-    suspend fun sourceByNumber(sourceId: String, number: Int): RankKey?
+    suspend fun sourceByNumber(sourceId: String, number: Int, profile: String): RankKey?
 
     @Query(LiveSql.IDS_BY_NUMBER)
     suspend fun idsByNumber(ids: List<Long>, number: Int): List<Long>
@@ -74,7 +74,7 @@ interface LiveDao {
     suspend fun groupMatches(groupId: Long, sourceId: String, snapshot: Long, namePattern: String, titlePattern: String, from: Long, to: Long, earliestStart: Long): List<RankKey>
 
     @Query(LiveSql.SOURCE_MATCHES)
-    suspend fun sourceMatches(sourceId: String, snapshot: Long, namePattern: String, titlePattern: String, from: Long, to: Long, earliestStart: Long): List<RankKey>
+    suspend fun sourceMatches(sourceId: String, profile: String, snapshot: Long, namePattern: String, titlePattern: String, from: Long, to: Long, earliestStart: Long): List<RankKey>
 }
 
 /** Favourites and recents of a profile (plan/04 §15.8). */
@@ -211,8 +211,9 @@ object LiveSql {
 
     /** The small `content_group` table, never a GROUP BY over channels (plan/04 §15.11). */
     const val RAIL: String =
-        "SELECT id, group_key, name, item_count, position FROM content_group " +
-            "WHERE room = 'LIVE' AND source_id = :sourceId AND shown = 1 AND item_count > 0 ORDER BY provider_order, id"
+        "SELECT g.id, g.group_key, g.name, g.item_count, g.position FROM content_group g " +
+            "WHERE g.room = 'LIVE' AND g.source_id = :sourceId AND g.shown = 1 AND g.item_count > 0 AND ${AllowedSql.LIVE_G} " +
+            "ORDER BY g.provider_order, g.id"
 
     private const val AFTER = "(c.display_rank > :afterRank OR (c.display_rank = :afterRank AND c.id > :afterId))"
     private const val ORDER = "ORDER BY c.display_rank, c.id LIMIT :limit"
@@ -228,29 +229,30 @@ object LiveSql {
             "WHERE c.group_id = :groupId AND c.visible = 1 AND $AFTER $ORDER"
     const val SOURCE_KEYS: String =
         "SELECT c.id, c.display_rank FROM channel c INDEXED BY index_channel_source_id_visible_display_rank " +
-            "WHERE c.source_id = :sourceId AND c.visible = 1 AND $AFTER $ORDER"
+            "WHERE c.source_id = :sourceId AND c.visible = 1 AND ${AllowedSql.LIVE_C} AND $AFTER $ORDER"
 
     /** Channels without a group: the player's list for them (spec 30 PLAY-FR-50). */
     const val UNGROUPED_KEYS: String =
         "SELECT c.id, c.display_rank FROM channel c INDEXED BY index_channel_source_id_visible_display_rank " +
-            "WHERE c.source_id = :sourceId AND c.visible = 1 AND c.group_id IS NULL AND $AFTER $ORDER"
+            "WHERE c.source_id = :sourceId AND c.visible = 1 AND c.group_id IS NULL AND ${AllowedSql.LIVE_OPEN} AND $AFTER $ORDER"
 
     const val GROUP_ROWS: String =
         "SELECT $COLUMNS FROM channel c INDEXED BY index_channel_group_id_display_rank " +
             "LEFT JOIN content_group g ON g.id = c.group_id WHERE c.group_id = :groupId AND c.visible = 1 AND $AFTER $ORDER"
     const val SOURCE_ROWS: String =
         "SELECT $COLUMNS FROM channel c INDEXED BY index_channel_source_id_visible_display_rank " +
-            "LEFT JOIN content_group g ON g.id = c.group_id WHERE c.source_id = :sourceId AND c.visible = 1 AND $AFTER $ORDER"
+            "LEFT JOIN content_group g ON g.id = c.group_id WHERE c.source_id = :sourceId AND c.visible = 1 AND ${AllowedSql.LIVE_G} AND $AFTER $ORDER"
     const val UNGROUPED_ROWS: String =
         "SELECT $COLUMNS FROM channel c INDEXED BY index_channel_source_id_visible_display_rank " +
             "LEFT JOIN content_group g ON g.id = c.group_id " +
-            "WHERE c.source_id = :sourceId AND c.visible = 1 AND c.group_id IS NULL AND $AFTER $ORDER"
+            "WHERE c.source_id = :sourceId AND c.visible = 1 AND c.group_id IS NULL AND ${AllowedSql.LIVE_OPEN} AND $AFTER $ORDER"
 
     /** Named rows (favourites, recents, a page of a named list), ≤ 500 ids a call. */
     const val ROWS_BY_ID: String = "SELECT $COLUMNS FROM channel c LEFT JOIN content_group g ON g.id = c.group_id WHERE c.id IN (:ids)"
 
     const val KEYS_BY_CHANNEL_KEY: String =
-        "SELECT c.id, c.key, c.display_rank, c.sort_name FROM channel c WHERE c.key IN (:keys) AND c.source_id = :sourceId AND c.visible = 1"
+        "SELECT c.id, c.key, c.display_rank, c.sort_name FROM channel c WHERE c.key IN (:keys) AND c.source_id = :sourceId AND c.visible = 1 " +
+            "AND ${AllowedSql.LIVE_C}"
 
     const val BY_KEY: String = "SELECT $COLUMNS FROM channel c LEFT JOIN content_group g ON g.id = c.group_id WHERE c.key = :key"
 
@@ -262,7 +264,7 @@ object LiveSql {
     // GROUP BY makes "none" an empty result rather than a row of nulls.
     const val SOURCE_BY_NUMBER: String =
         "SELECT c.id, MIN(c.display_rank) AS display_rank FROM channel c INDEXED BY index_channel_source_id_number " +
-            "WHERE c.source_id = :sourceId AND c.number = :number AND c.visible = 1 GROUP BY c.number"
+            "WHERE c.source_id = :sourceId AND c.number = :number AND c.visible = 1 AND ${AllowedSql.LIVE_C} GROUP BY c.number"
     const val IDS_BY_NUMBER: String = "SELECT c.id FROM channel c WHERE c.id IN (:ids) AND c.number = :number"
 
     const val PLAYABLE: String =
@@ -302,6 +304,6 @@ object LiveSql {
             "ORDER BY c.display_rank, c.id"
     const val SOURCE_MATCHES: String =
         "SELECT c.id, c.display_rank FROM channel c INDEXED BY index_channel_source_id_visible_display_rank " +
-            "WHERE c.source_id = :sourceId AND c.visible = 1 AND (c.sort_name LIKE :namePattern ESCAPE '\\' OR c.epg_id IN ($TITLES)) " +
-            "ORDER BY c.display_rank, c.id"
+            "WHERE c.source_id = :sourceId AND c.visible = 1 AND ${AllowedSql.LIVE_C} " +
+            "AND (c.sort_name LIKE :namePattern ESCAPE '\\' OR c.epg_id IN ($TITLES)) ORDER BY c.display_rank, c.id"
 }

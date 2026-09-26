@@ -58,6 +58,8 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
             // Timing marks: to the diagnostics log (counts and durations only) and as trace sections.
             val t0 = graph.clock.monotonicNanos()
             val snapshot = trace("Startup:Snapshot") { graph.data.preferences.startSnapshot() }
+            // Every per-profile read that follows uses the active profile (spec 04 PROF-FR-07).
+            graph.data.profiles.seed(snapshot.household)
             val t1 = graph.clock.monotonicNanos()
             val tier = trace("Startup:Tier") { DeviceTier.decide(DeviceTierReader(graph.app).read()) }
             val t2 = graph.clock.monotonicNanos()
