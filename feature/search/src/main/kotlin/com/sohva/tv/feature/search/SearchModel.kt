@@ -44,7 +44,8 @@ class SearchModel(private val env: SearchEnvironment) : ViewModel() {
         job = viewModelScope.launch {
             delay(DEBOUNCE_MS)
             val permits = Semaphore(PARALLEL)
-            val groups: List<suspend (String) -> List<SearchResult>> = listOf(env::live, env::films, env::series, env::episodes)
+            // Started in the order Sport, Channels, Films, Series, Episodes (SEARCH-FR-10).
+            val groups: List<suspend (String) -> List<SearchResult>> = listOf(env::sport, env::live, env::films, env::series, env::episodes)
             val running = groups.map { group ->
                 launch {
                     // A failure or a group over the limit is null; a superseded search's cancellation propagates.

@@ -67,6 +67,7 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
             .testTag("screen-home"),
     ) {
         HeroBackdrop(backdrop(hero, details), lowMemory)
+        (hero as? HeroSubject.Sport)?.let { SportBackdrop(it.card.event) }
         Column(Modifier.fillMaxSize().padding(start = 96.dp, end = 24.dp)) {
             Box(Modifier.fillMaxWidth().fillMaxHeight(0.46f).padding(top = 16.dp, bottom = 12.dp)) {
                 HomeHeader(now, zone)
@@ -119,6 +120,7 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus) {
             first is HomeRow.Status -> focus.status
             first is HomeRow.Resume -> first.cards.firstOrNull()?.let { focus.card(it.key) }
             first is HomeRow.Channels -> first.cards.firstOrNull()?.let { focus.card(it.key) }
+            first is HomeRow.Sport -> first.cards.firstOrNull()?.let { focus.card(it.key) }
             empty -> focus.welcome
             else -> null
         }
@@ -126,6 +128,7 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus) {
             when (row) {
                 is HomeRow.Resume -> row.cards.map { it.key }
                 is HomeRow.Channels -> row.cards.map { it.key }
+                is HomeRow.Sport -> row.cards.map { it.key }
                 is HomeRow.Status -> emptyList()
             }
         }

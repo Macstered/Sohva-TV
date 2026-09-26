@@ -85,15 +85,27 @@ class SportFeed(
     @Volatile private var attemptedAt = 0L
     private var visible = false
     private var started = false
+    private var watchJob: Job? = null
 
     /** After Home's first read (SPORT-FR-29): one load, then a new one whenever follows or the zone change. */
     fun start() {
         if (started || !automatic) return
         started = true
         refresh()
-        scope.launch {
+        watchJob = scope.launch {
             combine(follows, zone) { f, z -> f to z }.distinctUntilChanged().drop(1).collect { refresh() }
         }
+    }
+
+    /** Tests start from an empty feed: the list, its jobs and its visibility are forgotten. */
+    fun forgetForTests() {
+        refreshJob?.cancel()
+        pollJob?.cancel()
+        watchJob?.cancel()
+        started = false
+        visible = false
+        attemptedAt = 0L
+        _state.value = FeedState()
     }
 
     /** SPORT-FR-20: cancels a refresh in progress and starts over. */

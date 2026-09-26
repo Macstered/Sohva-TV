@@ -35,9 +35,11 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
@@ -104,11 +106,20 @@ internal fun HomeRows(model: HomeModel, rows: List<HomeRow>, focus: HomeFocus, l
 private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: HomeFocus, now: () -> Long) {
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.Bottom) {
-            val title = if (row is HomeRow.Channels) R.string.home_recent_channels else R.string.home_continue_watching
+            val title = when (row) {
+                is HomeRow.Channels -> R.string.home_recent_channels
+                is HomeRow.Sport -> R.string.home_sports_today
+                else -> R.string.home_continue_watching
+            }
             Text(stringResource(title), style = Sohva.typography.headline.copy(fontWeight = FontWeight.Bold), color = Sohva.palette.textPrimary, maxLines = 1)
             if (row is HomeRow.Resume) {
                 Spacer(Modifier.width(12.dp))
                 Text(stringResource(R.string.home_rows_hint), style = Sohva.typography.label, color = Sohva.palette.textDim, maxLines = 1)
+            }
+            if (row is HomeRow.Sport) {
+                // All of today's games are counted, not only the six shown (HOME-FR-01 table).
+                Spacer(Modifier.width(12.dp))
+                Text(pluralStringResource(R.plurals.home_sports_count, row.total, row.total), style = Sohva.typography.label, color = Sohva.palette.textDim, maxLines = 1)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -146,6 +157,14 @@ private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: Ho
                     }
                 }
             }
+            is HomeRow.Sport -> CardRow(row.cards, rowIndex) { index, card ->
+                val req = remember { focus.card(card.key) }
+                val zone by model.timeZone.collectAsStateWithLifecycle()
+                SportCardView(
+                    card, zone,
+                    Modifier.card(model, focus, req, card.key, rowIndex, index, HeroSubject.Sport(card)).testTag("home-sport-${card.event.id}"),
+                ) { model.open(card) }
+            }
             is HomeRow.Channels -> CardRow(row.cards, rowIndex) { index, card ->
                 val req = remember { focus.card(card.key) }
                 ChannelCardView(
@@ -165,7 +184,7 @@ private fun <T : Any> CardRow(cards: List<T>, rowIndex: Int, card: @Composable (
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
         modifier = Modifier.testTag("home-row-$rowIndex"),
     ) {
-        itemsIndexed(cards, key = { _, c -> (c as? ResumeCard)?.key ?: (c as ChannelCard).key }) { index, c -> card(index, c) }
+        itemsIndexed(cards, key = { _, c -> (c as? ResumeCard)?.key ?: (c as? SportCard)?.key ?: (c as ChannelCard).key }) { index, c -> card(index, c) }
     }
 }
 

@@ -851,21 +851,21 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 - [x] **SPORT-13** During a provider outage, data up to 24 hours past its freshness is shown instead of an error.
 - [x] **SPORT-14** Automatic refresh every 5 / 10 / 30 minutes only while Sohva Sport or the score ticker is visible and the app is in front.
 - [x] **SPORT-15** One refresh on return when the data is older than the polling interval.
-- [ ] **SPORT-16** Manual refresh (header Refresh; Try again on the error card).
+- [x] **SPORT-16** Manual refresh (header Refresh; Try again on the error card).
 - [x] **SPORT-17** Status mapping per sport (live, upcoming, finished, postponed, cancelled, interrupted, unknown).
 
 **Today screen**
 
-- [ ] **SPORT-18** Header: "SOHVA SPORT" wordmark, weekday, date and time in the app zone (12/24 h per the TV), three icon actions: Refresh, Guide, Settings.
-- [ ] **SPORT-19** Filter tabs All, one per followed sport, Watchable, Favourites, each with its event count.
-- [ ] **SPORT-20** Sections Live now, Later today, Sports channels now, Finished; empty sections hidden.
-- [ ] **SPORT-21** Ordering: live, scheduled, disrupted, finished; then kick-off minute; then competition.
-- [ ] **SPORT-22** Match card: competition logo and name, status or live badge, two team marks (crest over initials in the sport's accent), score or kick-off time, AFL goals/behinds, football minute, watch call to action, favourite star.
+- [x] **SPORT-18** Header: "SOHVA SPORT" wordmark, weekday, date and time in the app zone (12/24 h per the TV), three icon actions: Refresh, Guide, Settings.
+- [x] **SPORT-19** Filter tabs All, one per followed sport, Watchable, Favourites, each with its event count.
+- [x] **SPORT-20** Sections Live now, Later today, Sports channels now, Finished; empty sections hidden.
+- [x] **SPORT-21** Ordering: live, scheduled, disrupted, finished; then kick-off minute; then competition.
+- [x] **SPORT-22** Match card: competition logo and name, status or live badge, two team marks (crest over initials in the sport's accent), score or kick-off time, AFL goals/behinds, football minute, watch call to action, favourite star.
 - [ ] **SPORT-23** Call to action: "WATCH · N CHANNELS", "N POSSIBLE CHANNEL MATCHES" or "No broadcast available".
-- [ ] **SPORT-24** Live badge with the minute and a short pulse when the minute changes.
+- [x] **SPORT-24** Live badge with the minute and a short pulse when the minute changes.
 - [ ] **SPORT-25** Sports channels now: up to 8 channels with an Available match, OK plays the channel.
-- [ ] **SPORT-26** Initial focus on the first live game, else the first upcoming, else the first finished, else the All tab.
-- [ ] **SPORT-27** Loading, error (with Try again) and per-filter empty states.
+- [x] **SPORT-26** Initial focus on the first live game, else the first upcoming, else the first finished, else the All tab.
+- [x] **SPORT-27** Loading, error (with Try again) and per-filter empty states.
 
 **Match hub**
 
@@ -900,9 +900,9 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 
 **Elsewhere in the app**
 
-- [ ] **SPORT-50** Home "Today's sport" row: first 6 games, total count, a card opens the hub.
-- [ ] **SPORT-51** Home hero for a focused sport card (kicker, teams, competition, minute or start, score, crest backdrop).
-- [ ] **SPORT-52** Search results of type SPORT (team or competition names) open Sohva Sport.
+- [x] **SPORT-50** Home "Today's sport" row: first 6 games, total count, a card opens the hub.
+- [x] **SPORT-51** Home hero for a focused sport card (kicker, teams, competition, minute or start, score, crest backdrop).
+- [x] **SPORT-52** Search results of type SPORT (team or competition names) open Sohva Sport.
 - [ ] **SPORT-53** Score ticker over the player: live games then games starting within 3 hours, at most 4 rows.
 - [ ] **SPORT-54** Ticker toggled from the player quick menu or a remote button; a player shortcut opens Sohva Sport.
 - [ ] **SPORT-55** Followed sports, competitions, priority codes and favourites travel in encrypted backups; the key does not.

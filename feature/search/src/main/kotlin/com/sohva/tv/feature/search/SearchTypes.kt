@@ -2,8 +2,8 @@ package com.sohva.tv.feature.search
 
 import androidx.compose.runtime.Immutable
 
-/** A result's kind and its label (spec 03 SEARCH-FR-20). Sport joins with Sohva Sport (M9). */
-enum class ResultKind { CHANNEL, PROGRAMME, MOVIE, SERIES, EPISODE }
+/** A result's kind and its label (spec 03 SEARCH-FR-20). */
+enum class ResultKind { SPORT, CHANNEL, PROGRAMME, MOVIE, SERIES, EPISODE }
 
 /**
  * One result row, ready to draw: texts formatted off the main thread (spec 03 §9). [key] is
@@ -22,6 +22,9 @@ data class SearchResult(
 
 /** What Search needs from the app: the four groups, and where results lead (plan/03 §4.6). */
 interface SearchEnvironment {
+    /** Today's loaded games naming the term (SEARCH-08, spec 60 SPORT-FR-98); an in-memory filter. */
+    suspend fun sport(term: String): List<SearchResult> = emptyList()
+
     /** Channels, then programmes (SEARCH-FR-11). */
     suspend fun live(term: String): List<SearchResult>
 

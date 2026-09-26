@@ -26,6 +26,30 @@ class SportGraph(private val graph: AppGraph) {
         )
     }
 
+    /**
+     * A game to open in the hub once Today's list holds it (SPORT-NAV-04): from Home, a reminder or
+     * a notification; dropped after the first complete load without it (rebuild).
+     */
+    val pendingGame: kotlinx.coroutines.flow.MutableStateFlow<String?> = kotlinx.coroutines.flow.MutableStateFlow(null)
+
+    fun openGame(eventId: String) {
+        pendingGame.value = eventId
+    }
+
+    /** What keeps the feed polling (SPORT-FR-27): Today on screen, or the score ticker over the player. */
+    enum class Viewer { TODAY, TICKER }
+
+    private val viewers = java.util.EnumSet.noneOf(Viewer::class.java)
+
+    /** [viewer] is on screen with the app in front, or no longer; the feed polls while any is. */
+    fun visible(viewer: Viewer, on: Boolean) {
+        val any = synchronized(viewers) {
+            if (on) viewers += viewer else viewers -= viewer
+            viewers.isNotEmpty()
+        }
+        feed.setVisible(any)
+    }
+
     /** Today's games for Today, Home, Search, reminders and the ticker; the Lab build never refreshes by itself. */
     val feed: SportFeed by lazy {
         SportFeed(

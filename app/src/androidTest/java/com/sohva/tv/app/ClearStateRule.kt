@@ -61,6 +61,7 @@ class ClearStateRule : ExternalResource() {
                 graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM $table")
             }
             graph.sport.testHosts = null
+            graph.sport.feed.forgetForTests()
             // A restore the test stopped half-way leaves its marker (spec 71 §8).
             graph.data.backup.markRestoring(false)
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())

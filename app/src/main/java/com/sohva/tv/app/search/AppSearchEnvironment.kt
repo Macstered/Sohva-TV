@@ -54,8 +54,24 @@ class AppSearchEnvironment(private val graph: AppGraph, private val stack: BackS
         SearchResult("episode:${e.key}", ResultKind.EPISODE, e.name?.takeIf { it.isNotBlank() } ?: label, joined(e.seriesName, label), e.posterUrl, e.key)
     }
 
+    /**
+     * SPORT-FR-98: games whose home, away or competition contains the term; "home – away",
+     * "competition · kick-off" in the app zone, the competition logo; OK opens Today, not the hub.
+     */
+    override suspend fun sport(term: String): List<SearchResult> {
+        if (!graph.flags.sport) return emptyList()
+        val events = graph.sport.feed.state.value.events
+        if (events.isEmpty()) return emptyList()
+        val needle = term.lowercase(locale)
+        val labels = TimeLabels(TimeLabels.zoneOf(graph.sport.feed.state.value.zoneId), com.sohva.tv.ui.design.text.TimeStyles.of(graph.app, locale))
+        return events.filter { e -> listOf(e.home.name, e.away.name, e.competition).any { it.lowercase(locale).contains(needle) } }.map { e ->
+            SearchResult("sport:${e.id}", ResultKind.SPORT, e.title, "${e.competition} · ${labels.guideTime(e.startMillis)}", e.competitionLogo, e.id)
+        }
+    }
+
     override fun open(result: SearchResult) {
         when (result.kind) {
+            ResultKind.SPORT -> stack.push(AppRoute.Today)
             // Live, with Back to the guide on that channel (spec 01 SHELL-FR-20).
             ResultKind.CHANNEL, ResultKind.PROGRAMME -> ChannelStarter(graph, stack).play(result.target, forGuide = true)
             ResultKind.MOVIE -> stack.push(AppRoute.FilmDetails(result.target))
