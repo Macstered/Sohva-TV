@@ -122,6 +122,17 @@ class ImportRunner(
         }
     }
 
+    /**
+     * Settings › Clear all guide data (spec 70 SET-FR-96): every stored programme, source by source
+     * under its guide lock so a running guide import finishes first. Channels, films and progress stay
+     * (decision "Clear all guide data").
+     */
+    suspend fun clearGuide() {
+        for (source in sources.all()) {
+            lock(source.id, RefreshKind.EPG).withLock { guide.sweep(source.id, GuideImport.NO_SNAPSHOT) }
+        }
+    }
+
     private suspend fun runSource(sourceId: String, kinds: Set<RefreshKind>, origin: WorkOrigin) {
         var config = when (val loaded = sources.load(sourceId)) {
             is Outcome.Failed -> {

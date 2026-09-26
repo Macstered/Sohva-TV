@@ -55,10 +55,13 @@ class ClearStateRule : ExternalResource() {
             graph.data.profiles.seed(stored)
             // Once seeded, the store follows the preferences on its own: wait until it has.
             kotlinx.coroutines.withTimeout(5_000) { graph.data.profiles.household.first { it == stored } }
+            // A restore the test stopped half-way leaves its marker (spec 71 §8).
+            graph.data.backup.markRestoring(false)
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())
         }
         graph.guideFocusChannel = null
         graph.startAnswered = false
+        graph.inPictureInPicture.value = false
         graph.keptRows.clear()
         // The walls' browse sessions live for the process (VOD-FR-56); each test starts at a first visit.
         graph.browseSessions.values.forEach { it.clear() }

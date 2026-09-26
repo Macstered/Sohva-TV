@@ -31,7 +31,15 @@ android {
         // Beta 23 is build 57; the rebuild starts at 100 / 0.2.0-beta.1 (decision A3).
         versionCode = 100
         versionName = "0.2.0-beta.1"
+        // The emulator's update test (tools/update_e2e.py) builds two local releases above these;
+        // they never leave the emulator (decision "Updater test").
+        providers.gradleProperty("sohva.versionCode").orNull?.let { versionCode = it.toInt() }
+        providers.gradleProperty("sohva.versionName").orNull?.let { versionName = it }
         buildConfigField("boolean", "TRAKT_CONFIGURED", traktConfigured.toString())
+        // The public release feed (spec 72 §7.1). The emulator's update test builds a release against a
+        // local feed with -Psohva.updateFeed; nothing published is built that way (decision "Updater test").
+        val feed = providers.gradleProperty("sohva.updateFeed").getOrElse("https://api.github.com/repos/Macstered/Sohva-TV/releases?per_page=10")
+        buildConfigField("String", "UPDATE_FEED", "\"$feed\"")
     }
 
     signingConfigs {
@@ -126,6 +134,8 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.okhttp.mockwebserver)
+    // Answers the document pickers in the backup test (spec 71 §11).
+    androidTestImplementation(libs.androidx.test.espresso.intents)
     androidTestImplementation(libs.androidx.room.runtime)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.test.manifest)

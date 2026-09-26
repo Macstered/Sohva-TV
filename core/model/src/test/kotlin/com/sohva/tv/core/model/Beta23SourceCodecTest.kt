@@ -123,4 +123,24 @@ class Beta23SourceCodecTest {
         refused(truncated.base64())
         assertEquals(emptyList<Any>(), Beta23SourceCodec.decode(Writer(3, 0).base64()))
     }
+
+    /** Spec 71 §6.2: the rebuild writes version 3, which reads back exactly (beta 23's reader is the same layout). */
+    @Test
+    fun theRebuildWritesVersionThreeThatReadsBack() {
+        val sources = listOf(
+            com.sohva.tv.core.model.source.SourceConfig(
+                com.sohva.tv.core.model.source.Source("src-1", "Aurora", com.sohva.tv.core.model.source.SourceType.M3U, true, 2, 0, com.sohva.tv.core.model.source.ImportScope.LIVE_TV, -60),
+                com.sohva.tv.core.model.source.SourceSecrets(m3uUrl = "https://provider.example/list.m3u", xmlTvUrl = null),
+            ),
+            com.sohva.tv.core.model.source.SourceConfig(
+                com.sohva.tv.core.model.source.Source("x.2", "Päivä", com.sohva.tv.core.model.source.SourceType.XTREAM, false, 1, 1, com.sohva.tv.core.model.source.ImportScope.BOTH, 0),
+                com.sohva.tv.core.model.source.SourceSecrets(xtreamBaseUrl = "http://192.0.2.1:8080", xtreamUsername = "viewer", xtreamPassword = "secret"),
+            ),
+        )
+        val text = Beta23SourceCodec.encode(sources)
+        assertEquals(sources, Beta23SourceCodec.decode(text))
+        val bytes = java.util.Base64.getDecoder().decode(text)
+        assertEquals(0x53544D53, java.nio.ByteBuffer.wrap(bytes).int)
+        assertEquals(3, java.nio.ByteBuffer.wrap(bytes, 4, 4).int)
+    }
 }

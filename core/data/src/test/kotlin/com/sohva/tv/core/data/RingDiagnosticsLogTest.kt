@@ -33,6 +33,19 @@ class RingDiagnosticsLogTest {
         assertFalse(text, text.contains("viewer") || text.contains("pw") || text.contains("abc") || text.contains("/u/p/"))
         assertTrue(text.contains("http://provider.example/<redacted>"))
         assertTrue(text.contains("IllegalStateException: token=<redacted>"))
-        assertEquals(log.snapshot(), mirrored)
+        // Logcat gets the line without its time (ABOUT-FR-26).
+        assertEquals(log.snapshot().map { it.substring(20) }, mirrored)
+    }
+
+    @Test
+    fun linesHaveTheSpecsShapeAndAreCut() {
+        val log = RingDiagnosticsLog(clock)
+        log.info("home", "cached resume ready: 12 ms")
+        log.error("update", "check failed", java.io.IOException())
+        log.info("long", "x".repeat(900))
+        val lines = log.snapshot()
+        assertTrue(lines[0], Regex("""^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} I/home: cached resume ready: 12 ms$""").matches(lines[0]))
+        assertTrue(lines[1], lines[1].endsWith("E/update: check failed · IOException: no message"))
+        assertEquals(20 + RingDiagnosticsLog.MAX_LINE, lines[2].length)
     }
 }

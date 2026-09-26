@@ -71,7 +71,7 @@ class GuideTimingTest {
     }
 
     private fun rulerStartsAt(start: Long): Boolean {
-        val label = TimeLabels(TimeLabels.zoneOf(null), Locale.getDefault()).guideTime(start)
+        val label = TimeLabels(TimeLabels.zoneOf(null), com.sohva.tv.ui.design.text.TimeStyles.of(instrumentation.targetContext, Locale.getDefault())).guideTime(start)
         return compose.onAllNodesWithTextExists(label, unmerged = true)
     }
 

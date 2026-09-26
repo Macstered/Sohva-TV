@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Let reminders open Sohva TV</string>
     <string name="reminder_overlay_body">Inside Sohva TV a reminder always appears when the programme is about to start. Android TV shows no popup for an app that is not on screen, so to have Sohva TV come forward while something else is on, allow it to display over other apps in the TV settings. Without that, the reminder waits in the notification panel of the TV.</string>
     <string name="reminder_overlay_open">Open TV settings</string>
+    <string name="reminders_open_unavailable">This TV has no settings screen for showing apps over other apps.</string>
     <string name="guide_search_hint">Search channels or programmes</string>
     <string name="guide_empty_favourites">No favourite channels selected yet</string>
     <string name="guide_empty_recent">No recently watched channels yet</string>

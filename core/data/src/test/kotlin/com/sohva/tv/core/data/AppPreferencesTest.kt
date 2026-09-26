@@ -71,4 +71,15 @@ class AppPreferencesTest {
         assertEquals(InterfaceScale.NORMAL, InterfaceScale.fromStored("HUGE"))
         assertEquals(StartupScreen.HOME, StartupScreen.fromStored(null))
     }
+
+    /** Spec 71 BACKUP-FR-22: every stored key is either carried by backups or explicitly kept on the TV. */
+    @Test
+    fun everyKeyIsBackedUpOrDeviceLocal() {
+        val keys = AppPreferences::class.java.declaredFields
+            .filter { androidx.datastore.preferences.core.Preferences.Key::class.java.isAssignableFrom(it.type) }
+            .map { field -> field.isAccessible = true; (field.get(null) as androidx.datastore.preferences.core.Preferences.Key<*>).name }
+        org.junit.Assert.assertTrue("no keys found", keys.size > 20)
+        val unknown = keys.filter { it !in AppPreferences.BACKED_UP && it !in AppPreferences.DEVICE_LOCAL }
+        assertEquals(emptyList<String>(), unknown)
+    }
 }

@@ -67,7 +67,7 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-24** A PIN-locked channel asks for the PIN before live, catch-up and zapped playback.
 - [ ] **SHELL-25** A reminder notification opens its channel or its match card, whether the app was closed or already running.
 - [ ] **SHELL-26** A fired reminder appears as a dialog over any screen; the first reminder ever set explains, once, how to let reminders open the app; Android 13+ asks for the notification permission when a reminder is first set (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
-- [ ] **SHELL-27** Picture in picture (off by default): pressing Home while a stream plays shrinks it to a 16:9 corner with its own Close button; opening the app again restores full screen.
+- [x] **SHELL-27** Picture in picture (off by default): pressing Home while a stream plays shrinks it to a 16:9 corner with its own Close button; opening the app again restores full screen.
 - [ ] **SHELL-28** Background maintenance (metadata matching) pauses while the app is in front and resumes 30 s after it leaves.
 - [ ] **SHELL-29** Playlist, guide and catalogue refreshes follow the refresh interval setting.
 - [ ] **SHELL-30** Update check once a day at start (release package only).
@@ -195,7 +195,7 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 - [x] **PROF-20** With a restricted profile and a PIN in the household, entering any unrestricted profile asks for the PIN (at start, from the rail, from Settings); entering a restricted profile never does.
 - [x] **PROF-21** A restricted profile opens Settings only past the PIN.
 - [x] **PROF-22** PIN screen: title, what is locked, prompt, masked numeric field, Back and Unlock; a wrong PIN clears the field and says "Incorrect PIN code"; unlimited retries.
-- [ ] **PROF-23** Profiles, their sets and the PIN travel in the encrypted `.smbak` backup. *(M7, with the backup.)*
+- [x] **PROF-23** Profiles, their sets and the PIN travel in the encrypted `.smbak` backup. *(M7, with the backup.)*
 
 ## Sources and import
 
@@ -250,7 +250,7 @@ Spec: [specs/10-sources-and-import.md](../specs/10-sources-and-import.md) · Mil
 - [x] **SRC-36** Xtream brings live channels with categories, EPG ids, logos, numbers and catch-up archive length; films and series with categories, poster, backdrop, year, rating and plot; episodes are fetched when a series is opened.
 - [x] **SRC-37** Stream quality and language markers are read off channel names (4K, FHD, HDR, 50 FPS, FI…) for the guide, player and Sohva Sport.
 - [x] **SRC-38** The EPG time correction shifts every programme of the source on screen, immediately after saving.
-- [ ] **SRC-39** Sources are part of the encrypted backup ([Backup](../specs/71-backup-restore.md)).
+- [x] **SRC-39** Sources are part of the encrypted backup ([Backup](../specs/71-backup-restore.md)).
 
 **Rebuild additions (owner-adopted ideas, [OwnTV study](../reference/owntv-study.md) items 2–11, 22)**
 
@@ -366,7 +366,7 @@ Spec: [specs/21-channel-management.md](../specs/21-channel-management.md) · Mil
 - [x] **CHAN-26** A locked channel asks for the PIN before live, catch-up and zapped playback and at a Last-channel start.
 - [ ] **CHAN-27** Customisations apply in the guide, the player's channel list and dial, Home, Search, Sohva Sport stream matching and the stored programme guide.
 - [x] **CHAN-28** Custom lists appear on the guide rail (each can be switched off in the Library manager).
-- [ ] **CHAN-29** Backups carry channel customisations, lists, memberships, phone-sent logos (as picture bytes) and each profile's favourites, recents and (with a PIN) locks.
+- [x] **CHAN-29** Backups carry channel customisations, lists, memberships, phone-sent logos (as picture bytes) and each profile's favourites, recents and (with a PIN) locks.
 - [x] **CHAN-30** Removing a source removes its channels' customisations and list memberships.
 
 ## Catch-up and reminders
@@ -438,7 +438,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [ ] **PLAY-26** Playback buffer profile: Media3 default, Low latency, Stability; applies to the next playback.
 - [ ] **PLAY-27** Subtitle size, colour and background, each "Follow the TV" by default.
 - [ ] **PLAY-28** Match the display refresh rate to the stream, and restore it afterwards.
-- [ ] **PLAY-29** Keep watching in a corner (picture in picture) on Home, with a Close button.
+- [x] **PLAY-29** Keep watching in a corner (picture in picture) on Home, with a Close button.
 - [x] **PLAY-30** Open the live stream in another player app on the TV.
 - [ ] **PLAY-31** Sohva Sport score ticker over live and catch-up playback.
 - [x] **PLAY-32** Leaving the app stops the stream; returning resumes it.
@@ -479,7 +479,7 @@ Spec: [specs/31-remote-button-mapping.md](../specs/31-remote-button-mapping.md) 
 - [x] **REMOTE-15** A read-back line names the focused cell and its action.
 - [x] **REMOTE-16** Reset to defaults with a confirmation step.
 - [x] **REMOTE-17** Focus returns to the edited cell after a choice or Back.
-- [ ] **REMOTE-18** Mappings kept on the device for all profiles, tolerant of unknown entries, included in backups.
+- [x] **REMOTE-18** Mappings kept on the device for all profiles, tolerant of unknown entries, included in backups.
 - [ ] **REMOTE-19** One-time migration from the old "Remote channel browser" setting.
 
 ## Movies and series
@@ -556,7 +556,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 
 **Artwork**
 
-- [ ] **VOD-54** Artwork disk cache limit 100 / 250 / 500 MB (default 250), applied at the next start; usage and Clear in Settings.
+- [x] **VOD-54** Artwork disk cache limit 100 / 250 / 500 MB (default 250), applied at the next start; usage and Clear in Settings.
 - [x] **VOD-55** Posters decoded at wall size; bounded memory cache; at most two images decoded at once.
 
 **Shared**
@@ -619,7 +619,7 @@ Spec: [specs/41-metadata-enrichment.md](../specs/41-metadata-enrichment.md) · M
 - [x] **META-31** Identical concurrent lookups share one request; leaving a screen cancels its request.
 - [x] **META-32** TVmaze 429 handling (one retry after Retry-After, 1–5 s); responses capped at 2 MiB; text cut to 8,000 characters; artwork only over https.
 - [x] **META-33** Localised errors for HTTP failures, oversized responses, invalid or missing key and a failed save.
-- [ ] **META-34** Attribution: TMDB logo in Settings, TMDB and TVmaze (CC BY-SA) notices and the metadata disclosure on the legal screen ([About](../specs/72-updates-about-diagnostics.md)).
+- [x] **META-34** Attribution: TMDB logo in Settings, TMDB and TVmaze (CC BY-SA) notices and the metadata disclosure on the legal screen ([About](../specs/72-updates-about-diagnostics.md)).
 
 ## Library organisation
 
@@ -670,7 +670,7 @@ Spec: [specs/42-library-organization.md](../specs/42-library-organization.md) ·
 
 **Backup**
 
-- [ ] **ORG-35** Rules and the film identities they depend on travel in encrypted backups; groups of your own and the show-hidden choice travel with the preferences.
+- [x] **ORG-35** Rules and the film identities they depend on travel in encrypted backups; groups of your own and the show-hidden choice travel with the preferences.
 
 ## Discover: Stremio-compatible addons, Search and Library
 
@@ -915,78 +915,78 @@ Spec: [specs/70-settings.md](../specs/70-settings.md) · Milestone: M7 · 40 ite
 
 **Screen and navigation**
 
-- [ ] **SET-01** Settings opens from the Home rail, the guide (options and empty guide) and Sohva Sport.
-- [ ] **SET-02** A restricted profile with a PIN set opens Settings only past the PIN ("Settings are locked for this profile").
-- [ ] **SET-03** Header: "Settings", a breadcrumb "›  SECTION" naming the selected section, and a Back button.
-- [ ] **SET-04** Section rail: General, Playlists, Playback, Remote buttons, Library, Accounts (unrestricted profiles only), Sohva Sport, Parental controls, Backup & tools, About.
-- [ ] **SET-05** Settings opens on Playlists with focus on its first control.
-- [ ] **SET-06** OK on a rail row shows that section and moves focus to its first control; focus alone does not switch.
-- [ ] **SET-07** Value rows show the current value and a chevron; OK opens a single-choice picker focused on the current value.
-- [ ] **SET-08** Choosing in a picker applies at once, closes it and returns focus to the row; Back closes it unchanged.
-- [ ] **SET-09** Switch rows toggle and apply at once.
-- [ ] **SET-10** Multi-choice picker with Done (profile groups); every toggle applies at once.
-- [ ] **SET-11** Every section shows its own status line for the results of its actions (new in the rebuild; beta 23 showed them only in Playlists).
+- [x] **SET-01** Settings opens from the Home rail, the guide (options and empty guide) and Sohva Sport.
+- [x] **SET-02** A restricted profile with a PIN set opens Settings only past the PIN ("Settings are locked for this profile").
+- [x] **SET-03** Header: "Settings", a breadcrumb "›  SECTION" naming the selected section, and a Back button.
+- [x] **SET-04** Section rail: General, Playlists, Playback, Remote buttons, Library, Accounts (unrestricted profiles only), Sohva Sport, Parental controls, Backup & tools, About.
+- [x] **SET-05** Settings opens on Playlists with focus on its first control.
+- [x] **SET-06** OK on a rail row shows that section and moves focus to its first control; focus alone does not switch.
+- [x] **SET-07** Value rows show the current value and a chevron; OK opens a single-choice picker focused on the current value.
+- [x] **SET-08** Choosing in a picker applies at once, closes it and returns focus to the row; Back closes it unchanged.
+- [x] **SET-09** Switch rows toggle and apply at once.
+- [x] **SET-10** Multi-choice picker with Done (profile groups); every toggle applies at once.
+- [x] **SET-11** Every section shows its own status line for the results of its actions (new in the rebuild; beta 23 showed them only in Playlists).
 
 **General**
 
-- [ ] **SET-20** Interface language: System default, English, Suomi, and five drafts labelled in their own language; the app restarts to apply.
-- [ ] **SET-21** Interface size: Normal 100 %, Compact 90 %, Small 80 %, Smaller 70 %; applies at once.
-- [ ] **SET-22** Colour theme: seven themes with a one-line description each; applies at once.
-- [ ] **SET-23** Channel numbers in the guide on or off.
-- [ ] **SET-24** Time zone: the TV's own (default) or any zone from a searchable picker with Recent and All zones by region.
-- [ ] **SET-25** Startup screen: Home, Programme guide or Last channel.
-- [ ] **SET-26** Playlist and EPG refresh interval: 1, 2, 4, 10 or 24 hours.
-- [ ] **SET-27** Reminders can open Sohva TV: shows Allowed / Not allowed and opens the TV's "display over other apps" screen.
-- [ ] **SET-28** Profiles group: Who is watching, ask at start, what a profile may see, add and remove profiles (behaviour in specs/04).
+- [x] **SET-20** Interface language: System default, English, Suomi, and five drafts labelled in their own language; the app restarts to apply.
+- [x] **SET-21** Interface size: Normal 100 %, Compact 90 %, Small 80 %, Smaller 70 %; applies at once.
+- [x] **SET-22** Colour theme: seven themes with a one-line description each; applies at once.
+- [x] **SET-23** Channel numbers in the guide on or off.
+- [x] **SET-24** Time zone: the TV's own (default) or any zone from a searchable picker with Recent and All zones by region.
+- [x] **SET-25** Startup screen: Home, Programme guide or Last channel.
+- [x] **SET-26** Playlist and EPG refresh interval: 1, 2, 4, 10 or 24 hours.
+- [x] **SET-27** Reminders can open Sohva TV: shows Allowed / Not allowed and opens the TV's "display over other apps" screen.
+- [x] **SET-28** Profiles group: Who is watching, ask at start, what a profile may see, add and remove profiles (behaviour in specs/04).
 
 **Playback**
 
-- [ ] **SET-30** Playback buffer: Media3 default, Low latency, Stability, each with a description.
-- [ ] **SET-31** Playback recovery: Standard or Persistent, each with a description.
-- [ ] **SET-32** Skip step: 10 s, 30 s, 1 min, 2 min.
-- [ ] **SET-33** Match the display to the picture (auto frame rate) on or off.
-- [ ] **SET-34** Continue to the next episode on or off.
-- [ ] **SET-35** Keep watching in a corner (picture in picture) on or off.
-- [ ] **SET-36** Subtitle size: Follow the TV, Small, Normal, Large, Very large.
-- [ ] **SET-37** Subtitle colour: Follow the TV, White, Yellow.
-- [ ] **SET-38** Subtitle background: Follow the TV, None, Shadow, Box.
-- [ ] **SET-39** VOD audio and subtitles: primary and secondary audio, primary and secondary subtitles, each Automatic or one of eleven languages; picking the partner slot's language clears the partner.
+- [x] **SET-30** Playback buffer: Media3 default, Low latency, Stability, each with a description.
+- [x] **SET-31** Playback recovery: Standard or Persistent, each with a description.
+- [x] **SET-32** Skip step: 10 s, 30 s, 1 min, 2 min.
+- [x] **SET-33** Match the display to the picture (auto frame rate) on or off.
+- [x] **SET-34** Continue to the next episode on or off.
+- [x] **SET-35** Keep watching in a corner (picture in picture) on or off.
+- [x] **SET-36** Subtitle size: Follow the TV, Small, Normal, Large, Very large.
+- [x] **SET-37** Subtitle colour: Follow the TV, White, Yellow.
+- [x] **SET-38** Subtitle background: Follow the TV, None, Shadow, Box.
+- [x] **SET-39** VOD audio and subtitles: primary and secondary audio, primary and secondary subtitles, each Automatic or one of eleven languages; picking the partner slot's language clears the partner.
 
 **Library (image cache owned here)**
 
-- [ ] **SET-40** Image cache limit 100, 250 or 500 MB, applied from the next start.
-- [ ] **SET-41** Image cache usage "N MB in use" and Clear image cache (disk and memory).
+- [x] **SET-40** Image cache limit 100, 250 or 500 MB, applied from the next start.
+- [x] **SET-41** Image cache usage "N MB in use" and Clear image cache (disk and memory).
 
 **Other sections (owned by other specs, listed with their options in 6.1)**
 
-- [ ] **SET-50** Playlists: source list, add M3U / Xtream, set up from a phone, source pages ([10](../specs/10-sources-and-import.md), [11](../specs/11-phone-setup.md)).
-- [ ] **SET-51** Remote buttons: press/hold grid for twelve buttons, reset ([31](../specs/31-remote-button-mapping.md)).
-- [ ] **SET-52** Library: TMDB and TVmaze switches, TMDB key with Save and Test, metadata language, preferred film version, Manage groups & content, groups of your own, Clear metadata cache, TMDB and TVmaze website buttons ([41](../specs/41-metadata-enrichment.md), [42](../specs/42-library-organization.md)).
+- [x] **SET-50** Playlists: source list, add M3U / Xtream, set up from a phone, source pages ([10](../specs/10-sources-and-import.md), [11](../specs/11-phone-setup.md)).
+- [x] **SET-51** Remote buttons: press/hold grid for twelve buttons, reset ([31](../specs/31-remote-button-mapping.md)).
+- [x] **SET-52** Library: TMDB and TVmaze switches, TMDB key with Save and Test, metadata language, preferred film version, Manage groups & content, groups of your own, Clear metadata cache, TMDB and TVmaze website buttons ([41](../specs/41-metadata-enrichment.md), [42](../specs/42-library-organization.md)).
 - [ ] **SET-53** Accounts: the Trakt panel, hidden for restricted profiles ([51](../specs/51-trakt.md)).
 - [ ] **SET-54** Sohva Sport: channel country/language priority, API-Sports key, followed sports and competitions ([60](../specs/60-sohva-sport.md)).
-- [ ] **SET-55** Parental controls: set, change or remove the household PIN ([04](../specs/04-profiles-parental.md)).
-- [ ] **SET-56** Backup & tools: encrypted backup save and restore, Clear all guide data ([71](../specs/71-backup-restore.md)).
-- [ ] **SET-57** About: updates, About privacy and licences, Help translate, Save diagnostics ([72](../specs/72-updates-about-diagnostics.md)).
+- [x] **SET-55** Parental controls: set, change or remove the household PIN ([04](../specs/04-profiles-parental.md)).
+- [x] **SET-56** Backup & tools: encrypted backup save and restore, Clear all guide data ([71](../specs/71-backup-restore.md)).
+- [x] **SET-57** About: updates, About privacy and licences, Help translate, Save diagnostics ([72](../specs/72-updates-about-diagnostics.md)).
 
 ## Encrypted backup and restore
 
 Spec: [specs/71-backup-restore.md](../specs/71-backup-restore.md) · Milestone: M7 · 15 items
 
-- [ ] **BACKUP-01** Settings › Backup & tools shows an "Encrypted backup" group: title, description, password field, **Save backup**, **Restore backup**, and the warning that the password cannot be recovered.
-- [ ] **BACKUP-02** Password field: masked, edit-on-click, 8–128 characters; both buttons are disabled below 8 characters and while a backup operation runs.
-- [ ] **BACKUP-03** **Save backup** opens the system "create document" picker with the suggested name `sohva-tv-backup.smbak` and MIME type `application/vnd.streammate.backup`.
-- [ ] **BACKUP-04** The file is encrypted with a key derived from the password (PBKDF2-HMAC-SHA256, 210,000 iterations, AES-256-GCM); the password is never stored.
-- [ ] **BACKUP-05** The backup carries: IPTV sources with credentials, the parental PIN, every setting listed in §6.2, profiles and each profile's favourites/recents/last channel/locked channels/ allowed groups, channel customisations (name, group, hidden, order, EPG id, logo, number), custom channel lists and members, organisation rules with the film identities they depend on, and the viewer's own genre groups.
-- [ ] **BACKUP-06** A logo sent from a phone travels inside the backup as image bytes and is recreated on the target TV.
-- [ ] **BACKUP-07** The backup never contains Discover data, Trakt, the TMDB token, the TVmaze switch, the API-Sports key, watch progress, reminders, guide/catalogue content, sports match decisions, the interface language, the image-cache size or "Match the display to the picture" (§6.3).
-- [ ] **BACKUP-08** **Restore backup** opens the system "open document" picker filtered to `application/vnd.streammate.backup` and `application/octet-stream`.
-- [ ] **BACKUP-09** Restore checks the whole file (envelope, password, structure, limits) before it changes anything; each failure has its own message (§4.6).
-- [ ] **BACKUP-10** Restore replaces the sources (sources the backup lacks are deleted with all their data), the channel customisations, custom lists, organisation rules, all settings, profiles and the PIN; anything the backup does not carry stays as it was.
-- [ ] **BACKUP-11** After a restore the Playlists list shows the restored sources and the message "Backup restored. Refresh channels and the programme guide."; nothing syncs by itself and the app does not restart; theme, interface size and the other settings apply at once.
-- [ ] **BACKUP-12** Every backup written by any build since StreamMate (format versions 1 and 2) restores; settings the older file lacks take the defaults of §6.4 (an old backup without a colour theme restores Original).
-- [ ] **BACKUP-13** A backup of a TV with a 200,000-film catalogue stays small (tens of kilobytes) and its export never runs the app out of memory (the beta 17 repair, §10).
-- [ ] **BACKUP-14** The password field is emptied after every save or restore attempt, successful or not.
-- [ ] **BACKUP-15** Save shows "Encrypted backup saved" or the failure; restore shows the restored message or the failure (the rebuild shows both in the section itself, §5).
+- [x] **BACKUP-01** Settings › Backup & tools shows an "Encrypted backup" group: title, description, password field, **Save backup**, **Restore backup**, and the warning that the password cannot be recovered.
+- [x] **BACKUP-02** Password field: masked, edit-on-click, 8–128 characters; both buttons are disabled below 8 characters and while a backup operation runs.
+- [x] **BACKUP-03** **Save backup** opens the system "create document" picker with the suggested name `sohva-tv-backup.smbak` and MIME type `application/vnd.streammate.backup`.
+- [x] **BACKUP-04** The file is encrypted with a key derived from the password (PBKDF2-HMAC-SHA256, 210,000 iterations, AES-256-GCM); the password is never stored.
+- [x] **BACKUP-05** The backup carries: IPTV sources with credentials, the parental PIN, every setting listed in §6.2, profiles and each profile's favourites/recents/last channel/locked channels/ allowed groups, channel customisations (name, group, hidden, order, EPG id, logo, number), custom channel lists and members, organisation rules with the film identities they depend on, and the viewer's own genre groups.
+- [x] **BACKUP-06** A logo sent from a phone travels inside the backup as image bytes and is recreated on the target TV.
+- [x] **BACKUP-07** The backup never contains Discover data, Trakt, the TMDB token, the TVmaze switch, the API-Sports key, watch progress, reminders, guide/catalogue content, sports match decisions, the interface language, the image-cache size or "Match the display to the picture" (§6.3).
+- [x] **BACKUP-08** **Restore backup** opens the system "open document" picker filtered to `application/vnd.streammate.backup` and `application/octet-stream`.
+- [x] **BACKUP-09** Restore checks the whole file (envelope, password, structure, limits) before it changes anything; each failure has its own message (§4.6).
+- [x] **BACKUP-10** Restore replaces the sources (sources the backup lacks are deleted with all their data), the channel customisations, custom lists, organisation rules, all settings, profiles and the PIN; anything the backup does not carry stays as it was.
+- [x] **BACKUP-11** After a restore the Playlists list shows the restored sources and the message "Backup restored. Refresh channels and the programme guide."; nothing syncs by itself and the app does not restart; theme, interface size and the other settings apply at once.
+- [x] **BACKUP-12** Every backup written by any build since StreamMate (format versions 1 and 2) restores; settings the older file lacks take the defaults of §6.4 (an old backup without a colour theme restores Original).
+- [x] **BACKUP-13** A backup of a TV with a 200,000-film catalogue stays small (tens of kilobytes) and its export never runs the app out of memory (the beta 17 repair, §10).
+- [x] **BACKUP-14** The password field is emptied after every save or restore attempt, successful or not.
+- [x] **BACKUP-15** Save shows "Encrypted backup saved" or the failure; restore shows the restored message or the failure (the rebuild shows both in the section itself, §5).
 
 ## Updates, About and diagnostics
 
@@ -994,41 +994,41 @@ Spec: [specs/72-updates-about-diagnostics.md](../specs/72-updates-about-diagnost
 
 **Updates**
 
-- [ ] **ABOUT-01** The UPDATES group shows the installed version: "Installed: 0.1.0-beta.23".
-- [ ] **ABOUT-02** An automatic update check runs at most once per 24 hours, at app start, only in the release package `com.streammate.tv`; nothing is downloaded without a press.
-- [ ] **ABOUT-03** **Check for updates** checks now.
-- [ ] **ABOUT-04** One status line names the phase: not checked, checking, newest, available, downloading with percent, downloaded and verified, permission needed, or one of four failures (in `danger`).
-- [ ] **ABOUT-05** The newest published release whose stated Android build is above the installed one is offered: "Sohva TV X is available." with **Download**.
-- [ ] **ABOUT-06** The download goes to the app's cache with a live percentage and is verified against the release's `SHA256SUMS.txt`; a mismatch deletes it; a release without a checksum file is refused.
-- [ ] **ABOUT-07** The release's install-time profile for the device's Android (`.api31.dm` or `.api28.dm`) is downloaded, verified the same way and installed together with the APK in one PackageInstaller session, so Android compiles the update while installing (`reason=install-dm`).
-- [ ] **ABOUT-08** Without a usable profile, or when the session cannot be used, the APK is handed to the system installer screen as before.
-- [ ] **ABOUT-09** When Android needs the "install unknown apps" permission, **Allow installs** opens that page for Sohva TV and **Install** tries again.
-- [ ] **ABOUT-10** "What's new in X" shows the offered release's notes, otherwise the installed build's own release notes, remembered for offline use (at most 4,000 characters).
-- [ ] **ABOUT-11** Debug, demo and Lab builds never check, download or install; About says public updates are disabled (Lab also shows its safety notice as the notes).
-- [ ] **ABOUT-12** Help line: downloads are verified; playlists and settings are kept.
+- [x] **ABOUT-01** The UPDATES group shows the installed version: "Installed: 0.1.0-beta.23".
+- [x] **ABOUT-02** An automatic update check runs at most once per 24 hours, at app start, only in the release package `com.streammate.tv`; nothing is downloaded without a press.
+- [x] **ABOUT-03** **Check for updates** checks now.
+- [x] **ABOUT-04** One status line names the phase: not checked, checking, newest, available, downloading with percent, downloaded and verified, permission needed, or one of four failures (in `danger`).
+- [x] **ABOUT-05** The newest published release whose stated Android build is above the installed one is offered: "Sohva TV X is available." with **Download**.
+- [x] **ABOUT-06** The download goes to the app's cache with a live percentage and is verified against the release's `SHA256SUMS.txt`; a mismatch deletes it; a release without a checksum file is refused.
+- [x] **ABOUT-07** The release's install-time profile for the device's Android (`.api31.dm` or `.api28.dm`) is downloaded, verified the same way and installed together with the APK in one PackageInstaller session, so Android compiles the update while installing (`reason=install-dm`).
+- [x] **ABOUT-08** Without a usable profile, or when the session cannot be used, the APK is handed to the system installer screen as before.
+- [x] **ABOUT-09** When Android needs the "install unknown apps" permission, **Allow installs** opens that page for Sohva TV and **Install** tries again.
+- [x] **ABOUT-10** "What's new in X" shows the offered release's notes, otherwise the installed build's own release notes, remembered for offline use (at most 4,000 characters).
+- [x] **ABOUT-11** Debug, demo and Lab builds never check, download or install; About says public updates are disabled (Lab also shows its safety notice as the notes).
+- [x] **ABOUT-12** Help line: downloads are verified; playlists and settings are kept.
 
 **About and legal**
 
-- [ ] **ABOUT-13** **About, privacy and licences** (centred button) opens the legal screen.
-- [ ] **ABOUT-14** Legal screen: brand, title, subtitle, Back; the version and the non-commercial statement.
-- [ ] **ABOUT-15** On-device privacy summary (five paragraphs).
-- [ ] **ABOUT-16** Support and privacy contact with **Send email** (`mailto:` the public address).
-- [ ] **ABOUT-17** TMDB attribution: notice, the unmodified TMDB logo, **Open TMDB**.
-- [ ] **ABOUT-18** TVmaze (CC BY-SA): notice, **Open TVmaze**, **TVmaze licence**.
-- [ ] **ABOUT-19** API-Sports: notice, provider-rights statement, **API-Sports terms**.
-- [ ] **ABOUT-20** Notes on services and connections (HTTP, metadata and sports disclosures).
-- [ ] **ABOUT-21** Discover addons notice.
-- [ ] **ABOUT-22** Open-source notice with **Apache 2.0** licence link.
-- [ ] **ABOUT-23** No-affiliation statement.
-- [ ] **ABOUT-24** The MIT notices of the Nord, Everforest and Kanagawa palettes ship inside the APK (`theme-licenses.txt`); beta 23 does not show them on screen.
-- [ ] **ABOUT-25** TRANSLATIONS: **Help translate Sohva TV** opens the public repository.
+- [x] **ABOUT-13** **About, privacy and licences** (centred button) opens the legal screen.
+- [x] **ABOUT-14** Legal screen: brand, title, subtitle, Back; the version and the non-commercial statement.
+- [x] **ABOUT-15** On-device privacy summary (five paragraphs).
+- [x] **ABOUT-16** Support and privacy contact with **Send email** (`mailto:` the public address).
+- [x] **ABOUT-17** TMDB attribution: notice, the unmodified TMDB logo, **Open TMDB**.
+- [x] **ABOUT-18** TVmaze (CC BY-SA): notice, **Open TVmaze**, **TVmaze licence**.
+- [x] **ABOUT-19** API-Sports: notice, provider-rights statement, **API-Sports terms**.
+- [x] **ABOUT-20** Notes on services and connections (HTTP, metadata and sports disclosures).
+- [x] **ABOUT-21** Discover addons notice.
+- [x] **ABOUT-22** Open-source notice with **Apache 2.0** licence link.
+- [x] **ABOUT-23** No-affiliation statement.
+- [x] **ABOUT-24** The MIT notices of the Nord, Everforest and Kanagawa palettes ship inside the APK (`theme-licenses.txt`); beta 23 does not show them on screen.
+- [x] **ABOUT-25** TRANSLATIONS: **Help translate Sohva TV** opens the public repository.
 
 **Diagnostics**
 
-- [ ] **ABOUT-26** DIAGNOSTICS: **Save diagnostics** opens the system "create document" picker with the name `sohva-tv-diagnostics-yyyyMMdd-HHmm.txt` (text/plain).
-- [ ] **ABOUT-27** The file holds app, device, Android, locale, time zones, a Display line, SQLite version, key settings, sources by name, every refresh state and the app's last 600 event lines, including start-up and channel-loading timings.
-- [ ] **ABOUT-28** Addresses, user names, passwords, keys and tokens are removed before a line is kept and again before the file is written.
-- [ ] **ABOUT-29** The result shows under the button: "Diagnostics saved. Share the file with the developer if asked." or the failure.
+- [x] **ABOUT-26** DIAGNOSTICS: **Save diagnostics** opens the system "create document" picker with the name `sohva-tv-diagnostics-yyyyMMdd-HHmm.txt` (text/plain).
+- [x] **ABOUT-27** The file holds app, device, Android, locale, time zones, a Display line, SQLite version, key settings, sources by name, every refresh state and the app's last 600 event lines, including start-up and channel-loading timings.
+- [x] **ABOUT-28** Addresses, user names, passwords, keys and tokens are removed before a line is kept and again before the file is written.
+- [x] **ABOUT-29** The result shows under the button: "Diagnostics saved. Share the file with the developer if asked." or the failure.
 
 ## Security and privacy
 
@@ -1069,7 +1069,7 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 
 - [x] **SEC-20** No developer account, analytics, advertising, telemetry, crash upload or first-party server.
 - [ ] **SEC-21** Each third party receives only what its feature needs and only when the viewer has turned that feature on (§4.9 table).
-- [ ] **SEC-22** The update check sends GitHub nothing about the viewer beyond the request itself.
+- [x] **SEC-22** The update check sends GitHub nothing about the viewer beyond the request itself.
 - [x] **SEC-23** Stream, playlist and guide requests identify the app as `Sohva TV/<version> (Android TV <release>)` unless the playlist sets its own user agent.
 - [ ] **SEC-24** The in-app privacy summary, the "security note" under source settings, and the published privacy policy state these commitments; a security contact is published (SECURITY.md).
 
@@ -1085,16 +1085,16 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 
 Spec: [specs/74-localization.md](../specs/74-localization.md) · Milestone: M7 · 13 items
 
-- [ ] **L10N-01** Seven interface languages: English (fallback), Finnish (complete), Spanish, Portuguese, German, Swedish, Italian (drafts).
-- [ ] **L10N-02** Interface language picker: System default plus the seven, each named in its own language; drafts carry "(borrador)", "(rascunho)", "(Entwurf)", "(utkast)", "(bozza)".
-- [ ] **L10N-03** Choosing a language restarts the app's screen in that language; System default follows the TV and falls back to English for other languages.
-- [ ] **L10N-04** From Android 13 the choice is the platform per-app language and also appears in Android's own per-app language screen.
-- [ ] **L10N-05** Metadata language for TMDB titles, plots and artwork: 22 languages; Finnish by default with a Finnish interface, else English; changing it refreshes metadata in the background.
-- [ ] **L10N-06** Language names in pickers (VOD audio/subtitle languages, metadata languages) appear in the interface language.
-- [ ] **L10N-07** One app time zone (the TV's own by default) for the guide, Home, the player and Sohva Sport.
-- [ ] **L10N-08** Clocks on Home, Sohva Sport and the player follow the interface language and the TV's 12/24-hour setting.
-- [ ] **L10N-09** Guide day labels "Now", "Today", "Tomorrow", "Yesterday" beside the date.
-- [ ] **L10N-10** Counts use plural forms in every language.
-- [ ] **L10N-11** Error messages, including stored refresh failures, appear in the current interface language.
-- [ ] **L10N-12** "Help translate Sohva TV" in About opens the public repository.
-- [ ] **L10N-13** The phone setup page is in the TV's interface language (the addon phone page is English).
+- [x] **L10N-01** Seven interface languages: English (fallback), Finnish (complete), Spanish, Portuguese, German, Swedish, Italian (drafts).
+- [x] **L10N-02** Interface language picker: System default plus the seven, each named in its own language; drafts carry "(borrador)", "(rascunho)", "(Entwurf)", "(utkast)", "(bozza)".
+- [x] **L10N-03** Choosing a language restarts the app's screen in that language; System default follows the TV and falls back to English for other languages.
+- [x] **L10N-04** From Android 13 the choice is the platform per-app language and also appears in Android's own per-app language screen.
+- [x] **L10N-05** Metadata language for TMDB titles, plots and artwork: 22 languages; Finnish by default with a Finnish interface, else English; changing it refreshes metadata in the background.
+- [x] **L10N-06** Language names in pickers (VOD audio/subtitle languages, metadata languages) appear in the interface language.
+- [x] **L10N-07** One app time zone (the TV's own by default) for the guide, Home, the player and Sohva Sport.
+- [x] **L10N-08** Clocks on Home, Sohva Sport and the player follow the interface language and the TV's 12/24-hour setting.
+- [x] **L10N-09** Guide day labels "Now", "Today", "Tomorrow", "Yesterday" beside the date.
+- [x] **L10N-10** Counts use plural forms in every language.
+- [x] **L10N-11** Error messages, including stored refresh failures, appear in the current interface language.
+- [x] **L10N-12** "Help translate Sohva TV" in About opens the public repository.
+- [x] **L10N-13** The phone setup page is in the TV's interface language (the addon phone page is English).

@@ -1,5 +1,9 @@
 package com.sohva.tv.core.data.prefs
 
+import com.sohva.tv.core.data.backup.BackupPreferences
+import com.sohva.tv.core.data.backup.BackupProfile
+import com.sohva.tv.core.data.backup.ProfileKept
+import com.sohva.tv.core.model.profile.Profile
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -24,6 +28,7 @@ import com.sohva.tv.core.model.player.VodLanguages
 import com.sohva.tv.core.model.settings.ColorThemeId
 import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
+import com.sohva.tv.core.model.settings.VodLanguageSlot
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
 import com.sohva.tv.core.model.vod.CustomGroup
@@ -138,8 +143,50 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
     }
 
     /** The player's settings in one read, once per playback (spec 30 §6). */
-    suspend fun playback(): PlaybackSettings {
-        val p = store.data.first()
+    suspend fun playback(): PlaybackSettings = playbackOf(store.data.first())
+
+    /** Settings › Playback's rows (spec 70 §4.7), re-emitted only when one of them changes. */
+    val playbackSettings: Flow<PlaybackSettings> = store.data.map(::playbackOf).distinctUntilChanged()
+
+    /** "Continue to the next episode" as Settings shows it (SET-34). */
+    val autoPlayNext: Flow<Boolean> = store.data.map { it[AUTO_PLAY_NEXT] ?: true }.distinctUntilChanged()
+
+    suspend fun setBuffer(value: BufferProfile) = store.edit { it[BUFFER_PROFILE] = value.name }.let { }
+
+    suspend fun setReconnect(value: ReconnectPolicy) = store.edit { it[RECONNECT_POLICY] = value.name }.let { }
+
+    suspend fun setSkipStep(value: SkipStep) = store.edit { it[SEEK_STEP] = value.name }.let { }
+
+    suspend fun setMatchFrameRate(on: Boolean) = store.edit { it[AUTO_FRAME_RATE] = on }.let { }
+
+    suspend fun setAutoPlayNext(on: Boolean) = store.edit { it[AUTO_PLAY_NEXT] = on }.let { }
+
+    suspend fun setPictureInPicture(on: Boolean) = store.edit { it[PICTURE_IN_PICTURE] = on }.let { }
+
+    suspend fun setSubtitleSize(value: SubtitleSize) = store.edit { it[SUBTITLE_SIZE] = value.name }.let { }
+
+    suspend fun setSubtitleColor(value: SubtitleColor) = store.edit { it[SUBTITLE_COLOR] = value.name }.let { }
+
+    suspend fun setSubtitleBackground(value: SubtitleBackground) = store.edit { it[SUBTITLE_BACKGROUND] = value.name }.let { }
+
+    /** One VOD language row; the partner row is cleared when it holds the same language (SET-FR-72). */
+    suspend fun setVodLanguage(slot: VodLanguageSlot, code: String?) {
+        store.edit { prefs ->
+            val next = VodLanguageSlot.choose(playbackOf(prefs).vodLanguages, slot, code)
+            fun put(key: Preferences.Key<String>, value: String?) = if (value == null) prefs.remove(key) else prefs[key] = value
+            put(AUDIO_PRIMARY, next.audio)
+            put(AUDIO_SECONDARY, next.audioSecond)
+            put(SUBTITLE_PRIMARY, next.subtitles)
+            put(SUBTITLE_SECONDARY, next.subtitlesSecond)
+        }
+    }
+
+    suspend fun setShowChannelNumbers(on: Boolean) = store.edit { it[SHOW_CHANNEL_NUMBERS] = on }.let { }
+
+    /** Null follows the TV's zone from now on (SET-FR-65). */
+    suspend fun setTimeZone(id: String?) = store.edit { if (id == null) it.remove(TIME_ZONE) else it[TIME_ZONE] = id }.let { }
+
+    private fun playbackOf(p: Preferences): PlaybackSettings {
         return PlaybackSettings(
             buffer = BufferProfile.fromStored(p[BUFFER_PROFILE]),
             reconnect = ReconnectPolicy.fromStored(p[RECONNECT_POLICY]),
@@ -229,6 +276,115 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         store.edit { it.clear() }
     }
 
+    // ---- Backup (spec 71 §6.2, §6.4, BACKUP-FR-22) ------------------------------------------------
+
+    /** Every backed-up setting in one read; the per-profile lists come from [favouriteEvents] and the tables. */
+    suspend fun backupPreferences(): BackupPreferences {
+        val p = store.data.first()
+        val household = householdOf(p)
+        return BackupPreferences(
+            timeZoneId = p[TIME_ZONE],
+            profiles = household.stored.filter { !it.name.isNullOrBlank() }.map { BackupProfile(it.id, it.name!!, it.colorIndex) },
+            activeProfileId = household.active.id,
+            askProfileAtStart = household.askAtStart,
+            lastGuideSourceId = p[LAST_GUIDE_SOURCE],
+            startupScreen = StartupScreen.fromStored(p[STARTUP_SCREEN]).name,
+            remoteChannelKeyMode = p[REMOTE_CHANNEL_KEY_MODE] ?: "DPAD_AND_CHANNEL_KEYS",
+            remoteMappings = p[REMOTE_MAPPINGS]?.toList(),
+            metadataLanguage = p[METADATA_LANGUAGE],
+            interfaceScale = InterfaceScale.fromStored(p[SCALE]).name,
+            colorTheme = ColorThemeId.fromStored(p[THEME]).id,
+            followedSports = p[FOLLOWED_SPORTS]?.toList(),
+            followedCompetitionKeys = p[FOLLOWED_COMPETITIONS]?.toList(),
+            sportsChannelPriority = p[SPORTS_PRIORITY]?.split(',')?.filter { it.isNotBlank() },
+            refreshInterval = RefreshInterval.fromStored(p[REFRESH_INTERVAL]).name,
+            bufferProfile = BufferProfile.fromStored(p[BUFFER_PROFILE]).name,
+            seekStep = SkipStep.fromStored(p[SEEK_STEP]).name,
+            subtitleSize = SubtitleSize.fromStored(p[SUBTITLE_SIZE]).name,
+            subtitleColor = SubtitleColor.fromStored(p[SUBTITLE_COLOR]).name,
+            subtitleBackground = SubtitleBackground.fromStored(p[SUBTITLE_BACKGROUND]).name,
+            reconnectPolicy = ReconnectPolicy.fromStored(p[RECONNECT_POLICY]).name,
+            autoPlayNext = p[AUTO_PLAY_NEXT] ?: true,
+            pictureInPicture = p[PICTURE_IN_PICTURE] ?: false,
+            autoFrameRate = p[AUTO_FRAME_RATE] ?: true,
+            editorsShowHidden = p[EDITORS_SHOW_HIDDEN] ?: true,
+            showChannelNumbers = p[SHOW_CHANNEL_NUMBERS] ?: true,
+            preferredCopy = PreferredCopy.entries.firstOrNull { it.name == p[PREFERRED_COPY] }?.name ?: PreferredCopy.NONE.name,
+            audioPrimary = p[AUDIO_PRIMARY],
+            audioSecondary = p[AUDIO_SECONDARY],
+            subtitlesPrimary = p[SUBTITLE_PRIMARY],
+            subtitlesSecondary = p[SUBTITLE_SECONDARY],
+            customGroupsJson = p[CUSTOM_GROUPS],
+        )
+    }
+
+    /** A profile's favourite matches (Sohva Sport, M8), kept under beta 23's key meanwhile. */
+    suspend fun favouriteEvents(profileId: String): List<String> =
+        store.data.first()[stringSetPreferencesKey(Profiles.key(FAVOURITE_EVENTS_KEY, profileId))]?.sorted().orEmpty()
+
+    suspend fun lastChannelOf(profileId: String): String? = store.data.first()[stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId))]
+
+    /**
+     * Replaces the backed-up settings with [p] in one write, leaving device-local ones (spec 71
+     * BACKUP-FR-24): every key of [BACKED_UP] and every per-profile key is removed, then written from
+     * the backup. [pinConfigured] is whether the backup brought a PIN. "Match the display" keeps the
+     * TV's value when the file has none (BACKUP-FR-23).
+     */
+    suspend fun restoreBackup(p: BackupPreferences, profiles: Map<String, ProfileKept>, pinConfigured: Boolean) {
+        store.edit { prefs ->
+            val keptAutoFrameRate = prefs[AUTO_FRAME_RATE]
+            for (key in prefs.asMap().keys.toList()) {
+                val name = key.name
+                if (name in BACKED_UP || PER_PROFILE.any { name == it || name.startsWith("$it:") }) prefs.remove(key)
+            }
+            fun put(key: Preferences.Key<String>, value: String?) = if (value == null) prefs.remove(key) else prefs[key] = value
+            val household = Household(
+                stored = p.profiles.map { Profile(it.id, it.name, it.color) },
+                activeId = p.activeProfileId,
+                askAtStart = p.askProfileAtStart,
+                pinConfigured = pinConfigured,
+            )
+            prefs[PROFILES] = Profiles.encode(household.stored)
+            if (household.stored.isEmpty()) prefs.remove(PROFILES)
+            if (household.activeId != Profiles.DEFAULT_ID) prefs[ACTIVE_PROFILE] = household.activeId
+            prefs[ASK_PROFILE] = household.askAtStart
+            prefs[PIN_CONFIGURED] = pinConfigured
+            put(TIME_ZONE, p.timeZoneId)
+            put(LAST_GUIDE_SOURCE, p.lastGuideSourceId)
+            prefs[STARTUP_SCREEN] = p.startupScreen
+            prefs[REMOTE_CHANNEL_KEY_MODE] = p.remoteChannelKeyMode
+            p.remoteMappings?.let { prefs[REMOTE_MAPPINGS] = it.toSet() }
+            put(METADATA_LANGUAGE, p.metadataLanguage)
+            put(SCALE, p.interfaceScale)
+            put(THEME, p.colorTheme)
+            p.followedSports?.let { prefs[FOLLOWED_SPORTS] = it.toSet() }
+            p.followedCompetitionKeys?.let { prefs[FOLLOWED_COMPETITIONS] = it.toSet() }
+            p.sportsChannelPriority?.let { prefs[SPORTS_PRIORITY] = it.joinToString(",") }
+            put(REFRESH_INTERVAL, p.refreshInterval)
+            put(BUFFER_PROFILE, p.bufferProfile)
+            put(SEEK_STEP, p.seekStep)
+            put(SUBTITLE_SIZE, p.subtitleSize)
+            put(SUBTITLE_COLOR, p.subtitleColor)
+            put(SUBTITLE_BACKGROUND, p.subtitleBackground)
+            put(RECONNECT_POLICY, p.reconnectPolicy)
+            prefs[AUTO_PLAY_NEXT] = p.autoPlayNext
+            prefs[PICTURE_IN_PICTURE] = p.pictureInPicture
+            (p.autoFrameRate ?: keptAutoFrameRate)?.let { prefs[AUTO_FRAME_RATE] = it }
+            prefs[EDITORS_SHOW_HIDDEN] = p.editorsShowHidden
+            prefs[SHOW_CHANNEL_NUMBERS] = p.showChannelNumbers
+            put(PREFERRED_COPY, p.preferredCopy)
+            put(AUDIO_PRIMARY, VodLanguages.stored(p.audioPrimary))
+            put(AUDIO_SECONDARY, VodLanguages.stored(p.audioSecondary))
+            put(SUBTITLE_PRIMARY, VodLanguages.stored(p.subtitlesPrimary))
+            put(SUBTITLE_SECONDARY, VodLanguages.stored(p.subtitlesSecondary))
+            put(CUSTOM_GROUPS, p.customGroupsJson)
+            for ((id, kept) in profiles) {
+                kept.lastChannelId?.let { prefs[stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, id))] = it }
+                if (kept.favouriteEventIds.isNotEmpty()) prefs[stringSetPreferencesKey(Profiles.key(FAVOURITE_EVENTS_KEY, id))] = kept.favouriteEventIds.toSet()
+            }
+        }
+    }
+
     private fun householdOf(prefs: Preferences): Household = Household(
         stored = Profiles.decode(prefs[PROFILES]),
         activeId = prefs[ACTIVE_PROFILE] ?: Profiles.DEFAULT_ID,
@@ -252,6 +408,12 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         private val SHOW_CHANNEL_NUMBERS = booleanPreferencesKey("show_channel_numbers")
         private val TIME_ZONE = stringPreferencesKey("time_zone")
         private const val LAST_CHANNEL_KEY = "last_channel_id"
+        private const val FAVOURITE_EVENTS_KEY = "favourite_event_ids"
+
+        // Sohva Sport's (spec 60, M8) under beta 23's names, so a restored backup keeps them until then.
+        private val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")
+        private val FOLLOWED_COMPETITIONS = stringSetPreferencesKey("followed_competitions")
+        private val SPORTS_PRIORITY = stringPreferencesKey("sports_channel_priority")
         private val PROFILES = stringPreferencesKey("profiles")
         private val ACTIVE_PROFILE = stringPreferencesKey("active_profile_id")
         private val ASK_PROFILE = booleanPreferencesKey("ask_profile_at_start")
@@ -281,5 +443,26 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         private val SUBTITLE_SIZE = stringPreferencesKey("subtitle_text_size")
         private val SUBTITLE_COLOR = stringPreferencesKey("subtitle_text_color")
         private val SUBTITLE_BACKGROUND = stringPreferencesKey("subtitle_background")
+
+        /**
+         * The backup's key table (spec 71 BACKUP-FR-22): what a backup carries and a restore
+         * replaces. [DEVICE_LOCAL] is what stays on the TV. A test fails when a key is in neither.
+         */
+        internal val BACKED_UP: Set<String> = setOf(
+            "color_theme", "interface_scale", "startup_screen", "playlist_epg_refresh_interval", "last_guide_source_id",
+            "show_channel_numbers", "time_zone", "remote_mappings", "remote_channel_key_mode", "editors_show_hidden",
+            "custom_catalogue_groups", "playback_buffer_profile", "playback_reconnect_policy", "playback_seek_step",
+            "auto_play_next_episode", "preferred_catalogue_copy", "metadata_language", "preferred_audio_language",
+            "secondary_audio_language", "preferred_subtitle_language", "secondary_subtitle_language", "auto_frame_rate",
+            "picture_in_picture", "subtitle_text_size", "subtitle_text_color", "subtitle_background", "profiles",
+            "active_profile_id", "ask_profile_at_start", "parental_pin_configured", "followed_sports", "followed_competitions",
+            "sports_channel_priority",
+        )
+
+        /** Per-profile keys (`<base>` and `<base>:<profileId>`), carried in `profileData`. */
+        internal val PER_PROFILE: Set<String> = setOf(LAST_CHANNEL_KEY, FAVOURITE_EVENTS_KEY)
+
+        /** Kept by a restore: this TV's own state (spec 71 §6.3). */
+        internal val DEVICE_LOCAL: Set<String> = setOf("reminder_overlay_asked", "metadata_key_refused")
     }
 }

@@ -17,6 +17,12 @@ import org.junit.Test
 
 /** A Library section that remembers what it was asked to do. */
 internal class FakeLibrary : LibrarySettingsServices {
+    var artworkBytes = 3L * 1024 * 1024
+    var limit = com.sohva.tv.core.model.settings.ArtworkCacheLimit.MEDIUM
+    override suspend fun artworkLimit() = limit
+    override suspend fun setArtworkLimit(limit: com.sohva.tv.core.model.settings.ArtworkCacheLimit) { this.limit = limit }
+    override suspend fun artworkUsage(): Long = artworkBytes
+    override suspend fun clearArtwork() { artworkBytes = 0 }
     override fun openManager() = Unit
 
     override fun customGroups(): kotlinx.coroutines.flow.Flow<List<com.sohva.tv.core.model.vod.CustomGroup>> = kotlinx.coroutines.flow.flowOf(emptyList())

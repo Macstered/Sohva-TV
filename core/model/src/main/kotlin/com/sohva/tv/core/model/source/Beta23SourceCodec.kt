@@ -58,6 +58,8 @@ object Beta23SourceCodec {
                 ImportScope.BOTH
             }
             val offset = if (version >= 3) input.readInt() else 0
+            // Beta 23's own model checks, so a list it refuses is refused here too.
+            require(name.isNotBlank() && name.length <= NAME_MAX) { "bad name" }
             require(limit in SourceRules.CONNECTION_LIMITS) { "limit $limit" }
             require(offset in SourceRules.EPG_OFFSETS && offset % SourceRules.EPG_OFFSET_STEP == 0) { "offset $offset" }
             sources += SourceConfig(Source(id, name, type, enabled, limit, priority, scope, offset), secrets)
@@ -66,6 +68,44 @@ object Beta23SourceCodec {
         require(sources.map { it.source.id }.toSet().size == sources.size) { "duplicate ids" }
         return sources
     }
+
+    /**
+     * Writes [sources] as version 3 (spec 71 §6.2 `sources`), the form beta 23 reads back, so a
+     * rebuild backup restores on beta 23 too.
+     */
+    fun encode(sources: List<SourceConfig>): String {
+        require(sources.size <= SourceRules.MAX_SOURCES) { "count ${sources.size}" }
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(MAGIC)
+            out.writeInt(VERSION)
+            out.writeInt(sources.size)
+            for ((source, secrets) in sources) {
+                out.string(source.id)
+                out.string(source.name)
+                out.string(source.type.name)
+                out.writeBoolean(source.enabled)
+                out.writeInt(source.connectionLimit)
+                out.writeInt(source.priority)
+                for (value in listOf(secrets.m3uUrl, secrets.xmlTvUrl, secrets.xtreamBaseUrl, secrets.xtreamUsername, secrets.xtreamPassword)) {
+                    out.writeBoolean(value != null)
+                    if (value != null) out.string(value)
+                }
+                out.string(source.importScope.name)
+                out.writeInt(source.epgOffsetMinutes)
+            }
+        }
+        return Base64.getEncoder().encodeToString(bytes.toByteArray())
+    }
+
+    private fun java.io.DataOutputStream.string(value: String) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        writeInt(bytes.size)
+        write(bytes)
+    }
+
+    private const val VERSION = 3
+    private const val NAME_MAX = 100
 
     private fun DataInputStream.string(): String {
         val length = readInt()

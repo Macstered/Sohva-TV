@@ -32,7 +32,7 @@ class RefreshStatusStore(private val db: SohvaDatabase, private val io: Coroutin
         films to series
     }
 
-    private fun toHealth(row: SourceStatusEntity): SourceHealth? {
+    internal fun toHealth(row: SourceStatusEntity): SourceHealth? {
         val kind = RefreshKind.fromId(row.kind) ?: return null
         val state = RefreshState.fromStored(row.status)
         val error = row.errorCode?.takeIf { state == RefreshState.FAILED }?.let { code ->

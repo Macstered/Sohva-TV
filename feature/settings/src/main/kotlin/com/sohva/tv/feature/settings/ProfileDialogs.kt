@@ -86,6 +86,7 @@ private fun GroupPicker(room: OrgRoom, profiles: ProfileSettings, editedName: St
         onToggle = { profiles.toggle(room, it) },
         onDismiss = onClose,
         empty = stringResource(R.string.profile_content_none_yet),
+        done = stringResource(R.string.category_edit_done),
         tag = "settings-profile-groups",
     )
 }

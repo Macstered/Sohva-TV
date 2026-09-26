@@ -47,7 +47,7 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
 
     override suspend fun recentChannels(now: Long): List<RecentChannel> = graph.data.home.recentChannels(now)
 
-    override val timeZone: Flow<String?> get() = graph.data.preferences.timeZone.flowOn(io)
+    override val timeZone: Flow<String?> get() = graph.appZone.flowOn(io)
 
     override fun now(): Long = System.currentTimeMillis()
 

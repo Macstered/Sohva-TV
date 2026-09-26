@@ -8,6 +8,7 @@ import com.sohva.tv.core.model.guide.GuideRules
 import com.sohva.tv.core.model.guide.GuideWindow
 import com.sohva.tv.core.model.guide.Schedules
 import com.sohva.tv.core.model.time.TimeLabels
+import com.sohva.tv.core.model.time.TimeStyle
 import java.time.ZoneId
 import java.util.Locale
 import kotlinx.coroutines.test.runTest
@@ -164,13 +165,19 @@ class GuideModelTest {
     }
 
     @Test
-    fun timeLabelsUseDotsAndAnEnDash() {
-        val labels = TimeLabels(ZoneId.of("Europe/Helsinki"), Locale.ENGLISH)
+    fun timeLabelsFollowTheStyleWithAnEnDash() {
+        // Android's best patterns for Finnish 24-hour and English 12-hour time (spec 74 L10N-FR-41).
+        val fi = TimeLabels(ZoneId.of("Europe/Helsinki"), TimeStyle(Locale.forLanguageTag("fi"), "HH.mm", "EEE d.M."))
+        val en = TimeLabels(ZoneId.of("Europe/Helsinki"), TimeStyle(Locale.US, "h:mm a", "EEE, M/d"))
         val t = 1_790_279_220_000L // 22.47 in Helsinki
-        assertEquals("22.47", labels.guideTime(t))
-        assertEquals("22:47", labels.playerTime(t))
-        assertEquals("22.47–23.17", labels.guideRange(t, t + 30 * min))
-        assertEquals("Thu 24.9.", labels.dayLabel(t))
+        assertEquals("22.47", fi.guideTime(t))
+        assertEquals("22.47–23.17", fi.guideRange(t, t + 30 * min))
+        assertEquals("10:47 PM", en.playerTime(t))
+        assertEquals("Thu, 9/24", en.dayLabel(t))
+        // The zone applies; an invalid id falls back to the TV's (L10N-FR-32).
+        assertEquals("21.47", TimeLabels(ZoneId.of("Europe/Stockholm"), TimeStyle.fixed24(Locale.ROOT).copy(clockPattern = "HH.mm")).guideTime(t))
+        assertEquals(ZoneId.systemDefault(), TimeLabels.zoneOf("Not/AZone"))
+        val labels = fi
         assertEquals(TimeLabels.RelativeDay.TOMORROW, labels.relativeDay(t + 2 * 60 * min, t))
         assertEquals(TimeLabels.RelativeDay.TODAY, labels.relativeDay(t, t))
         assertNull(labels.relativeDay(t + 3 * GuideWindow.DAY_MS, t))

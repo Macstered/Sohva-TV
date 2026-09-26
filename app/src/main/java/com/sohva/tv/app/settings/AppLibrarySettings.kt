@@ -1,5 +1,7 @@
 package com.sohva.tv.app.settings
 
+import com.sohva.tv.core.data.prefs.ArtworkCacheStore
+import com.sohva.tv.core.model.settings.ArtworkCacheLimit
 import android.content.Intent
 import androidx.core.net.toUri
 import com.sohva.tv.app.AppGraph
@@ -39,6 +41,14 @@ class AppLibrarySettings(private val graph: AppGraph, private val onOpenManager:
         val present = WallRoom.entries.flatMap { graph.data.walls.genreCounts(it).filterValues { n -> n > 0 }.keys }.toSet()
         Genre.entries.filter { it.wire in present }
     }
+    override suspend fun artworkLimit(): ArtworkCacheLimit = withContext(io) { ArtworkCacheStore(graph.app).limit() }
+
+    override suspend fun setArtworkLimit(limit: ArtworkCacheLimit) = withContext(io) { ArtworkCacheStore(graph.app).setLimit(limit) }
+
+    override suspend fun artworkUsage(): Long = graph.artwork.usage()
+
+    override suspend fun clearArtwork() = graph.artwork.clear()
+
     private val metadata get() = graph.metadata
 
     override fun metadata(): Flow<MetadataSettingsView> = flow {

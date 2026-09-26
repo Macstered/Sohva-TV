@@ -850,4 +850,16 @@
     <string name="sports_channel_priority_save">Reihenfolge speichern</string>
     <string name="sports_channel_priority_saved">Senderreihenfolge gespeichert</string>
     <string name="profile_groups_missing">Die Gruppen dieses Profils sind in den aktuellen Quellen nicht vorhanden. Wer die Eltern-PIN kennt, kann in den Einstellungen neue wählen.</string>
+    <string name="backup_status_saving">Sicherung wird gespeichert…</string>
+    <string name="backup_status_restoring">Sicherung wird wiederhergestellt…</string>
+    <string name="backup_restore_removes">Die Wiederherstellung entfernt %1$s von diesem Fernseher, mit Sendern, Filmen und Wiedergabeständen.</string>
+    <string name="backup_no_picker">Dieser Fernseher hat keine Dateiauswahl zum Speichern oder Öffnen einer Sicherung.</string>
+    <string name="backup_restore_incomplete">Die letzte Wiederherstellung wurde nicht abgeschlossen. Stellen Sie die Sicherung erneut wieder her.</string>
+    <string name="backup_partial_file_kept">%1$s Die unvollständige Datei konnte nicht entfernt werden.</string>
+    <string name="update_failed_download">Das Update konnte nicht heruntergeladen werden. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="update_permission_where">Dieser Fernseher hat keine Verknüpfung zu dieser Seite. Öffne in den Einstellungen des Fernsehers Apps › Spezieller App-Zugriff › Unbekannte Apps installieren und erlaube Sohva TV.</string>
+    <string name="diagnostics_open_failed">Der gewählte Speicherort konnte nicht geöffnet werden.</string>
+    <string name="diagnostics_no_picker">Dieser Fernseher hat keine Dateiauswahl zum Speichern der Diagnosedatei.</string>
+    <string name="link_open_elsewhere">Dieser Fernseher kann den Link nicht öffnen. Scanne den Code oder gib die Adresse auf einem anderen Gerät ein.</string>
+    <string name="about_palettes_title">Lizenzen der Farbpaletten</string>
 </resources>

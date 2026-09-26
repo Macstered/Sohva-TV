@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Permitir que os lembretes abram o Sohva TV</string>
     <string name="reminder_overlay_body">Dentro do Sohva TV um lembrete sempre aparece quando o programa está prestes a começar. O Android TV não mostra avisos de um app que não está na tela, então, para que o Sohva TV venha para a frente enquanto outra coisa estiver passando, permita que ele se sobreponha a outros apps nas configurações da TV. Sem isso, o lembrete fica esperando no painel de notificações da TV.</string>
     <string name="reminder_overlay_open">Abrir as configurações da TV</string>
+    <string name="reminders_open_unavailable">Esta TV não tem uma configuração para mostrar apps sobre outros apps.</string>
     <string name="guide_search_hint">Buscar canais ou programas</string>
     <string name="guide_empty_favourites">Nenhum canal favorito ainda</string>
     <string name="guide_empty_recent">Nenhum canal assistido recentemente ainda</string>

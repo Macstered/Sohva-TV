@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Consenti ai promemoria di aprire Sohva TV</string>
     <string name="reminder_overlay_body">All\'interno di Sohva TV un promemoria compare sempre quando il programma sta per iniziare. Android TV non mostra popup per un\'app che non è sullo schermo: perché Sohva TV passi in primo piano mentre è in corso qualcos\'altro, consenti la visualizzazione sopra altre app nelle impostazioni della TV. Senza questa autorizzazione il promemoria resta in attesa nel pannello delle notifiche della TV.</string>
     <string name="reminder_overlay_open">Apri le impostazioni della TV</string>
+    <string name="reminders_open_unavailable">Questo TV non ha un\'impostazione per mostrare le app sopra altre app.</string>
     <string name="guide_search_hint">Cerca canali o programmi</string>
     <string name="guide_empty_favourites">Ancora nessun canale preferito</string>
     <string name="guide_empty_recent">Ancora nessun canale visto di recente</string>

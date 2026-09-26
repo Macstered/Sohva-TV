@@ -19,14 +19,14 @@ import kotlinx.coroutines.launch
  */
 class AppSearchEnvironment(private val graph: AppGraph, private val stack: BackStack<AppRoute>, private val locale: Locale) : SearchEnvironment {
     private val reads get() = graph.data.search
-    private val resources get() = graph.app.resources
+    private val resources get() = com.sohva.tv.app.AppLocales.texts(graph.app).resources
 
     private fun joined(vararg parts: String?): String = parts.filterNot { it.isNullOrBlank() }.joinToString(" · ")
 
     override suspend fun live(term: String): List<SearchResult> {
         val hits = reads.live(term)
         // Programme times in the chosen zone and the guide's style (spec 03 §8 quirk fixed).
-        val labels = TimeLabels(TimeLabels.zoneOf(graph.data.preferences.timeZone.first()), locale)
+        val labels = TimeLabels(TimeLabels.zoneOf(graph.data.preferences.timeZone.first()), com.sohva.tv.ui.design.text.TimeStyles.of(graph.app, locale))
         val channels = hits.channels.map { c ->
             SearchResult("channel:${c.id}", ResultKind.CHANNEL, c.name, c.groupName?.takeIf { it.isNotBlank() } ?: c.sourceName, c.logoUrl, c.key)
         }

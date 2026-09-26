@@ -70,7 +70,7 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         val live = runCatching { graph.data.cipher.decrypt(row.streamUrlEnc) }.getOrNull() ?: return@withContext ArchiveResult.Gone
         val request = CatchupRequest(live, row.catchupType, row.catchupSource, row.xtreamStreamId, row.catchupTz, ZoneId.systemDefault(), start, stop, now)
         val address = CatchupAddress.build(request) ?: return@withContext ArchiveResult.Unavailable
-        val title = graph.app.getString(R.string.player_archive_title, row.name)
+        val title = com.sohva.tv.app.AppLocales.texts(graph.app).getString(R.string.player_archive_title, row.name)
         ArchiveResult.Ready(ResolvedStream(row.key, address, row.sourceId, row.sourceName, row.connectionLimit, title, row.userAgent, row.referrer))
     }
 
@@ -81,7 +81,7 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         val name = if (title.seriesName == null) {
             title.title
         } else {
-            listOf(title.seriesName, graph.app.getString(R.string.series_episode_label, title.season ?: 0, title.number ?: 0), title.title)
+            listOf(title.seriesName, com.sohva.tv.app.AppLocales.texts(graph.app).getString(R.string.series_episode_label, title.season ?: 0, title.number ?: 0), title.title)
                 .filter { !it.isNullOrBlank() }.joinToString(" · ")
         }
         ResolvedStream(title.key, address, title.sourceId, title.sourceName, title.connectionLimit, name, null, null)

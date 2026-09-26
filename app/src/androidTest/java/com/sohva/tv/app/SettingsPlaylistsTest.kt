@@ -233,7 +233,9 @@ class SettingsPlaylistsTest {
     fun theRefreshIntervalPickerPersistsItsChoice() {
         openSettings()
         click("settings-section-general")
-        await("settings-refresh-interval")
+        // General opens on the language row (spec 70 SET-FR-14); the refresh interval is further down.
+        awaitFocus("settings-language")
+        repeat(12) { if (!compose.onAllNodes(hasTestTag("settings-refresh-interval") and isFocused()).fetchSemanticsNodes().isNotEmpty()) press(KeyEvent.KEYCODE_DPAD_DOWN) }
         awaitFocus("settings-refresh-interval")
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         await("settings-refresh-interval-4")

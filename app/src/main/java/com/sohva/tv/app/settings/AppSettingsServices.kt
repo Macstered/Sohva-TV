@@ -33,12 +33,28 @@ import kotlinx.coroutines.withContext
  * lazy stores open files (secret store, database, preferences) on first touch, which must never
  * happen on the main thread (AGENTS.md §4 rule 1).
  */
-class AppSettingsServices(private val graph: AppGraph, openManager: () -> Unit = {}, switchProfile: (String) -> Unit = {}) : SettingsServices {
+class AppSettingsServices(
+    private val graph: AppGraph,
+    openManager: () -> Unit = {},
+    switchProfile: (String) -> Unit = {},
+    applyLanguage: (String?) -> Unit = {},
+    afterRestore: () -> Unit = {},
+    activity: android.content.Context? = null,
+    openLegal: () -> Unit = {},
+) : SettingsServices {
     private val io get() = graph.dispatchers.io
 
     override val library: LibrarySettingsServices = AppLibrarySettings(graph, openManager)
 
     override val profiles: com.sohva.tv.feature.settings.ProfileSettingsServices = AppProfileSettings(graph, switchProfile)
+
+    override val general: com.sohva.tv.feature.settings.GeneralSettingsServices = AppGeneralSettings(graph, applyLanguage)
+
+    override val playback: com.sohva.tv.feature.settings.PlaybackSettingsServices = AppPlaybackSettings(graph)
+
+    override val backup: com.sohva.tv.feature.settings.BackupSettingsServices = AppBackupSettings(graph, afterRestore)
+
+    override val about: com.sohva.tv.feature.settings.AboutSettingsServices = AppAboutSettings(graph, activity, openLegal)
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
 
@@ -80,7 +96,7 @@ class AppSettingsServices(private val graph: AppGraph, openManager: () -> Unit =
 
     override fun remindersCanOpen(): Boolean? = if (graph.flags.reminders) graph.reminders.mayOpenOverOtherApps() else null
 
-    override fun openOverlaySettings() = graph.reminders.openOverlaySettings()
+    override fun openOverlaySettings(): Boolean = graph.reminders.openOverlaySettings()
 
     override fun remoteMapping(): Flow<RemoteMapping> = flow { emitAll(graph.data.preferences.remoteMapping) }.flowOn(io)
 

@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -64,7 +65,10 @@ internal fun LibraryPane(library: LibrarySettings, start: FocusRequester) {
     val unused = remember { FocusRequester() }
     MetadataGroup(library, state, stored, if (fromManager) unused else start)
     ChoicesGroup(library, state, stored, managerRow = if (fromManager) start else unused)
-    CustomGroupsSection(library, below = clearCache)
+    // Down from the groups of your own goes on to the image cache, then maintenance.
+    val artworkRow = remember { FocusRequester() }
+    CustomGroupsSection(library, below = artworkRow)
+    ArtworkGroup(library, state, artworkRow, below = clearCache)
     SettingsGroup {
         SettingsOverline(stringResource(R.string.maintenance_title))
         Row(Modifier.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -215,4 +219,51 @@ private fun copyLabel(copy: PreferredCopy): Int = when (copy) {
     PreferredCopy.FINNISH_AUDIO -> R.string.preferred_copy_finnish_audio
     PreferredCopy.FINNISH_SUBTITLES -> R.string.preferred_copy_finnish_subtitles
     PreferredCopy.LARGEST_PICTURE -> R.string.preferred_copy_largest_picture
+}
+
+/** Image cache (spec 70 §4.8): the limit, the usage once known, and Clear image cache. */
+@Composable
+private fun ArtworkGroup(library: LibrarySettings, state: LibrarySettingsState, row: FocusRequester, below: FocusRequester) {
+    val clear = remember { FocusRequester() }
+    val clearEnabled = (state.artworkUsage ?: 0L) > 0 && !state.clearingArtwork
+    SettingsGroup {
+        ChoiceRow(
+            stringResource(R.string.artwork_cache_title), state.artworkLimit,
+            com.sohva.tv.core.model.settings.ArtworkCacheLimit.entries.map {
+                com.sohva.tv.ui.design.components.PickerChoice(it, stringResource(R.string.artwork_cache_limit, it.megabytes))
+            },
+            library::setArtworkLimit, "settings-artwork-limit",
+            // Down: Clear image cache when it can act, else on to "Clear metadata cache" (decision "Down into Maintenance").
+            Modifier.focusRequester(row).focusProperties { down = if (clearEnabled) clear else below },
+            TvIcons.Save, stringResource(R.string.artwork_cache_help),
+        )
+        val usage = state.artworkUsage
+        if (usage != null) {
+            Row(Modifier.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.sohva.tv.ui.design.text.Text(
+                    stringResource(R.string.artwork_cache_usage, com.sohva.tv.core.model.settings.ArtworkCacheLimit.size(usage)),
+                    Modifier.weight(1f).testTag("settings-artwork-usage"),
+                    style = com.sohva.tv.ui.design.theme.Sohva.typography.label,
+                    color = com.sohva.tv.ui.design.theme.Sohva.palette.textMuted,
+                )
+                TvActionButton(
+                    stringResource(R.string.artwork_cache_clear),
+                    library::clearArtwork,
+                    Modifier.focusRequester(clear).focusProperties { down = below }.testTag("settings-artwork-clear"),
+                    icon = TvIcons.Delete,
+                    state = SurfaceState(enabled = usage > 0 && !state.clearingArtwork, keepsFocus = state.clearingArtwork),
+                    compact = true,
+                )
+            }
+        }
+        state.artworkStatus?.let {
+            com.sohva.tv.ui.design.text.Text(
+                it.resolve(),
+                Modifier.padding(start = 14.dp, top = 4.dp).testTag("settings-status-metadata-artwork"),
+                style = com.sohva.tv.ui.design.theme.Sohva.typography.label,
+                color = com.sohva.tv.ui.design.theme.Sohva.palette.focus,
+                maxLines = 3,
+            )
+        }
+    }
 }

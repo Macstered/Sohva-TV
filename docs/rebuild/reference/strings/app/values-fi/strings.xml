@@ -133,4 +133,5 @@
     <string name="home_resume_unavailable">Jatka katsomista ei ole saatavilla. Yritä uudelleen valitsemalla.</string>
     <string name="home_trakt_first_sync">Trakt-historia odottaa ensimmäistä synkronointia</string>
     <string name="search_failed">Kaikkia hakutuloksia ei voitu ladata.</string>
+    <string name="reminders_open_unavailable">Tässä televisiossa ei ole asetusta sovellusten näyttämiselle muiden sovellusten päällä.</string>
 </resources>

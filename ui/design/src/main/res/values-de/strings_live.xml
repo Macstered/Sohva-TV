@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Erinnerungen dürfen Sohva TV öffnen</string>
     <string name="reminder_overlay_body">Innerhalb von Sohva TV erscheint eine Erinnerung immer, wenn die Sendung gleich beginnt. Android TV zeigt für eine App, die nicht auf dem Bildschirm ist, kein Einblendfenster. Damit Sohva TV in den Vordergrund kommt, während etwas anderes läuft, erlaube in den TV-Einstellungen, dass es über anderen Apps angezeigt wird. Ohne diese Erlaubnis wartet die Erinnerung im Benachrichtigungsbereich des Fernsehers.</string>
     <string name="reminder_overlay_open">TV-Einstellungen öffnen</string>
+    <string name="reminders_open_unavailable">Dieser Fernseher hat keine Einstellung für die Anzeige über anderen Apps.</string>
     <string name="guide_search_hint">Sender oder Sendungen suchen</string>
     <string name="guide_empty_favourites">Noch keine Lieblingssender gewählt</string>
     <string name="guide_empty_recent">Noch keine zuletzt gesehenen Sender</string>

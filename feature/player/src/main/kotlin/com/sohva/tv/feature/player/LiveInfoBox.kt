@@ -56,7 +56,8 @@ internal fun LiveInfoBox(model: PlayerModel, modifier: Modifier = Modifier) {
     val channel = playing ?: return
     val p = Sohva.palette
     val type = Sohva.typography
-    val labels = remember(model) { TimeLabels(TimeLabels.zoneOf(model.settings.timeZone), java.util.Locale.ROOT) }
+    val style = com.sohva.tv.ui.design.text.rememberTimeStyle()
+    val labels = remember(model, style) { TimeLabels(TimeLabels.zoneOf(model.settings.timeZone), style) }
     val now = model.now()
     Column(modifier.fillMaxWidth().padding(start = 40.dp, end = 40.dp, bottom = 28.dp).testTag("player-live-box")) {
         Row(verticalAlignment = Alignment.CenterVertically) {

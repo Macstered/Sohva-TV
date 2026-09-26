@@ -1,5 +1,8 @@
 package com.sohva.tv.app
 
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import android.app.Application
 import android.util.Log
 import com.sohva.tv.app.settings.PhoneSetup
@@ -19,8 +22,12 @@ import com.sohva.tv.feature.library.BrowseSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -48,6 +55,22 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** True while an activity is started; set by [MainActivity]. */
     val inForeground: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    /** The TV's own zone id, read again on its change broadcast and on return (spec 74 L10N-FR-33). */
+    private val deviceZone: MutableStateFlow<String> = MutableStateFlow(java.time.ZoneId.systemDefault().id)
+
+    fun refreshDeviceZone() {
+        deviceZone.value = java.util.TimeZone.getDefault().id
+    }
+
+    /**
+     * The zone screens write times in: the chosen one, else the TV's own as it is now, so a change of
+     * the TV's zone reaches the guide and Home without a restart.
+     */
+    val appZone: kotlinx.coroutines.flow.Flow<String?> by lazy {
+        kotlinx.coroutines.flow.combine(kotlinx.coroutines.flow.flow { emitAll(data.preferences.timeZone) }, deviceZone) { chosen, device -> chosen ?: device }
+            .distinctUntilChanged()
+    }
+
     /** True while video plays; the player (M2) sets it. */
     val playbackActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
@@ -71,6 +94,26 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
     val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }
+
+    /**
+     * The public updater (spec 72 §4): only the release package checks, downloads or installs
+     * (ABOUT-FR-01); built on first use, after the first frame, on the shared HTTP client.
+     */
+    val updater: com.sohva.tv.core.sync.update.Updater by lazy {
+        val config = com.sohva.tv.core.sync.update.UpdaterConfig(
+            enabled = flags.publicUpdates && app.packageName == RELEASE_PACKAGE,
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE,
+            sdk = android.os.Build.VERSION.SDK_INT,
+            feed = BuildConfig.UPDATE_FEED.toHttpUrl(),
+        )
+        com.sohva.tv.core.sync.update.Updater(
+            config, com.sohva.tv.core.net.update.UpdateHttp(sync.http.client), com.sohva.tv.app.update.AppUpdateMemory(app, dispatchers.io),
+            java.io.File(app.cacheDir, "updates"), com.sohva.tv.app.update.AndroidUpdateInstaller(app, diagnostics, dispatchers.io), diagnostics, clock, appScope,
+            // Notes in the interface language (ABOUT-FR-21): the chosen one, else the TV's.
+            language = { data.locale.languageTag() ?: java.util.Locale.getDefault().toLanguageTag() },
+        )
+    }
 
     /** The playback engine's and player screen's view of the graph; built on first playback. */
     val player: com.sohva.tv.app.player.PlayerGraph by lazy { com.sohva.tv.app.player.PlayerGraph(this) }
@@ -109,6 +152,18 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
 
+    /** Picture in picture (spec 30 PLAY-FR-110): a player is the top destination. */
+    val playerOnTop: kotlinx.coroutines.flow.MutableStateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** The app is shown as the corner window (PLAY-FR-111). */
+    val inPictureInPicture: kotlinx.coroutines.flow.MutableStateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** "Keep watching in a corner", kept in memory for the leave hint, which cannot wait for a read. */
+    val pictureInPictureOn: kotlinx.coroutines.flow.StateFlow<Boolean> by lazy {
+        data.preferences.playbackSettings.map { it.pictureInPicture }.flowOn(dispatchers.io)
+            .stateIn(appScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+    }
+
     /** When the last profile switch began, until its Home rows settle (elapsed real time; 0 = none). */
     val switchedAt: java.util.concurrent.atomic.AtomicLong = java.util.concurrent.atomic.AtomicLong(0L)
 
@@ -121,7 +176,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     /** Options that open screens of later milestones say so briefly (the shell's placeholder toast). */
     fun notYetAvailable() {
-        android.widget.Toast.makeText(app, app.getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()
+        android.widget.Toast.makeText(app, AppLocales.texts(app).getString(com.sohva.tv.ui.design.R.string.home_coming_soon), android.widget.Toast.LENGTH_SHORT).show()
     }
 
     private val started = AtomicBoolean(false)
@@ -134,6 +189,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         if (!started.compareAndSet(false, true)) return
         // The Continue watching read comes first: Home's first card waits for it (spec 02 §9.1).
         continueFeed.start()
+        pictureInPictureOn
         // A switch or an edited restriction starts Continue watching over for the profile (HOME-FR-27);
         // the time from a switch to its settled rows goes to the diagnostics log (spec 04 §11 budget: 1 s).
         appScope.launch {
@@ -157,6 +213,16 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             sync.runner.recoverAfterRestart()
             data.beta23Categories.run()
         }
+        // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
+        if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)
+        // A restore the process did not finish is said at start (spec 71 §8); Backup's status line says it too.
+        appScope.launch {
+            if (data.backup.unfinished()) {
+                withContext(dispatchers.main) {
+                    android.widget.Toast.makeText(app, AppLocales.texts(app).getString(com.sohva.tv.ui.design.R.string.backup_restore_incomplete), android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         appScope.launch { data.preferences.refreshInterval.collect { sync.scheduler.schedule(it) } }
         // An update or a force-stop drops the alarm; each start sets it again (spec 22 REM-FR-14).
         if (flags.reminders) appScope.launch { reminders.reschedule() }
@@ -164,5 +230,6 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     private companion object {
         const val LOG_TAG = "SohvaTV"
+        const val RELEASE_PACKAGE = "com.streammate.tv"
     }
 }

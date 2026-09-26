@@ -181,6 +181,34 @@ class ChannelEditStore(private val db: SohvaDatabase, private val write: Corouti
         if (blank) edits.deleteCustom(row.channelKey) else edits.putCustom(row)
     }
 
+    /**
+     * After a restore replaced the edit rows (spec 71 BACKUP-FR-18): the shown values of [keys] are
+     * written again from their playlist values and edits, in transactions of [BULK_PAGE], then one
+     * organisation pass and one recount per touched group, instead of one pass per channel.
+     */
+    suspend fun reapply(keys: Collection<String>): Unit = withContext(write) {
+        val groups = HashSet<Long>()
+        val present = ArrayList<String>()
+        for (page in keys.chunked(BULK_PAGE)) {
+            db.runInTransaction {
+                for (key in page) {
+                    val row = edits.providerRow(key) ?: continue
+                    val custom = edits.custom(key)
+                    val customGroupId = custom?.customGroupKey?.let { groupKey -> groupFor(row.sourceId, groupKey, custom.customGroupTitle ?: groupKey) }
+                    val shown = ChannelEffects.shown(
+                        row.providerName, row.providerGroupId, row.providerLogoUrl, row.tvgId, row.providerNumber, row.playlistOrder, custom, customGroupId,
+                    )
+                    edits.updateShown(row.id, shown.name, shown.sortName, shown.groupId, shown.logoUrl, shown.number, shown.epgId, shown.visible, shown.displayRank)
+                    row.groupId?.let(groups::add)
+                    shown.groupId?.let(groups::add)
+                    present += key
+                }
+            }
+        }
+        OrgPass(db, OrgRules(db), LibraryPasses(db)).resolveChannels(present)
+        db.runInTransaction { groups.forEach(edits::recountGroup) }
+    }
+
     /** Writes the channel's shown values from its playlist values and its edit row; recounts both groups. */
     private fun apply(key: String) {
         val row = edits.providerRow(key) ?: return

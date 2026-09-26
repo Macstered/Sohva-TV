@@ -56,6 +56,76 @@ class SettingsModelTest {
     private class FakeServices : SettingsServices {
         override val library: LibrarySettingsServices = FakeLibrary()
         override val profiles: ProfileSettingsServices = FakeProfiles()
+        override val general: GeneralSettingsServices = object : GeneralSettingsServices {
+            override suspend fun languageTag(): String? = null
+            override fun applyLanguage(tag: String?) = Unit
+            override fun scale() = flowOf(com.sohva.tv.core.model.settings.InterfaceScale.NORMAL)
+            override suspend fun setScale(value: com.sohva.tv.core.model.settings.InterfaceScale) = Unit
+            override fun theme() = flowOf(com.sohva.tv.core.model.settings.ColorThemeId.ORIGINAL)
+            override suspend fun setTheme(value: com.sohva.tv.core.model.settings.ColorThemeId) = Unit
+            override fun channelNumbers() = flowOf(true)
+            override suspend fun setChannelNumbers(on: Boolean) = Unit
+            override fun timeZone() = flowOf<String?>(null)
+            override suspend fun setTimeZone(id: String?) = Unit
+            override fun deviceZone() = com.sohva.tv.core.model.settings.ZoneRow("UTC", "UTC", "UTC", "UTC")
+            override suspend fun zones() = emptyList<com.sohva.tv.core.model.settings.ZoneRow>()
+            override fun startupScreen() = flowOf(com.sohva.tv.core.model.settings.StartupScreen.HOME)
+            override suspend fun setStartupScreen(value: com.sohva.tv.core.model.settings.StartupScreen) = Unit
+        }
+        override val about: AboutSettingsServices = object : AboutSettingsServices {
+            override val installedVersion: String = "0.2.0-test"
+
+            override val labNotice: Boolean = false
+
+            override val updates = kotlinx.coroutines.flow.MutableStateFlow(com.sohva.tv.core.model.update.UpdateState(com.sohva.tv.core.model.update.UpdatePhase.DISABLED))
+
+            override fun check() = Unit
+
+            override fun download() = Unit
+
+            override fun install() = Unit
+
+            override fun openPermission(): Boolean = false
+
+            override fun openLegal() = Unit
+
+            override suspend fun paletteLicences(): String? = null
+
+            override fun openLink(url: String): Boolean = true
+
+            override suspend fun qrCode(url: String): com.sohva.tv.core.model.phone.QrMatrix? = null
+
+            override suspend fun saveDiagnostics(target: android.net.Uri): DiagnosticsOutcome = DiagnosticsOutcome.Saved
+        }
+
+        override val backup: BackupSettingsServices = object : BackupSettingsServices {
+            override suspend fun save(target: android.net.Uri, password: CharArray): BackupOutcome = BackupOutcome.Saved
+
+            override suspend fun open(target: android.net.Uri, password: CharArray): BackupOutcome = BackupOutcome.Opened(emptyList())
+
+            override suspend fun restore(): BackupOutcome = BackupOutcome.Restored
+
+            override fun discard() = Unit
+
+            override suspend fun unfinished(): Boolean = false
+
+            override suspend fun clearGuide() = Unit
+        }
+
+        override val playback: PlaybackSettingsServices = object : PlaybackSettingsServices {
+            override fun settings() = flowOf(com.sohva.tv.core.model.player.PlaybackSettings())
+            override fun autoPlayNext() = flowOf(true)
+            override suspend fun setBuffer(value: com.sohva.tv.core.model.player.BufferProfile) = Unit
+            override suspend fun setReconnect(value: com.sohva.tv.core.model.player.ReconnectPolicy) = Unit
+            override suspend fun setSkipStep(value: com.sohva.tv.core.model.player.SkipStep) = Unit
+            override suspend fun setMatchFrameRate(on: Boolean) = Unit
+            override suspend fun setAutoPlayNext(on: Boolean) = Unit
+            override suspend fun setPictureInPicture(on: Boolean) = Unit
+            override suspend fun setSubtitleSize(value: com.sohva.tv.core.model.player.SubtitleSize) = Unit
+            override suspend fun setSubtitleColor(value: com.sohva.tv.core.model.player.SubtitleColor) = Unit
+            override suspend fun setSubtitleBackground(value: com.sohva.tv.core.model.player.SubtitleBackground) = Unit
+            override suspend fun setVodLanguage(slot: com.sohva.tv.core.model.settings.VodLanguageSlot, code: String?) = Unit
+        }
 
         val sources = MutableStateFlow<List<Source>>(emptyList())
         val health = MutableStateFlow<List<SourceHealth>>(emptyList())
@@ -95,7 +165,7 @@ class SettingsModelTest {
         override suspend fun testXtream(account: XtreamAccount): SourceChecks.Result = SourceChecks.Result.Account(4)
         override fun remindersCanOpen(): Boolean? = null
 
-        override fun openOverlaySettings() = Unit
+        override fun openOverlaySettings(): Boolean = true
 
         override fun remoteMapping(): Flow<RemoteMapping> = flowOf(RemoteMapping.DEFAULTS)
 

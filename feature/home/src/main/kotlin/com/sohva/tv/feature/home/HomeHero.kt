@@ -214,9 +214,10 @@ private fun heroText(subject: HeroSubject, details: HeroDetails?, now: Long, zon
         val channel = subject.card.channel
         val programme = channel.programme
         val live = programme != null && now in programme.startAt until programme.stopAt
-        val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: Locale.ROOT
+        val style = com.sohva.tv.ui.design.text.rememberTimeStyle()
+        val labels = remember(zoneId, style) { TimeLabels(TimeLabels.zoneOf(zoneId), style) }
         // The chosen zone, as the guide writes times (spec 02 §10: beta 23 used the TV's zone here).
-        val window = programme?.let { TimeLabels(TimeLabels.zoneOf(zoneId), locale).guideRange(it.startAt, it.stopAt) }
+        val window = programme?.let { labels.guideRange(it.startAt, it.stopAt) }
         val progress = programme?.takeIf { it.stopAt > it.startAt }?.let { ((now - it.startAt).toFloat() / (it.stopAt - it.startAt)).coerceIn(0f, 1f) }
         HeroText(
             stringResource(if (live) R.string.home_hero_live else R.string.home_live_tv), live,

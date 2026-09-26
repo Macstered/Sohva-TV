@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Permitir que los recordatorios abran Sohva TV</string>
     <string name="reminder_overlay_body">Dentro de Sohva TV un recordatorio aparece siempre cuando el programa está a punto de empezar. Android TV no muestra avisos emergentes de una app que no está en pantalla, así que para que Sohva TV pase al frente mientras hay otra cosa en marcha, permite que se muestre sobre otras aplicaciones en los ajustes del televisor. Sin ese permiso, el recordatorio espera en el panel de notificaciones del televisor.</string>
     <string name="reminder_overlay_open">Abrir los ajustes del televisor</string>
+    <string name="reminders_open_unavailable">Este televisor no tiene un ajuste para mostrar aplicaciones sobre otras aplicaciones.</string>
     <string name="guide_search_hint">Buscar canales o programas</string>
     <string name="guide_empty_favourites">Aún no hay canales favoritos</string>
     <string name="guide_empty_recent">Aún no hay canales vistos recientemente</string>

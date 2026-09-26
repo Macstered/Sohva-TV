@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The verified update only: the installer reads it from here (spec 72 ABOUT-FR-11, -15). -->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

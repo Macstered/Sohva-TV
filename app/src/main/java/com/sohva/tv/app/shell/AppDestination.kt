@@ -102,6 +102,7 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel {
                 PlayerModel(graph.player.screen(locale), route.channelKey, navigation, route.archive, route.recordWatched, firstAdmitted = route.admitted)
             }
+            PlayerOnTop(graph)
             PlayerScreen(model)
         }
         AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
@@ -149,6 +150,7 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel {
                 PlayerModel(graph.player.screen(locale), route.contentKey, navigation, vod = VodPlay(route.contentKey, route.startMs))
             }
+            PlayerOnTop(graph)
             PlayerScreen(model)
         }
         AppRoute.Settings -> {
@@ -156,8 +158,21 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             // Settings is already past the PIN, so its manager opens directly.
             val openManager: () -> Unit = remember(stack) { { stack.push(AppRoute.LibraryManager(OrgRoom.LIVE)) } }
             val switchProfile: (String) -> Unit = remember(stack) { { id -> graph.switchProfile(id, stack, fromSettings = true) } }
-            val model = viewModel { SettingsModel(AppSettingsServices(graph, openManager, switchProfile), accounts = false) }
+            val activity = androidx.activity.compose.LocalActivity.current
+            // The platform (Android 13+) or the app recreates the activity in the new language (spec 70 SET-FR-50).
+            val applyLanguage: (String?) -> Unit = remember(activity) { { tag -> activity?.let { com.sohva.tv.app.AppLocales.set(it, tag) } } }
+            // A restore that makes a restricted profile active leaves Settings for Home (spec 71 §8).
+            val afterRestore: () -> Unit = remember(stack) { { stack.resetTo(listOf(AppRoute.Home)) } }
+            val openLegal: () -> Unit = remember(stack) { { stack.push(AppRoute.Legal) } }
+            val model = viewModel {
+                SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore, activity, openLegal), accounts = false)
+            }
             SettingsScreen(model, onBack = { back() })
+        }
+        AppRoute.Legal -> {
+            val activity = androidx.activity.compose.LocalActivity.current
+            val model = viewModel { com.sohva.tv.feature.settings.LegalModel(com.sohva.tv.app.settings.AppAboutSettings(graph, activity, openLegalScreen = {})) }
+            com.sohva.tv.feature.settings.LegalScreen(model, onBack = { back() })
         }
     }
 }
@@ -331,4 +346,13 @@ private fun RailItem.route(): AppRoute = when (this) {
     RailItem.DISCOVER -> AppRoute.Discover
     RailItem.PROFILES -> AppRoute.ProfilePicker
     RailItem.SETTINGS -> AppRoute.Settings
+}
+
+/** While a player is the top destination, Home may shrink it to the corner (spec 30 PLAY-FR-110). */
+@Composable
+private fun PlayerOnTop(graph: AppGraph) {
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        graph.playerOnTop.value = true
+        onDispose { graph.playerOnTop.value = false }
+    }
 }

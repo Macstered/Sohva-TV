@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Låt påminnelser öppna Sohva TV</string>
     <string name="reminder_overlay_body">Inne i Sohva TV visas en påminnelse alltid när programmet strax börjar. Android TV visar ingen popup för en app som inte är på skärmen, så för att Sohva TV ska komma fram medan något annat visas behöver du tillåta att appen visas över andra appar i TV:ns inställningar. Utan det väntar påminnelsen i TV:ns meddelandepanel.</string>
     <string name="reminder_overlay_open">Öppna TV-inställningarna</string>
+    <string name="reminders_open_unavailable">Den här tv:n har ingen inställning för att visa appar över andra appar.</string>
     <string name="guide_search_hint">Sök kanaler eller program</string>
     <string name="guide_empty_favourites">Inga favoritkanaler valda än</string>
     <string name="guide_empty_recent">Inga nyligen sedda kanaler än</string>

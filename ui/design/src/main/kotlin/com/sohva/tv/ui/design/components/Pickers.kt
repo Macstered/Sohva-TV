@@ -3,6 +3,7 @@ package com.sohva.tv.ui.design.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -70,10 +71,11 @@ fun <T> SinglePickerDialog(
 }
 
 /**
- * The multi-choice picker (settings.md §5, spec 04 PROF-FR-22): the same dialog as
- * [SinglePickerDialog]; OK toggles a choice and the dialog stays open, the chosen ones drawn
- * selected. Focus starts on the first choice; Back closes it. [empty] is shown when there are no
- * choices. The caller moves focus back to the row that opened it.
+ * The multi-choice picker (settings.md §5, spec 70 SET-FR-22, spec 04 PROF-FR-22): the same dialog
+ * as [SinglePickerDialog]; OK toggles a choice and the dialog stays open, the chosen ones drawn
+ * selected; [done] closes it (Back too, keeping the toggles). Focus starts on the first choice, or
+ * on Done when there are none, and [empty] replaces the rows. The caller moves focus back to the
+ * row that opened it.
  */
 @Composable
 fun <T> MultiPickerDialog(
@@ -83,30 +85,40 @@ fun <T> MultiPickerDialog(
     onToggle: (T) -> Unit,
     onDismiss: () -> Unit,
     empty: String,
+    done: String,
     tag: String = "picker",
 ) {
-    val focus = remember { FocusRequester() }
+    val first = remember { FocusRequester() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DialogCard(Modifier.width(560.dp).heightIn(max = 620.dp).testTag(tag), border = Sohva.palette.outline) {
                 DialogTitle(title)
                 if (choices.isEmpty()) {
-                    PickerRow(label = empty, onClick = onDismiss, modifier = Modifier.focusRequester(focus).testTag("$tag-empty"))
+                    com.sohva.tv.ui.design.text.Text(empty, Modifier.testTag("$tag-empty"), style = Sohva.typography.body, color = Sohva.palette.textMuted)
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         itemsIndexed(choices, key = { index, _ -> index }) { index, choice ->
                             PickerRow(
                                 label = choice.label,
                                 onClick = { onToggle(choice.value) },
-                                modifier = (if (index == 0) Modifier.focusRequester(focus) else Modifier).testTag(choice.tag ?: "$tag-$index"),
+                                modifier = (if (index == 0) Modifier.focusRequester(first) else Modifier).testTag(choice.tag ?: "$tag-$index"),
                                 description = choice.description,
                                 state = SurfaceState(selected = choice.value in chosen),
                             )
                         }
                     }
                 }
+                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TvActionButton(
+                        done,
+                        onDismiss,
+                        (if (choices.isEmpty()) Modifier.focusRequester(first) else Modifier).testTag("$tag-done"),
+                        icon = TvIcons.Check,
+                        compact = true,
+                    )
+                }
             }
         }
-        LaunchedEffect(Unit) { focus.requestFocusWhenAttached() }
+        LaunchedEffect(Unit) { first.requestFocusWhenAttached() }
     }
 }

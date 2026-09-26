@@ -82,6 +82,18 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     /** Settings › General › Profiles and Parental controls (spec 04 §5.3). */
     val profiles: ProfileSettings = ProfileSettings(services.profiles, viewModelScope)
 
+    /** Settings › General's own rows (spec 70 §4.5). */
+    val general: GeneralSettings = GeneralSettings(services.general, viewModelScope)
+
+    /** Settings › Playback (spec 70 §4.7). */
+    val playback: PlaybackSettingsHolder = PlaybackSettingsHolder(services.playback, viewModelScope)
+
+    /** Settings › Backup & tools (spec 71 §5). */
+    val backup: BackupSettings = BackupSettings(services.backup, viewModelScope)
+
+    /** Settings › About (spec 72 §5.1). */
+    val about: AboutSettings = AboutSettings(services.about, viewModelScope)
+
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
 
@@ -118,7 +130,12 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     /** Read again whenever the screen resumes, so coming back from the TV settings updates it (REM-FR-34). */
     fun refreshReminderAccess() = state.update { it.copy(remindersCanOpen = services.remindersCanOpen()) }
 
-    fun openOverlaySettings() = services.openOverlaySettings()
+    /** A TV without the screen says so in General's status line (spec 70 SET-FR-57, Q-08). */
+    fun openOverlaySettings() {
+        if (!services.openOverlaySettings()) {
+            state.update { it.withMessage(SettingsMessage.Text(R.string.reminders_open_unavailable), SettingsSection.GENERAL) }
+        }
+    }
 
     fun setRemoteAction(button: RemoteButton, gesture: Gesture, action: RemoteAction) {
         viewModelScope.launch { services.setRemoteAction(button, gesture, action) }
