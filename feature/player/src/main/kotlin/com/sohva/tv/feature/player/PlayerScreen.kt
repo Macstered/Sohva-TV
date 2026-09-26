@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.player
 
+import com.sohva.tv.ui.design.window.LocalPictureInPicture
 import android.view.SurfaceView
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -75,6 +76,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     val controls by model.transport.visible.collectAsStateWithLifecycle()
     val skipped by model.transport.feedback.collectAsStateWithLifecycle()
     VideoSurface(model)
+    // In the corner only the picture is drawn; the overlays' state stays in the model (PLAY-FR-111).
+    if (LocalPictureInPicture.current) return
     // The clean screen's key handler (PLAY-FR-30).
     Box(
         Modifier.fillMaxSize().focusRequester(host).onKeyEvent { model.keys.onKey(it.nativeKeyEvent) }.focusable().testTag("player-video"),

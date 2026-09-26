@@ -29,6 +29,12 @@ interface SettingsServices {
     /** Settings › General › Profiles and Parental controls (spec 04). */
     val profiles: ProfileSettingsServices
 
+    /** Settings › General's own rows (spec 70 §4.5). */
+    val general: GeneralSettingsServices
+
+    /** Settings › Playback (spec 70 §4.7). */
+    val playback: PlaybackSettingsServices
+
     fun sources(): Flow<List<Source>>
 
     /** Why beta 23's sources could not be imported, when that happened (plan/04 §17 failure path). */
@@ -64,7 +70,8 @@ interface SettingsServices {
     fun remindersCanOpen(): Boolean?
 
     /** Opens the TV's "display over other apps" setting (REM-FR-32). */
-    fun openOverlaySettings()
+    /** False when the TV has no such screen. */
+    fun openOverlaySettings(): Boolean
 
     /** The player's remote mapping (spec 31 §4.7). */
     fun remoteMapping(): Flow<RemoteMapping>

@@ -153,15 +153,17 @@ class ReminderCenter(private val graph: AppGraph) {
     fun mayOpenOverOtherApps(): Boolean = Settings.canDrawOverlays(app)
 
     /** Opens the TV's "display over other apps" setting for this app, else the general list (REM-FR-32). */
-    fun openOverlaySettings() {
+    /** Returns false when the TV has no such screen (spec 70 SET-FR-57, Q-08). */
+    fun openOverlaySettings(): Boolean {
         val specific = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:${app.packageName}".toUri())
         val general = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
         // Tried in turn; a TV without the screen throws, which needs no package query to find out.
         for (intent in listOf(specific, general)) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { app.startActivity(intent) }.onSuccess { return }
+            runCatching { app.startActivity(intent) }.onSuccess { return true }
         }
         graph.diagnostics.info("reminders", "no overlay settings screen on this TV")
+        return false
     }
 
     private fun bringForward() {

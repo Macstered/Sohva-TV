@@ -1,5 +1,6 @@
 package com.sohva.tv.app.shell
 
+import com.sohva.tv.ui.design.window.LocalPictureInPicture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -78,7 +79,8 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
             StartState(snapshot, tier)
         }
     }
-    CompositionLocalProvider(LocalRenderDispatcher provides graph.dispatchers.ui) {
+    val corner by graph.inPictureInPicture.collectAsState()
+    CompositionLocalProvider(LocalRenderDispatcher provides graph.dispatchers.ui, LocalPictureInPicture provides corner) {
         val state = start
         if (state == null) LaunchScreen() else App(graph, state, host)
     }

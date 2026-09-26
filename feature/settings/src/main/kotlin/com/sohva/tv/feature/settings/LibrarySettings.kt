@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.settings
 
+import com.sohva.tv.core.model.settings.ArtworkCacheLimit
 import androidx.compose.runtime.Immutable
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
@@ -67,6 +68,17 @@ interface LibrarySettingsServices {
 
     /** The genres the library's films and series have, in vocabulary order (ORG-FR-63). */
     suspend fun libraryGenres(): List<Genre>
+
+    /** The image cache limit, applied from the next start (spec 70 SET-FR-80). */
+    suspend fun artworkLimit(): ArtworkCacheLimit
+
+    suspend fun setArtworkLimit(limit: ArtworkCacheLimit)
+
+    /** The disk cache's own tracked size in bytes, off the main thread (SET-FR-81). */
+    suspend fun artworkUsage(): Long
+
+    /** Disk and memory image caches (SET-FR-82). */
+    suspend fun clearArtwork()
 }
 
 /** Settings › Library's state (spec 41 §5.1): the typed key is the viewer's until they save it. */
@@ -79,6 +91,12 @@ data class LibrarySettingsState(
     val busy: Boolean = false,
     val status: SettingsMessage? = null,
     val statusIsError: Boolean = false,
+    val artworkLimit: ArtworkCacheLimit = ArtworkCacheLimit.MEDIUM,
+    /** Null until read; nothing is shown before (SET-FR-81). */
+    val artworkUsage: Long? = null,
+    val clearingArtwork: Boolean = false,
+    /** Under the image cache group, next to its button (spec 70 SET-FR-31). */
+    val artworkStatus: SettingsMessage? = null,
 )
 
 /**
@@ -103,6 +121,33 @@ class LibrarySettings internal constructor(private val services: LibrarySettings
         }
         scope.launch { services.preferredCopy().collect { copy -> _state.update { it.copy(preferredCopy = copy) } } }
         scope.launch { services.customGroups().collect { _customGroups.value = it } }
+        scope.launch {
+            val limit = services.artworkLimit()
+            val usage = services.artworkUsage()
+            _state.update { it.copy(artworkLimit = limit, artworkUsage = usage) }
+        }
+    }
+
+    /** Written at once, used from the next start (SET-FR-80). */
+    fun setArtworkLimit(limit: ArtworkCacheLimit) {
+        _state.update { it.copy(artworkLimit = limit) }
+        scope.launch { services.setArtworkLimit(limit) }
+    }
+
+    /** Clears disk and memory, re-reads the usage, says so (SET-FR-82). */
+    fun clearArtwork() {
+        val s = _state.value
+        if (s.clearingArtwork || (s.artworkUsage ?: 0L) <= 0L) return
+        _state.update { it.copy(clearingArtwork = true) }
+        scope.launch {
+            try {
+                services.clearArtwork()
+                val usage = services.artworkUsage()
+                _state.update { it.copy(artworkUsage = usage, artworkStatus = SettingsMessage.Text(R.string.artwork_cache_cleared)) }
+            } finally {
+                _state.update { it.copy(clearingArtwork = false) }
+            }
+        }
     }
 
     fun saveCustomGroup(group: CustomGroup) {

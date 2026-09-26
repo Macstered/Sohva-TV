@@ -24,6 +24,7 @@ import com.sohva.tv.core.model.player.VodLanguages
 import com.sohva.tv.core.model.settings.ColorThemeId
 import com.sohva.tv.core.model.settings.InterfaceScale
 import com.sohva.tv.core.model.settings.RefreshInterval
+import com.sohva.tv.core.model.settings.VodLanguageSlot
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
 import com.sohva.tv.core.model.vod.CustomGroup
@@ -138,8 +139,50 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
     }
 
     /** The player's settings in one read, once per playback (spec 30 §6). */
-    suspend fun playback(): PlaybackSettings {
-        val p = store.data.first()
+    suspend fun playback(): PlaybackSettings = playbackOf(store.data.first())
+
+    /** Settings › Playback's rows (spec 70 §4.7), re-emitted only when one of them changes. */
+    val playbackSettings: Flow<PlaybackSettings> = store.data.map(::playbackOf).distinctUntilChanged()
+
+    /** "Continue to the next episode" as Settings shows it (SET-34). */
+    val autoPlayNext: Flow<Boolean> = store.data.map { it[AUTO_PLAY_NEXT] ?: true }.distinctUntilChanged()
+
+    suspend fun setBuffer(value: BufferProfile) = store.edit { it[BUFFER_PROFILE] = value.name }.let { }
+
+    suspend fun setReconnect(value: ReconnectPolicy) = store.edit { it[RECONNECT_POLICY] = value.name }.let { }
+
+    suspend fun setSkipStep(value: SkipStep) = store.edit { it[SEEK_STEP] = value.name }.let { }
+
+    suspend fun setMatchFrameRate(on: Boolean) = store.edit { it[AUTO_FRAME_RATE] = on }.let { }
+
+    suspend fun setAutoPlayNext(on: Boolean) = store.edit { it[AUTO_PLAY_NEXT] = on }.let { }
+
+    suspend fun setPictureInPicture(on: Boolean) = store.edit { it[PICTURE_IN_PICTURE] = on }.let { }
+
+    suspend fun setSubtitleSize(value: SubtitleSize) = store.edit { it[SUBTITLE_SIZE] = value.name }.let { }
+
+    suspend fun setSubtitleColor(value: SubtitleColor) = store.edit { it[SUBTITLE_COLOR] = value.name }.let { }
+
+    suspend fun setSubtitleBackground(value: SubtitleBackground) = store.edit { it[SUBTITLE_BACKGROUND] = value.name }.let { }
+
+    /** One VOD language row; the partner row is cleared when it holds the same language (SET-FR-72). */
+    suspend fun setVodLanguage(slot: VodLanguageSlot, code: String?) {
+        store.edit { prefs ->
+            val next = VodLanguageSlot.choose(playbackOf(prefs).vodLanguages, slot, code)
+            fun put(key: Preferences.Key<String>, value: String?) = if (value == null) prefs.remove(key) else prefs[key] = value
+            put(AUDIO_PRIMARY, next.audio)
+            put(AUDIO_SECONDARY, next.audioSecond)
+            put(SUBTITLE_PRIMARY, next.subtitles)
+            put(SUBTITLE_SECONDARY, next.subtitlesSecond)
+        }
+    }
+
+    suspend fun setShowChannelNumbers(on: Boolean) = store.edit { it[SHOW_CHANNEL_NUMBERS] = on }.let { }
+
+    /** Null follows the TV's zone from now on (SET-FR-65). */
+    suspend fun setTimeZone(id: String?) = store.edit { if (id == null) it.remove(TIME_ZONE) else it[TIME_ZONE] = id }.let { }
+
+    private fun playbackOf(p: Preferences): PlaybackSettings {
         return PlaybackSettings(
             buffer = BufferProfile.fromStored(p[BUFFER_PROFILE]),
             reconnect = ReconnectPolicy.fromStored(p[RECONNECT_POLICY]),

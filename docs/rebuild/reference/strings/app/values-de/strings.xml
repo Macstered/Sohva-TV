@@ -133,4 +133,5 @@
     <string name="home_resume_unavailable">„Weiterschauen“ ist nicht verfügbar. Zum Wiederholen auswählen.</string>
     <string name="home_trakt_first_sync">Der Trakt-Verlauf wartet auf die erste Synchronisierung</string>
     <string name="search_failed">Einige Suchergebnisse konnten nicht geladen werden.</string>
+    <string name="reminders_open_unavailable">Dieser Fernseher hat keine Einstellung für die Anzeige über anderen Apps.</string>
 </resources>

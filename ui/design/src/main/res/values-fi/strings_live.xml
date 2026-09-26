@@ -13,6 +13,7 @@
     <string name="reminder_overlay_title">Anna muistutusten avata Sohva TV</string>
     <string name="reminder_overlay_body">Sohva TV:n sisällä muistutus näkyy aina, kun ohjelma on alkamassa. Android TV ei näytä ponnahdusikkunaa sovellukselle, joka ei ole ruudulla, joten jotta Sohva TV nousisi esiin muun ollessa päällä, salli sen näkyminen muiden sovellusten päällä TV:n asetuksissa. Muuten muistutus odottaa TV:n ilmoituspaneelissa.</string>
     <string name="reminder_overlay_open">Avaa TV:n asetukset</string>
+    <string name="reminders_open_unavailable">Tässä televisiossa ei ole asetusta sovellusten näyttämiselle muiden sovellusten päällä.</string>
     <string name="guide_search_hint">Hae kanavaa tai ohjelmaa</string>
     <string name="guide_empty_favourites">Suosikkikanavia ei ole vielä valittu</string>
     <string name="guide_empty_recent">Viimeksi katsottuja kanavia ei ole vielä</string>

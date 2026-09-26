@@ -1,5 +1,8 @@
 package com.sohva.tv.app
 
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import android.app.Application
 import android.util.Log
 import com.sohva.tv.app.settings.PhoneSetup
@@ -109,6 +112,18 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
 
+    /** Picture in picture (spec 30 PLAY-FR-110): a player is the top destination. */
+    val playerOnTop: kotlinx.coroutines.flow.MutableStateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** The app is shown as the corner window (PLAY-FR-111). */
+    val inPictureInPicture: kotlinx.coroutines.flow.MutableStateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** "Keep watching in a corner", kept in memory for the leave hint, which cannot wait for a read. */
+    val pictureInPictureOn: kotlinx.coroutines.flow.StateFlow<Boolean> by lazy {
+        data.preferences.playbackSettings.map { it.pictureInPicture }.flowOn(dispatchers.io)
+            .stateIn(appScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+    }
+
     /** When the last profile switch began, until its Home rows settle (elapsed real time; 0 = none). */
     val switchedAt: java.util.concurrent.atomic.AtomicLong = java.util.concurrent.atomic.AtomicLong(0L)
 
@@ -134,6 +149,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         if (!started.compareAndSet(false, true)) return
         // The Continue watching read comes first: Home's first card waits for it (spec 02 §9.1).
         continueFeed.start()
+        pictureInPictureOn
         // A switch or an edited restriction starts Continue watching over for the profile (HOME-FR-27);
         // the time from a switch to its settled rows goes to the diagnostics log (spec 04 §11 budget: 1 s).
         appScope.launch {

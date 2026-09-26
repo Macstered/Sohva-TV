@@ -133,4 +133,5 @@
     <string name="home_resume_unavailable">Seguir viendo no está disponible. Selecciona para reintentar.</string>
     <string name="home_trakt_first_sync">El historial de Trakt espera su primera sincronización</string>
     <string name="search_failed">No se pudieron cargar algunos resultados de búsqueda.</string>
+    <string name="reminders_open_unavailable">Este televisor no tiene un ajuste para mostrar aplicaciones sobre otras aplicaciones.</string>
 </resources>

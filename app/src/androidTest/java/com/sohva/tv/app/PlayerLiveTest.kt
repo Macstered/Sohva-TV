@@ -18,6 +18,7 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okio.Buffer
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -73,6 +74,28 @@ class PlayerLiveTest {
         compose.waitUntil(timeout) { requests.any { it.first == path } }
     }
 
+    /**
+     * Home as the viewer presses it: below Android 12 the app's leave hint enters the corner; from 12
+     * the system does, on the Home key itself (auto-enter). The emulator only: never a real TV.
+     */
+    private fun leave() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME)
+        } else {
+            instrumentation.runOnMainSync { instrumentation.callActivityOnUserLeaving(compose.activity) }
+        }
+        instrumentation.waitForIdleSync()
+    }
+
+    /** Polls without Compose: a window in the corner has no hierarchy the rule can wait on. */
+    private fun waitFor(timeout: Long = 10_000, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeout
+        while (!condition()) {
+            check(System.currentTimeMillis() < deadline) { "condition not met in $timeout ms" }
+            Thread.sleep(100)
+        }
+    }
+
     private fun openPlayerOnFirstChannel() {
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
         compose.focusRail(RailItem.LIVE_TV)
@@ -80,6 +103,34 @@ class PlayerLiveTest {
         awaitFocus("guide-row-0", 10_000)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists("screen-player") }
+    }
+
+    /**
+     * Spec 30 PLAY-FR-110, -111: with "Keep watching in a corner" on, Home while the player is on
+     * top shrinks it to the corner, drawing the picture only; full screen brings the box back; the
+     * corner's Close finishes the app. Off, nothing shrinks.
+     */
+    @Test
+    fun homeShrinksThePlayerToTheCornerOnlyWhenTheSettingIsOn() {
+        // Some TV images (the API 34 emulator) have no corner windows at all; the app then ignores the setting.
+        org.junit.Assume.assumeTrue(instrumentation.targetContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE))
+        val graph = (instrumentation.targetContext.applicationContext as SohvaApplication).graph
+        openPlayerOnFirstChannel()
+        awaitRequest("/live/0.mp4")
+        // Off: no corner (from Android 12 Home would really leave the app, so it is checked below 12).
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+            leave()
+            Thread.sleep(1_000)
+            assertFalse("off: no corner", compose.activity.isInPictureInPictureMode)
+        }
+        kotlinx.coroutines.runBlocking { graph.data.preferences.setPictureInPicture(true) }
+        compose.waitUntil(5_000) { graph.pictureInPictureOn.value }
+        leave()
+        // The window is the corner now; the screen draws the picture only while the flag is set.
+        val activity = compose.activity
+        waitFor { activity.isInPictureInPictureMode && graph.inPictureInPicture.value }
+        activity.sendBroadcast(android.content.Intent(MainActivity.ACTION_CLOSE_CORNER).setPackage(activity.packageName))
+        waitFor { activity.isFinishing || activity.isDestroyed }
     }
 
     @Test

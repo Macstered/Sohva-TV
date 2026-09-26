@@ -1,5 +1,6 @@
 package com.sohva.tv.app.artwork
 
+import com.sohva.tv.core.data.prefs.ArtworkCacheStore
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -20,7 +21,7 @@ import okio.Path.Companion.toOkioPath
 
 /**
  * The one image loader (plan/03 §4.12), built on first use: memory cache 8 % of the memory class,
- * disk cache `cache/catalogue_artwork` (250 MB until the Settings choice arrives in M7), at most
+ * disk cache `cache/catalogue_artwork` at the Settings limit read when it is built (spec 70 SET-FR-80), at most
  * two decodes at a time, every request decoded at the size it is drawn (AGENTS.md §4 rule 5).
  */
 class CoilArtwork(private val graph: AppGraph) : ArtworkLoader {
@@ -28,7 +29,7 @@ class CoilArtwork(private val graph: AppGraph) : ArtworkLoader {
         val app = graph.app
         ImageLoader.Builder(app)
             .memoryCache { MemoryCache.Builder().maxSizePercent(app, MEMORY_FRACTION).build() }
-            .diskCache { DiskCache.Builder().directory(app.cacheDir.resolve(DISK_DIRECTORY).toOkioPath()).maxSizeBytes(DISK_BYTES).build() }
+            .diskCache { DiskCache.Builder().directory(app.cacheDir.resolve(DISK_DIRECTORY).toOkioPath()).maxSizeBytes(ArtworkCacheStore(app).limit().bytes).build() }
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { graph.player.callFactory })) }
             .bitmapFactoryMaxParallelism(2)
             .build()
@@ -44,9 +45,19 @@ class CoilArtwork(private val graph: AppGraph) : ArtworkLoader {
         (loader.execute(request) as? SuccessResult)?.image?.toBitmap()?.asImageBitmap()
     }
 
+    /** The disk cache's own tracked size: no directory walk (spec 70 SET-FR-81). */
+    suspend fun usage(): Long = withContext(graph.dispatchers.io) { loader.diskCache?.size ?: 0L }
+
+    /** Disk and memory, so the screen does not keep what the viewer asked to remove (SET-FR-82). */
+    suspend fun clear() {
+        withContext(graph.dispatchers.io) {
+            loader.diskCache?.clear()
+            loader.memoryCache?.clear()
+        }
+    }
+
     private companion object {
         const val MEMORY_FRACTION = 0.08
         const val DISK_DIRECTORY = "catalogue_artwork"
-        const val DISK_BYTES = 250L * 1024 * 1024
     }
 }

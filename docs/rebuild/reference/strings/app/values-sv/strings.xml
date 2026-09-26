@@ -133,4 +133,5 @@
     <string name="home_resume_unavailable">Fortsätt titta är inte tillgängligt. Välj för att försöka igen.</string>
     <string name="home_trakt_first_sync">Trakt-historiken väntar på den första synkroniseringen</string>
     <string name="search_failed">Vissa sökresultat kunde inte hämtas.</string>
+    <string name="reminders_open_unavailable">Den här tv:n har ingen inställning för att visa appar över andra appar.</string>
 </resources>

@@ -59,6 +59,7 @@ class ClearStateRule : ExternalResource() {
         }
         graph.guideFocusChannel = null
         graph.startAnswered = false
+        graph.inPictureInPicture.value = false
         graph.keptRows.clear()
         // The walls' browse sessions live for the process (VOD-FR-56); each test starts at a first visit.
         graph.browseSessions.values.forEach { it.clear() }
