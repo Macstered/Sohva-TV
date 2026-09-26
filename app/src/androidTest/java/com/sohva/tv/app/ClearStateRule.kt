@@ -62,6 +62,8 @@ class ClearStateRule : ExternalResource() {
             }
             graph.sport.testHosts = null
             graph.sport.feed.forgetForTests()
+            graph.sport.pairing.forgetForTests()
+            if (graph.sport.ticker.shown.value) graph.sport.ticker.toggle()
             // A restore the test stopped half-way leaves its marker (spec 71 §8).
             graph.data.backup.markRestoring(false)
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())

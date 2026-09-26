@@ -324,6 +324,16 @@ class PlayerModel(
         _stats.value = !_stats.value
     }
 
+    /** The score ticker where Sohva Sport offers it (PLAY-31). */
+    val ticker: ScoreTickerSource? get() = env.ticker
+
+    /** The mapped Score ticker action or quick actions (PLAY-FR-120); false where there is none. */
+    fun toggleTicker(): Boolean {
+        val t = env.ticker ?: return false
+        t.toggle()
+        return true
+    }
+
     fun openPicker(which: Picker) {
         _quick.value = false
         _picker.value = which

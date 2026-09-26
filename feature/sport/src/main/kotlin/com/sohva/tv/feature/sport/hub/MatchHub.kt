@@ -28,6 +28,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,6 +92,8 @@ internal fun MatchHubOverlay(model: TodayModel, labels: TimeLabels, watchable: (
 @Composable
 private fun Hub(event: SportEvent, model: TodayModel, labels: TimeLabels, watchable: Int, close: () -> Unit) {
     val closeButton = remember { FocusRequester() }
+    val firstLead = remember { FocusRequester() }
+    val refocus = remember { mutableStateOf<String?>(null) }
     // One opaque panel with flat fills: the old radial gradient over a 94 % scrim cost the low-end GPU (D§10).
     val panel = Sohva.palette.surfaceSubtle.compositeOver(Sohva.palette.background)
     Box(Modifier.fillMaxSize().background(Sohva.palette.background.copy(alpha = 0.94f)).testTag("match-hub"), contentAlignment = Alignment.Center) {
@@ -102,13 +105,16 @@ private fun Hub(event: SportEvent, model: TodayModel, labels: TimeLabels, watcha
             Spacer(Modifier.height(18.dp))
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 MatchEventsPanel(event, model, Modifier.weight(1.12f))
-                StreamsPanel(watchable, Modifier.weight(0.88f))
+                StreamsPanel(model, firstLead, refocus, Modifier.weight(0.88f))
             }
         }
     }
     LaunchedEffect(event.id) { model.loadMatchEvents(event) }
     // SPORT-FR-79: the first stream's lead control, else Close, retried while the hub animates in.
-    LaunchedEffect(event.id) { closeButton.requestFocusWhenAttached(FOCUS_ATTEMPTS) }
+    LaunchedEffect(event.id) {
+        val first = model.hubStreams.value.isNotEmpty() && firstLead.requestFocusWhenAttached(FOCUS_ATTEMPTS)
+        if (!first) closeButton.requestFocusWhenAttached(FOCUS_ATTEMPTS)
+    }
 }
 
 /** D§8 header: competition column 205 dp, the two teams around the score, then Remind me and Close (150 dp). */

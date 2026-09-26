@@ -11,6 +11,12 @@ import com.sohva.tv.core.model.sport.TodayFilter
 import com.sohva.tv.core.model.sport.TodayLists
 import com.sohva.tv.core.model.sport.TodaySections
 import com.sohva.tv.core.model.sport.TodayTab
+import com.sohva.tv.core.model.sport.pairing.Confidence
+import com.sohva.tv.core.model.sport.pairing.Decision
+import com.sohva.tv.core.model.sport.pairing.SportsChannel
+import com.sohva.tv.core.model.sport.pairing.SportsChannels
+import com.sohva.tv.core.model.sport.pairing.StreamMatch
+import com.sohva.tv.core.model.sport.pairing.StreamOrder
 import com.sohva.tv.feature.sport.feed.FeedState
 import com.sohva.tv.feature.sport.hub.MatchEventsState
 import com.sohva.tv.feature.sport.provider.CacheState
@@ -40,8 +46,11 @@ interface TodayEnvironment {
     /** The active profile's favourite games (SPORT-FR-96). */
     val favourites: Flow<Set<String>>
 
-    /** Per game id; empty until pairing runs (spec 60 §4.10). */
-    val watch: Flow<Map<String, WatchSummary>>
+    /**
+     * Per game id, the streams pairing found (spec 60 §4.10): the decisions applied, other profiles'
+     * channels left out and the priority order applied. Empty until pairing runs.
+     */
+    val streams: Flow<Map<String, List<StreamMatch>>>
 
     /** A game to open in the hub once the list holds it (SPORT-NAV-04): from Home, a reminder or a notification. */
     val pendingGame: StateFlow<String?>
@@ -61,8 +70,14 @@ interface TodayEnvironment {
 
     fun consumePendingGame()
 
-    /** Sets or removes the game's reminder (SPORT-FR-95). */
-    suspend fun toggleReminder(event: SportEvent)
+    /** Sets or removes the game's reminder (SPORT-FR-95); [channelKey] is what it will play. */
+    suspend fun toggleReminder(event: SportEvent, channelKey: String?)
+
+    /** Confirm, reject or (null) restore (SPORT-FR-76); false when the save failed. */
+    suspend fun decide(eventId: String, channelKey: String, decision: Decision?): Boolean
+
+    /** Watch: the channel plays, Back returns to Today with the hub open (SPORT-NAV-02). */
+    fun play(channelKey: String)
 
     /** A football game's match events through their 2-minute cache (SPORT-FR-91); throws [SportsException]. */
     suspend fun incidents(eventId: String): Pair<List<Incident>, CacheState>
@@ -78,6 +93,8 @@ data class TodayView(
     val filter: TodayFilter = TodayFilter.All,
     val sections: TodaySections = TodaySections(emptyList(), emptyList(), emptyList()),
     val watch: Map<String, WatchSummary> = emptyMap(),
+    /** "Sports channels now" for the games on screen (SPORT-25). */
+    val channels: List<SportsChannel> = emptyList(),
     val favourites: Set<String> = emptySet(),
     val anyEvents: Boolean = false,
     val loading: Boolean = false,
@@ -103,15 +120,18 @@ class TodayModel(private val env: TodayEnvironment) : ViewModel() {
         if (_hub.value == null && hub != null) _hub.value = hub
     }
 
-    val view: StateFlow<TodayView> = combine(env.feed, env.follows, env.favourites, env.watch, filterKey) { feed, follows, favourites, watch, key ->
+    val view: StateFlow<TodayView> = combine(env.feed, env.follows, env.favourites, env.streams, filterKey) { feed, follows, favourites, streams, key ->
+        val watch = streams.mapValues { (_, list) -> StreamOrder.counts(list).let { (available, possible) -> WatchSummary(available, possible) } }
         val watchable = watch.filterValues { it.available > 0 }.keys
         val filter = TodayLists.effective(TodayFilter.fromKey(key), follows)
         val shown = TodayLists.filter(feed.events, filter, watchable, favourites)
+        val sections = TodayLists.sections(shown)
         TodayView(
             tabs = TodayLists.tabs(feed.events, follows, watchable, favourites),
             filter = filter,
-            sections = TodayLists.sections(shown),
+            sections = sections,
             watch = watch,
+            channels = SportsChannels.of(sections.live + sections.later + sections.finished, streams),
             favourites = favourites,
             anyEvents = feed.events.isNotEmpty(),
             loading = feed.loading,
@@ -148,6 +168,32 @@ class TodayModel(private val env: TodayEnvironment) : ViewModel() {
     private var eventsJob: Job? = null
 
     val reminders: StateFlow<Set<String>> = env.reminders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), emptySet())
+
+    // The hub's stream order, fixed while it is open (SPORT-FR-78); touched only by [hubStreams]' one collector.
+    private var hubOrder: List<String> = emptyList()
+    private var hubOrderFor: String? = null
+
+    /**
+     * The open game's streams in the order they had when the hub opened: vanished ones dropped, new
+     * ones appended, so a decision or a refresh never moves a row under the viewer (SPORT-FR-78).
+     */
+    val hubStreams: StateFlow<List<StreamMatch>> = combine(env.streams, _hub) { streams, id ->
+        if (id == null) {
+            hubOrderFor = null
+            return@combine emptyList()
+        }
+        val list = streams[id].orEmpty()
+        val keys = list.map { it.channelKey }
+        hubOrder = if (hubOrderFor != id) keys else hubOrder.filter { it in keys } + keys.filter { it !in hubOrder }
+        hubOrderFor = id
+        val byKey = list.associateBy { it.channelKey }
+        hubOrder.map(byKey::getValue)
+    }.flowOn(env.format).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _decisionFailed = MutableStateFlow(false)
+
+    /** The last Confirm, Reject or Restore was not saved (MATCH_DECISION_SAVE). */
+    val decisionFailed: StateFlow<Boolean> = _decisionFailed.asStateFlow()
 
     init {
         // SPORT-NAV-04: open the waiting game once the list holds it; a complete load without it
@@ -205,9 +251,17 @@ class TodayModel(private val env: TodayEnvironment) : ViewModel() {
         }
     }
 
+    /** The reminder plays the first Available, non-rejected stream in the current order, if any (SPORT-FR-95). */
     fun toggleReminder(event: SportEvent) {
-        viewModelScope.launch { env.toggleReminder(event) }
+        val channel = hubStreams.value.firstOrNull { it.eventId == event.id && it.confidence == Confidence.AVAILABLE }?.channelKey
+        viewModelScope.launch { env.toggleReminder(event, channel) }
     }
+
+    fun decide(stream: StreamMatch, decision: Decision?) {
+        viewModelScope.launch { _decisionFailed.value = !env.decide(stream.eventId, stream.channelKey, decision) }
+    }
+
+    fun play(channelKey: String) = env.play(channelKey)
 
     fun refresh() = env.refresh()
 

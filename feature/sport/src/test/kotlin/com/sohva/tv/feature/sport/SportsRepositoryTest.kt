@@ -87,6 +87,27 @@ class SportsRepositoryTest {
         assertEquals(1, server.requestCount)
     }
 
+    /**
+     * Spec 60 §9 "Network and quota budget": Today watched for a whole day with a live game polls
+     * every 5 minutes, and the 20-minute freshness keeps the sport at 72 requests, under the free
+     * plan's 100; the quota header is recorded for Settings.
+     */
+    @Test
+    fun aWholeDayOfFiveMinutePollsStaysUnderTheDailyQuota() = runBlocking {
+        server.dispatcher = object : mockwebserver3.Dispatcher() {
+            override fun dispatch(request: mockwebserver3.RecordedRequest): MockResponse = answer(day(39), remaining = 100 - server.requestCount)
+        }
+        val start = now
+        while (now < start + 24 * 60 * 60_000L) {
+            // Today as the clock says: the day rolls over at midnight like the feed's.
+            repo.day(SportType.FOOTBALL, java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate(), zone, setOf("39"))
+            now += 5 * 60_000
+        }
+        println("quota: ${server.requestCount} requests in 24 hours of 5-minute polls (budget 100)")
+        // One every 20 minutes, plus the new day's first request after midnight.
+        assertTrue("${server.requestCount} requests", server.requestCount in 72..73)
+    }
+
     @Test
     fun anOutageShowsTheSavedDayForADayThenFails() = runBlocking {
         server.enqueue(answer(day(39)))

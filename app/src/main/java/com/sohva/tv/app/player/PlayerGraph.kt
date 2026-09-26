@@ -117,6 +117,8 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
         override fun logFailure(line: String) = graph.diagnostics.info("player", line)
 
+        override val ticker: com.sohva.tv.feature.player.ScoreTickerSource? get() = if (graph.flags.sport) graph.sport.ticker else null
+
         override suspend fun externalStream(channelKey: String): ExternalStream? {
             val stream = resolveLive(channelKey) ?: return null
             val headers = buildMap {

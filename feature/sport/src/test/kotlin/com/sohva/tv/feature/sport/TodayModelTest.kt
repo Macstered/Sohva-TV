@@ -9,11 +9,14 @@ import com.sohva.tv.core.model.sport.SportFollows
 import com.sohva.tv.core.model.sport.SportType
 import com.sohva.tv.core.model.sport.SportsException
 import com.sohva.tv.core.model.sport.SportsProblem
+import com.sohva.tv.core.model.sport.pairing.Confidence
+import com.sohva.tv.core.model.sport.pairing.Decision
+import com.sohva.tv.core.model.sport.pairing.MatchSource
+import com.sohva.tv.core.model.sport.pairing.StreamMatch
 import com.sohva.tv.feature.sport.feed.FeedState
 import com.sohva.tv.feature.sport.provider.CacheState
 import com.sohva.tv.feature.sport.today.TodayEnvironment
 import com.sohva.tv.feature.sport.today.TodayModel
-import com.sohva.tv.feature.sport.today.WatchSummary
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,7 +58,7 @@ class TodayModelTest {
         override val feed = MutableStateFlow(FeedState())
         override val follows: Flow<SportFollows> = flowOf(SportFollows.DEFAULT)
         override val favourites: Flow<Set<String>> = flowOf(emptySet())
-        override val watch: Flow<Map<String, WatchSummary>> = flowOf(emptyMap())
+        override val streams = MutableStateFlow<Map<String, List<StreamMatch>>>(emptyMap())
         override val pendingGame = MutableStateFlow<String?>(null)
         override val reminders: Flow<Set<String>> = flowOf(emptySet())
         var requests = 0
@@ -68,7 +71,9 @@ class TodayModelTest {
         override fun consumePendingGame() {
             pendingGame.value = null
         }
-        override suspend fun toggleReminder(event: SportEvent) = Unit
+        override suspend fun toggleReminder(event: SportEvent, channelKey: String?) = Unit
+        override suspend fun decide(eventId: String, channelKey: String, decision: Decision?): Boolean = true
+        override fun play(channelKey: String) = Unit
         override suspend fun incidents(eventId: String): Pair<List<Incident>, CacheState> {
             requests++
             if (failing) throw SportsException(SportsProblem.UNAVAILABLE)
@@ -161,5 +166,33 @@ class TodayModelTest {
         assertNull(s.incidents)
         assertTrue(s.failed)
         assertFalse(s.loading)
+    }
+
+    private fun stream(event: SportEvent, channel: String, score: Int) = StreamMatch(
+        event.id, channel, "Channel $channel", "p", "T", MatchSource.GUIDE, 0, 0, true, score, Confidence.AVAILABLE,
+    )
+
+    @Test
+    fun theHubKeepsItsStreamOrderWhileOpen() = runTest(dispatcher) {
+        val (env, model) = setUp()
+        val g = game(1)
+        env.feed.value = FeedState(events = listOf(g), complete = true)
+        env.streams.value = mapOf(g.id to listOf(stream(g, "a", 100), stream(g, "b", 90)))
+        model.openHub(g)
+        runCurrent()
+        assertEquals(listOf("a", "b"), model.hubStreams.value.map { it.channelKey })
+        // A decision re-sorts the list; the open hub keeps its rows where they were and appends new ones.
+        env.streams.value = mapOf(g.id to listOf(stream(g, "c", 95), stream(g, "b", 90).withDecision(Decision.REJECTED), stream(g, "a", 100)))
+        runCurrent()
+        assertEquals(listOf("a", "b", "c"), model.hubStreams.value.map { it.channelKey })
+        env.streams.value = mapOf(g.id to listOf(stream(g, "c", 95), stream(g, "a", 100)))
+        runCurrent()
+        assertEquals(listOf("a", "c"), model.hubStreams.value.map { it.channelKey })
+        // Reopening applies the current order.
+        model.closeHub()
+        runCurrent()
+        model.openHub(g)
+        runCurrent()
+        assertEquals(listOf("c", "a"), model.hubStreams.value.map { it.channelKey })
     }
 }

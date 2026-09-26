@@ -193,6 +193,7 @@ private fun Body(view: TodayView, model: TodayModel, labels: TimeLabels, card: (
         else -> {
             Section(stringResource(R.string.today_section_live), sections.live, view, labels, model::openHub, card, "today-live")
             Section(stringResource(R.string.today_section_later), sections.later, view, labels, model::openHub, card, "today-later")
+            SportsChannelSection(view.channels, labels, model::play)
             Section(stringResource(R.string.today_section_finished), sections.finished, view, labels, model::openHub, card, "today-finished")
         }
     }

@@ -440,7 +440,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [ ] **PLAY-28** Match the display refresh rate to the stream, and restore it afterwards.
 - [x] **PLAY-29** Keep watching in a corner (picture in picture) on Home, with a Close button.
 - [x] **PLAY-30** Open the live stream in another player app on the TV.
-- [ ] **PLAY-31** Sohva Sport score ticker over live and catch-up playback.
+- [x] **PLAY-31** Sohva Sport score ticker over live and catch-up playback.
 - [x] **PLAY-32** Leaving the app stops the stream; returning resumes it.
 - [x] **PLAY-33** The screen never sleeps while the player is open.
 - [x] **PLAY-34** VOD progress saved every 10 s, on pause, at the end and on leaving; watched rule applied.
@@ -861,9 +861,9 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 - [x] **SPORT-20** Sections Live now, Later today, Sports channels now, Finished; empty sections hidden.
 - [x] **SPORT-21** Ordering: live, scheduled, disrupted, finished; then kick-off minute; then competition.
 - [x] **SPORT-22** Match card: competition logo and name, status or live badge, two team marks (crest over initials in the sport's accent), score or kick-off time, AFL goals/behinds, football minute, watch call to action, favourite star.
-- [ ] **SPORT-23** Call to action: "WATCH · N CHANNELS", "N POSSIBLE CHANNEL MATCHES" or "No broadcast available".
+- [x] **SPORT-23** Call to action: "WATCH · N CHANNELS", "N POSSIBLE CHANNEL MATCHES" or "No broadcast available".
 - [x] **SPORT-24** Live badge with the minute and a short pulse when the minute changes.
-- [ ] **SPORT-25** Sports channels now: up to 8 channels with an Available match, OK plays the channel.
+- [x] **SPORT-25** Sports channels now: up to 8 channels with an Available match, OK plays the channel.
 - [x] **SPORT-26** Initial focus on the first live game, else the first upcoming, else the first finished, else the All tab.
 - [x] **SPORT-27** Loading, error (with Try again) and per-filter empty states.
 
@@ -875,39 +875,39 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 - [x] **SPORT-31** Match events panel (football): timeline band (home above, away below, half-time tick), incident list, Refresh.
 - [x] **SPORT-32** Incident list scrolls with Up/Down and releases focus at either end.
 - [x] **SPORT-33** Match events states: not available for this sport, loading, none yet, error with Try again, cached data warning.
-- [ ] **SPORT-34** Streams panel: rows with confidence, source (TV GUIDE / M3U NAME), channel name, programme or detail, stream tag chips, start-offset explanation.
-- [ ] **SPORT-35** Watch plays the channel; Back from the player returns to the open hub.
-- [ ] **SPORT-36** Confirm a Possible stream, Reject any undecided stream, Restore a decided one; "Confirmed by you".
-- [ ] **SPORT-37** Decisions survive refreshes, re-imports and restarts.
-- [ ] **SPORT-38** Stream order stays fixed while the hub is open.
+- [x] **SPORT-34** Streams panel: rows with confidence, source (TV GUIDE / M3U NAME), channel name, programme or detail, stream tag chips, start-offset explanation.
+- [x] **SPORT-35** Watch plays the channel; Back from the player returns to the open hub.
+- [x] **SPORT-36** Confirm a Possible stream, Reject any undecided stream, Restore a decided one; "Confirmed by you".
+- [x] **SPORT-37** Decisions survive refreshes, re-imports and restarts.
+- [x] **SPORT-38** Stream order stays fixed while the hub is open.
 - [x] **SPORT-39** Hub opens from Home, a reminder or a notification directly on the named game.
 
 **Stream pairing**
 
-- [ ] **SPORT-40** Candidates from guide programmes within 120 minutes of kick-off.
-- [ ] **SPORT-41** Candidates from M3U channel names that name both teams.
-- [ ] **SPORT-42** Channel-name clock times with explicit zones (CET, CEST, EET, EEST, UTC/GMT and offsets), AM/PM, and dates (ISO, month names, `18/9`).
-- [ ] **SPORT-43** Team aliases (built-in football aliases plus a stored alias table).
-- [ ] **SPORT-44** Confidence Available / Possible / Rejected, with the ordering rules.
-- [ ] **SPORT-45** Country/language priority reorders streams within one confidence level.
-- [ ] **SPORT-46** Pairing results cached across restarts, recomputed when channels, guide or rules change.
-- [ ] **SPORT-47** Hidden channels, disabled sources and hidden groups are never offered.
+- [x] **SPORT-40** Candidates from guide programmes within 120 minutes of kick-off.
+- [x] **SPORT-41** Candidates from M3U channel names that name both teams.
+- [x] **SPORT-42** Channel-name clock times with explicit zones (CET, CEST, EET, EEST, UTC/GMT and offsets), AM/PM, and dates (ISO, month names, `18/9`).
+- [x] **SPORT-43** Team aliases (built-in football aliases plus a stored alias table).
+- [x] **SPORT-44** Confidence Available / Possible / Rejected, with the ordering rules.
+- [x] **SPORT-45** Country/language priority reorders streams within one confidence level.
+- [x] **SPORT-46** Pairing results cached across restarts, recomputed when channels, guide or rules change.
+- [x] **SPORT-47** Hidden channels, disabled sources and hidden groups are never offered.
 
 **Favourites and reminders**
 
 - [x] **SPORT-48** Favourites filter and star on favourite cards (per profile). Beta 23 has no control to add one (§10).
-- [ ] **SPORT-49** A match reminder fires one minute before kick-off and opens its stream, or the hub when no stream was known.
+- [x] **SPORT-49** A match reminder fires one minute before kick-off and opens its stream, or the hub when no stream was known.
 
 **Elsewhere in the app**
 
 - [x] **SPORT-50** Home "Today's sport" row: first 6 games, total count, a card opens the hub.
 - [x] **SPORT-51** Home hero for a focused sport card (kicker, teams, competition, minute or start, score, crest backdrop).
 - [x] **SPORT-52** Search results of type SPORT (team or competition names) open Sohva Sport.
-- [ ] **SPORT-53** Score ticker over the player: live games then games starting within 3 hours, at most 4 rows.
-- [ ] **SPORT-54** Ticker toggled from the player quick menu or a remote button; a player shortcut opens Sohva Sport.
-- [ ] **SPORT-55** Followed sports, competitions, priority codes and favourites travel in encrypted backups; the key does not.
-- [ ] **SPORT-56** About/legal: API-Sports notice, terms link, key disclosure text.
-- [ ] **SPORT-57** Demo flavour substitutes fictional sport data; the Lab variant never refreshes automatically.
+- [x] **SPORT-53** Score ticker over the player: live games then games starting within 3 hours, at most 4 rows.
+- [x] **SPORT-54** Ticker toggled from the player quick menu or a remote button; a player shortcut opens Sohva Sport.
+- [x] **SPORT-55** Followed sports, competitions, priority codes and favourites travel in encrypted backups; the key does not.
+- [x] **SPORT-56** About/legal: API-Sports notice, terms link, key disclosure text.
+- [x] **SPORT-57** Demo flavour substitutes fictional sport data; the Lab variant never refreshes automatically.
 
 ## Settings
 

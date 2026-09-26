@@ -33,8 +33,14 @@ object StreamTags {
         code("HR", "HR", "HRV"); code("RS", "RS", "SRB"); code("CA", "CA", "CAN"); code("AU", "AU", "AUS")
     }
 
+    /** What a tag says; a stream row tints each kind differently (spec 60 SPORT-FR-74). */
+    enum class Kind { RESOLUTION, DYNAMIC_RANGE, FRAME_RATE, LANGUAGE }
+
     /** Tags in order resolution, dynamic range, frame rate, language. */
-    fun of(name: String): List<String> {
+    fun of(name: String): List<String> = parts(name).map { it.second }
+
+    /** [of] with each tag's kind. */
+    fun parts(name: String): List<Pair<Kind, String>> {
         // "+" is not a separator, so "HDR10+" stays one token.
         val tokens = name.uppercase(Locale.ROOT).split(separators).filter { it.isNotEmpty() }
         val res = tokens.firstNotNullOfOrNull { resolution[it] }
@@ -43,8 +49,15 @@ object StreamTags {
             if (token in resolution) null else frameRate.matchEntire(token)?.let { "${it.groupValues[1]} FPS" }
         }
         val language = tokens.firstNotNullOfOrNull { languages[it] }
-        return listOfNotNull(res, range, fps, language)
+        return listOfNotNull(
+            res?.let { Kind.RESOLUTION to it }, range?.let { Kind.DYNAMIC_RANGE to it },
+            fps?.let { Kind.FRAME_RATE to it }, language?.let { Kind.LANGUAGE to it },
+        )
     }
+
+    /** The first language or country tag of [name], or null (spec 60 SPORT-FR-117 priority ordering). */
+    fun language(name: String): String? =
+        name.uppercase(Locale.ROOT).split(separators).firstNotNullOfOrNull { languages[it] }
 
     /** Normalises a priority list of language codes: known codes only, distinct, at most 8. */
     fun normalizeLanguages(codes: List<String>): List<String> =

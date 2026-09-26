@@ -137,6 +137,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun sport(): SportDao
 
+    abstract fun pairing(): PairingDao
+
     /**
      * v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied, and
      * ranks move to M3's scheme (playlist order above every viewer position), or channels an import
