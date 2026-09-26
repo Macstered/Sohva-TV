@@ -48,3 +48,7 @@ Discover data) and PLAY (the addon player on the shared engine).
 ## Open questions (spec 50 §10), settled by the owner's rule
 
 The spec's proposal where it makes one, else beta 23 (recorded in docs/decisions.md).
+
+## Status (26 September 2026)
+
+Done: parts 1–6. Open for M10 (Trakt): ADDON-34 (Trakt bars and ticks) and the Trakt pause of ADDON-52; the Shield start-up comparison waits for the owner's go.

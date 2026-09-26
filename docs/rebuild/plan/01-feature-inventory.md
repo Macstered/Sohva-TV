@@ -94,12 +94,12 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-07** Library films paused locally (not finished, position > 0), newest first.
 - [x] **HOME-08** Library episodes paused locally; one card per series, the newest episode standing for the series.
 - [ ] **HOME-09** Library copies paused on Trakt (unrestricted profiles with Trakt), merged with the local positions; a newer local position of the same copy wins.
-- [ ] **HOME-10** Discover titles paused in Discover (not completed, position > 0), one card per addon title (series: newest episode).
-- [ ] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M9.)*
+- [x] **HOME-10** Discover titles paused in Discover (not completed, position > 0), one card per addon title (series: newest episode).
+- [x] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M9.)*
 - [x] **HOME-12** At most 12 cards, newest first.
 - [x] **HOME-13** Landscape card: artwork (or initials), progress bar, title, "episode label or year · N min left".
 - [x] **HOME-14** OK on a library card resumes playback at the saved position, with the title's library page and details page placed underneath the player.
-- [ ] **HOME-15** OK on a Discover card opens that Discover title page.
+- [x] **HOME-15** OK on a Discover card opens that Discover title page.
 - [x] **HOME-16** Hold OK on a library card: actions dialog with Resume, Start from beginning, Mark as watched, Remove from Continue watching.
 - [x] **HOME-17** Row hint "Browse the rows with the D-pad" beside the row title.
 - [x] **HOME-18** Loading card "Loading Continue Watching…" while the first read is under way; Down is held back until it resolves.
@@ -175,7 +175,7 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 - [x] **PROF-06** "Ask who is watching at start" switch (default on), shown once there is more than one profile.
 - [x] **PROF-07** Who is watching at start: a full-screen picker of large tiles, the last active profile focused, when the household has more than one profile and the switch is on.
 - [x] **PROF-08** Who is watching on the Home rail (only with two or more profiles), opening the same picker.
-- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches done in M8; Discover M9, Trakt M10.)*
+- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches done in M8; Discover done in M9; Trakt M10.)*
 
 **What this profile may see**
 
@@ -183,7 +183,7 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 - [x] **PROF-11** Multi-choice group pickers ("Groups for <name>"), one row per group across sources, with the sources named; changes apply at once.
 - [x] **PROF-12** A restricted profile sees only its groups in the guide, the player's channel list, Movies, Series, Search and Home's recent channels.
 - [x] **PROF-13** Playing, catching up or zapping to a channel outside the groups is refused with the toast "This profile cannot watch that channel".
-- [ ] **PROF-14** A restricted profile never sees Discover (no rail item, no Continue watching cards, direct access denied) or Trakt (no Accounts section, no Trakt rows, no first-sync note). *(the rail's Discover item and the Accounts section's place done in M6; Discover (M9) and Trakt (M10) add their own checks.)*
+- [ ] **PROF-14** A restricted profile never sees Discover (no rail item, no Continue watching cards, direct access denied) or Trakt (no Accounts section, no Trakt rows, no first-sync note). *(the rail's Discover item and the Accounts section's place done in M6; Discover's checks done in M9; Trakt (M10) adds its own.)*
 - [x] **PROF-15** A note under the group rows says whether the PIN guards the restriction (red when no PIN is set).
 
 **Parental PIN**
@@ -272,7 +272,7 @@ Spec: [specs/11-phone-setup.md](../specs/11-phone-setup.md) · Milestone: M1 · 
 - [x] **PHONE-08** The TV dialog shows "Received from the phone: <name>. Syncing it now."; the playlist list refreshes and its status line reports the receipt.
 - [x] **PHONE-09** Several sources and keys can be sent in one session.
 - [ ] **PHONE-10** "Logo from phone" in Channel management: a page with one picture chooser; the phone shrinks the picture to at most 512 px and sends it; the TV stores it as that channel's logo (at most 256 px) and closes the page.
-- [ ] **PHONE-11** Addon URLs from a phone (Discover › Import): a one-use, ten-minute session; paste URLs or choose a `.txt` file on the phone; nothing installs until confirmed on the TV.
+- [x] **PHONE-11** Addon URLs from a phone (Discover › Import): a one-use, ten-minute session; paste URLs or choose a `.txt` file on the phone; nothing installs until confirmed on the TV.
 - [x] **PHONE-12** A request without the right token is refused with a page that says to scan the code again.
 - [x] **PHONE-13** The page closes when its dialog closes (button or Back), when the TV leaves the screen that opened it, and after 15 minutes (sources/logo) or 10 minutes (addons).
 - [x] **PHONE-14** Only the TV's own local IPv4 address is served; nothing is posted anywhere else; nothing posted is logged.
@@ -425,7 +425,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-13** Channel up / down within the playing channel's group, wrapping at the ends.
 - [x] **PLAY-14** Switch to the previous channel (zap-back), and back again.
 - [x] **PLAY-15** Dial a channel by number on live TV, with "Channel 12" read-out and "No channel 12".
-- [ ] **PLAY-16** Skip back / forward by the chosen step (10 s, 30 s, 1 min, 2 min); quick repeated presses climb to 2 min (held keys too in the Discover player); the size of each skip shows for a moment.
+- [x] **PLAY-16** Skip back / forward by the chosen step (10 s, 30 s, 1 min, 2 min); quick repeated presses climb to 2 min (held keys too in the Discover player); the size of each skip shows for a moment.
 - [x] **PLAY-17** Audio track picker; step to the next audio track.
 - [x] **PLAY-18** Subtitle picker with Off; subtitles on / off toggle.
 - [ ] **PLAY-19** VOD audio and subtitle language preferences (primary, secondary); subtitles stay off when the primary audio language is present.
@@ -456,7 +456,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [ ] **PLAY-44** Demo build shows a still picture instead of a stream.
 - [x] **PLAY-45** Playback failures written to the diagnostics log without addresses or credentials.
 - [ ] **PLAY-46** Trakt scrobbling of VOD playback ([Trakt](../specs/51-trakt.md)).
-- [ ] **PLAY-47** Discover player shares the transport controls, track picker, skip ladder and subtitle look.
+- [x] **PLAY-47** Discover player shares the transport controls, track picker, skip ladder and subtitle look.
 
 ## Remote button mapping
 
@@ -678,111 +678,111 @@ Spec: [specs/50-discover-addons.md](../specs/50-discover-addons.md) · Milestone
 
 **Access and independence**
 
-- [ ] **ADDON-01** Discover destination on the Home rail (icon + "Discover"), only for unrestricted profiles.
-- [ ] **ADDON-02** Discover works independently of IPTV: no playlist needed; separate databases, cache, HTTP clients and encryption key.
-- [ ] **ADDON-03** Restricted profiles: no Home entry; direct access shows "Addons are unavailable for restricted profiles."; every addon data operation is denied.
-- [ ] **ADDON-04** Everything is per profile: installations, catalog order, catalog visibility, Library, watch progress.
-- [ ] **ADDON-05** Discover data is excluded from the `.smbak` backup (stated in the UI).
+- [x] **ADDON-01** Discover destination on the Home rail (icon + "Discover"), only for unrestricted profiles.
+- [x] **ADDON-02** Discover works independently of IPTV: no playlist needed; separate databases, cache, HTTP clients and encryption key. *(one `discover.db` and the main envelope key instead of a Discover-only key: decision "Discover storage and key".)*
+- [x] **ADDON-03** Restricted profiles: no Home entry; direct access shows "Addons are unavailable for restricted profiles."; every addon data operation is denied.
+- [x] **ADDON-04** Everything is per profile: installations, catalog order, catalog visibility, Library, watch progress.
+- [x] **ADDON-05** Discover data is excluded from the `.smbak` backup (stated in the UI).
 
 **Installing and managing addons (Addons & setup)**
 
-- [ ] **ADDON-06** Install one configured addon URL (`https://` or `stremio://`) from a masked text field.
-- [ ] **ADDON-07** URL normalisation: `stremio://` becomes `https://`; directory/base URLs gain `manifest.json`; AIOMetadata `/stremio/<UUID>` base accepted.
-- [ ] **ADDON-08** Manifests that require configuration are refused with guidance.
-- [ ] **ADDON-09** Installed addons list: name, "N catalogs · Enabled/Disabled", enable switch.
-- [ ] **ADDON-10** Refresh an addon's manifest.
-- [ ] **ADDON-11** Raise an addon's provider priority ("Priority ↑"): source order and metadata fallback order.
-- [ ] **ADDON-12** Remove an addon, with a confirmation dialog focused on Cancel.
-- [ ] **ADDON-13** Reload saved addons.
-- [ ] **ADDON-14** Browse one addon's catalogs (including hidden ones) from its row.
-- [ ] **ADDON-15** The same manifest with different configurations can be installed side by side; installing the exact same URL again reuses the existing installation.
+- [x] **ADDON-06** Install one configured addon URL (`https://` or `stremio://`) from a masked text field.
+- [x] **ADDON-07** URL normalisation: `stremio://` becomes `https://`; directory/base URLs gain `manifest.json`; AIOMetadata `/stremio/<UUID>` base accepted.
+- [x] **ADDON-08** Manifests that require configuration are refused with guidance.
+- [x] **ADDON-09** Installed addons list: name, "N catalogs · Enabled/Disabled", enable switch.
+- [x] **ADDON-10** Refresh an addon's manifest.
+- [x] **ADDON-11** Raise an addon's provider priority ("Priority ↑"): source order and metadata fallback order.
+- [x] **ADDON-12** Remove an addon, with a confirmation dialog focused on Cancel.
+- [x] **ADDON-13** Reload saved addons.
+- [x] **ADDON-14** Browse one addon's catalogs (including hidden ones) from its row.
+- [x] **ADDON-15** The same manifest with different configurations can be installed side by side; installing the exact same URL again reuses the existing installation.
 
 **Import**
 
-- [ ] **ADDON-16** Import screen with three methods: Account & phone, From a file, Manual URL.
-- [ ] **ADDON-17** Build a pending list from manual URLs, one masked URL at a time.
-- [ ] **ADDON-18** Choose a UTF-8 text file (one URL per line) with the system document picker.
-- [ ] **ADDON-19** Send a URL list or a `.txt` file from a phone over the local network (QR, one-time session).
-- [ ] **ADDON-20** Copy addon configurations from a Stremio account through Stremio's device-link QR.
-- [ ] **ADDON-21** Read a Nuvio addon-list or state JSON file (URLs only).
-- [ ] **ADDON-22** Preview: every entry is checked against its provider; per-entry status; nothing is installed.
-- [ ] **ADDON-23** Select or skip each new entry; install the selected ones in list order; result list.
-- [ ] **ADDON-24** Existing installations are never changed by an import; duplicates in the list are skipped.
+- [x] **ADDON-16** Import screen with three methods: Account & phone, From a file, Manual URL.
+- [x] **ADDON-17** Build a pending list from manual URLs, one masked URL at a time.
+- [x] **ADDON-18** Choose a UTF-8 text file (one URL per line) with the system document picker.
+- [x] **ADDON-19** Send a URL list or a `.txt` file from a phone over the local network (QR, one-time session).
+- [x] **ADDON-20** Copy addon configurations from a Stremio account through Stremio's device-link QR.
+- [x] **ADDON-21** Read a Nuvio addon-list or state JSON file (URLs only).
+- [x] **ADDON-22** Preview: every entry is checked against its provider; per-entry status; nothing is installed.
+- [x] **ADDON-23** Select or skip each new entry; install the selected ones in list order; result list.
+- [x] **ADDON-24** Existing installations are never changed by an import; duplicates in the list are skipped.
 
 **Catalog organisation**
 
-- [ ] **ADDON-25** Per-profile catalog order: pick up, move (Up/Down, Page Up/Down, Home/End, held repeats), OK to place, Back to cancel.
-- [ ] **ADDON-26** Per-profile catalog visibility: Show/hide switch per catalog; hidden catalogs disappear from Discover home, the Discover filter page and Search.
-- [ ] **ADDON-27** New catalogs appear shown and are appended in provider order; order and visibility survive manifest refresh.
+- [x] **ADDON-25** Per-profile catalog order: pick up, move (Up/Down, Page Up/Down, Home/End, held repeats), OK to place, Back to cancel.
+- [x] **ADDON-26** Per-profile catalog visibility: Show/hide switch per catalog; hidden catalogs disappear from Discover home, the Discover filter page and Search.
+- [x] **ADDON-27** New catalogs appear shown and are appended in provider order; order and visibility survive manifest refresh.
 
 **Discover home**
 
-- [ ] **ADDON-28** Full-screen backdrop and a hero describing the focused title: logo (or title), facts, synopsis.
-- [ ] **ADDON-29** Hero synopsis in the metadata addon's language, fetched after focus rests, never flashing catalog-language text first.
-- [ ] **ADDON-30** Continue watching as the first row: part-watched Discover titles with progress bars.
-- [ ] **ADDON-31** One shelf per ready-to-browse catalog (no required choice), in the saved order.
-- [ ] **ADDON-32** Saved shelves render at once and revalidate; "Showing saved titles; provider unavailable." when stale.
-- [ ] **ADDON-33** "Show all" at the end of each shelf opens the paged grid.
-- [ ] **ADDON-34** Trakt progress bars and watched ticks on movie posters and episode cards.
-- [ ] **ADDON-35** Collapsible icon rail: Home, Library, Search, Discover (compass), Addons & setup, Back to home.
-- [ ] **ADDON-36** Focus returns to the card, Show all button or rail item the viewer left.
-- [ ] **ADDON-37** Missing Continue-watching artwork is repaired once per Discover visit.
+- [x] **ADDON-28** Full-screen backdrop and a hero describing the focused title: logo (or title), facts, synopsis.
+- [x] **ADDON-29** Hero synopsis in the metadata addon's language, fetched after focus rests, never flashing catalog-language text first.
+- [x] **ADDON-30** Continue watching as the first row: part-watched Discover titles with progress bars.
+- [x] **ADDON-31** One shelf per ready-to-browse catalog (no required choice), in the saved order.
+- [x] **ADDON-32** Saved shelves render at once and revalidate; "Showing saved titles; provider unavailable." when stale.
+- [x] **ADDON-33** "Show all" at the end of each shelf opens the paged grid.
+- [ ] **ADDON-34** Trakt progress bars and watched ticks on movie posters and episode cards. *(Trakt part: arrives with M10.)*
+- [x] **ADDON-35** Collapsible icon rail: Home, Library, Search, Discover (compass), Addons & setup, Back to home.
+- [x] **ADDON-36** Focus returns to the card, Show all button or rail item the viewer left.
+- [x] **ADDON-37** Missing Continue-watching artwork is repaired once per Discover visit.
 
 **Grids, filters, Search**
 
-- [ ] **ADDON-38** Show all grid with captions (title; year · rating), automatic paging, 1,000-title cap, explicit retry of a failed page.
-- [ ] **ADDON-39** Refresh titles (bypasses the fresh cache).
-- [ ] **ADDON-40** Option filters as choosers (Genre, Year, …; required or optional) and free-text filters with Apply.
-- [ ] **ADDON-41** Discover filter page: choose Type and Catalog across all visible catalogs, then its filters.
-- [ ] **ADDON-42** Search: one query across eligible catalogs; Movies and Series rows; progress, partial failures, stale notice.
+- [x] **ADDON-38** Show all grid with captions (title; year · rating), automatic paging, 1,000-title cap, explicit retry of a failed page.
+- [x] **ADDON-39** Refresh titles (bypasses the fresh cache).
+- [x] **ADDON-40** Option filters as choosers (Genre, Year, …; required or optional) and free-text filters with Apply.
+- [x] **ADDON-41** Discover filter page: choose Type and Catalog across all visible catalogs, then its filters.
+- [x] **ADDON-42** Search: one query across eligible catalogs; Movies and Series rows; progress, partial failures, stale notice.
 
 **Title pages**
 
-- [ ] **ADDON-43** Details from the catalog's addon, falling back to other installed metadata addons.
-- [ ] **ADDON-44** Movie page: title, facts, synopsis, Find sources / Continue watching, Start from beginning, Library toggle, cast portraits.
-- [ ] **ADDON-45** Series page: overview, cast names, season chips (Specials last), episode cards with thumbnails and Trakt bars/ticks.
-- [ ] **ADDON-46** Episode page with its own title, synopsis and sources.
-- [ ] **ADDON-47** Retry details / Retry episode details.
+- [x] **ADDON-43** Details from the catalog's addon, falling back to other installed metadata addons.
+- [x] **ADDON-44** Movie page: title, facts, synopsis, Find sources / Continue watching, Start from beginning, Library toggle, cast portraits.
+- [x] **ADDON-45** Series page: overview, cast names, season chips (Specials last), episode cards with thumbnails and Trakt bars/ticks.
+- [x] **ADDON-46** Episode page with its own title, synopsis and sources.
+- [x] **ADDON-47** Retry details / Retry episode details.
 
 **Sources and playback**
 
-- [ ] **ADDON-48** Progressive source list, grouped per provider in priority order, each with loading/failure/empty state.
-- [ ] **ADDON-49** Scraper chooser filters providers; Refresh re-resolves sources.
-- [ ] **ADDON-50** Unsupported transports (torrent, external link, YouTube, NZB, archives, local bridge) are listed as "Unsupported transport" and never started.
-- [ ] **ADDON-51** Continue watching and Start from beginning start the first playable source automatically.
-- [ ] **ADDON-52** Resume from the local position, or from a newer Trakt pause.
-- [ ] **ADDON-53** Playback loading screen: backdrop, pulsing logo or title, stage text, Cancel and Subtitles.
-- [ ] **ADDON-54** Addon player with the shared bottom controls (transport, audio, subtitles, aspect Fit/Zoom/Fill), D-pad seek and media keys.
-- [ ] **ADDON-55** Retry with a freshly resolved source after a failure or a background stop.
-- [ ] **ADDON-56** At the end: movies return to their page; episodes continue to the next one (preference), across seasons.
-- [ ] **ADDON-57** Starting addon playback stops IPTV playback; only one addon player exists at a time.
+- [x] **ADDON-48** Progressive source list, grouped per provider in priority order, each with loading/failure/empty state.
+- [x] **ADDON-49** Scraper chooser filters providers; Refresh re-resolves sources.
+- [x] **ADDON-50** Unsupported transports (torrent, external link, YouTube, NZB, archives, local bridge) are listed as "Unsupported transport" and never started.
+- [x] **ADDON-51** Continue watching and Start from beginning start the first playable source automatically.
+- [ ] **ADDON-52** Resume from the local position, or from a newer Trakt pause. *(local resume done in M9; the Trakt pause arrives with M10.)*
+- [x] **ADDON-53** Playback loading screen: backdrop, pulsing logo or title, stage text, Cancel and Subtitles.
+- [x] **ADDON-54** Addon player with the shared bottom controls (transport, audio, subtitles, aspect Fit/Zoom/Fill), D-pad seek and media keys.
+- [x] **ADDON-55** Retry with a freshly resolved source after a failure or a background stop.
+- [x] **ADDON-56** At the end: movies return to their page; episodes continue to the next one (preference), across seasons.
+- [x] **ADDON-57** Starting addon playback stops IPTV playback; only one addon player exists at a time.
 
 **Subtitles and audio**
 
-- [ ] **ADDON-58** Subtitle picker: language column with counts and "Subtitles off"; option cards for embedded, stream and addon subtitles; "✓ Selected".
-- [ ] **ADDON-59** Subtitle addons are queried with the stream's `videoHash`, `videoSize` and `filename` hints only.
-- [ ] **ADDON-60** Automatic subtitles from the primary/secondary subtitle preferences, suppressed when the preferred audio language is present; 5 s budget with embedded fallback.
-- [ ] **ADDON-61** "Show all languages" toggle (persisted) in the picker and in Addons & setup.
-- [ ] **ADDON-62** Subtitle sync: ±60 s, 0.1 s steps, 1 s when held, Apply, Reset to zero, Play/Pause preview.
-- [ ] **ADDON-63** Downloaded SRT, WebVTT and SSA/ASS subtitles; appearance follows the VOD subtitle settings.
-- [ ] **ADDON-64** Audio track picker.
+- [x] **ADDON-58** Subtitle picker: language column with counts and "Subtitles off"; option cards for embedded, stream and addon subtitles; "✓ Selected".
+- [x] **ADDON-59** Subtitle addons are queried with the stream's `videoHash`, `videoSize` and `filename` hints only.
+- [x] **ADDON-60** Automatic subtitles from the primary/secondary subtitle preferences, suppressed when the preferred audio language is present; 5 s budget with embedded fallback.
+- [x] **ADDON-61** "Show all languages" toggle (persisted) in the picker and in Addons & setup.
+- [x] **ADDON-62** Subtitle sync: ±60 s, 0.1 s steps, 1 s when held, Apply, Reset to zero, Play/Pause preview.
+- [x] **ADDON-63** Downloaded SRT, WebVTT and SSA/ASS subtitles; appearance follows the VOD subtitle settings.
+- [x] **ADDON-64** Audio track picker.
 
 **History and Library**
 
-- [ ] **ADDON-65** Encrypted watch progress per title and episode; complete at 95 % or at the end.
-- [ ] **ADDON-66** Watch history page in Addons & setup with "Forget progress".
-- [ ] **ADDON-67** Discover progress feeds Home's Continue watching ([Home](../specs/02-home.md)).
-- [ ] **ADDON-68** Add to / Remove from library on movie and series pages.
-- [ ] **ADDON-69** Library grid with All / Movies / Series filters, newest first, 1,000 titles per profile.
-- [ ] **ADDON-70** A Library title whose addon is disabled or removed explains itself and offers removal.
+- [x] **ADDON-65** Encrypted watch progress per title and episode; complete at 95 % or at the end.
+- [x] **ADDON-66** Watch history page in Addons & setup with "Forget progress".
+- [x] **ADDON-67** Discover progress feeds Home's Continue watching ([Home](../specs/02-home.md)).
+- [x] **ADDON-68** Add to / Remove from library on movie and series pages.
+- [x] **ADDON-69** Library grid with All / Movies / Series filters, newest first, 1,000 titles per profile.
+- [x] **ADDON-70** A Library title whose addon is disabled or removed explains itself and offers removal.
 
 **Settings, text, security**
 
-- [ ] **ADDON-71** Subtitles section in Addons & setup: show-all switch, preferred-language summary, metadata-language guidance.
-- [ ] **ADDON-72** About screen "Discover addons" privacy paragraph.
-- [ ] **ADDON-73** Configured URLs and addon payloads encrypted with a Discover-only key; masked inputs; URLs never in logs, UI labels or saved state.
-- [ ] **ADDON-74** Encrypted response cache for fast revisits and offline fallback.
-- [ ] **ADDON-75** Addon interface in all seven app languages; provider text is never translated by the app.
+- [x] **ADDON-71** Subtitles section in Addons & setup: show-all switch, preferred-language summary, metadata-language guidance.
+- [x] **ADDON-72** About screen "Discover addons" privacy paragraph.
+- [x] **ADDON-73** Configured URLs and addon payloads encrypted with a Discover-only key; masked inputs; URLs never in logs, UI labels or saved state. *(one `discover.db` and the main envelope key instead of a Discover-only key: decision "Discover storage and key".)*
+- [x] **ADDON-74** Encrypted response cache for fast revisits and offline fallback.
+- [x] **ADDON-75** Addon interface in all seven app languages; provider text is never translated by the app.
 
 ## Trakt sync
 
@@ -1055,7 +1055,7 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 - [x] **SEC-11** Keys are validated before storage: TMDB token ≤ 2,048 characters, API-Sports key ≤ 512, neither may contain a line break.
 - [x] **SEC-12** Plain HTTP is permitted for the viewer's own IPTV hosts; the first-party service domains (API-Sports, TMDB, TVmaze) can only be reached over HTTPS.
 - [x] **SEC-13** Only the system's certificate authorities are trusted; no user-added CAs, no pinning.
-- [ ] **SEC-14** Discover addons are HTTPS-only in practice (no UI path accepts HTTP).
+- [x] **SEC-14** Discover addons are HTTPS-only in practice (no UI path accepts HTTP).
 - [x] **SEC-15** The phone setup page runs only while its dialog is open, on the LAN address, a random port and an 8-character one-time token ([Phone setup](../specs/11-phone-setup.md)).
 
 **Platform**

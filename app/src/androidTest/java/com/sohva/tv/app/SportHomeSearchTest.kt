@@ -45,7 +45,7 @@ class SportHomeSearchTest {
                     if (!request.target.startsWith("/football/")) return MockResponse.Builder().body("""{"response":[]}""").build()
                     val games = (1..7).map { i ->
                         val (home, away) = if (i == 1) "Northbridge" to "Harbor" else "Home $i" to "Away $i"
-                        """{"fixture":{"id":$i,"timestamp":${now + i * 3_600},"status":{"short":"${if (i == 1) "2H" else "NS"}","elapsed":${if (i == 1) 67 else "null"}}},
+                        """{"fixture":{"id":$i,"timestamp":${now + i * 300},"status":{"short":"${if (i == 1) "2H" else "NS"}","elapsed":${if (i == 1) 67 else "null"}}},
                            "league":{"id":39,"name":"Premier League"},"teams":{"home":{"name":"$home"},"away":{"name":"$away"}},"goals":{"home":${if (i == 1) 2 else "null"},"away":${if (i == 1) 1 else "null"}}}"""
                     }
                     return MockResponse.Builder().body("""{"errors":[],"response":[${games.joinToString(",")}]}""").build()

@@ -31,7 +31,19 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
             // The list owns its keys, down and up alike, so exactly one layer closes per Back (PLAY-FR-04).
             return if (down) listKey(event.keyCode) else event.keyCode in LIST_KEYS
         }
+        if (model.addon != null && event.keyCode in ADDON_SEEK_KEYS) return addonSeek(event.keyCode, down)
         return dispatcher.onKey(event.keyCode, down, event.repeatCount, this)
+    }
+
+    /**
+     * The addon player's seek keys (spec 50 FR-89, spec 30 PLAY-16): every press, and every repeat
+     * of a held key, is one step of the shared ladder, so holding Left or Right climbs it too.
+     */
+    private fun addonSeek(keyCode: Int, down: Boolean): Boolean {
+        if (!down) return true
+        dispatcher.reset()
+        model.transport.skip(back = keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_MEDIA_REWIND)
+        return true
     }
 
     override fun reveal(focusPlayPause: Boolean) {
@@ -140,6 +152,9 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
         val LIST_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER, KeyEvent.KEYCODE_BACK,
+        )
+        val ADDON_SEEK_KEYS = setOf(
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
         )
     }
 }
