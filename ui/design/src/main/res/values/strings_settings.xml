@@ -207,4 +207,5 @@
     <string name="update_open_permission">Allow installs</string>
     <string name="update_help">Downloads are verified against the published checksum; playlists and settings are kept.</string>
     <string name="update_notes_for" translatable="false">What\'s new in %1$s</string>
+    <string name="profile_groups_missing">This profile\'s groups are not in the current sources. Whoever knows the parental PIN can choose new ones in Settings.</string>
 </resources>

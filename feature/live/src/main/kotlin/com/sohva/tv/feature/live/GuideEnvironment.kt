@@ -25,6 +25,9 @@ interface GuideEnvironment {
     val format: CoroutineDispatcher
     val locale: Locale
 
+    /** Whether the active profile is limited to chosen live groups (spec 04 PROF-FR-24). */
+    suspend fun liveRestricted(): Boolean = false
+
     val lastGuideSource: Flow<String?>
     val lastChannel: Flow<String?>
     val showChannelNumbers: Flow<Boolean>

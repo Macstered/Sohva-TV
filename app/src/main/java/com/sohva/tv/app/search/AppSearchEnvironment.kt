@@ -1,5 +1,6 @@
 package com.sohva.tv.app.search
 
+import com.sohva.tv.app.profile.ChannelStarter
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.core.model.time.TimeLabels
@@ -56,10 +57,7 @@ class AppSearchEnvironment(private val graph: AppGraph, private val stack: BackS
     override fun open(result: SearchResult) {
         when (result.kind) {
             // Live, with Back to the guide on that channel (spec 01 SHELL-FR-20).
-            ResultKind.CHANNEL, ResultKind.PROGRAMME -> {
-                graph.guideFocusChannel = result.target
-                stack.push(AppRoute.Player(result.target, returnToGuide = true))
-            }
+            ResultKind.CHANNEL, ResultKind.PROGRAMME -> ChannelStarter(graph, stack).play(result.target, forGuide = true)
             ResultKind.MOVIE -> stack.push(AppRoute.FilmDetails(result.target))
             ResultKind.SERIES -> stack.push(AppRoute.SeriesDetails(result.target))
             // From the saved position (a finished episode from the start); only while Search is still on top.

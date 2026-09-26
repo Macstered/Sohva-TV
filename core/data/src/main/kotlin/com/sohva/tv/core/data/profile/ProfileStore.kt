@@ -18,11 +18,13 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -52,6 +54,9 @@ class ProfileStore(
     val activeId: String get() = state.value.active.id
 
     val activeChanges: Flow<String> = state.map { it.active.id }.distinctUntilChanged()
+
+    /** "A PIN exists", for controls that need one (Channel management's lock, spec 04 PROF-FR-40). */
+    val pinConfigured: StateFlow<Boolean> = state.map { it.pinConfigured }.stateIn(scope, SharingStarted.Eagerly, false)
 
     /** Whenever what the active profile sees may have changed: a switch or an edited restriction. */
     val changes: Flow<Unit> = merge(activeChanges.map { }, restrictionsChanged)

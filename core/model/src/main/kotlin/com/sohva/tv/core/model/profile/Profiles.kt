@@ -96,6 +96,9 @@ data class Restriction(val live: Set<String> = emptySet(), val movies: Set<Strin
     }
 }
 
+/** Whether a channel may start (spec 01 SHELL-FR-20…22): the profile's groups first, then the lock. */
+enum class ChannelAdmission { PLAY, REFUSED, LOCKED }
+
 /** The household PIN's rules (spec 04 §4.4). */
 object ParentalPin {
     const val MIN: Int = 4

@@ -199,4 +199,5 @@
     <string name="update_install">Instalar</string>
     <string name="update_open_permission">Permitir instalações</string>
     <string name="update_help">Os downloads são verificados com a soma de verificação publicada; playlists e configurações são mantidas.</string>
+    <string name="profile_groups_missing">Os grupos deste perfil não estão nas fontes atuais. Quem souber o PIN parental pode escolher outros nas Configurações.</string>
 </resources>

@@ -31,6 +31,12 @@ class AppChannelsEnvironment(private val graph: AppGraph) : ChannelsEnvironment 
 
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
+    override val pinConfigured: kotlinx.coroutines.flow.StateFlow<Boolean> get() = graph.data.profiles.pinConfigured
+
+    override suspend fun isLocked(key: String): Boolean = graph.data.profiles.isLocked(key)
+
+    override suspend fun setLocked(key: String, locked: Boolean) = graph.data.profiles.setLocked(key, locked)
+
     override suspend fun sources(): List<ManagerSource> = reads.sources()
 
     override suspend fun groupNames(sourceId: String): List<String> = reads.groupNames(sourceId)

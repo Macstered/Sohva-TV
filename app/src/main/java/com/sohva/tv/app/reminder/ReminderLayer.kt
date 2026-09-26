@@ -1,5 +1,6 @@
 package com.sohva.tv.app.reminder
 
+import com.sohva.tv.app.profile.ChannelStarter
 import android.Manifest
 import android.content.Intent
 import android.os.Build
@@ -70,7 +71,7 @@ internal fun ReminderLayer(graph: AppGraph, stack: BackStack<AppRoute>) {
             r,
             onWatch = {
                 graph.reminders.dismiss(r.id)
-                openFor(r, stack)
+                openFor(r, stack, graph)
             },
             onLater = { graph.reminders.dismiss(r.id) },
             clock = { graph.clock.wallMillis() },
@@ -94,7 +95,7 @@ internal fun ReminderLayer(graph: AppGraph, stack: BackStack<AppRoute>) {
     LaunchedEffect(request) {
         when (val r = request ?: return@LaunchedEffect) {
             // Playback a notification started is not a recent channel (CHAN-FR-61); Back returns under it.
-            is OpenRequest.Channel -> stack.push(AppRoute.Player(r.key, returnToGuide = false, recordWatched = false))
+            is OpenRequest.Channel -> ChannelStarter(graph, stack).play(r.key, forGuide = false)
             // The match card arrives with Sohva Sport (M8); until then its screen.
             is OpenRequest.Event -> stack.push(AppRoute.Today)
         }
@@ -103,9 +104,9 @@ internal fun ReminderLayer(graph: AppGraph, stack: BackStack<AppRoute>) {
 }
 
 /** Watch plays the channel over the current screen (REM-FR-22); a match without a channel opens Sohva Sport. */
-private fun openFor(reminder: Reminder, stack: BackStack<AppRoute>) {
+private fun openFor(reminder: Reminder, stack: BackStack<AppRoute>, graph: AppGraph) {
     val key = reminder.channelKey
-    if (key != null) stack.push(AppRoute.Player(key, returnToGuide = false, recordWatched = false)) else stack.push(AppRoute.Today)
+    if (key != null) ChannelStarter(graph, stack).play(key, forGuide = false) else stack.push(AppRoute.Today)
 }
 
 /** The steps after the first reminder is set (REM-FR-05). */

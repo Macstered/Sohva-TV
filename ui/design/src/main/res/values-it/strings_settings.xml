@@ -199,4 +199,5 @@
     <string name="update_install">Installa</string>
     <string name="update_open_permission">Consenti le installazioni</string>
     <string name="update_help">I download vengono verificati con il checksum pubblicato; playlist e impostazioni vengono conservate.</string>
+    <string name="profile_groups_missing">I gruppi di questo profilo non sono nelle fonti attuali. Chi conosce il PIN parentale può sceglierne altri nelle Impostazioni.</string>
 </resources>

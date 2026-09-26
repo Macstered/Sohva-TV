@@ -1,5 +1,7 @@
 package com.sohva.tv.app
 
+import com.sohva.tv.core.data.profile.ProfileStore
+import kotlinx.coroutines.flow.first
 import android.app.LocaleManager
 import android.os.Build
 import android.os.LocaleList
@@ -16,7 +18,9 @@ import org.junit.rules.ExternalResource
  * themselves, before and after each test (lessons 7.5). Extend it whenever a new persisted
  * setting can change start-up: language, theme, size and start screen, and the sources (removed
  * through the import runner, so their rows and secrets go too); favourites, recents and the
- * guide's session channel; profiles join in their milestone. Refuses to run against anything but the debug app.
+ * guide's session channel; profiles, what they may see, the parental PIN and the start-time
+ * question (M6: leftover profiles once put the picker in front of the next test). Refuses to run
+ * against anything but the debug app.
  */
 class ClearStateRule : ExternalResource() {
     override fun before() = reset()
@@ -36,7 +40,7 @@ class ClearStateRule : ExternalResource() {
             graph.data.sources.all().forEach { graph.sync.runner.remove(it.id) }
             // Favourites and recents outlive their channels by design; tests start without them.
             // So do the household's channel edits, lists, locks and reminders (M3), positions and organisation rules (M4).
-            for (table in listOf("favourite_channel", "recent_channel", "channel_custom", "channel_list", "channel_list_member", "locked_channel", "reminder", "watch_progress", "organization_rule")) {
+            for (table in listOf("favourite_channel", "recent_channel", "channel_custom", "channel_list", "channel_list_member", "locked_channel", "reminder", "watch_progress", "organization_rule", "profile_allowed_group")) {
                 graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM $table")
             }
             // Metadata (M4b): the keys and switches, what was looked up, and the production endpoints.
@@ -45,9 +49,14 @@ class ClearStateRule : ExternalResource() {
                 graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM $table")
             }
             graph.metadata.settings.reload()
+            // Profiles (M6): the household went with the preferences; the PIN is a secret; the store follows both.
+            graph.data.secrets.write(ProfileStore.PIN_KEY, null)
+            graph.data.profiles.seed(graph.data.preferences.household.first())
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())
         }
         graph.guideFocusChannel = null
+        graph.startAnswered = false
+        graph.keptRows.clear()
         // The walls' browse sessions live for the process (VOD-FR-56); each test starts at a first visit.
         graph.browseSessions.values.forEach { it.clear() }
         // Continue watching lives for the process (spec 02 HOME-FR-24): read again for this test's rows.

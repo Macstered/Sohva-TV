@@ -102,8 +102,14 @@ private fun GuideContent(model: GuideModel, navigation: GuideNavigation) {
                     )
                 }
                 if (current == null || current.size == 0) {
+                    val missing by model.groupsMissing.collectAsStateWithLifecycle()
                     Box(Modifier.fillMaxWidth().weight(1f).padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(emptyText(current), style = Sohva.typography.body, color = Sohva.palette.textMuted)
+                        Text(
+                            if (missing && current != null) stringResource(R.string.profile_groups_missing) else emptyText(current),
+                            Modifier.testTag("guide-list-empty"),
+                            style = Sohva.typography.body,
+                            color = Sohva.palette.textMuted,
+                        )
                     }
                 } else {
                     GuideGrid(model, current, actions, Modifier.fillMaxWidth().weight(1f))

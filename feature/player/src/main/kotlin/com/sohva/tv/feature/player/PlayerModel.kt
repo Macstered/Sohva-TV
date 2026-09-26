@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.player
 
+import com.sohva.tv.core.model.profile.ChannelAdmission
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
@@ -49,6 +50,8 @@ class PlayerModel(
     private val recordFirst: Boolean = true,
     /** A film or an episode instead of a channel (spec 30 §3.1): transport controls, no channels. */
     val vod: VodPlay? = null,
+    /** The first channel already passed the group check and lock (spec 01 SHELL-FR-20, -23). */
+    private val firstAdmitted: Boolean = false,
 ) : ViewModel() {
     /** Live TV, as opposed to catch-up and VOD ("timeshift" in spec 31). */
     val live: Boolean get() = archive == null && vod == null
@@ -153,7 +156,7 @@ class PlayerModel(
             try {
                 controller = env.client.connect(listener).also { it.addListener(listener) }
                 _connection.value = Connection.READY
-                if (vod != null) playVod(vod) else play(firstChannel, record = recordFirst)
+                if (vod != null) playVod(vod) else play(firstChannel, record = recordFirst, admitted = firstAdmitted)
             } catch (e: Exception) {
                 _connection.value = Connection.FAILED
             }
@@ -164,13 +167,30 @@ class PlayerModel(
 
     /**
      * Stops the old stream, clears its item (the service releases its lease) and opens [key]
-     * (PLAY-FR-22..23). Every zap records the channel as recent (PLAY-FR-57).
+     * (PLAY-FR-22..23). Every zap records the channel as recent (PLAY-FR-57). Unless [admitted],
+     * the profile's group check and the lock come first (spec 01 SHELL-FR-22): a refused channel
+     * leaves the current one playing; a locked one asks for the PIN over the player.
      */
-    fun play(key: String, record: Boolean = true) {
+    fun play(key: String, record: Boolean = true, admitted: Boolean = false) {
         val c = controller ?: return
-        val current = _playing.value?.channel?.key
-        if (current != null && current != key) previousKey = current
         viewModelScope.launch {
+            if (!admitted) {
+                when (env.admit(key)) {
+                    ChannelAdmission.PLAY -> Unit
+                    ChannelAdmission.REFUSED -> {
+                        navigation.refused()
+                        // Nothing playing yet (a start route's last channel): the guide instead.
+                        if (_playing.value == null) navigation.guide()
+                        return@launch
+                    }
+                    ChannelAdmission.LOCKED -> {
+                        navigation.unlock(key)
+                        return@launch
+                    }
+                }
+            }
+            val current = _playing.value?.channel?.key
+            if (current != null && current != key) previousKey = current
             val channel = reads.channel(key) ?: run {
                 // A channel gone before anything played (a stale "Last channel") falls back to the guide.
                 if (_playing.value == null) navigation.guide() else _banner.value = Banner(BannerReason.Unavailable, 0, 0, stopped = true)

@@ -1,5 +1,6 @@
 package com.sohva.tv.app.live
 
+import com.sohva.tv.core.model.org.OrgRoom
 import android.content.Intent
 import androidx.core.net.toUri
 import com.sohva.tv.app.AppGraph
@@ -36,6 +37,8 @@ class AppGuideEnvironment(private val graph: AppGraph, override val locale: Loca
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
 
     override val lastGuideSource: Flow<String?> = flow { emitAll(prefs.lastGuideSource) }.flowOn(io)
+    override suspend fun liveRestricted(): Boolean = graph.data.profiles.restriction(graph.data.profiles.activeId).restricts(OrgRoom.LIVE)
+
     override val lastChannel: Flow<String?> = flow { emitAll(prefs.lastChannel(graph.data.profiles.activeId)) }.flowOn(io)
     override val showChannelNumbers: Flow<Boolean> = flow { emitAll(prefs.showChannelNumbers) }.flowOn(io)
     override val timeZone: Flow<String?> = flow { emitAll(prefs.timeZone) }.flowOn(io)

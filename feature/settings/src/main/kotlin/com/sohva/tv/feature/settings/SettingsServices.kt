@@ -26,6 +26,9 @@ interface SettingsServices {
     /** Settings › Library (spec 41 §4.1, spec 40 VOD-FR-32). */
     val library: LibrarySettingsServices
 
+    /** Settings › General › Profiles and Parental controls (spec 04). */
+    val profiles: ProfileSettingsServices
+
     fun sources(): Flow<List<Source>>
 
     /** Why beta 23's sources could not be imported, when that happened (plan/04 §17 failure path). */

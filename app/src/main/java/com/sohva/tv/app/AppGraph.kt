@@ -19,6 +19,7 @@ import com.sohva.tv.feature.library.BrowseSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -108,6 +109,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
 
+    /** Who is watching was answered in this process: an activity recreation does not ask again (spec 04 PROF-FR-10). */
+    @Volatile
+    var startAnswered: Boolean = false
+
     /** The guide's rows kept between visits (spec 20 GUIDE-FR-120). */
     val keptRows: com.sohva.tv.app.live.KeptRows by lazy { com.sohva.tv.app.live.KeptRows({ liveReads }, clock, appScope) }
 
@@ -126,6 +131,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         if (!started.compareAndSet(false, true)) return
         // The Continue watching read comes first: Home's first card waits for it (spec 02 §9.1).
         continueFeed.start()
+        // A switch or an edited restriction starts Continue watching over for the profile (HOME-FR-27).
+        appScope.launch { data.profiles.changes.drop(1).collect { continueFeed.retry() } }
+        // The secret store wins over the mirrored "PIN exists" flag (spec 01 SHELL-FR-08).
+        appScope.launch { data.profiles.reconcilePin() }
         appScope.launch {
             // Beta 23's sources first, so an upgraded install syncs them at once (decision A1).
             val imported = data.beta23Import.run()

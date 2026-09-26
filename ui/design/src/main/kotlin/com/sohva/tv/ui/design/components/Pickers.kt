@@ -68,3 +68,45 @@ fun <T> SinglePickerDialog(
         LaunchedEffect(Unit) { focus.requestFocusWhenAttached() }
     }
 }
+
+/**
+ * The multi-choice picker (settings.md §5, spec 04 PROF-FR-22): the same dialog as
+ * [SinglePickerDialog]; OK toggles a choice and the dialog stays open, the chosen ones drawn
+ * selected. Focus starts on the first choice; Back closes it. [empty] is shown when there are no
+ * choices. The caller moves focus back to the row that opened it.
+ */
+@Composable
+fun <T> MultiPickerDialog(
+    title: String,
+    choices: List<PickerChoice<T>>,
+    chosen: Set<T>,
+    onToggle: (T) -> Unit,
+    onDismiss: () -> Unit,
+    empty: String,
+    tag: String = "picker",
+) {
+    val focus = remember { FocusRequester() }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            DialogCard(Modifier.width(560.dp).heightIn(max = 620.dp).testTag(tag), border = Sohva.palette.outline) {
+                DialogTitle(title)
+                if (choices.isEmpty()) {
+                    PickerRow(label = empty, onClick = onDismiss, modifier = Modifier.focusRequester(focus).testTag("$tag-empty"))
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        itemsIndexed(choices, key = { index, _ -> index }) { index, choice ->
+                            PickerRow(
+                                label = choice.label,
+                                onClick = { onToggle(choice.value) },
+                                modifier = (if (index == 0) Modifier.focusRequester(focus) else Modifier).testTag(choice.tag ?: "$tag-$index"),
+                                description = choice.description,
+                                state = SurfaceState(selected = choice.value in chosen),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        LaunchedEffect(Unit) { focus.requestFocusWhenAttached() }
+    }
+}

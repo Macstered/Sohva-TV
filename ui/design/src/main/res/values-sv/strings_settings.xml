@@ -199,4 +199,5 @@
     <string name="update_install">Installera</string>
     <string name="update_open_permission">Tillåt installationer</string>
     <string name="update_help">Hämtningar verifieras mot den publicerade kontrollsumman; spellistor och inställningar behålls.</string>
+    <string name="profile_groups_missing">Den här profilens grupper finns inte i de nuvarande källorna. Den som kan föräldra-PIN-koden kan välja nya i Inställningar.</string>
 </resources>
