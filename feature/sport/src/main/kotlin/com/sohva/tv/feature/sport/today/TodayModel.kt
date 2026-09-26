@@ -2,14 +2,20 @@ package com.sohva.tv.feature.sport.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sohva.tv.core.model.sport.Incident
+import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.SportFollows
+import com.sohva.tv.core.model.sport.SportsException
 import com.sohva.tv.core.model.sport.SportsProblem
 import com.sohva.tv.core.model.sport.TodayFilter
 import com.sohva.tv.core.model.sport.TodayLists
 import com.sohva.tv.core.model.sport.TodaySections
 import com.sohva.tv.core.model.sport.TodayTab
 import com.sohva.tv.feature.sport.feed.FeedState
+import com.sohva.tv.feature.sport.hub.MatchEventsState
+import com.sohva.tv.feature.sport.provider.CacheState
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +27,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /** What pairing found for a game (spec 60 §4.10): watchable (Available, confirmed included) and Possible streams. */
 data class WatchSummary(val available: Int, val possible: Int)
@@ -36,6 +43,12 @@ interface TodayEnvironment {
     /** Per game id; empty until pairing runs (spec 60 §4.10). */
     val watch: Flow<Map<String, WatchSummary>>
 
+    /** A game to open in the hub once the list holds it (SPORT-NAV-04): from Home, a reminder or a notification. */
+    val pendingGame: StateFlow<String?>
+
+    /** The stored reminder ids, for "Reminder set" (SPORT-FR-95). */
+    val reminders: Flow<Set<String>>
+
     /** Where lists are filtered and grouped (AppDispatchers.ui): never the main thread. */
     val format: CoroutineDispatcher
 
@@ -45,6 +58,14 @@ interface TodayEnvironment {
 
     /** Today is on screen with the app in front (SPORT-FR-27). */
     fun setVisible(visible: Boolean)
+
+    fun consumePendingGame()
+
+    /** Sets or removes the game's reminder (SPORT-FR-95). */
+    suspend fun toggleReminder(event: SportEvent)
+
+    /** A football game's match events through their 2-minute cache (SPORT-FR-91); throws [SportsException]. */
+    suspend fun incidents(eventId: String): Pair<List<Incident>, CacheState>
 
     fun openGuide()
 
@@ -69,16 +90,17 @@ data class TodayView(
 )
 
 /**
- * The Today screen's model (spec 60 §4.5). The selected tab survives the player and process
- * recreation (SPORT-FR-47); focus moves only on entry and after a tab is chosen, never because
- * data arrived (SPORT-FR-60 rebuild).
+ * The Today screen's model (spec 60 §4.5, §4.6). The selected tab and the open hub survive the
+ * player and process recreation (SPORT-FR-47, SPORT-NAV-02); focus moves only on entry and after
+ * a tab is chosen, never because data arrived (SPORT-FR-60 rebuild).
  */
 class TodayModel(private val env: TodayEnvironment) : ViewModel() {
     private val filterKey = MutableStateFlow<String?>(null)
 
-    /** The screen's saved tab after process recreation (it keeps it with `rememberSaveable`). */
-    fun restore(key: String?) {
+    /** The screen's saved tab and hub after process recreation (it keeps them with `rememberSaveable`). */
+    fun restore(key: String?, hub: String?) {
         if (filterKey.value == null && key != null) filterKey.value = key
+        if (_hub.value == null && hub != null) _hub.value = hub
     }
 
     val view: StateFlow<TodayView> = combine(env.feed, env.follows, env.favourites, env.watch, filterKey) { feed, follows, favourites, watch, key ->
@@ -112,10 +134,79 @@ class TodayModel(private val env: TodayEnvironment) : ViewModel() {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), env.now())
 
+    private val _hub = MutableStateFlow<String?>(null)
+
+    /** The game the hub shows, by id (SPORT-FR-70); null when the hub is closed. */
+    val hub: StateFlow<String?> = _hub.asStateFlow()
+
+    /** The hub's game looked up in the whole list, so its score updates while open (SPORT-FR-70). */
+    val hubEvent: StateFlow<SportEvent?> = combine(env.feed, _hub) { feed, id -> id?.let { feed.events.firstOrNull { e -> e.id == it } } }
+        .flowOn(env.format).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _matchEvents = MutableStateFlow(MatchEventsState())
+    val matchEvents: StateFlow<MatchEventsState> = _matchEvents.asStateFlow()
+    private var eventsJob: Job? = null
+
+    val reminders: StateFlow<Set<String>> = env.reminders.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_MS), emptySet())
+
+    init {
+        // SPORT-NAV-04: open the waiting game once the list holds it; a complete load without it
+        // drops the request, so yesterday's game never opens later by surprise (rebuild).
+        viewModelScope.launch {
+            combine(env.pendingGame, env.feed) { id, feed -> id to feed }.collect { (id, feed) ->
+                if (id == null) return@collect
+                when {
+                    feed.events.any { it.id == id } -> {
+                        env.consumePendingGame()
+                        _hub.value = id
+                    }
+                    feed.complete && !feed.loading -> env.consumePendingGame()
+                }
+            }
+        }
+    }
+
     /** OK on a tab selects it (focus alone does not); focus then goes to its first game. */
     fun select(filter: TodayFilter) {
         filterKey.value = filter.key
         _focusTurn.update { it + 1 }
+    }
+
+    fun openHub(event: SportEvent) {
+        _hub.value = event.id
+    }
+
+    /** The screen places focus on the list first, then calls this (AGENTS.md §5 rule 2). */
+    fun closeHub() {
+        _hub.value = null
+    }
+
+    /**
+     * Loads [event]'s match events when the hub shows it (SPORT-FR-71): unless loaded within their
+     * 2-minute freshness or loading; [force] (Refresh, Try again) asks again, the cache still answering
+     * inside the window (SPORT-FR-91). Never polled while the hub is open.
+     */
+    fun loadMatchEvents(event: SportEvent, force: Boolean = false) {
+        if (!event.detailsAvailable) return
+        val s = _matchEvents.value
+        val same = s.eventId == event.id
+        if (same && s.loading) return
+        if (same && !force && s.incidents != null && env.now() - s.loadedAt < EVENTS_FRESH_MS) return
+        _matchEvents.value = (if (same) s else MatchEventsState(eventId = event.id)).copy(loading = true)
+        eventsJob?.cancel()
+        eventsJob = viewModelScope.launch {
+            _matchEvents.value = try {
+                val (incidents, state) = env.incidents(event.id)
+                MatchEventsState(event.id, incidents, loading = false, failed = false, cached = state == CacheState.STALE, loadedAt = env.now())
+            } catch (e: SportsException) {
+                // An earlier list stays with the cached-data line (SPORT-FR-91).
+                _matchEvents.value.copy(loading = false, failed = true)
+            }
+        }
+    }
+
+    fun toggleReminder(event: SportEvent) {
+        viewModelScope.launch { env.toggleReminder(event) }
     }
 
     fun refresh() = env.refresh()
@@ -130,5 +221,7 @@ class TodayModel(private val env: TodayEnvironment) : ViewModel() {
 
     private companion object {
         const val MINUTE = 60_000L
+        const val EVENTS_FRESH_MS = 2 * 60_000L
+        const val STOP_MS = 5_000L
     }
 }

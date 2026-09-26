@@ -71,7 +71,7 @@ internal fun MatchCard(event: SportEvent, kickOff: String, watch: WatchSummary?,
                     style = Sohva.typography.caption.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp), color = colors.secondaryContent,
                 )
                 Spacer(Modifier.width(10.dp))
-                StatusBadge(event, colors)
+                StatusBadge(event, colors.secondaryContent.takeIf { colors.focused })
             }
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -110,7 +110,7 @@ private fun Centre(event: SportEvent, kickOff: String, colors: TvSurfaceColors, 
 
 /** The badge (SPORT-FR-52): live with its minute and a finite pulse, else the status in words. */
 @Composable
-private fun StatusBadge(event: SportEvent, colors: TvSurfaceColors) {
+internal fun StatusBadge(event: SportEvent, focusedColor: Color? = null) {
     if (event.status == EventStatus.LIVE) {
         LiveBadge(event.minute.orEmpty())
         return
@@ -127,7 +127,7 @@ private fun StatusBadge(event: SportEvent, colors: TvSurfaceColors) {
     Text(
         stringResource(text).uppercase(), maxLines = 1,
         style = Sohva.typography.caption.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp),
-        color = if (colors.focused) colors.secondaryContent else color,
+        color = focusedColor ?: color,
     )
 }
 

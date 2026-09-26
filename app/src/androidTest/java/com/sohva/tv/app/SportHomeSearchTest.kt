@@ -28,7 +28,7 @@ import org.junit.runner.RunWith
 
 /**
  * Spec 60 SPORT-50…52 on the device: Home's Today's sport row counts every game and its card sets
- * the hero and opens Sohva Sport with that game waiting; Search finds a game by team.
+ * the hero and opens Sohva Sport with the hub on that game; Search finds a game by team.
  */
 @RunWith(AndroidJUnit4::class)
 class SportHomeSearchTest {
@@ -87,7 +87,11 @@ class SportHomeSearchTest {
         compose.waitUntil(5_000) { text("home-hero-title") == "Northbridge – Harbor" }
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(10_000) { exists("screen-today") }
-        assertEquals("api-sports:football:1", graph.sport.pendingGame.value)
+        // The hub opens on that game and the request is consumed (SPORT-NAV-04).
+        compose.waitUntil(10_000) { exists("match-hub") }
+        compose.waitUntil(5_000) { focused("hub-close") }
+        assertTrue(compose.onAllNodesWithTextExists("Northbridge"))
+        assertEquals(null, graph.sport.pendingGame.value)
     }
 
     @Test

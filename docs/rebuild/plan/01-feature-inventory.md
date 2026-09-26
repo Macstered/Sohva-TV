@@ -869,18 +869,18 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 
 **Match hub**
 
-- [ ] **SPORT-28** OK on a card opens the match hub over the list; Back or Close closes it.
-- [ ] **SPORT-29** Hub header: competition logo and name, status, "start · N watchable streams", both teams with crests, large score and score detail.
-- [ ] **SPORT-30** Remind me / Reminder set for a scheduled game that has not started.
-- [ ] **SPORT-31** Match events panel (football): timeline band (home above, away below, half-time tick), incident list, Refresh.
-- [ ] **SPORT-32** Incident list scrolls with Up/Down and releases focus at either end.
-- [ ] **SPORT-33** Match events states: not available for this sport, loading, none yet, error with Try again, cached data warning.
+- [x] **SPORT-28** OK on a card opens the match hub over the list; Back or Close closes it.
+- [x] **SPORT-29** Hub header: competition logo and name, status, "start · N watchable streams", both teams with crests, large score and score detail.
+- [x] **SPORT-30** Remind me / Reminder set for a scheduled game that has not started.
+- [x] **SPORT-31** Match events panel (football): timeline band (home above, away below, half-time tick), incident list, Refresh.
+- [x] **SPORT-32** Incident list scrolls with Up/Down and releases focus at either end.
+- [x] **SPORT-33** Match events states: not available for this sport, loading, none yet, error with Try again, cached data warning.
 - [ ] **SPORT-34** Streams panel: rows with confidence, source (TV GUIDE / M3U NAME), channel name, programme or detail, stream tag chips, start-offset explanation.
 - [ ] **SPORT-35** Watch plays the channel; Back from the player returns to the open hub.
 - [ ] **SPORT-36** Confirm a Possible stream, Reject any undecided stream, Restore a decided one; "Confirmed by you".
 - [ ] **SPORT-37** Decisions survive refreshes, re-imports and restarts.
 - [ ] **SPORT-38** Stream order stays fixed while the hub is open.
-- [ ] **SPORT-39** Hub opens from Home, a reminder or a notification directly on the named game.
+- [x] **SPORT-39** Hub opens from Home, a reminder or a notification directly on the named game.
 
 **Stream pairing**
 
@@ -895,7 +895,7 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 
 **Favourites and reminders**
 
-- [ ] **SPORT-48** Favourites filter and star on favourite cards (per profile). Beta 23 has no control to add one (§10).
+- [x] **SPORT-48** Favourites filter and star on favourite cards (per profile). Beta 23 has no control to add one (§10).
 - [ ] **SPORT-49** A match reminder fires one minute before kick-off and opens its stream, or the hub when no stream was known.
 
 **Elsewhere in the app**

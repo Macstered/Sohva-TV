@@ -3,8 +3,14 @@ package com.sohva.tv.app.sport
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRoute
 import com.sohva.tv.app.profile.openManaged
+import com.sohva.tv.core.model.reminder.Reminder
+import com.sohva.tv.core.model.reminder.ReminderIds
+import com.sohva.tv.core.model.reminder.ReminderKind
+import com.sohva.tv.core.model.sport.Incident
+import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.SportFollows
 import com.sohva.tv.feature.sport.feed.FeedState
+import com.sohva.tv.feature.sport.provider.CacheState
 import com.sohva.tv.feature.sport.today.TodayEnvironment
 import com.sohva.tv.feature.sport.today.WatchSummary
 import com.sohva.tv.ui.design.navigation.BackStack
@@ -35,7 +41,27 @@ class AppTodayEnvironment(private val graph: AppGraph, private val stack: BackSt
     // Pairing arrives with the streams (M8 part 4).
     override val watch: Flow<Map<String, WatchSummary>> get() = flowOf(emptyMap())
 
+    override val pendingGame: StateFlow<String?> get() = graph.sport.pendingGame
+
+    override val reminders: Flow<Set<String>> get() = graph.reminders.ids
+
     override val format: CoroutineDispatcher get() = graph.dispatchers.ui
+
+    override fun consumePendingGame() {
+        graph.sport.pendingGame.value = null
+    }
+
+    /**
+     * SPORT-FR-95: kind `event`, "home – away", the competition, the start; the channel is the first
+     * Available stream once pairing runs (M8 part 4), else none and the reminder opens the hub.
+     */
+    override suspend fun toggleReminder(event: SportEvent) {
+        graph.reminders.toggle(
+            Reminder(ReminderIds.event(event.id), ReminderKind.EVENT, event.id, null, event.title, event.competition, event.startMillis, graph.clock.wallMillis()),
+        )
+    }
+
+    override suspend fun incidents(eventId: String): Pair<List<Incident>, CacheState> = graph.sport.repository.incidents(eventId)
 
     override fun now(): Long = graph.clock.wallMillis()
 

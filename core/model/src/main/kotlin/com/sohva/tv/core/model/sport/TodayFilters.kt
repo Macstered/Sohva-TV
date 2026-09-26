@@ -37,6 +37,8 @@ data class TodayTab(val filter: TodayFilter, val count: Int)
 data class TodaySections(val live: List<SportEvent>, val later: List<SportEvent>, val finished: List<SportEvent>) {
     val isEmpty: Boolean get() = live.isEmpty() && later.isEmpty() && finished.isEmpty()
 
+    fun contains(id: String): Boolean = live.any { it.id == id } || later.any { it.id == id } || finished.any { it.id == id }
+
     /** SPORT-FR-60: the first live game, else the first upcoming, else the first finished. */
     val firstFocus: SportEvent? get() = live.firstOrNull() ?: later.firstOrNull() ?: finished.firstOrNull()
 }

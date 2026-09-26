@@ -1,6 +1,7 @@
 package com.sohva.tv.feature.sport.today
 
 import android.text.format.DateFormat
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -46,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.TodayFilter
 import com.sohva.tv.core.model.time.TimeLabels
+import com.sohva.tv.feature.sport.hub.MatchHubOverlay
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.SohvaSportBrand
 import com.sohva.tv.ui.design.components.TvActionButton
@@ -63,15 +66,20 @@ import java.util.Locale
 /**
  * Sohva Sport's Today (spec 60 §4.5, design D§1–7): the header, the tabs, and Live now, Later today
  * and Finished. Polling runs only while this screen is resumed (SPORT-FR-27). Focus moves on entry
- * and after a tab is chosen; data arriving never moves it (SPORT-FR-60 rebuild).
+ * and after a tab is chosen; data arriving never moves it (SPORT-FR-60 rebuild). OK on a card opens
+ * the match hub over the list (SPORT-FR-70).
  */
 @Composable
-fun TodayScreen(model: TodayModel, onOpen: (SportEvent) -> Unit = {}) {
+fun TodayScreen(model: TodayModel) {
     val view by model.view.collectAsStateWithLifecycle()
-    // The tab survives the player and process recreation (SPORT-FR-47).
+    val hub by model.hub.collectAsStateWithLifecycle()
+    val hubEvent by model.hubEvent.collectAsStateWithLifecycle()
+    // The tab and the open hub survive the player and process recreation (SPORT-FR-47, SPORT-NAV-02).
     var savedTab by rememberSaveable { mutableStateOf<String?>(null) }
-    LaunchedEffect(model) { model.restore(savedTab) }
+    var savedHub by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(model) { model.restore(savedTab, savedHub) }
     LaunchedEffect(view.filter) { savedTab = view.filter.key }
+    LaunchedEffect(hub) { savedHub = hub }
     LifecycleResumeEffect(model) {
         model.setVisible(true)
         onPauseOrDispose { model.setVisible(false) }
@@ -82,17 +90,38 @@ fun TodayScreen(model: TodayModel, onOpen: (SportEvent) -> Unit = {}) {
     val tabs = remember { HashMap<String, FocusRequester>() }
     fun card(id: String) = cards.getOrPut(id) { FocusRequester() }
     fun tab(key: String) = tabs.getOrPut(key) { FocusRequester() }
-    Column(Modifier.fillMaxSize().background(Sohva.palette.background).padding(horizontal = 40.dp, vertical = 24.dp).testTag("screen-today")) {
-        Header(model, view.zoneId)
-        Spacer(Modifier.height(20.dp))
-        Tabs(view, model::select, ::tab) { awaitingGame = false }
-        view.notice?.let {
-            Text(noticeText(it), Modifier.padding(top = 8.dp).testTag("today-notice"), style = Sohva.typography.caption, color = Sohva.palette.accent)
+
+    // SPORT-NAV-05 rebuild: focus goes back to the game's card (the one that opened the hub), else the
+    // first game, else the tab, and is placed before the hub hides (AGENTS.md §5 rule 2).
+    fun closeHub() {
+        val id = hub
+        val target = listOfNotNull(id?.takeIf { view.sections.contains(it) }, view.sections.firstFocus?.id).map(::card) + tab(view.filter.key)
+        target.firstOrNull { runCatching { it.requestFocus() }.getOrDefault(false) }
+        model.closeHub()
+    }
+    BackHandler(enabled = hub != null) { closeHub() }
+    val style = rememberTimeStyle()
+    val labels = remember(view.zoneId, style) { TimeLabels(TimeLabels.zoneOf(view.zoneId), style) }
+    val covering = remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
+        // Behind the fully shown hub only the background is drawn: the 94 % scrim hides the rest (§9 "Drawing").
+        Column(Modifier.fillMaxSize().background(Sohva.palette.background).drawWithContent { if (!covering.value) drawContent() }.padding(horizontal = 40.dp, vertical = 24.dp).testTag("screen-today")) {
+            Header(model, view.zoneId)
+            Spacer(Modifier.height(20.dp))
+            Tabs(view, model::select, ::tab) { awaitingGame = false }
+            view.notice?.let {
+                Text(noticeText(it), Modifier.padding(top = 8.dp).testTag("today-notice"), style = Sohva.typography.caption, color = Sohva.palette.accent)
+            }
+            Spacer(Modifier.height(22.dp))
+            Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
+                Body(view, model, labels, ::card)
+            }
         }
-        Spacer(Modifier.height(22.dp))
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
-            Body(view, model, onOpen, ::card)
-        }
+        MatchHubOverlay(model, labels, { view.watch[it]?.available ?: 0 }, covering, ::closeHub)
+    }
+    // A refresh that drops the hub's game closes the hub (SPORT-FR-70).
+    LaunchedEffect(hub, hubEvent == null, view.complete, view.loading) {
+        if (hub != null && hubEvent == null && view.complete && !view.loading) closeHub()
     }
     val turn by model.focusTurn.collectAsStateWithLifecycle()
     val ready = view.complete || view.anyEvents
@@ -100,6 +129,11 @@ fun TodayScreen(model: TodayModel, onOpen: (SportEvent) -> Unit = {}) {
     LaunchedEffect(turn) { awaitingGame = true }
     LaunchedEffect(turn, ready, first) {
         if (!ready || !awaitingGame) return@LaunchedEffect
+        // A game opened from Home or a reminder: the hub takes focus instead (SPORT-FR-79).
+        if (hub != null) {
+            awaitingGame = false
+            return@LaunchedEffect
+        }
         // The first live game, else upcoming, else finished (SPORT-FR-60). With none yet, the selected
         // tab holds focus and the first game takes it when it arrives, unless the viewer has moved on:
         // data never moves focus away from something the viewer chose (rebuild).
@@ -150,18 +184,16 @@ private fun clock(now: Long, zoneId: String): String {
 }
 
 @Composable
-private fun Body(view: TodayView, model: TodayModel, onOpen: (SportEvent) -> Unit, card: (String) -> FocusRequester) {
+private fun Body(view: TodayView, model: TodayModel, labels: TimeLabels, card: (String) -> FocusRequester) {
     val sections = view.sections
     when {
         !view.anyEvents && view.failure != null -> ErrorCard(problemText(view.failure), model::refresh, model::openSettings, view.failure == com.sohva.tv.core.model.sport.SportsProblem.KEY_MISSING)
         !view.anyEvents && !view.complete -> MessageCard(stringResource(R.string.today_loading), stringResource(R.string.today_connecting), "today-loading")
         sections.isEmpty -> MessageCard(emptyText(view.filter), null, "today-empty")
         else -> {
-            val style = rememberTimeStyle()
-            val labels = remember(view.zoneId, style) { TimeLabels(TimeLabels.zoneOf(view.zoneId), style) }
-            Section(stringResource(R.string.today_section_live), sections.live, view, labels, onOpen, card, "today-live")
-            Section(stringResource(R.string.today_section_later), sections.later, view, labels, onOpen, card, "today-later")
-            Section(stringResource(R.string.today_section_finished), sections.finished, view, labels, onOpen, card, "today-finished")
+            Section(stringResource(R.string.today_section_live), sections.live, view, labels, model::openHub, card, "today-live")
+            Section(stringResource(R.string.today_section_later), sections.later, view, labels, model::openHub, card, "today-later")
+            Section(stringResource(R.string.today_section_finished), sections.finished, view, labels, model::openHub, card, "today-finished")
         }
     }
 }
