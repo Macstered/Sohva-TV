@@ -32,7 +32,7 @@ object Motion {
     const val REDUCED_STEP_MS: Int = 150
 
     /**
-     * Start angle of the buffering arc: 0 → 360° every 900 ms, the only infinite animation. In
+     * Start angle of the buffering arc: 0 → 360° every 900 ms. In
      * reduced motion it moves in 150 ms steps, so the value (and the drawing) changes six times a
      * turn instead of every frame.
      */
@@ -45,6 +45,24 @@ object Motion {
             targetValue = 360f,
             animationSpec = infiniteRepeatable(tween(BUFFERING_PERIOD_MS, easing = easing), RepeatMode.Restart),
             label = "buffering-angle",
+        )
+    }
+
+    const val PULSE_PERIOD_MS: Int = 1_400
+
+    /**
+     * The addon loading screen's logo or title (spec 50 §5.5): alpha 0.78 ↔ 1.0 over 1,400 ms,
+     * FastOutSlowIn, reversing. Read only in a graphics layer, so it redraws one layer and never
+     * recomposes. In reduced motion it stays at 1.0.
+     */
+    @Composable
+    fun loadingPulse(): State<Float> {
+        if (Sohva.reducedMotion) return androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+        return rememberInfiniteTransition(label = "loading-pulse").animateFloat(
+            initialValue = 0.78f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(PULSE_PERIOD_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "loading-pulse-alpha",
         )
     }
 }

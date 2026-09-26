@@ -41,6 +41,14 @@ sealed interface PhoneMode {
     class Logo(val channelKey: String, val channelName: String) : PhoneMode {
         override fun toString(): String = "Logo"
     }
+
+    /**
+     * Discover's addon list (spec 50 §4.7.1): a plain-text body that [accepts] must pass; the first
+     * valid one ends the session. 10 minutes at most.
+     */
+    class Addons(val accepts: (ByteArray) -> Boolean) : PhoneMode {
+        override fun toString(): String = "Addons"
+    }
 }
 
 /** The sentences the page answers with, in the TV's interface language (PHONE-FR-32). */
@@ -135,7 +143,7 @@ class PhoneServer(
         private val saved = HashSet<PhoneSubmission>()
 
         fun serve() {
-            val end = System.nanoTime() + lifetimeMillis * 1_000_000
+            val end = System.nanoTime() + (if (mode is PhoneMode.Addons) minOf(lifetimeMillis, ADDON_LIFETIME_MILLIS) else lifetimeMillis) * 1_000_000
             try {
                 while (!server.isClosed && System.nanoTime() < end) {
                     val client = try {
@@ -156,7 +164,12 @@ class PhoneServer(
             client.soTimeout = READ_TIMEOUT_MS
             val out = client.getOutputStream()
             val request = try {
-                PhoneRequest.read(client.getInputStream(), if (mode is PhoneMode.Logo) MAX_LOGO_BODY else MAX_BODY, System.nanoTime() + REQUEST_BUDGET_NANOS)
+                val max = when (mode) {
+                    is PhoneMode.Logo -> MAX_LOGO_BODY
+                    is PhoneMode.Addons -> MAX_ADDON_BODY
+                    PhoneMode.Sources -> MAX_BODY
+                }
+                PhoneRequest.read(client.getInputStream(), max, System.nanoTime() + REQUEST_BUDGET_NANOS)
             } catch (_: IOException) {
                 return respond(out, 400, answers.badRequest())
             }
@@ -170,6 +183,7 @@ class PhoneServer(
         }
 
         private fun submit(out: OutputStream, request: PhoneRequest) {
+            if (mode is PhoneMode.Addons) return addons(out, request, mode)
             val authorization = request.headers["authorization"].orEmpty().toByteArray(Charsets.US_ASCII)
             val originOk = request.headers["origin"]?.let { it == origin } ?: true
             if (!originOk || !MessageDigest.isEqual(authorization, bearer)) return respond(out, 403, answers.forbidden())
@@ -180,6 +194,7 @@ class PhoneServer(
             val fits = when (mode) {
                 PhoneMode.Sources -> submission !is PhoneSubmission.Logo
                 is PhoneMode.Logo -> submission is PhoneSubmission.Logo && submission.channelKey == mode.channelKey
+                is PhoneMode.Addons -> false
             }
             if (!fits) return respond(out, 403, answers.forbidden())
             // Sending the same thing twice in a session saves it once (PHONE-FR-31 rebuild rule).
@@ -194,6 +209,7 @@ class PhoneServer(
                             is PhoneSubmission.NewSource -> s.copy(received = s.received + 1, lastSource = submission.config.source.name, lastWasKeys = false)
                             is PhoneSubmission.Keys -> s.copy(received = s.received + 1, lastWasKeys = true)
                             is PhoneSubmission.Logo -> s.copy(received = s.received + 1, logoSaved = true)
+                            is PhoneSubmission.AddonList -> s
                         }
                     }
                 }
@@ -202,13 +218,29 @@ class PhoneServer(
                 is PhoneSubmission.NewSource -> answers.saved(submission.config.source.name)
                 is PhoneSubmission.Keys -> answers.keysSaved()
                 is PhoneSubmission.Logo -> answers.logoSaved((mode as PhoneMode.Logo).channelName)
+                is PhoneSubmission.AddonList -> answers.failed()
             }
             respond(out, 200, answer)
+        }
+
+        /**
+         * ADDON-FR-45: `Origin` required and exact, the bearer token, `text/plain`, 1–262,144 bytes
+         * that pass the list rules. The first valid list ends the session; invalid ones do not.
+         */
+        private fun addons(out: OutputStream, request: PhoneRequest, mode: PhoneMode.Addons) {
+            val authorization = request.headers["authorization"].orEmpty().toByteArray(Charsets.US_ASCII)
+            if (request.headers["origin"] != origin || !MessageDigest.isEqual(authorization, bearer)) return respond(out, 403, answers.forbidden())
+            val type = request.headers["content-type"].orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
+            if (type != TEXT || request.raw.isEmpty() || !mode.accepts(request.raw)) return respond(out, 400, PhonePage.ADDONS_INVALID)
+            if (!receiver.receive(PhoneSubmission.AddonList(request.raw))) return respond(out, 500, answers.failed())
+            respond(out, 200, PhonePage.ADDONS_SENT)
+            synchronized(this@PhoneServer) { if (socket === server) stop() }
         }
 
         private fun page(): String = when (val m = mode) {
             PhoneMode.Sources -> PhonePage.sources(answers.page())
             is PhoneMode.Logo -> PhonePage.logo(answers.logoPage(m.channelName), m.channelKey)
+            is PhoneMode.Addons -> PhonePage.addons()
         }
 
         private fun respond(out: OutputStream, code: Int, body: String, html: Boolean = false) {
@@ -235,6 +267,11 @@ class PhoneServer(
 
         /** A picture posted as a PNG data URL, already shrunk by the phone (CHAN-FR-42). */
         const val MAX_LOGO_BODY: Int = 1_500_000
+
+        /** Spec 50 ADDON-FR-34, -45: a list of at most 256 KiB, and a session of at most 10 minutes. */
+        const val MAX_ADDON_BODY: Int = 262_144
+        const val ADDON_LIFETIME_MILLIS: Long = 10 * 60 * 1_000L
+        private const val TEXT = "text/plain"
         private const val BACKLOG = 4
         private const val ACCEPT_TIMEOUT_MS = 1_000
         private const val READ_TIMEOUT_MS = 5_000

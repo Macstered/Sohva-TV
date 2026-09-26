@@ -52,9 +52,11 @@ class PlayerModel(
     val vod: VodPlay? = null,
     /** The first channel already passed the group check and lock (spec 01 SHELL-FR-20, -23). */
     private val firstAdmitted: Boolean = false,
+    /** A Discover addon stream (spec 50 §4.12): the loading screen first, transport controls, no channels. */
+    addonPlay: AddonPlay? = null,
 ) : ViewModel() {
-    /** Live TV, as opposed to catch-up and VOD ("timeshift" in spec 31). */
-    val live: Boolean get() = archive == null && vod == null
+    /** Live TV, as opposed to catch-up, VOD and addon streams ("timeshift" in spec 31). */
+    val live: Boolean get() = archive == null && vod == null && addon == null
 
     private val _title = MutableStateFlow<String?>(null)
 
@@ -122,6 +124,7 @@ class PlayerModel(
     val dial = PlayerDial(this, reads, viewModelScope)
     val keys = PlayerKeys(this)
     val transport = PlayerTransport(this, viewModelScope)
+    val addon: AddonSession? = addonPlay?.let { play -> env.addon?.let { AddonSession(this, it, play, viewModelScope, env.format) } }
 
     /** The action row asks for focus when Up/Down step into the box (PLAY-FR-45); serial = a new request. */
     private val _boxFocus = MutableStateFlow(0)
@@ -156,7 +159,12 @@ class PlayerModel(
             try {
                 controller = env.client.connect(listener).also { it.addListener(listener) }
                 _connection.value = Connection.READY
-                if (vod != null) playVod(vod) else play(firstChannel, record = recordFirst, admitted = firstAdmitted)
+                val session = addon
+                when {
+                    session != null -> startAddon(session)
+                    vod != null -> playVod(vod)
+                    else -> play(firstChannel, record = recordFirst, admitted = firstAdmitted)
+                }
             } catch (e: Exception) {
                 _connection.value = Connection.FAILED
             }
@@ -227,8 +235,16 @@ class PlayerModel(
         reveal()
     }
 
+    /** FR-89: the controls hide even when focused, but stay while paused, buffering or stopped. */
+    private fun startAddon(session: AddonSession) {
+        val c = controller ?: return
+        transport.autoHideWhileFocused = true
+        transport.hold = { !c.playWhenReady || _buffering.value || session.stop.value != null }
+        session.start(c)
+    }
+
     /** The channel or the film playing: what Back and Leave report to the app. */
-    fun currentKey(): String? = _playing.value?.channel?.key ?: vod?.contentKey
+    fun currentKey(): String? = _playing.value?.channel?.key ?: vod?.contentKey ?: addon?.key
 
     /** A catch-up item carries the programme's times for the service (spec 22 CATCH-FR-40). */
     private fun itemFor(key: String): MediaItem {
@@ -335,14 +351,34 @@ class PlayerModel(
     }
 
     fun openPicker(which: Picker) {
+        // The addon subtitle picker pauses (spec 50 FR-97); closing it plays again if it paused a running stream.
+        if (addon != null && which == Picker.SUBTITLES && _picker.value == null) {
+            val c = controller
+            resumeAfterPicker = addon.stage.value == null && c?.playWhenReady == true
+            c?.pause()
+        }
         _quick.value = false
         _picker.value = which
     }
 
     fun closePicker() {
         _picker.value = null
+        if (resumeAfterPicker || addon?.pickerClosed() == true) controller?.play()
+        resumeAfterPicker = false
         afterOverlay()
     }
+
+    /** Whether closing the picker plays again: it paused a running addon stream (spec 50 FR-97). */
+    private var resumeAfterPicker = false
+
+    /** "Show all languages" in the addon subtitle picker (spec 50 FR-97): global, persisted. */
+    fun setShowAllLanguages(on: Boolean) {
+        val addonEnv = env.addon ?: return
+        viewModelScope.launch { addonEnv.setShowAllLanguages(on) }
+    }
+
+    /** The addon player's Subtitles (FR-87, -97): pauses, then opens the picker; start-up continues underneath. */
+    fun pauseAndPick(which: Picker) = openPicker(which)
 
     fun openQuickActions() {
         if (_picker.value != null) return
@@ -427,6 +463,12 @@ class PlayerModel(
 
     private fun onError(error: PlaybackException) {
         val c = controller ?: return
+        // Addon streams never reconnect on their own: Retry with fresh source (spec 50 FR-91).
+        addon?.let {
+            env.logFailure("addon: ${PlaybackErrors.of(error).detail}")
+            it.onError()
+            return
+        }
         if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) {
             // Not an attempt: back to the live edge (PLAY-FR-93 table).
             c.seekToDefaultPosition()
@@ -484,10 +526,13 @@ class PlayerModel(
     // ---- Lifecycle (PLAY-FR-20) ------------------------------------------------------------------
 
     fun onStop() {
+        addon?.let { return it.onBackground() }
         controller?.stop()
     }
 
     fun onStart() {
+        // Nothing restarts unattended after a background stop (spec 50 FR-91).
+        if (addon != null) return
         val c = controller ?: return
         if (c.mediaItemCount > 0) {
             c.prepare()
@@ -496,6 +541,7 @@ class PlayerModel(
     }
 
     override fun onCleared() {
+        addon?.release()
         controller?.let {
             it.removeListener(listener)
             it.stop()
@@ -512,6 +558,7 @@ class PlayerModel(
                 attempt = 0
                 _banner.value = null
             }
+            addon?.onState(playbackState)
             val request = vod
             if (playbackState == Player.STATE_ENDED && request != null && !finished) {
                 finished = true
@@ -525,12 +572,22 @@ class PlayerModel(
 
         override fun onPlayerError(error: PlaybackException) = onError(error)
 
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            addon?.onPlaying(isPlaying)
+        }
+
+        override fun onRenderedFirstFrame() {
+            addon?.onFirstFrame()
+        }
+
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             _video.value = videoSize
         }
 
         override fun onTracksChanged(tracks: MediaTracks) {
             _tracks.value = tracksOf(tracks)
+            // An addon playback's text follows its subtitle pick (spec 50 §4.13).
+            addon?.subtitles?.select()
             applyLanguages(_tracks.value)
             _frameRate.value = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
                 ?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).frameRate } }
@@ -539,6 +596,7 @@ class PlayerModel(
 
         /** The engine's own refusals before playback (PLAY-FR-95). */
         override fun onError(controller: MediaController, sessionError: SessionError) {
+            addon?.let { return it.onError() }
             val code = sessionError.extras.getInt(PlaybackService.EXTRA_CODE)
             val reason = when (code) {
                 PlaybackErrors.CONNECTION_LIMIT -> BannerReason.ConnectionLimit(
@@ -563,7 +621,7 @@ class PlayerModel(
             for (i in 0 until group.length) {
                 if (!group.isTrackSupported(i)) continue
                 val f = group.getTrackFormat(i)
-                target += TrackItem(g, i, f.label, f.language, if (f.channelCount > 0) f.channelCount else 0, group.isTrackSelected(i))
+                target += TrackItem(g, i, f.label, f.language, if (f.channelCount > 0) f.channelCount else 0, group.isTrackSelected(i), f.id?.endsWith(com.sohva.tv.core.player.SideSubtitles.TRACK_ID) == true)
             }
         }
         return Tracks(audio, text)

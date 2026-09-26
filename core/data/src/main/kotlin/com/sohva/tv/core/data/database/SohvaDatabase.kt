@@ -181,4 +181,8 @@ interface AppMetaDao {
 
     @Upsert
     suspend fun put(entry: AppMetaEntity)
+
+    /** For tests that run a one-time step again. */
+    @Query("DELETE FROM app_meta WHERE key = :key")
+    suspend fun delete(key: String)
 }

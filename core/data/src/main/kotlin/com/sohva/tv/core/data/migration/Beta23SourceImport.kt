@@ -121,8 +121,7 @@ class Beta23SourceImport(
         private const val LEGACY_NAME = "IPTV"
 
         /** Beta 23's envelope, opened without creating a key or writing a wrapped key. */
-        fun readOnlyCipher(context: Context): EnvelopeCipher {
-            val spec = EnvelopeSpec.BETA23_MAIN
+        fun readOnlyCipher(context: Context, spec: EnvelopeSpec = EnvelopeSpec.BETA23_MAIN): EnvelopeCipher {
             val wrapped = PrefsWrappedKeyStore(context, spec)
             return EnvelopeCipher(
                 spec = spec,

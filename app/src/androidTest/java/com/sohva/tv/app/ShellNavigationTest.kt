@@ -44,7 +44,7 @@ class ShellNavigationTest {
         Triple(RailItem.SERIES, "screen-series", "library-row-history"),
         // Search opens on its field (SEARCH-FR-50).
         Triple(RailItem.SEARCH, "screen-search", "unified-search-field"),
-        Triple(RailItem.DISCOVER, "screen-discover", "placeholder-back"),
+        Triple(RailItem.DISCOVER, "screen-discover", "discover-continue-empty"),
         // Settings opens on Playlists; with no source its first control is "+ Add M3U source" (SET-FR-02).
         Triple(RailItem.SETTINGS, "screen-settings", "source-add-m3u"),
     )

@@ -54,6 +54,13 @@ class PlayerTransport internal constructor(private val model: PlayerModel, priva
 
     val step: SkipStep get() = model.settings.skipStep
 
+    /**
+     * The addon player's rule (spec 50 FR-89): the controls hide after 5 s idle even when focused,
+     * but stay while [hold] says so (paused, buffering, failed, stopped).
+     */
+    var autoHideWhileFocused: Boolean = false
+    var hold: () -> Boolean = { false }
+
     fun useStep(step: SkipStep) {
         ladder = SkipLadder(step)
     }
@@ -110,7 +117,7 @@ class PlayerTransport internal constructor(private val model: PlayerModel, priva
         hideTimer?.cancel()
         hideTimer = scope.launch {
             delay(HIDE_MS)
-            if (!focused && model.picker.value == null) hide()
+            if ((!focused || autoHideWhileFocused) && model.picker.value == null && !hold()) hide()
         }
     }
 

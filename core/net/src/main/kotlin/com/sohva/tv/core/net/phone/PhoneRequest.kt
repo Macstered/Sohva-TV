@@ -13,6 +13,8 @@ class PhoneRequest(
     /** Header names lower-cased; each name at most once. */
     val headers: Map<String, String>,
     val body: String,
+    /** The body as sent, for rules that must see the bytes (spec 50 ADDON-FR-34: strict UTF-8). */
+    val raw: ByteArray = body.toByteArray(Charsets.UTF_8),
 ) {
     /** Never the body or the headers, which carry the token and credentials (PHONE-FR-73). */
     override fun toString(): String = "PhoneRequest($method $path, ${body.length} chars)"
@@ -59,7 +61,7 @@ class PhoneRequest(
                 read += n
             }
             val target = parts[1]
-            return PhoneRequest(parts[0].uppercase(Locale.ROOT), target.substringBefore('?'), headers, String(body, Charsets.UTF_8))
+            return PhoneRequest(parts[0].uppercase(Locale.ROOT), target.substringBefore('?'), headers, String(body, Charsets.UTF_8), body)
         }
 
         /** A CRLF- or LF-terminated line as ISO-8859-1; null at a premature end of stream. */

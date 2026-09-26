@@ -313,4 +313,6 @@
     <string name="addon_ui_episode_short">J%1$d</string>
     <string name="addon_ui_no_matching_series">Vastaavia sarjoja ei löytynyt.</string>
     <string name="addon_ui_no_saved_series">Ei tallennettuja sarjoja.</string>
+    <string name="addon_ui_language">Kieli</string>
+    <string name="addon_ui_apply">Käytä</string>
 </resources>

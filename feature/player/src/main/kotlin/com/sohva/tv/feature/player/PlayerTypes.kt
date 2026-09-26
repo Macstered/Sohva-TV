@@ -39,6 +39,9 @@ interface PlayerEnvironmentUi {
     /** The live stream's real address and headers for another player app (PLAY-FR-115), or null when gone. */
     suspend fun externalStream(channelKey: String): ExternalStream?
 
+    /** Discover's side of addon playback, where the build has Discover. */
+    val addon: AddonPlaybackEnv? get() = null
+
     /** Sohva Sport's score ticker (PLAY-31), or null where Sohva Sport is not offered. */
     val ticker: ScoreTickerSource? get() = null
 }
@@ -92,6 +95,9 @@ interface PlayerNavigation {
      * the details page. Called once per item.
      */
     fun finished(contentKey: String)
+
+    /** An addon stream ended (spec 50 FR-93): a movie returns to its page, an episode continues. */
+    fun addonFinished(token: String) {}
 }
 
 enum class Connection { CONNECTING, READY, FAILED }
@@ -130,9 +136,64 @@ data class Banner(val reason: BannerReason, val attempt: Int, val max: Int, val 
 
 /** One selectable track (PLAY-FR-70): its parts, joined in the interface language by the screen. */
 @Immutable
-data class TrackItem(val group: Int, val index: Int, val label: String?, val language: String?, val channels: Int, val selected: Boolean)
+data class TrackItem(
+    val group: Int,
+    val index: Int,
+    val label: String?,
+    val language: String?,
+    val channels: Int,
+    val selected: Boolean,
+    /** The addon subtitle side-loaded by Sohva (spec 50 FR-101), not one of the stream's own. */
+    val sideLoaded: Boolean = false,
+)
 
 @Immutable
 data class Tracks(val audio: List<TrackItem> = emptyList(), val text: List<TrackItem> = emptyList())
 
 enum class Picker { AUDIO, SUBTITLES }
+
+/**
+ * An addon stream to play (spec 50 §4.12) by the in-memory [token] Discover keeps for it, from
+ * [startMs]; the loading screen shows [title] (or [logo]) over [backdrop].
+ */
+data class AddonPlay(
+    val token: String,
+    val startMs: Long,
+    val title: String,
+    val backdrop: String?,
+    val logo: String?,
+    /** A newer Trakt pause as a fraction, applied once the duration is known (FR-88). */
+    val traktFraction: Float? = null,
+)
+
+/** What the addon player asks Discover (spec 50 §4.12, §4.14). */
+interface AddonPlaybackEnv {
+    /** FR-84: the profile, the source addon and the title's metadata addon still allow this playback. */
+    suspend fun stillAllowed(token: String): Boolean
+
+    /**
+     * FR-106: a progress snapshot; [sequence] grows through the playback. The write runs on an
+     * app-lifetime scope so the last one survives the screen; [failed] is called when it did not land.
+     */
+    fun saveProgress(token: String, positionMs: Long, durationMs: Long?, ended: Boolean, sequence: Long, failed: () -> Unit)
+
+    /** FR-91: the same provider's matching stream again under a new token; null when none or several match. */
+    suspend fun freshToken(token: String): String?
+
+    /** Start-up milestones for diagnostics (FR-86): names and milliseconds, never titles or URLs. */
+    fun milestone(name: String, sinceStartMs: Long)
+
+    /**
+     * FR-100: the stream's inline subtitles at once, then every subtitle addon's results as they
+     * arrive. Each collection asks the providers once; nothing is cached.
+     */
+    fun subtitles(token: String): kotlinx.coroutines.flow.Flow<SubtitleResults>
+
+    /** FR-101: downloads and recognises a candidate, re-checking its provider afterwards. */
+    suspend fun downloadSubtitle(token: String, key: String): SubtitleDownload
+
+    /** "Show all languages" (FR-97): global and persisted. */
+    val showAllLanguages: kotlinx.coroutines.flow.StateFlow<Boolean>
+
+    suspend fun setShowAllLanguages(on: Boolean)
+}

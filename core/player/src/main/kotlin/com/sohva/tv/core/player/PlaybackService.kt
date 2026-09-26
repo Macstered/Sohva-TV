@@ -153,7 +153,10 @@ class PlaybackService : MediaSessionService() {
                 // a film or an episode says so (PLAY-FR-01).
                 val extras = item.requestMetadata.extras
                 val vod = extras?.getBoolean(EXTRA_VOD) == true
-                val stream = if (vod) {
+                val addon = extras?.getBoolean(EXTRA_ADDON) == true
+                val stream = if (addon) {
+                    env.resolveAddon(request)
+                } else if (vod) {
                     env.resolveVod(request)
                 } else if (extras != null && extras.containsKey(EXTRA_ARCHIVE_START)) {
                     when (val archive = env.resolveArchive(request, extras.getLong(EXTRA_ARCHIVE_START), extras.getLong(EXTRA_ARCHIVE_STOP))) {
@@ -173,8 +176,9 @@ class PlaybackService : MediaSessionService() {
                     result.setException(IllegalStateException("Media is no longer available"))
                     return@launch
                 }
-                val taken = leases.acquire(stream.sourceId, stream.connectionLimit)
-                if (taken == null) {
+                // An addon stream is not an IPTV connection: no provider limit applies (spec 50 §4.12).
+                val taken = if (addon) null else leases.acquire(stream.sourceId, stream.connectionLimit)
+                if (!addon && taken == null) {
                     val extras = Bundle().apply {
                         putString(PlaybackErrors.EXTRA_SOURCE_NAME, stream.sourceName)
                         putInt(PlaybackErrors.EXTRA_LIMIT, stream.connectionLimit)
@@ -194,10 +198,25 @@ class PlaybackService : MediaSessionService() {
                     .setUri(placeholder)
                     .setMimeType(StreamRegistry.mimeType(stream.address))
                     .setMediaMetadata(MediaMetadata.Builder().setTitle(stream.title).build())
+                    .setSubtitleConfigurations(if (addon) sideSubtitle(extras) else emptyList())
                     .build()
                 result.set(mutableListOf(item))
             }
             return result
+        }
+
+        /** An addon playback's chosen subtitle, kept in memory (spec 50 ADDON-FR-101). */
+        private fun sideSubtitle(extras: Bundle?): List<MediaItem.SubtitleConfiguration> {
+            val key = extras?.getString(EXTRA_SUBTITLE_KEY) ?: return emptyList()
+            val mime = extras.getString(EXTRA_SUBTITLE_MIME) ?: return emptyList()
+            return listOf(
+                MediaItem.SubtitleConfiguration.Builder(SideSubtitles.uri(key))
+                    .setMimeType(mime)
+                    .setLanguage(extras.getString(EXTRA_SUBTITLE_LANGUAGE))
+                    .setId(SideSubtitles.TRACK_ID)
+                    .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                    .build(),
+            )
         }
 
         /** Tells the screen why nothing plays, so it can say so in words (PLAY-FR-95). */
@@ -230,6 +249,14 @@ class PlaybackService : MediaSessionService() {
 
         /** Request extra of a film or an episode (boolean). */
         const val EXTRA_VOD: String = "com.sohva.tv.player.VOD"
+
+        /** An addon stream by its token (spec 50 §4.12): Discover writes its own progress. */
+        const val EXTRA_ADDON: String = "com.sohva.tv.player.ADDON"
+
+        /** An addon playback's side-loaded subtitle: its [SideSubtitles] key, MIME type and language. */
+        const val EXTRA_SUBTITLE_KEY: String = "com.sohva.tv.player.SUBTITLE_KEY"
+        const val EXTRA_SUBTITLE_MIME: String = "com.sohva.tv.player.SUBTITLE_MIME"
+        const val EXTRA_SUBTITLE_LANGUAGE: String = "com.sohva.tv.player.SUBTITLE_LANGUAGE"
 
         const val PROGRESS_MS: Long = 10_000
     }

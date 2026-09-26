@@ -21,6 +21,7 @@ import com.sohva.tv.feature.home.HomeModel
 import com.sohva.tv.feature.library.BrowseSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
@@ -85,8 +86,15 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     val continueFeed: ContinueFeed by lazy {
         ContinueFeed(
             scope = appScope,
-            read = { data.progress.continueWatching(HomeModel.RESUME_CARDS) },
-            changes = data.walls.changes(),
+            // The library and Discover in parallel, then one row (spec 02 §4.4).
+            read = {
+                kotlinx.coroutines.coroutineScope {
+                    val library = async { data.progress.continueWatching() }
+                    val addons = async { com.sohva.tv.app.discover.DiscoverGraph.continueItems(this@AppGraph, HomeModel.RESUME_CARDS) }
+                    com.sohva.tv.core.data.home.ContinueMerge.merge(library.await(), addons.await(), HomeModel.RESUME_CARDS)
+                }
+            },
+            changes = discover?.let { host -> kotlinx.coroutines.flow.merge(data.walls.changes(), host.progress.changes.map { }) } ?: data.walls.changes(),
             playing = playbackActive,
             onFirstSettled = {
                 diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
@@ -101,6 +109,12 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     /** Sohva Sport (spec 60); built on first use. */
     val sport: com.sohva.tv.app.sport.SportGraph by lazy { com.sohva.tv.app.sport.SportGraph(this) }
+
+    /** Discover (spec 50): null where the build has no addons (the demo); built on first use. */
+    val discover: com.sohva.tv.feature.discover.DiscoverHost? by lazy { if (flags.discover) com.sohva.tv.app.discover.DiscoverGraph.build(this) else null }
+
+    /** The addon player's bridge to Discover (spec 50 §4.12); none where the build has no addons. */
+    val addonPlayback: com.sohva.tv.app.discover.AddonPlaybackBridge? by lazy { discover?.let { com.sohva.tv.app.discover.AddonPlaybackBridge(this, it) } }
 
     /**
      * The public updater (spec 72 §4): only the release package checks, downloads or installs
@@ -219,6 +233,8 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
             data.beta23Categories.run()
+            // Beta 23's Discover data (decision A1); Discover itself is built only when old files exist.
+            if (flags.discover) com.sohva.tv.app.discover.Beta23DiscoverImport(this@AppGraph).run()
         }
         // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
         if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)

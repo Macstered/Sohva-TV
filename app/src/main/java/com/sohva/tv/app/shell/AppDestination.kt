@@ -7,7 +7,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.core.net.toUri
 import androidx.core.os.ConfigurationCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -124,7 +126,63 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel { SearchModel(AppSearchEnvironment(graph, stack, locale)) }
             SearchScreen(model)
         }
-        AppRoute.Discover -> PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
+        AppRoute.Discover -> {
+            val host = graph.discover
+            if (host == null) {
+                PlaceholderScreen(R.string.home_discover, { back() }, "screen-discover")
+            } else {
+                val household by graph.data.profiles.household.collectAsState()
+                val navigation = remember(stack, host) {
+                    com.sohva.tv.feature.discover.ui.DiscoverNavigation(
+                        leave = { stack.pop() },
+                        openTitle = { request ->
+                            host.keepTitle(request)
+                            stack.push(AppRoute.DiscoverTitle(request.owner, request.preview.type, request.preview.id, request.videoId))
+                        },
+                    )
+                }
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().testTag("screen-discover")) {
+                    // Keyed by the profile: a switch disposes all of Discover's state (spec 50 §3).
+                    androidx.compose.runtime.key(household.active.id) {
+                        com.sohva.tv.feature.discover.ui.DiscoverScreen(host, household.active.id, navigation)
+                    }
+                }
+            }
+        }
+        is AppRoute.DiscoverTitle -> {
+            val host = graph.discover
+            if (host == null) {
+                androidx.compose.runtime.LaunchedEffect(route) { if (stack.top.route == route) stack.pop() }
+            } else {
+                val household by graph.data.profiles.household.collectAsState()
+                val profile = household.active.id
+                // The catalog's preview kept in memory; without it (evicted) the page starts from the ids alone.
+                val model = viewModel {
+                    val request = host.title(route.owner, route.type, route.id)?.copy(videoId = route.videoId)
+                        ?: com.sohva.tv.feature.discover.ui.TitleRequest(
+                            route.owner, com.sohva.tv.feature.discover.protocol.MetaPreview(route.type, route.id, ""), route.videoId,
+                        )
+                    com.sohva.tv.feature.discover.ui.title.TitleModel(host, profile, request, route.autoplay)
+                }
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().testTag("screen-discover-title")) {
+                    com.sohva.tv.feature.discover.ui.title.TitleScreen(model, back = { back() }, play = { token -> stack.push(AppRoute.AddonPlayer(token)) })
+                }
+            }
+        }
+        is AppRoute.AddonPlayer -> {
+            val bridge = graph.addonPlayback
+            val play = remember(route) { bridge?.play(route.token) }
+            if (bridge == null || play == null) {
+                // The token lives in memory only: nothing to play, back to the page underneath.
+                androidx.compose.runtime.LaunchedEffect(route) { if (stack.top.route == route) stack.pop() }
+            } else {
+                val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: java.util.Locale.ROOT
+                val navigation = remember(stack, graph, route) { addonNavigation(route, stack, graph) }
+                val model = viewModel { PlayerModel(graph.player.screen(locale), "", navigation, addonPlay = play) }
+                PlayerOnTop(graph)
+                PlayerScreen(model)
+            }
+        }
         AppRoute.ProfilePicker -> ProfilePickerDestination(stack, graph)
         is AppRoute.PinGate -> PinGateDestination(route, stack, graph)
         is AppRoute.ProfileGate -> ProfileGateDestination(route, stack, graph)
@@ -268,6 +326,49 @@ private fun vodStarter(stack: BackStack<AppRoute>, graph: AppGraph) = object : T
         // A TV without a browser has nothing to open it with; the page stays as it was (VOD-FR-66).
         runCatching { graph.app.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
+}
+
+/**
+ * The addon player's exits (spec 50 FR-93): Back pops to the title page. At the first end a movie
+ * pops to its page; an episode, with "Continue to the next episode" on and a next episode known,
+ * replaces its page with the next episode's, which starts its first playable source from 0.
+ */
+private fun addonNavigation(route: AppRoute.AddonPlayer, stack: BackStack<AppRoute>, graph: AppGraph) = object : PlayerNavigation {
+    override fun leave(channelKey: String) {
+        stack.pop()
+    }
+
+    override fun addonFinished(token: String) {
+        val host = graph.discover ?: return
+        val playback = host.playback(token)
+        graph.appScope.launch(graph.dispatchers.main) {
+            if (stack.top.route != route) return@launch
+            val next = playback?.next?.takeIf { graph.data.preferences.autoPlayNextEpisode() }
+            if (stack.top.route != route) return@launch
+            stack.pop()
+            val page = stack.top.route
+            if (next != null && page is AppRoute.DiscoverTitle) {
+                host.keepTitle(next)
+                stack.replaceTop(AppRoute.DiscoverTitle(next.owner, next.preview.type, next.preview.id, next.videoId, autoplay = true))
+            }
+        }
+    }
+
+    override fun guideAt(channelKey: String) = Unit
+
+    override fun home() = stack.resetTo(listOf(AppRoute.Home))
+
+    override fun guide() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Guide))
+
+    override fun sport() = stack.resetTo(listOf(AppRoute.Home, AppRoute.Today))
+
+    override fun openExternal(stream: ExternalStream): Throwable? = UnsupportedOperationException("live only")
+
+    override fun refused() = Unit
+
+    override fun unlock(channelKey: String) = Unit
+
+    override fun finished(contentKey: String) = Unit
 }
 
 /**

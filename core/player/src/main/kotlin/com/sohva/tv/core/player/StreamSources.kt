@@ -9,6 +9,7 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.sohva.tv.core.model.player.StreamContainer
 import java.io.IOException
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * Per-source connection leases (spec 30 PLAY-FR-16): counted in memory; a lease is released
@@ -52,11 +53,12 @@ class StreamRegistry(private val defaultAgent: String) {
     @Volatile
     private var current: Entry? = null
 
-    private class Entry(val placeholder: String, val address: String, val headers: Map<String, String>)
+    private class Entry(val placeholder: String, val address: String, val headers: Map<String, String>, val origin: String?)
 
     fun register(stream: ResolvedStream): Uri {
         val placeholder = placeholder(stream.key)
-        current = Entry(placeholder.toString(), stream.address, headers(stream))
+        val origin = if (stream.addon) stream.address.toHttpUrlOrNull()?.let(AddonTransport::origin) else null
+        current = Entry(placeholder.toString(), stream.address, headers(stream), origin)
         return placeholder
     }
 
@@ -72,12 +74,29 @@ class StreamRegistry(private val defaultAgent: String) {
         val uri = spec.uri
         if (uri.scheme == SCHEME) {
             if (entry == null || entry.placeholder != uri.toString()) throw IOException("The stream is no longer open")
-            return spec.withUri(entry.address.toUri()).withAdditionalHeaders(entry.headers)
+            val resolved = spec.withUri(entry.address.toUri())
+            return if (entry.origin != null) addon(resolved, entry) else resolved.withAdditionalHeaders(entry.headers)
         }
+        if (entry?.origin != null) return addon(spec, entry)
         return spec.withAdditionalHeaders(entry?.headers ?: mapOf(USER_AGENT to defaultAgent))
     }
 
-    private fun headers(stream: ResolvedStream): Map<String, String> = buildMap {
+    /**
+     * An addon stream's request (ADDON-FR-95), manifest or segment: marked for the addon transport,
+     * with the stream's headers only when it goes to the stream's own origin.
+     */
+    private fun addon(spec: DataSpec, entry: Entry): DataSpec {
+        val sameOrigin = spec.uri.toString().toHttpUrlOrNull()?.let(AddonTransport::origin) == entry.origin
+        val headers = buildMap {
+            put(AddonTransport.MARKER, "1")
+            put(AddonTransport.STREAM_HEADERS, entry.headers.keys.joinToString(","))
+            put(USER_AGENT, defaultAgent)
+            if (sameOrigin) putAll(entry.headers)
+        }
+        return spec.withAdditionalHeaders(headers)
+    }
+
+    private fun headers(stream: ResolvedStream): Map<String, String> = stream.addonHeaders ?: buildMap {
         // A playlist's User-Agent wins under any casing (PLAY-FR-17).
         put(USER_AGENT, stream.userAgent?.takeIf { it.isNotBlank() } ?: defaultAgent)
         stream.referrer?.takeIf { it.isNotBlank() }?.let { put("Referer", it) }

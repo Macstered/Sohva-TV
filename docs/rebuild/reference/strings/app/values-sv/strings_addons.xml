@@ -313,4 +313,6 @@
     <string name="addon_ui_episode_short">A%1$d</string>
     <string name="addon_ui_no_matching_series">Inga matchande serier.</string>
     <string name="addon_ui_no_saved_series">Inga sparade serier.</string>
+    <string name="addon_ui_language">Språk</string>
+    <string name="addon_ui_apply">Tillämpa</string>
 </resources>

@@ -166,6 +166,8 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
             val fraction = if (item.durationMs > 0) (item.positionMs.toFloat() / item.durationMs).coerceIn(0f, 1f) else 0f
             val left = if (item.durationMs > 0) maxOf(1, ((item.durationMs - item.positionMs) / MINUTE_MS).toInt()) else null
             val image = item.replacementPoster?.takeIf { item.replacePoster } ?: item.posterUrl ?: item.replacementPoster
+            // A Discover card's key is its own (HOME-FR-23); its title is the addon's name as stored.
+            if (item.discover != null) return ResumeCard(item.contentKey, item, item.title, item.posterUrl, fraction, left)
             return ResumeCard("vod:${item.contentKey}", item, VodText.breadcrumbGroup(item.title), image, fraction, left)
         }
     }

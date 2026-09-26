@@ -36,6 +36,15 @@ data class EnvelopeSpec(
             keystoreAad = "streammate-secret-v1",
             valueAad = "streammate-secret-v2",
         )
+
+        /** Beta 23's Discover store (its own Keystore key and wrapped data key), read only by the importer. */
+        val BETA23_DISCOVER: EnvelopeSpec = EnvelopeSpec(
+            keystoreAlias = "sohva.addons.v1",
+            prefsFile = "sohva_addon_secret_envelope",
+            wrappedKeyName = "data_key",
+            keystoreAad = "streammate-secret-v1",
+            valueAad = "streammate-secret-v2",
+        )
     }
 }
 
@@ -91,6 +100,27 @@ class EnvelopeCipher(
         cipher.init(Cipher.DECRYPT_MODE, dataKey(), GCMParameterSpec(TAG_BITS, iv))
         cipher.updateAAD(spec.valueAad.toByteArray(Charsets.UTF_8))
         return String(cipher.doFinal(sealed), Charsets.UTF_8)
+    }
+
+    /**
+     * Binary sealing for derived files (spec 50 §9 "Cache"): the data key, a fresh 12-byte IV, then
+     * the AES-GCM ciphertext and tag; [aad] binds the bytes to their purpose (a file name or key).
+     */
+    fun seal(plaintext: ByteArray, aad: ByteArray): ByteArray {
+        val iv = ByteArray(IV_BYTES).also(random::nextBytes)
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, dataKey(), GCMParameterSpec(TAG_BITS, iv))
+        cipher.updateAAD(aad)
+        return iv + cipher.doFinal(plaintext)
+    }
+
+    /** Opens [seal]'s output; throws on a wrong key, wrong [aad] or tampered bytes. */
+    fun open(sealed: ByteArray, aad: ByteArray): ByteArray {
+        require(sealed.size > IV_BYTES) { "sealed value too short" }
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.DECRYPT_MODE, dataKey(), GCMParameterSpec(TAG_BITS, sealed, 0, IV_BYTES))
+        cipher.updateAAD(aad)
+        return cipher.doFinal(sealed, IV_BYTES, sealed.size - IV_BYTES)
     }
 
     private fun dataKey(): SecretKey = dataKey ?: synchronized(this) {

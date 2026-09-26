@@ -87,6 +87,9 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         ResolvedStream(title.key, address, title.sourceId, title.sourceName, title.connectionLimit, name, null, null)
     }
 
+    /** An addon stream by its in-memory token (spec 50 FR-95); unknown after a process restart. */
+    override suspend fun resolveAddon(token: String): ResolvedStream? = graph.addonPlayback?.resolve(token)
+
     override suspend fun saveProgress(contentKey: String, positionMs: Long, durationMs: Long) =
         graph.data.progress.save(contentKey, positionMs, durationMs)
 
@@ -116,6 +119,8 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         override suspend fun admit(channelKey: String): ChannelAdmission = graph.admit(channelKey)
 
         override fun logFailure(line: String) = graph.diagnostics.info("player", line)
+
+        override val addon: com.sohva.tv.feature.player.AddonPlaybackEnv? get() = graph.addonPlayback
 
         override val ticker: com.sohva.tv.feature.player.ScoreTickerSource? get() = if (graph.flags.sport) graph.sport.ticker else null
 

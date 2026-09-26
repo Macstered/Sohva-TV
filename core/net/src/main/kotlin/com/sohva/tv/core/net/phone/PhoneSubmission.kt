@@ -28,6 +28,11 @@ sealed interface PhoneSubmission {
         override fun hashCode(): Int = (tmdbToken?.hashCode() ?: 0) * 31 + (apiSportsKey?.hashCode() ?: 0)
     }
 
+    /** A Discover addon URL list (spec 50 ADDON-FR-45): the raw bytes, already checked by the mode. */
+    class AddonList(val bytes: ByteArray) : PhoneSubmission {
+        override fun toString(): String = "AddonList(${bytes.size} bytes)"
+    }
+
     /** A picture for one channel's logo (spec 21 CHAN-FR-42): the PNG bytes, 1…2,000,000 of them. */
     class Logo(val channelKey: String, val png: ByteArray) : PhoneSubmission {
         override fun toString(): String = "Logo(${png.size} bytes)"
