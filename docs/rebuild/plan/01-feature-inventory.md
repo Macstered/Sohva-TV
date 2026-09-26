@@ -52,27 +52,27 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [ ] **SHELL-09** Who is watching at start when the household has more than one profile and the question is switched on (details in [Profiles](../specs/04-profiles-parental.md)).
 - [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
 - [ ] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
-- [ ] **SHELL-12** Live playback started from a Sohva Sport match card or a reminder returns to where it started; catch-up playback always returns to the previous screen.
+- [x] **SHELL-12** Live playback started from a Sohva Sport match card or a reminder returns to where it started; catch-up playback always returns to the previous screen.
 - [x] **SHELL-13** Changing channel inside the player replaces the player, so Back never steps back through the channels zapped.
 - [x] **SHELL-14** Zap-back: the player offers the channel watched before the current one (session memory).
 - [x] **SHELL-15** Player shortcuts to Home, the guide, Sohva Sport and "guide at this channel" reset the stack to that screen.
 - [ ] **SHELL-16** Resuming a film or episode from Home puts its library page and its details page under the player, so Back walks Details, then Movies/Series, then Home.
 - [ ] **SHELL-17** A finished film returns to its details page; a finished episode starts the next one (when autoplay is on) or returns to the series page, also when playback began in Search.
 - [ ] **SHELL-18** A Trakt card on Home opens the library's own details page when the title is in the library, otherwise the Trakt title page.
-- [ ] **SHELL-19** Returning to Movies or Series restores the browse position; returning to Sohva Sport restores the open match card; returning to the guide focuses the channel.
+- [x] **SHELL-19** Returning to Movies or Series restores the browse position; returning to Sohva Sport restores the open match card; returning to the guide focuses the channel.
 - [x] **SHELL-20** Home navigation rail down the left edge: icons only at rest, widening over the content with labels when it takes focus.
 - [x] **SHELL-21** Rail destinations: Live TV, Sohva Sport, Movies, Series, Search, Discover (only when available), Who is watching (only with two or more profiles), Settings, under a Home marker.
 - [x] **SHELL-22** Settings sits behind the parental PIN for a restricted profile.
 - [x] **SHELL-23** A channel outside a restricted profile's groups is refused with a short toast "This profile cannot watch that channel".
 - [x] **SHELL-24** A PIN-locked channel asks for the PIN before live, catch-up and zapped playback.
-- [ ] **SHELL-25** A reminder notification opens its channel or its match card, whether the app was closed or already running.
+- [x] **SHELL-25** A reminder notification opens its channel or its match card, whether the app was closed or already running.
 - [ ] **SHELL-26** A fired reminder appears as a dialog over any screen; the first reminder ever set explains, once, how to let reminders open the app; Android 13+ asks for the notification permission when a reminder is first set (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
 - [x] **SHELL-27** Picture in picture (off by default): pressing Home while a stream plays shrinks it to a 16:9 corner with its own Close button; opening the app again restores full screen.
 - [ ] **SHELL-28** Background maintenance (metadata matching) pauses while the app is in front and resumes 30 s after it leaves.
 - [ ] **SHELL-29** Playlist, guide and catalogue refreshes follow the refresh interval setting.
 - [ ] **SHELL-30** Update check once a day at start (release package only).
 - [ ] **SHELL-31** The phone setup page closes when the viewer leaves the screen that opened it.
-- [ ] **SHELL-32** Sohva Sport is polled only while its screen or the score ticker is visible and the app is in front.
+- [x] **SHELL-32** Sohva Sport is polled only while its screen or the score ticker is visible and the app is in front.
 - [x] **SHELL-33** One focus language across the app: the focused control fills with off-white and its content inverts; artwork gets a ring instead; nothing is outlined at rest.
 - [x] **SHELL-34** Landscape only; the picture-in-picture resize never restarts the activity.
 
@@ -114,8 +114,8 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 
 **Sport and channels**
 
-- [ ] **HOME-24** Today's sport: up to 6 match cards (status or kick-off, crests, score, competition) with the day's total "N matches" as the row hint.
-- [ ] **HOME-25** OK on a match card opens Sohva Sport with that match's card open.
+- [x] **HOME-24** Today's sport: up to 6 match cards (status or kick-off, crests, score, competition) with the day's total "N matches" as the row hint.
+- [x] **HOME-25** OK on a match card opens Sohva Sport with that match's card open.
 - [x] **HOME-26** Recently watched channels: up to 6 channel cards (logo, name, current programme, programme progress), most recent first.
 - [x] **HOME-27** OK on a channel card plays it live; Back from the player goes to the guide on that channel.
 
@@ -148,7 +148,7 @@ Spec: [specs/03-search.md](../specs/03-search.md) · Milestone: M5 · 19 items
 - [x] **SEARCH-05** Channel results: channels whose shown name contains the text.
 - [x] **SEARCH-06** Programme results: programmes whose title or subtitle contains the text, on any imported date, with channel name and start time.
 - [x] **SEARCH-07** Film results (up to 40), series results (up to 40), episode results (up to 40, matching the episode or the series name).
-- [ ] **SEARCH-08** Sport results: today's matches whose home team, away team or competition contains the text.
+- [x] **SEARCH-08** Sport results: today's matches whose home team, away team or competition contains the text.
 - [x] **SEARCH-09** Matching ignores letter case.
 - [x] **SEARCH-10** Result kinds load in parallel and each is appended when it is ready; rows already on screen never move.
 - [x] **SEARCH-11** Each result row: thumbnail (logo, poster or the kind's initial), title, subtitle, kind label (CHANNEL, PROGRAMME, MOVIE, SERIES, EPISODE, SPORT).
@@ -156,7 +156,7 @@ Spec: [specs/03-search.md](../specs/03-search.md) · Milestone: M5 · 19 items
 - [x] **SEARCH-13** OK on a channel or programme result plays the channel live; Back from the player goes to the guide on that channel.
 - [x] **SEARCH-14** OK on a film opens its details page; on a series opens its series page.
 - [x] **SEARCH-15** OK on an episode plays it from its saved position; when it ends the next episode plays (autoplay on) or the series page opens.
-- [ ] **SEARCH-16** OK on a sport result opens Sohva Sport.
+- [x] **SEARCH-16** OK on a sport result opens Sohva Sport.
 - [x] **SEARCH-17** Only enabled sources, their active snapshots and what the device's organisation rules show (hidden channels, groups and titles never appear).
 - [x] **SEARCH-18** A restricted profile finds only channels, programmes, films and series in its allowed groups.
 - [x] **SEARCH-19** Leaving Search forgets the text and the results.
@@ -175,7 +175,7 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 - [x] **PROF-06** "Ask who is watching at start" switch (default on), shown once there is more than one profile.
 - [x] **PROF-07** Who is watching at start: a full-screen picker of large tiles, the last active profile focused, when the household has more than one profile and the switch is on.
 - [x] **PROF-08** Who is watching on the Home rail (only with two or more profiles), opening the same picker.
-- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches M8, Discover M9, Trakt M10.)*
+- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches done in M8; Discover M9, Trakt M10.)*
 
 **What this profile may see**
 
@@ -364,7 +364,7 @@ Spec: [specs/21-channel-management.md](../specs/21-channel-management.md) · Mil
 - [x] **CHAN-24** Favourite channels per profile, toggled from the guide's hero and programme actions; the guide rail's Favourites list.
 - [ ] **CHAN-25** Recently watched channels per profile (last 20, most recent first): the guide rail's Recently watched list and Home's recent channels row.
 - [x] **CHAN-26** A locked channel asks for the PIN before live, catch-up and zapped playback and at a Last-channel start.
-- [ ] **CHAN-27** Customisations apply in the guide, the player's channel list and dial, Home, Search, Sohva Sport stream matching and the stored programme guide.
+- [x] **CHAN-27** Customisations apply in the guide, the player's channel list and dial, Home, Search, Sohva Sport stream matching and the stored programme guide.
 - [x] **CHAN-28** Custom lists appear on the guide rail (each can be switched off in the Library manager).
 - [x] **CHAN-29** Backups carry channel customisations, lists, memberships, phone-sent logos (as picture bytes) and each profile's favourites, recents and (with a PIN) locks.
 - [x] **CHAN-30** Removing a source removes its channels' customisations and list memberships.
@@ -391,11 +391,11 @@ Spec: [specs/22-catchup-and-reminders.md](../specs/22-catchup-and-reminders.md) 
 **Reminders**
 
 - [x] **REM-01** "Remind me" / "Reminder set" on a guide programme that has not started (hero and programme actions).
-- [ ] **REM-02** "Remind me" / "Reminder set" on a Sohva Sport match card for a scheduled match that has not started.
+- [x] **REM-02** "Remind me" / "Reminder set" on a Sohva Sport match card for a scheduled match that has not started.
 - [x] **REM-03** A reminder fires one minute before its start, by an exact alarm, whether the app is running or not.
 - [x] **REM-04** In-app alert over any screen: "<title> starts in a minute" / "starts now", subtitle, Watch (or "Open the match card") and Not now; goes away by itself 2 minutes after the start (at least 20 s after it appeared).
 - [x] **REM-05** Several due reminders queue; one alert at a time.
-- [ ] **REM-06** Watch plays the programme's channel (or opens the match card when the match has no known channel); Back returns to where the viewer was.
+- [x] **REM-06** Watch plays the programme's channel (or opens the match card when the match has no known channel); Back returns to where the viewer was.
 - [x] **REM-07** A notification in the TV's panel ("<title> starts now", "Press to watch." / "Press to open the match card and choose a channel.") that opens the channel or the match card.
 - [ ] **REM-08** When another app is on screen, Sohva TV comes to the front with the alert if the viewer allowed "display over other apps".
 - [x] **REM-09** The first reminder ever set explains once how reminders can open the app and offers to open the TV's setting.
@@ -410,7 +410,7 @@ Spec: [specs/22-catchup-and-reminders.md](../specs/22-catchup-and-reminders.md) 
 
 Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 
-- [ ] **PLAY-01** Live channel playback full screen, opened from the guide, Home, Search, Sohva Sport, a reminder or the start screen.
+- [x] **PLAY-01** Live channel playback full screen, opened from the guide, Home, Search, Sohva Sport, a reminder or the start screen.
 - [x] **PLAY-02** Catch-up playback of a past programme ("Watch from start") with transport controls.
 - [x] **PLAY-03** Film and episode (VOD) playback from a resume position.
 - [x] **PLAY-04** Black video ground and letterbox bars in every colour theme.
@@ -642,7 +642,7 @@ Spec: [specs/42-library-organization.md](../specs/42-library-organization.md) ·
 - [x] **ORG-13** A film carried by several playlists is one item (film identity); a choice made on it follows every copy.
 - [x] **ORG-14** Items of a disabled source are shown as unavailable and no rule can enable them.
 - [x] **ORG-15** Old "hidden categories" settings migrate into rules once.
-- [ ] **ORG-16** Every surface applies the same rules (guide, player lists and zapping, walls, rail counts, History, Home, Search, sport channel matching).
+- [x] **ORG-16** Every surface applies the same rules (guide, player lists and zapping, walls, rail counts, History, Home, Search, sport channel matching).
 - [ ] **ORG-17** A restricted profile sees less than the rules allow, never more.
 
 **Library manager**

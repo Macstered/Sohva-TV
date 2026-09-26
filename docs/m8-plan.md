@@ -46,3 +46,16 @@ already carries them under beta 23's keys).
 ## Open questions (spec 60 §10), settled by the owner's rule
 
 The spec's proposal where it makes one, else beta 23 (recorded in docs/decisions.md).
+
+## Exit (26 September 2026)
+
+- Inventory: SPORT-01…57 and SET-54 ticked, with the sport parts of SHELL-12, -19, -25, -32,
+  HOME-24, -25, SEARCH-08, -16, REM-02, -06, PLAY-01, -31, CHAN-27 and ORG-16.
+- Paged pairing on the owner-scale guide (56,164 channels, 112,328 programmes with
+  2,150-character descriptions) on the API 30 stand-in: 27.9 s, Java heap peak 12.0 MB (budget
+  16 MB), longest main-thread gap 27 ms, no query after a cancel (`PairingOwnerScaleTest`).
+- Polling stops when Today and the ticker are gone (`TodayTest.leavingTodayStopsRequests`,
+  `SportFeedTest`).
+- Quota: a whole day of Today on screen costs 72 requests per sport (budget 100;
+  `SportsRepositoryTest`).
+- Measurements in docs/performance-log.md; decisions in docs/decisions.md.
