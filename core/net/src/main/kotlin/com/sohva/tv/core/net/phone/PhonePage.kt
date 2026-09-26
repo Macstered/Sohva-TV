@@ -69,6 +69,23 @@ object PhonePage {
         i.onerror=function(){URL.revokeObjectURL(u);n.textContent=invalid;n.hidden=false;};i.src=u;});
     """.trimIndent().replace("\n", "")
 
+    /**
+     * The addon page's script (spec 50 FR-46): a chosen .txt file is read on the phone into the
+     * masked text area; Send posts the text as `text/plain`; Clear list empties it.
+     */
+    private val ADDON_SCRIPT = """
+        var t=location.hash.slice(1);history.replaceState(null,'','/');
+        var n=document.getElementById('notice'),a=document.getElementById('list'),f=document.getElementById('file');
+        f.addEventListener('change',function(){var x=f.files[0];if(!x)return;var r=new FileReader();r.onload=function(){a.value=r.result;};r.readAsText(x);});
+        document.getElementById('clear').addEventListener('click',function(){a.value='';f.value='';});
+        document.getElementById('send').addEventListener('click',function(){
+        fetch('/submit',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'text/plain; charset=utf-8'},body:a.value})
+        .then(function(r){return r.text();}).then(function(s){n.textContent=s;n.hidden=false;}).catch(function(){n.textContent='…';n.hidden=false;});});
+    """.trimIndent().replace("\n", "")
+
+    const val ADDONS_SENT: String = "Sent. Review and confirm on your TV."
+    const val ADDONS_INVALID: String = "Use a UTF-8 list of 1 to 32 configured addon URLs, up to 256 KiB, one per line."
+
     private val STYLE = "body{font-family:system-ui,sans-serif;margin:0;padding:20px;background:#12151c;color:#f2f4f8}" +
         "h1{font-size:1.4rem;margin:0 0 4px}h2{font-size:1.1rem;margin:22px 0 8px}p{color:#aab1c0;line-height:1.4}" +
         "form{background:#1c2130;border-radius:12px;padding:14px;margin-top:14px}" +
@@ -80,7 +97,7 @@ object PhonePage {
     /** The Content-Security-Policy: only the pages' own two scripts and inline style (PHONE-FR-24). */
     val contentSecurityPolicy: String by lazy {
         fun hash(script: String) = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray(Charsets.UTF_8)))
-        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
+        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}' 'sha256-${hash(ADDON_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
             "img-src 'self' blob: data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
     }
 
@@ -120,6 +137,22 @@ object PhonePage {
         append("<label for=\"file\">").append(escape(texts.choose)).append("</label>")
         append("<input id=\"file\" type=\"file\" accept=\"image/*\"></form>")
         append("<script>").append(LOGO_SCRIPT).append("</script></body></html>")
+    }
+
+    /** Discover's addon list (spec 50 FR-46), English only: a .txt chooser, a masked list, Send and Clear. */
+    fun addons(): String = buildString {
+        append("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">")
+        append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Sohva addons</title><style>").append(STYLE)
+        append("textarea{width:100%;box-sizing:border-box;min-height:160px;padding:12px;border-radius:8px;border:1px solid #2f3648;")
+        append("background:#0f1218;color:#fff;-webkit-text-security:disc}</style></head><body>")
+        append("<h1>Send addon URLs to your TV</h1>")
+        append("<p>Choose a UTF-8 .txt file on this phone or paste configured addon URLs, one per line. Up to 32 addons.</p>")
+        append("<p>This local connection is plain HTTP and not encrypted. Use it only on a Wi-Fi network you trust.</p>")
+        append("<p id=\"notice\" class=\"notice\" hidden></p><form>")
+        append("<label for=\"file\">Text file</label><input id=\"file\" type=\"file\" accept=\".txt,text/plain\">")
+        append("<label for=\"list\">Addon URLs</label><textarea id=\"list\" autocapitalize=\"off\" autocomplete=\"off\" spellcheck=\"false\"></textarea>")
+        append("<button type=\"button\" id=\"send\">Send to TV</button><button type=\"button\" id=\"clear\">Clear list</button></form>")
+        append("<script>").append(ADDON_SCRIPT).append("</script></body></html>")
     }
 
     private fun StringBuilder.form(type: String, heading: String, texts: PhonePageTexts, fields: StringBuilder.() -> Unit) {

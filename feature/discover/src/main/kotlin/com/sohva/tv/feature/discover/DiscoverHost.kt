@@ -63,6 +63,9 @@ class DiscoverHost(
 
     /** Subtitle files (FR-101): their own client, built on first choice. */
     val subtitleFiles: com.sohva.tv.feature.discover.net.SubtitleDownloader by lazy { com.sohva.tv.feature.discover.net.SubtitleDownloader(http()) }
+
+    /** Stremio account copy (FR-47): its own client, built when first started. */
+    val stremio: com.sohva.tv.feature.discover.net.StremioLink by lazy { com.sohva.tv.feature.discover.net.StremioLink(http()) }
     val cache: ResponseCache by lazy { ResponseCache(File(app.noBackupFilesDir, ResponseCache.DIR), cipher, clock) }
     val manager: AddonManager by lazy { AddonManager(access, installations, client, dispatchers.io) { testAllowHttp } }
     val browser: AddonBrowser by lazy { AddonBrowser(access, installations, client, cache, clock, dispatchers.io) }

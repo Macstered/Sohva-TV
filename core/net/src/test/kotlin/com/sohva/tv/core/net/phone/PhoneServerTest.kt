@@ -91,6 +91,36 @@ class PhoneServerTest {
         assertFalse(state.toString().contains(state.url.substringAfter('#')))
     }
 
+    /** Spec 50 ADDON-FR-45: Origin required, text/plain, the list rule; the first valid list ends the session. */
+    @Test
+    fun addonModeTakesOneValidListThenStops() {
+        server.start(InetAddress.getLoopbackAddress() as Inet4Address, PhoneMode.Addons { String(it, Charsets.UTF_8).startsWith("https://") })
+        val state = server.state.value as PhoneState.Running
+        val host = state.url.removePrefix("http://").substringBefore('/')
+        val token = state.url.substringAfter('#')
+        val page = send(state.url, "GET / HTTP/1.1\r\nHost: $host\r\n\r\n")
+        assertEquals(200, page.code)
+        val script = page.body.substringAfter("<script>").substringBefore("</script>")
+        val hash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray()))
+        assertTrue(page.headers["content-security-policy"].orEmpty().contains("'sha256-$hash'"))
+        fun list(text: String, origin: String?, type: String = "text/plain; charset=utf-8"): Reply {
+            val body = text.toByteArray(Charsets.UTF_8)
+            return send(
+                state.url,
+                "POST /submit HTTP/1.1\r\nHost: $host\r\nAuthorization: Bearer $token\r\n" + (origin?.let { "Origin: $it\r\n" } ?: "") +
+                    "Content-Type: $type\r\nContent-Length: ${body.size}\r\n\r\n$text",
+            )
+        }
+        val url = "https://provider.example/manifest.json"
+        assertEquals("no Origin", 403, list(url, null).code)
+        assertEquals(400, list(url, "http://$host", type = "application/x-www-form-urlencoded").code)
+        assertEquals("the rule refuses it; the session goes on", 400, list("ftp://nope", "http://$host").code)
+        assertTrue(server.state.value is PhoneState.Running)
+        assertEquals(200, list(url, "http://$host").code)
+        assertEquals(url, String((received.single() as PhoneSubmission.AddonList).bytes, Charsets.UTF_8))
+        runBlocking { withTimeout(3_000) { server.state.first { it == PhoneState.Stopped } } }
+    }
+
     /** Spec 21 CHAN-FR-41/42: one picture, only for the channel the page was opened for. */
     @Test
     fun logoModeTakesOnePictureForItsChannelOnly() {

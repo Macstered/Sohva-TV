@@ -188,19 +188,12 @@ private fun Pages(host: DiscoverHost, profile: String, nav: DiscoverNavigation) 
                         val organise = viewModel(key = "discover-organise:$profile") { OrganiseModel(host, profile) }
                         OrganiseScreen(organise) { setup.back() }
                     },
-                    import = { setup -> ImportPlaceholder { setup.back() } },
+                    import = { setup ->
+                        val import = viewModel(key = "discover-import:$profile") { com.sohva.tv.feature.discover.ui.setup.ImportModel(host, profile) }
+                        com.sohva.tv.feature.discover.ui.setup.ImportScreen(import) { setup.back() }
+                    },
                 ),
             )
         }
     }
-}
-
-/** The import page arrives with the import work (M9 part 5); until then it only returns. */
-@Composable
-private fun ImportPlaceholder(back: () -> Unit) {
-    val button = remember { FocusRequester() }
-    Column(Modifier.fillMaxSize().testTag("discover-import"), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        TvActionButton(stringResource(R.string.addon_ui_back_to_import), back, Modifier.focusRequester(button), TvIcons.Back)
-    }
-    LaunchedEffect(Unit) { button.requestFocusWhenAttached() }
 }

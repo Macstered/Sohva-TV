@@ -28,7 +28,7 @@ object SubtitleText {
     fun decode(bytes: ByteArray): String? {
         if (bytes.size > MAX_BYTES) return null
         val text = String(bytes, Charsets.UTF_8)
-        return text.removePrefix("﻿")
+        return text.removePrefix(Char(0xFEFF).toString())
     }
 
     fun detect(text: String): SubtitleFormat? {

@@ -61,6 +61,8 @@ class PhoneSetup(private val graph: AppGraph) {
                     if (address != null) graph.data.channelEdits.setLogo(submission.channelKey, address)
                     address != null
                 }
+                // Addon lists go to Discover's own one-use server, never this one.
+                is PhoneSubmission.AddonList -> false
             }
         }
     }
