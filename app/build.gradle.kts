@@ -110,6 +110,7 @@ dependencies {
     implementation(project(":ui:design"))
     implementation(project(":feature:home"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:sport"))
     implementation(project(":feature:live"))
     implementation(project(":feature:player"))
     implementation(project(":feature:channels"))

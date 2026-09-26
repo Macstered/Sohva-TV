@@ -212,4 +212,5 @@
     <string name="diagnostics_no_picker">Dieser Fernseher hat keine Dateiauswahl zum Speichern der Diagnosedatei.</string>
     <string name="link_open_elsewhere">Dieser Fernseher kann den Link nicht öffnen. Scanne den Code oder gib die Adresse auf einem anderen Gerät ein.</string>
     <string name="about_palettes_title">Lizenzen der Farbpaletten</string>
+    <string name="error_api_sports_quota">Das heutige API-Sports-Kontingent ist aufgebraucht. Es wird täglich zurückgesetzt; gespeicherte Spiele bleiben sichtbar.</string>
 </resources>

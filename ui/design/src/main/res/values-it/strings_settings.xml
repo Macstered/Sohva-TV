@@ -212,4 +212,5 @@
     <string name="diagnostics_no_picker">Questa TV non ha un selettore di file per salvare il file di diagnostica.</string>
     <string name="link_open_elsewhere">Questa TV non può aprire il link. Scansiona il codice o digita l\'indirizzo su un altro dispositivo.</string>
     <string name="about_palettes_title">Licenze delle palette di colori</string>
+    <string name="error_api_sports_quota">La quota di oggi di API-Sports è esaurita. Si azzera ogni giorno; le partite salvate restano sullo schermo.</string>
 </resources>

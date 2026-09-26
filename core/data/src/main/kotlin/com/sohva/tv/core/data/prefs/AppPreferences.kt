@@ -31,6 +31,8 @@ import com.sohva.tv.core.model.settings.RefreshInterval
 import com.sohva.tv.core.model.settings.VodLanguageSlot
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.core.model.settings.StartupScreen
+import com.sohva.tv.core.model.sport.SportFollows
+import com.sohva.tv.core.model.sport.SportType
 import com.sohva.tv.core.model.vod.CustomGroup
 import com.sohva.tv.core.model.vod.CustomGroups
 import com.sohva.tv.core.model.vod.PreferredCopy
@@ -150,6 +152,35 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
 
     /** "Continue to the next episode" as Settings shows it (SET-34). */
     val autoPlayNext: Flow<Boolean> = store.data.map { it[AUTO_PLAY_NEXT] ?: true }.distinctUntilChanged()
+
+    // ---- Sohva Sport (spec 60 §6) ----------------------------------------------------------------
+
+    /** What the viewer follows; each key reads its default until first written (SPORT-FR-09). */
+    val sportFollows: Flow<SportFollows> = store.data.map { p ->
+        SportFollows(
+            sports = p[FOLLOWED_SPORTS]?.mapNotNullTo(HashSet(), SportType::fromStored) ?: SportFollows.DEFAULT.sports,
+            competitions = p[FOLLOWED_COMPETITIONS] ?: SportFollows.DEFAULT.competitions,
+        )
+    }.distinctUntilChanged()
+
+    /** Writes both keys: the first toggle stores the defaults plus the change (SPORT-FR-09). */
+    suspend fun setSportFollows(follows: SportFollows) {
+        store.edit {
+            it[FOLLOWED_SPORTS] = follows.sports.mapTo(HashSet()) { s -> s.name }
+            it[FOLLOWED_COMPETITIONS] = follows.competitions
+        }
+    }
+
+    /** The channel country/language order, canonical codes (SPORT-FR-10); empty is the default order. */
+    val sportsPriority: Flow<List<String>> = store.data.map { p -> p[SPORTS_PRIORITY]?.split(',')?.filter { it.isNotBlank() }.orEmpty() }.distinctUntilChanged()
+
+    suspend fun setSportsPriority(codes: List<String>) {
+        store.edit { if (codes.isEmpty()) it.remove(SPORTS_PRIORITY) else it[SPORTS_PRIORITY] = codes.joinToString(",") }
+    }
+
+    /** A profile's favourite games (SPORT-FR-96). */
+    fun favouriteEventsOf(profileId: String): Flow<Set<String>> =
+        store.data.map { it[stringSetPreferencesKey(Profiles.key(FAVOURITE_EVENTS_KEY, profileId))].orEmpty() }.distinctUntilChanged()
 
     suspend fun setBuffer(value: BufferProfile) = store.edit { it[BUFFER_PROFILE] = value.name }.let { }
 

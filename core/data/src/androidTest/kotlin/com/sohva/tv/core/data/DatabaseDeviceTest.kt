@@ -204,6 +204,20 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom9To10KeepingViewerDataAndAddingTheSportTables() {
+        helper.createDatabase(name, 9).use {
+            it.execSQL("INSERT INTO favourite_channel (profile_id, channel_key, added_at) VALUES ('default', 's1:c1', 1)")
+        }
+        helper.runMigrationsAndValidate(name, 10, true).use { db ->
+            db.query("SELECT channel_key FROM favourite_channel").use { assertEquals(1, it.count) }
+            db.execSQL("INSERT INTO event_channel_decision (event_id, channel_key, decision, updated_at) VALUES ('api-sports:football:1', 's1:c1', 'confirmed', 1)")
+            db.execSQL("INSERT INTO sport_quota (provider, utc_day, requests, remaining, exhausted) VALUES ('football', 20000, 1, 99, 0)")
+            db.query("SELECT decision FROM event_channel_decision").use { assertEquals(1, it.count) }
+            db.query("SELECT requests FROM sport_quota").use { assertEquals(1, it.count) }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

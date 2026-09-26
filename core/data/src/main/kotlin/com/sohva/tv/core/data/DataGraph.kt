@@ -122,6 +122,9 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
         com.sohva.tv.core.data.diagnostics.DiagnosticsReads(database, refreshStatus, dispatchers.io)
     }
 
+    /** Sohva Sport's tables (spec 60 §6), for the sports client in :feature:sport. */
+    val sportDao: com.sohva.tv.core.data.database.SportDao by lazy { database.sport() }
+
     /** The backup's database side (spec 71). */
     val backup: BackupStore by lazy { BackupStore(database, dispatchers.io) }
 }

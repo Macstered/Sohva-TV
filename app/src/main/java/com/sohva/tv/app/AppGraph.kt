@@ -88,12 +88,19 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             read = { data.progress.continueWatching(HomeModel.RESUME_CARDS) },
             changes = data.walls.changes(),
             playing = playbackActive,
-            onFirstSettled = { diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms") },
+            onFirstSettled = {
+                diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
+                // Today's games for Home, Search and reminders, after Home's first read (spec 60 SPORT-FR-29).
+                if (flags.sport) sport.feed.start()
+            },
         )
     }
 
     /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
     val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }
+
+    /** Sohva Sport (spec 60); built on first use. */
+    val sport: com.sohva.tv.app.sport.SportGraph by lazy { com.sohva.tv.app.sport.SportGraph(this) }
 
     /**
      * The public updater (spec 72 §4): only the release package checks, downloads or installs

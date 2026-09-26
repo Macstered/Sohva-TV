@@ -167,7 +167,14 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel {
                 SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore, activity, openLegal), accounts = false)
             }
-            SettingsScreen(model, onBack = { back() })
+            SettingsScreen(
+                model,
+                onBack = {
+                    back()
+                    // A key or the follows may have changed; the cache decides whether it costs a request (SPORT-NAV-03).
+                    if (graph.flags.sport) graph.sport.feed.refresh()
+                },
+            )
         }
         AppRoute.Legal -> {
             val activity = androidx.activity.compose.LocalActivity.current

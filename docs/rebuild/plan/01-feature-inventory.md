@@ -833,26 +833,26 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 
 **Provider and settings**
 
-- [ ] **SPORT-01** The viewer's own API-Sports key: masked field, Save key / Remove key, stored encrypted on the TV.
-- [ ] **SPORT-02** The key can also arrive from phone setup ([specs/11](../specs/11-phone-setup.md)).
-- [ ] **SPORT-03** Twelve sports: football, ice hockey, AFL, basketball, baseball, handball, rugby, volleyball, American football, MMA, Formula 1, NBA.
-- [ ] **SPORT-04** Follow or unfollow each sport (defaults: football, ice hockey, AFL).
-- [ ] **SPORT-05** Per-sport competition list from the provider (football: current season only), with search by name or country and "Selected X of Y".
-- [ ] **SPORT-06** Follow or unfollow single competitions (defaults: seven football competitions, Liiga, AFL).
-- [ ] **SPORT-07** Sports without a competition list (MMA, Formula 1, NBA) say so and show every event of the day.
-- [ ] **SPORT-08** Channel country/language priority codes (up to 8, e.g. `ES, EN, UK`) with Save order.
-- [ ] **SPORT-09** Settings status line: sports time zone, service state (cache / updated / stale fallback / multiple sources / refreshing / error), remaining API quota per sport, polling interval.
-- [ ] **SPORT-10** Sohva Sport uses the app time zone (Settings > General).
+- [x] **SPORT-01** The viewer's own API-Sports key: masked field, Save key / Remove key, stored encrypted on the TV.
+- [x] **SPORT-02** The key can also arrive from phone setup ([specs/11](../specs/11-phone-setup.md)).
+- [x] **SPORT-03** Twelve sports: football, ice hockey, AFL, basketball, baseball, handball, rugby, volleyball, American football, MMA, Formula 1, NBA.
+- [x] **SPORT-04** Follow or unfollow each sport (defaults: football, ice hockey, AFL).
+- [x] **SPORT-05** Per-sport competition list from the provider (football: current season only), with search by name or country and "Selected X of Y".
+- [x] **SPORT-06** Follow or unfollow single competitions (defaults: seven football competitions, Liiga, AFL).
+- [x] **SPORT-07** Sports without a competition list (MMA, Formula 1, NBA) say so and show every event of the day.
+- [x] **SPORT-08** Channel country/language priority codes (up to 8, e.g. `ES, EN, UK`) with Save order.
+- [x] **SPORT-09** Settings status line: sports time zone, service state (cache / updated / stale fallback / multiple sources / refreshing / error), remaining API quota per sport, polling interval.
+- [x] **SPORT-10** Sohva Sport uses the app time zone (Settings > General).
 
 **Feed**
 
-- [ ] **SPORT-11** Today's events for all followed sports and competitions, in the app time zone.
-- [ ] **SPORT-12** The saved feed is shown at once; the network refresh follows, sport by sport.
-- [ ] **SPORT-13** During a provider outage, data up to 24 hours past its freshness is shown instead of an error.
-- [ ] **SPORT-14** Automatic refresh every 5 / 10 / 30 minutes only while Sohva Sport or the score ticker is visible and the app is in front.
-- [ ] **SPORT-15** One refresh on return when the data is older than the polling interval.
+- [x] **SPORT-11** Today's events for all followed sports and competitions, in the app time zone.
+- [x] **SPORT-12** The saved feed is shown at once; the network refresh follows, sport by sport.
+- [x] **SPORT-13** During a provider outage, data up to 24 hours past its freshness is shown instead of an error.
+- [x] **SPORT-14** Automatic refresh every 5 / 10 / 30 minutes only while Sohva Sport or the score ticker is visible and the app is in front.
+- [x] **SPORT-15** One refresh on return when the data is older than the polling interval.
 - [ ] **SPORT-16** Manual refresh (header Refresh; Try again on the error card).
-- [ ] **SPORT-17** Status mapping per sport (live, upcoming, finished, postponed, cancelled, interrupted, unknown).
+- [x] **SPORT-17** Status mapping per sport (live, upcoming, finished, postponed, cancelled, interrupted, unknown).
 
 **Today screen**
 
@@ -963,7 +963,7 @@ Spec: [specs/70-settings.md](../specs/70-settings.md) · Milestone: M7 · 40 ite
 - [x] **SET-51** Remote buttons: press/hold grid for twelve buttons, reset ([31](../specs/31-remote-button-mapping.md)).
 - [x] **SET-52** Library: TMDB and TVmaze switches, TMDB key with Save and Test, metadata language, preferred film version, Manage groups & content, groups of your own, Clear metadata cache, TMDB and TVmaze website buttons ([41](../specs/41-metadata-enrichment.md), [42](../specs/42-library-organization.md)).
 - [ ] **SET-53** Accounts: the Trakt panel, hidden for restricted profiles ([51](../specs/51-trakt.md)).
-- [ ] **SET-54** Sohva Sport: channel country/language priority, API-Sports key, followed sports and competitions ([60](../specs/60-sohva-sport.md)).
+- [x] **SET-54** Sohva Sport: channel country/language priority, API-Sports key, followed sports and competitions ([60](../specs/60-sohva-sport.md)).
 - [x] **SET-55** Parental controls: set, change or remove the household PIN ([04](../specs/04-profiles-parental.md)).
 - [x] **SET-56** Backup & tools: encrypted backup save and restore, Clear all guide data ([71](../specs/71-backup-restore.md)).
 - [x] **SET-57** About: updates, About privacy and licences, Help translate, Save diagnostics ([72](../specs/72-updates-about-diagnostics.md)).
