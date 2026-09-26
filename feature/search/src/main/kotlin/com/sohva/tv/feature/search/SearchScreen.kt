@@ -197,6 +197,7 @@ private fun ResultRow(result: SearchResult, onClick: () -> Unit) {
 }
 
 private fun kindLabel(kind: ResultKind): Int = when (kind) {
+    ResultKind.SPORT -> R.string.search_type_sport
     ResultKind.CHANNEL -> R.string.search_type_channel
     ResultKind.PROGRAMME -> R.string.search_type_programme
     ResultKind.MOVIE -> R.string.search_type_movie

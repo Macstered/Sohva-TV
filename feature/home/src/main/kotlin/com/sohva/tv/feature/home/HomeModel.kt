@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sohva.tv.core.data.home.RecentChannel
 import com.sohva.tv.core.data.home.ResumeState
 import com.sohva.tv.core.data.vod.ContinueItem
+import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.vod.VodText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -67,7 +68,7 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
     init {
         viewModelScope.launch { channels.value = runCatching { env.recentChannels(env.now()) }.getOrDefault(emptyList()) }
         viewModelScope.launch {
-            combine(env.resume, channels) { resume, recent -> Triple(build(resume, recent.orEmpty()), resume, recent) }.collect { (rows, resume, recent) ->
+            combine(env.resume, channels, env.sportGames) { resume, recent, games -> Triple(build(resume, recent.orEmpty(), games), resume, recent) }.collect { (rows, resume, recent) ->
                 latest = rows
                 publish()
                 _empty.value = rows.isEmpty() && resume.settled && recent != null
@@ -133,6 +134,8 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
 
     fun openGuide() = env.openGuide()
 
+    fun open(card: SportCard) = env.openSportGame(card.event)
+
     fun markWatched(card: ResumeCard) {
         viewModelScope.launch { env.markWatched(card) }
     }
@@ -141,19 +144,21 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
         viewModelScope.launch { env.remove(card) }
     }
 
-    private fun build(resume: ResumeState, recent: List<RecentChannel>): List<HomeRow> = buildList {
+    private fun build(resume: ResumeState, recent: List<RecentChannel>, games: List<SportEvent>): List<HomeRow> = buildList {
         when (resume) {
             is ResumeState.Ready -> add(HomeRow.Resume(resume.items.take(RESUME_CARDS).map(::card).distinctBy { it.key }))
             ResumeState.Loading -> add(HomeRow.Status(failed = false))
             ResumeState.Failed -> add(HomeRow.Status(failed = true))
             ResumeState.Empty -> Unit
         }
+        if (games.isNotEmpty()) add(HomeRow.Sport(games.take(SPORT_CARDS).map { SportCard("sport:${it.id}", it) }, games.size))
         if (recent.isNotEmpty()) add(HomeRow.Channels(recent.map { ChannelCard("channel:${it.id}", it) }.distinctBy { it.key }))
     }
 
     companion object {
         const val HERO_REST_MS: Long = 180
         const val RESUME_CARDS: Int = 12
+        const val SPORT_CARDS: Int = 6
         private const val MINUTE_MS = 60_000L
 
         /** A card from a Continue watching entry (HOME-FR-13): the display title, fraction and minutes left. */
@@ -178,6 +183,11 @@ internal object StructureLock {
             is HomeRow.Channels -> {
                 val fresh = (next as? HomeRow.Channels)?.cards.orEmpty().associateBy { it.key }
                 HomeRow.Channels(row.cards.map { fresh[it.key] ?: it })
+            }
+            is HomeRow.Sport -> {
+                val next2 = next as? HomeRow.Sport
+                val fresh = next2?.cards.orEmpty().associateBy { it.key }
+                HomeRow.Sport(row.cards.map { fresh[it.key] ?: it }, next2?.total ?: row.total)
             }
             // The status card is not shown while locked.
             is HomeRow.Status -> null

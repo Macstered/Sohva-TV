@@ -1,5 +1,6 @@
 package com.sohva.tv.core.data
 
+import kotlinx.coroutines.flow.map
 import android.content.Context
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
@@ -121,6 +122,14 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val diagnostics: com.sohva.tv.core.data.diagnostics.DiagnosticsReads by lazy {
         com.sohva.tv.core.data.diagnostics.DiagnosticsReads(database, refreshStatus, dispatchers.io)
     }
+
+    /** Sohva Sport's tables (spec 60 §6), for the sports client in :feature:sport. */
+    val sportDao: com.sohva.tv.core.data.database.SportDao by lazy { database.sport() }
+    val pairingDao: com.sohva.tv.core.data.database.PairingDao by lazy { database.pairing() }
+
+    /** Emits when a table stream pairing's generation reads changes (spec 60 SPORT-FR-101). */
+    fun pairingInputChanges(): kotlinx.coroutines.flow.Flow<Unit> =
+        database.invalidationTracker.createFlow("source", "source_status", "channel_custom", "organization_rule", "team_alias").map { }
 
     /** The backup's database side (spec 71). */
     val backup: BackupStore by lazy { BackupStore(database, dispatchers.io) }

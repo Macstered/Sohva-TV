@@ -94,6 +94,9 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     /** Settings › About (spec 72 §5.1). */
     val about: AboutSettings = AboutSettings(services.about, viewModelScope)
 
+    /** Settings › Sohva Sport (spec 60 §4.1). */
+    val sport: SportSettings = SportSettings(services.sport, viewModelScope)
+
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
 

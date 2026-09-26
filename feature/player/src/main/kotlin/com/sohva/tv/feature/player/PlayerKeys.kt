@@ -63,8 +63,7 @@ class PlayerKeys internal constructor(private val model: PlayerModel, mapping: R
                 model.toggleStats()
                 true
             }
-            // The score ticker arrives with Sohva Sport (M8): nothing to act on yet.
-            RemoteAction.SCORE_TICKER -> false
+            RemoteAction.SCORE_TICKER -> model.toggleTicker()
             RemoteAction.GUIDE_AT_CHANNEL -> playing?.let { model.navigation.guideAt(it); true } ?: false
             RemoteAction.QUICK_ACTIONS -> {
                 model.openQuickActions()

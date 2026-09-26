@@ -158,6 +158,7 @@ private fun SettingsPane(
             SettingsSection.PARENTAL -> ParentalPane(model.profiles, start)
             SettingsSection.BACKUP -> BackupPane(model.backup, start)
             SettingsSection.ABOUT -> AboutPane(model.about, start)
+            SettingsSection.SPORT -> SportPane(model.sport, start)
             else -> PendingSection(state.section)
         }
     }

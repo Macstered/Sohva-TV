@@ -91,6 +91,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     if (buffering) BufferingIndicator(Modifier.align(Alignment.Center))
     if (listOpen) ChannelListPanel(model, Modifier.align(Alignment.CenterEnd))
     picker?.let { TrackPicker(model, it) }
+    model.ticker?.let { ScoreTicker(it, stats, Modifier.align(Alignment.TopEnd)) }
     if (quick) QuickActions(model)
     banner?.let { ErrorBanner(model, it, Modifier.align(Alignment.BottomCenter)) }
     // Back peels one layer per press (spec 30 §3.2); the channel list takes its own keys.

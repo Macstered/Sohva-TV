@@ -96,8 +96,11 @@ internal fun ReminderLayer(graph: AppGraph, stack: BackStack<AppRoute>) {
         when (val r = request ?: return@LaunchedEffect) {
             // Playback a notification started is not a recent channel (CHAN-FR-61); Back returns under it.
             is OpenRequest.Channel -> ChannelStarter(graph, stack).play(r.key, forGuide = false)
-            // The match card arrives with Sohva Sport (M8); until then its screen.
-            is OpenRequest.Event -> stack.push(AppRoute.Today)
+            // Today with the hub open on the game once the list holds it (SPORT-NAV-04).
+            is OpenRequest.Event -> {
+                graph.sport.openGame(r.id)
+                stack.push(AppRoute.Today)
+            }
         }
         graph.openRequest.value = null
     }
@@ -106,7 +109,13 @@ internal fun ReminderLayer(graph: AppGraph, stack: BackStack<AppRoute>) {
 /** Watch plays the channel over the current screen (REM-FR-22); a match without a channel opens Sohva Sport. */
 private fun openFor(reminder: Reminder, stack: BackStack<AppRoute>, graph: AppGraph) {
     val key = reminder.channelKey
-    if (key != null) ChannelStarter(graph, stack).play(key, forGuide = false) else stack.push(AppRoute.Today)
+    when {
+        key != null -> ChannelStarter(graph, stack).play(key, forGuide = false)
+        else -> {
+            reminder.eventId?.let(graph.sport::openGame)
+            stack.push(AppRoute.Today)
+        }
+    }
 }
 
 /** The steps after the first reminder is set (REM-FR-05). */

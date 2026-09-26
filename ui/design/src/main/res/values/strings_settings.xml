@@ -220,4 +220,5 @@
     <string name="diagnostics_no_picker">This TV has no file picker for saving the diagnostics file.</string>
     <string name="link_open_elsewhere">This TV cannot open the link. Scan the code or type the address on another device.</string>
     <string name="about_palettes_title">Colour palette licences</string>
+    <string name="error_api_sports_quota">Today\'s API-Sports quota is used up. It resets daily; saved games stay on screen.</string>
 </resources>

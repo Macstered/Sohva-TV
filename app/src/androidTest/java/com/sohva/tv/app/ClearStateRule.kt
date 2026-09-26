@@ -55,6 +55,15 @@ class ClearStateRule : ExternalResource() {
             graph.data.profiles.seed(stored)
             // Once seeded, the store follows the preferences on its own: wait until it has.
             kotlinx.coroutines.withTimeout(5_000) { graph.data.profiles.household.first { it == stored } }
+            // Sohva Sport (M8): the key, the saved days and choices, and any local test server.
+            graph.data.serviceKeys.removeApiSports()
+            for (table in listOf("sport_feed", "sport_event", "sport_competition", "sport_quota", "event_channel_decision", "team_alias")) {
+                graph.data.database.openHelper.writableDatabase.execSQL("DELETE FROM $table")
+            }
+            graph.sport.testHosts = null
+            graph.sport.feed.forgetForTests()
+            graph.sport.pairing.forgetForTests()
+            if (graph.sport.ticker.shown.value) graph.sport.ticker.toggle()
             // A restore the test stopped half-way leaves its marker (spec 71 §8).
             graph.data.backup.markRestoring(false)
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())

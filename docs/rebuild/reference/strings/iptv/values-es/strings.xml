@@ -862,4 +862,5 @@
     <string name="diagnostics_no_picker">Este televisor no tiene un selector de archivos para guardar el archivo de diagnóstico.</string>
     <string name="link_open_elsewhere">Este televisor no puede abrir el enlace. Escanea el código o escribe la dirección en otro dispositivo.</string>
     <string name="about_palettes_title">Licencias de las paletas de colores</string>
+    <string name="error_api_sports_quota">La cuota de API-Sports de hoy se ha agotado. Se restablece cada día; los partidos guardados siguen en pantalla.</string>
 </resources>

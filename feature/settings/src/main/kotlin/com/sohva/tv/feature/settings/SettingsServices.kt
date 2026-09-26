@@ -41,6 +41,9 @@ interface SettingsServices {
     /** Settings › About (spec 72). */
     val about: AboutSettingsServices
 
+    /** Settings › Sohva Sport (spec 60 §4.1). */
+    val sport: SportSettingsServices
+
     fun sources(): Flow<List<Source>>
 
     /** Why beta 23's sources could not be imported, when that happened (plan/04 §17 failure path). */

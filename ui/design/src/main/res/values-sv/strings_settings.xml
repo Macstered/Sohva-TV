@@ -212,4 +212,5 @@
     <string name="diagnostics_no_picker">Den här tv:n har ingen filväljare för att spara diagnostikfilen.</string>
     <string name="link_open_elsewhere">Den här tv:n kan inte öppna länken. Skanna koden eller skriv adressen på en annan enhet.</string>
     <string name="about_palettes_title">Licenser för färgpaletter</string>
+    <string name="error_api_sports_quota">Dagens API-Sports-kvot är förbrukad. Den återställs varje dag; sparade matcher visas fortfarande.</string>
 </resources>

@@ -230,6 +230,19 @@ internal fun QuickActions(model: PlayerModel) {
                 trailing = stringResource(if (stats) R.string.player_quick_stats_on else R.string.player_quick_stats_off),
                 layout = ListRowLayout(divider = true),
             )
+            model.ticker?.let { ticker ->
+                val on by ticker.shown.collectAsStateWithLifecycle()
+                TvListRow(
+                    stringResource(R.string.player_quick_ticker),
+                    {
+                        model.toggleTicker()
+                        model.closeQuickActions()
+                    },
+                    Modifier.testTag("player-quick-ticker"),
+                    trailing = stringResource(if (on) R.string.player_quick_stats_on else R.string.player_quick_stats_off),
+                    layout = ListRowLayout(divider = true),
+                )
+            }
         }
     }
     LaunchedEffect(Unit) { first.requestFocusWhenAttached() }

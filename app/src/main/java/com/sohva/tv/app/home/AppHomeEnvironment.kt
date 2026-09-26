@@ -19,8 +19,11 @@ import com.sohva.tv.feature.home.ResumeCard
 import com.sohva.tv.ui.design.navigation.BackStack
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 
 /**
  * Home's side of the graph (plan/03 §4.6): the process's Continue watching projection, the recent
@@ -53,10 +56,20 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
 
     override val lowMemory: Boolean get() = graph.player.lowMemory
 
+    /** Today's games as Sohva Sport holds them; Home asks for nothing itself (HOME-FR-33). */
+    override val sportGames: Flow<List<com.sohva.tv.core.model.sport.SportEvent>>
+        get() = if (graph.flags.sport) graph.sport.feed.state.map { it.events }.distinctUntilChanged() else flowOf(emptyList())
+
+    override fun openSportGame(event: com.sohva.tv.core.model.sport.SportEvent) {
+        graph.sport.openGame(event.id)
+        stack.push(AppRoute.Today)
+    }
+
     override suspend fun heroDetails(subject: HeroSubject): HeroDetails? = when (subject) {
         is HeroSubject.Resume -> if (subject.card.isEpisode) episode(subject.card) else film(subject.card)
         is HeroSubject.Channel -> channel(subject.card)
-        HeroSubject.Welcome -> null
+        // The crests are the picture (SPORT-FR-97); no lookup.
+        is HeroSubject.Sport, HeroSubject.Welcome -> null
     }
 
     /** HOME-FR-66: the match's overview, else the provider's plot; the match's backdrop only. */

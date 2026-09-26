@@ -202,7 +202,7 @@ private fun clock(now: Long, zoneId: String?): String {
 }
 
 /** What the hero panel shows for a subject (HOME-FR-63), computed at the minute tick. */
-private class HeroText(val kicker: String, val live: Boolean, val title: String, val facts: String, val progress: Float?, val synopsis: String?)
+internal class HeroText(val kicker: String, val live: Boolean, val title: String, val facts: String, val progress: Float?, val synopsis: String?)
 
 @Composable
 private fun heroText(subject: HeroSubject, details: HeroDetails?, now: Long, zoneId: String?): HeroText = when (subject) {
@@ -225,6 +225,7 @@ private fun heroText(subject: HeroSubject, details: HeroDetails?, now: Long, zon
             progress, null,
         )
     }
+    is HeroSubject.Sport -> sportText(subject.card.event, zoneId)
     HeroSubject.Welcome -> HeroText(
         stringResource(R.string.home_hero_welcome), false, stringResource(R.string.home_live_tv), "", null,
         stringResource(R.string.home_live_tv_description),

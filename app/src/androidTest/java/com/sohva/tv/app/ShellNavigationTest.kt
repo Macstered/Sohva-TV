@@ -38,7 +38,7 @@ class ShellNavigationTest {
     private val items = listOf(
         // With no source the guide shows its empty card, "Open settings" focused (GUIDE-FR-101).
         Triple(RailItem.LIVE_TV, "screen-guide", "guide-empty-settings"),
-        Triple(RailItem.SPORT, "screen-today", "placeholder-back"),
+        Triple(RailItem.SPORT, "screen-today", "today-tab-all"),
         // The walls open on History (VOD-FR-49).
         Triple(RailItem.MOVIES, "screen-movies", "library-row-history"),
         Triple(RailItem.SERIES, "screen-series", "library-row-history"),

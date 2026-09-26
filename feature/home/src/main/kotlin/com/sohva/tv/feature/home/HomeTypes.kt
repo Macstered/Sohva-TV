@@ -4,7 +4,9 @@ import androidx.compose.runtime.Immutable
 import com.sohva.tv.core.data.home.RecentChannel
 import com.sohva.tv.core.data.home.ResumeState
 import com.sohva.tv.core.data.vod.ContinueItem
+import com.sohva.tv.core.model.sport.SportEvent
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.StateFlow
 
 /** A Continue watching card (spec 02 HOME-FR-13), built off the main thread. */
@@ -25,7 +27,11 @@ data class ResumeCard(
 @Immutable
 data class ChannelCard(val key: String, val channel: RecentChannel)
 
-/** A row of Home (HOME-FR-01), in the fixed order; Trakt and sport rows join in M8 and M9. */
+/** A Today's sport card (HOME-FR-33, spec 60 SPORT-FR-97); the key is the game's id. */
+@Immutable
+data class SportCard(val key: String, val event: SportEvent)
+
+/** A row of Home (HOME-FR-01), in the fixed order; Trakt rows join with Trakt (M10). */
 sealed interface HomeRow {
     val key: String
 
@@ -42,17 +48,26 @@ sealed interface HomeRow {
         override val key: String = RECENT
     }
 
+    /** The first 6 of today's games; [total] counts them all (HOME-FR-33, spec 60 SPORT-FR-97). */
+    data class Sport(val cards: List<SportCard>, val total: Int) : HomeRow {
+        override val key: String = SPORT
+    }
+
     companion object {
         const val CONTINUE: String = "continue-watching"
+        const val SPORT: String = "todays-sport"
         const val RECENT: String = "recent-channels"
     }
 }
 
-/** What the hero describes (HOME-FR-60); sport and Trakt subjects join with their milestones. */
+/** What the hero describes (HOME-FR-60); Trakt subjects join with Trakt (M10). */
 sealed interface HeroSubject {
     data class Resume(val card: ResumeCard) : HeroSubject
 
     data class Channel(val card: ChannelCard) : HeroSubject
+
+    /** A focused Today's sport card (spec 60 SPORT-FR-97). */
+    data class Sport(val card: SportCard) : HeroSubject
 
     data object Welcome : HeroSubject
 }
@@ -90,6 +105,12 @@ interface HomeEnvironment {
     fun playChannel(card: ChannelCard)
 
     fun openGuide()
+
+    /** Today's games in Today's order; Home starts no request of its own (HOME-FR-33). */
+    val sportGames: Flow<List<SportEvent>> get() = flowOf(emptyList())
+
+    /** Sohva Sport with this game's hub open once the day's list holds it (spec 60 §3). */
+    fun openSportGame(event: SportEvent) = Unit
 
     /** The low memory class of plan/07 §2.2: the hero decodes at half size and does not crossfade. */
     val lowMemory: Boolean

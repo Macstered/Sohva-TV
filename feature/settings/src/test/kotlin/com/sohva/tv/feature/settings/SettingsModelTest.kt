@@ -72,6 +72,24 @@ class SettingsModelTest {
             override fun startupScreen() = flowOf(com.sohva.tv.core.model.settings.StartupScreen.HOME)
             override suspend fun setStartupScreen(value: com.sohva.tv.core.model.settings.StartupScreen) = Unit
         }
+        override val sport: SportSettingsServices = object : SportSettingsServices {
+            override fun hasKey() = kotlinx.coroutines.flow.flowOf(false)
+
+            override suspend fun saveKey(key: String): com.sohva.tv.core.model.error.Outcome<Unit> = com.sohva.tv.core.model.error.Outcome.Ok(Unit)
+
+            override fun follows() = kotlinx.coroutines.flow.flowOf(com.sohva.tv.core.model.sport.SportFollows.DEFAULT)
+
+            override suspend fun setFollows(follows: com.sohva.tv.core.model.sport.SportFollows) = Unit
+
+            override suspend fun competitions(sport: com.sohva.tv.core.model.sport.SportType) = emptyList<com.sohva.tv.core.model.sport.Competition>()
+
+            override fun priority() = kotlinx.coroutines.flow.flowOf(emptyList<String>())
+
+            override suspend fun setPriority(codes: List<String>) = Unit
+
+            override fun status() = kotlinx.coroutines.flow.emptyFlow<com.sohva.tv.core.model.sport.SportFeedStatus>()
+        }
+
         override val about: AboutSettingsServices = object : AboutSettingsServices {
             override val installedVersion: String = "0.2.0-test"
 

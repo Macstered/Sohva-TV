@@ -38,6 +38,26 @@ interface PlayerEnvironmentUi {
 
     /** The live stream's real address and headers for another player app (PLAY-FR-115), or null when gone. */
     suspend fun externalStream(channelKey: String): ExternalStream?
+
+    /** Sohva Sport's score ticker (PLAY-31), or null where Sohva Sport is not offered. */
+    val ticker: ScoreTickerSource? get() = null
+}
+
+/** The score ticker's data and switch (spec 30 §4.20, spec 60 SPORT-FR-99), owned by Sohva Sport. */
+interface ScoreTickerSource {
+    /** On or off for the app session: it survives leaving the player (PLAY-FR-120). */
+    val shown: kotlinx.coroutines.flow.StateFlow<Boolean>
+
+    /** The rows (PLAY-FR-121), recomputed when the games change and each minute. */
+    val games: Flow<List<com.sohva.tv.core.model.sport.SportEvent>>
+
+    /** The zone start labels use (the app zone). */
+    val zoneId: Flow<String>
+
+    fun toggle()
+
+    /** Shown over a resumed player: the games poll as if Sohva Sport were on screen, never faster. */
+    fun setVisible(visible: Boolean)
 }
 
 /** What another player gets: the address (with the provider's credentials, inherent to the feature) and headers. */

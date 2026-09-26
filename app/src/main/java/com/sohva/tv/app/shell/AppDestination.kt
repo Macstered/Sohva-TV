@@ -105,7 +105,12 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             PlayerOnTop(graph)
             PlayerScreen(model)
         }
-        AppRoute.Today -> PlaceholderScreen(R.string.home_sportmate, { back() }, "screen-today")
+        AppRoute.Today -> {
+            val model = viewModel {
+                com.sohva.tv.feature.sport.today.TodayModel(com.sohva.tv.app.sport.AppTodayEnvironment(graph, stack))
+            }
+            com.sohva.tv.feature.sport.today.TodayScreen(model)
+        }
         is AppRoute.Catalogue -> {
             val room = if (route.mode == CatalogueMode.MOVIES) WallRoom.MOVIES else WallRoom.SERIES
             // Scoped to this stack entry; the browse session (graph.browseSessions) outlives it (spec 40 VOD-FR-56).
@@ -167,7 +172,14 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel {
                 SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore, activity, openLegal), accounts = false)
             }
-            SettingsScreen(model, onBack = { back() })
+            SettingsScreen(
+                model,
+                onBack = {
+                    back()
+                    // A key or the follows may have changed; the cache decides whether it costs a request (SPORT-NAV-03).
+                    if (graph.flags.sport) graph.sport.feed.refresh()
+                },
+            )
         }
         AppRoute.Legal -> {
             val activity = androidx.activity.compose.LocalActivity.current

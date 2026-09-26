@@ -3,6 +3,11 @@ package com.sohva.tv.core.data.source
 import com.sohva.tv.core.data.security.SecretValues
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flow
 
 /**
  * The viewer's own service keys, encrypted in the secure settings under the names spec 70 §6.1 and
@@ -18,9 +23,24 @@ class ServiceKeys(private val secrets: SecretValues) {
         return secrets.write(TMDB_ENABLED, "true")
     }
 
-    /** At most 512 characters, one line (PHONE-FR-31 item 4). */
-    suspend fun saveApiSports(key: String): Outcome<Unit> =
-        if (fits(key, API_SPORTS_MAX)) secrets.write(API_SPORTS_KEY, key) else Outcome.Failed(AppError.Unknown)
+    /** At most 512 characters, one line (PHONE-FR-31 item 4, spec 60 SPORT-FR-01). */
+    suspend fun saveApiSports(key: String): Outcome<Unit> {
+        if (!fits(key, API_SPORTS_MAX)) return Outcome.Failed(AppError.Unknown)
+        return secrets.write(API_SPORTS_KEY, key).also { if (it is Outcome.Ok) apiSportsSaved.value = true }
+    }
+
+    suspend fun removeApiSports(): Outcome<Unit> = secrets.write(API_SPORTS_KEY, null).also { if (it is Outcome.Ok) apiSportsSaved.value = false }
+
+    /** The saved key, or null; only the sports client asks, off the main thread. */
+    suspend fun apiSports(): String? = (secrets.read(API_SPORTS_KEY) as? Outcome.Ok)?.value?.takeIf { it.isNotBlank() }
+
+    /** Whether a key is saved: read once, then kept current by the saves and removals above. */
+    fun apiSportsSaved(): Flow<Boolean> = flow {
+        if (apiSportsSaved.value == null) apiSportsSaved.compareAndSet(null, apiSports() != null)
+        emitAll(apiSportsSaved.filterNotNull())
+    }
+
+    private val apiSportsSaved = MutableStateFlow<Boolean?>(null)
 
     private fun fits(value: String, max: Int): Boolean = value.isNotEmpty() && value.length <= max && value.none { it == '\n' || it == '\r' }
 
