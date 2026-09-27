@@ -27,7 +27,7 @@ import com.sohva.tv.ui.design.R as DesignR
  * nothing. Until the ground is rendered it draws nothing and the window's picture shows.
  */
 @Composable
-fun LaunchScreen() {
+fun LaunchScreen(updating: Boolean = false) {
     SohvaTheme(ColorThemeId.ORIGINAL, reducedMotion = true) {
         ScreenBackground(whileRendering = Color.Transparent) {
             Column(
@@ -41,6 +41,13 @@ fun LaunchScreen() {
                     stringResource(DesignR.string.brand_sohva_tv),
                     Modifier.width(273.dp).height(56.dp).testTag("launch-brand"),
                 )
+                // A first start over beta 23 that takes a while (plan/04 §17).
+                if (updating) {
+                    com.sohva.tv.ui.design.text.Text(
+                        stringResource(DesignR.string.launch_updating), Modifier.testTag("launch-updating"),
+                        style = com.sohva.tv.ui.design.theme.Sohva.typography.body, color = com.sohva.tv.ui.design.theme.Sohva.palette.textMuted,
+                    )
+                }
             }
         }
     }

@@ -55,6 +55,7 @@
     <string name="error_backup_wrong_passphrase">Password errata, oppure il backup è danneggiato</string>
     <string name="error_backup_structure">La struttura del backup non è valida</string>
     <string name="error_pin_format">Il PIN deve avere da 4 a 8 cifre</string>
+    <string name="launch_updating">Aggiornamento di Sohva TV…</string>
     <string name="action_back">Indietro</string>
     <string name="action_refresh">Aggiorna</string>
     <string name="action_refreshing">Aggiornamento…</string>

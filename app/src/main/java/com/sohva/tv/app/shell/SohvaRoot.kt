@@ -36,6 +36,8 @@ import com.sohva.tv.ui.design.navigation.rememberBackStack
 import com.sohva.tv.ui.design.theme.InterfaceScaled
 import com.sohva.tv.ui.design.theme.Palettes
 import com.sohva.tv.ui.design.theme.SohvaTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** What the first app frame needs, read once off the main thread (plan/03 §4.9). */
@@ -59,7 +61,19 @@ interface RootHost {
 @Composable
 fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
     var start by remember { mutableStateOf<StartState?>(null) }
+    var updating by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
+        // An upgrade over beta 23 imports its viewer data before the first screen is chosen (plan/04
+        // §17): file checks only on every other start; "Updating…" only when it takes over a second.
+        withContext(graph.dispatchers.io) {
+            val upgrade = com.sohva.tv.app.migration.Beta23Upgrade(graph)
+            if (upgrade.pending()) {
+                val note = launch { delay(UPDATING_AFTER_MS); updating = true }
+                upgrade.run()
+                note.cancel()
+            }
+        }
+        graph.upgradeSettled.complete(Unit)
         start = withContext(graph.dispatchers.io) {
             // Timing marks: to the diagnostics log (counts and durations only) and as trace sections.
             val t0 = graph.clock.monotonicNanos()
@@ -82,11 +96,13 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
     val corner by graph.inPictureInPicture.collectAsState()
     CompositionLocalProvider(LocalRenderDispatcher provides graph.dispatchers.ui, LocalPictureInPicture provides corner) {
         val state = start
-        if (state == null) LaunchScreen() else App(graph, state, host)
+        if (state == null) LaunchScreen(updating) else App(graph, state, host)
     }
 }
 
 private fun ms(from: Long, to: Long): Long = (to - from) / 1_000_000
+
+private const val UPDATING_AFTER_MS = 1_000L
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

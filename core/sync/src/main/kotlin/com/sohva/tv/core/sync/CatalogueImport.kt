@@ -175,6 +175,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
             phase("genre counts")
             SearchIndex.catchUp(env.db, SearchTable.MOVIE, SearchTable.SERIES, SearchTable.EPISODE)
             phase("search index")
+            // Positions imported from beta 23 take their titles' film identity and series (decision A1).
+            com.sohva.tv.core.data.migration.Beta23Rows.link(env.db)
+            phase("imported positions")
             env.onCatalogueImported()
             KeyRange.movies(sourceId).let { env.db.movieImport().count(it.from, it.until) } +
                 KeyRange.series(sourceId).let { env.db.seriesImport().count(it.from, it.until) }

@@ -62,4 +62,5 @@
     <string name="error_backup_wrong_passphrase">Väärä salasana tai vioittunut varmuuskopio</string>
     <string name="error_backup_structure">Varmuuskopion rakenne on virheellinen</string>
     <string name="error_pin_format">PIN-koodin pitää olla 4–8 numeroa</string>
+    <string name="launch_updating">Päivitetään Sohva TV:tä…</string>
 </resources>

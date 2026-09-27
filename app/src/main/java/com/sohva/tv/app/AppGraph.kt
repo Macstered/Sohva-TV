@@ -78,6 +78,13 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             .distinctUntilChanged()
     }
 
+    /**
+     * Beta 23's viewer data has been imported, or there was none (decision A1): the start step
+     * completes it before the first screen, and the background importers wait for it so nothing
+     * else touches the organisation rules meanwhile.
+     */
+    val upgradeSettled: kotlinx.coroutines.CompletableDeferred<Unit> = kotlinx.coroutines.CompletableDeferred()
+
     /** True while video plays; the player (M2) sets it. */
     val playbackActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
@@ -260,11 +267,14 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             val imported = data.beta23Import.run()
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
+            upgradeSettled.await()
             data.beta23Categories.run()
             // Beta 23's Discover data (decision A1); Discover itself is built only when old files exist.
             if (flags.discover) com.sohva.tv.app.discover.Beta23DiscoverImport(this@AppGraph).run()
             // Beta 23's Trakt accounts (decision A1); Trakt is built only when the old file exists.
             if (flags.trakt) com.sohva.tv.app.trakt.Beta23TraktImport(this@AppGraph).run()
+            // Beta 23's files go once every part above came across (plan/04 §17).
+            com.sohva.tv.app.migration.Beta23Cleanup(this@AppGraph).run()
             // The demo build's fictional Trakt account (spec 51 FR-37); Trakt itself stays offline there.
             if (flags.trakt && flags.demoContent) trakt?.let { com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(it, data.profiles.activeId) }
         }

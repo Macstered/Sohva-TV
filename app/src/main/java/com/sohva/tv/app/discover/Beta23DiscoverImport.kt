@@ -152,9 +152,9 @@ class Beta23DiscoverImport(private val graph: AppGraph) {
 
     private fun JSONObject.text(name: String): String? = if (has(name) && !isNull(name)) optString(name).takeIf { it.isNotEmpty() } else null
 
-    private companion object {
-        const val MARKER = "import.beta23.discover"
-        const val UI_PREFS = "sohva_addon_ui"
-        val DATABASES = listOf("sohva-addons.db", "sohva-addon-progress.db", "sohva-addon-library.db")
+    companion object {
+        const val MARKER: String = "import.beta23.discover"
+        const val UI_PREFS: String = "sohva_addon_ui"
+        val DATABASES: List<String> = listOf("sohva-addons.db", "sohva-addon-progress.db", "sohva-addon-library.db")
     }
 }

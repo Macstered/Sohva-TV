@@ -138,6 +138,8 @@ dependencies {
 
     testImplementation(libs.junit)
 
+    // The beta 23 upgrade test writes beta 23's settings file as beta 23 did (decision A1).
+    androidTestImplementation(libs.androidx.datastore.preferences)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

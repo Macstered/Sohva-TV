@@ -55,6 +55,7 @@
     <string name="error_backup_wrong_passphrase">Fel lösenord, eller så är säkerhetskopian skadad</string>
     <string name="error_backup_structure">Säkerhetskopians struktur är ogiltig</string>
     <string name="error_pin_format">PIN-koden måste ha 4–8 siffror</string>
+    <string name="launch_updating">Uppdaterar Sohva TV…</string>
     <string name="action_back">Tillbaka</string>
     <string name="action_refresh">Uppdatera</string>
     <string name="action_refreshing">Uppdaterar…</string>
