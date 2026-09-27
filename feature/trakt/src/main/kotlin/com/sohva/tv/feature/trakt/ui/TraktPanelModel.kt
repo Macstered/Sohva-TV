@@ -54,7 +54,8 @@ class TraktPanelModel(private val host: TraktHost, private val profile: String) 
         if (!host.configured) return
         attempt?.cancel()
         _state.update { it.copy(signingIn = true, prompt = null, message = null) }
-        attempt = viewModelScope.launch {
+        // Off the main thread: the clients parse their answers where they are called (AGENTS.md §4 rule 1).
+        attempt = viewModelScope.launch(host.dispatchers.io) {
             val result = host.signIn(profile).run { code ->
                 _state.update { it.copy(prompt = TraktPrompt(code.verificationUrl, code.userCode, null)) }
                 viewModelScope.launch {

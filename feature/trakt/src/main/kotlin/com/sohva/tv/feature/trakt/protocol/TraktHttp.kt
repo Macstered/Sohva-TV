@@ -39,19 +39,34 @@ internal class TraktHttp(base: OkHttpClient, timeoutSeconds: Long, private val m
         .apply { interceptors().clear() }
         .build()
 
+    /**
+     * One request. The body is read on OkHttp's own callback thread and only the finished bytes come
+     * back, so a caller on the main thread never touches the socket (AGENTS.md §4 rule 1; a TLS read
+     * there is a NetworkOnMainThreadException).
+     */
     suspend fun call(request: Request): TraktResponse {
         val call = client.newCall(request)
-        val response = suspendCancellableCoroutine<Response> { cont ->
+        return suspendCancellableCoroutine { cont ->
             cont.invokeOnCancellation { call.cancel() }
             call.enqueue(
                 object : Callback {
                     override fun onFailure(call: Call, e: IOException) = cont.resumeWithException(TraktException(TraktFailure.NETWORK))
 
-                    override fun onResponse(call: Call, response: Response) = cont.resume(response) { _, _, _ -> response.close() }
+                    override fun onResponse(call: Call, response: Response) {
+                        val read = try {
+                            Result.success(read(response))
+                        } catch (e: TraktException) {
+                            Result.failure(e)
+                        }
+                        read.fold({ cont.resume(it) { _, _, _ -> } }, cont::resumeWithException)
+                    }
                 },
             )
         }
-        return response.use { r ->
+    }
+
+    private fun read(response: Response): TraktResponse =
+        response.use { r ->
             val body = r.body
             if (body.contentLength() > maxBytes) throw TraktException(TraktFailure.INVALID_RESPONSE)
             val out = Buffer()
@@ -67,7 +82,6 @@ internal class TraktHttp(base: OkHttpClient, timeoutSeconds: Long, private val m
             }
             TraktResponse(r.code, out, r.headers)
         }
-    }
 
     companion object {
         const val API_VERSION: String = "2"

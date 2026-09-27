@@ -194,19 +194,28 @@ class StremioLink(base: OkHttpClient, private val linkBase: HttpUrl = LINK, priv
 
     private fun request(url: HttpUrl) = Request.Builder().url(url).header("Accept", "application/json").header("Cache-Control", "no-store")
 
+    /**
+     * One request. The body is read on OkHttp's callback thread, so a caller on the main thread
+     * never reads the socket (AGENTS.md §4 rule 1; a TLS read there crashes the app).
+     */
     private suspend fun call(request: Request): Buffer {
         val call = client.newCall(request)
-        val response = suspendCancellableCoroutine<Response> { cont ->
-                cont.invokeOnCancellation { call.cancel() }
-                call.enqueue(
-                    object : Callback {
-                        override fun onFailure(call: Call, e: IOException) = cont.resumeWithException(StremioException(StremioProblem.OTHER))
+        return suspendCancellableCoroutine { cont ->
+            cont.invokeOnCancellation { call.cancel() }
+            call.enqueue(
+                object : Callback {
+                    override fun onFailure(call: Call, e: IOException) = cont.resumeWithException(StremioException(StremioProblem.OTHER))
 
-                        override fun onResponse(call: Call, response: Response) = cont.resume(response) { _, _, _ -> response.close() }
-                    },
-                )
+                    override fun onResponse(call: Call, response: Response) {
+                        runCatching { read(response) }.fold({ cont.resume(it) { _, _, _ -> } }, { cont.resumeWithException(it) })
+                    }
+                },
+            )
         }
-        return response.use { r ->
+    }
+
+    private fun read(response: Response): Buffer =
+        response.use { r ->
             if (r.code !in 200..299) throw StremioException(StremioProblem.OTHER)
             val out = Buffer()
             try {
@@ -219,7 +228,6 @@ class StremioLink(base: OkHttpClient, private val linkBase: HttpUrl = LINK, priv
             }
             out
         }
-    }
 
     companion object {
         val LINK: HttpUrl = "https://link.stremio.com/".toHttpUrl()
