@@ -230,12 +230,25 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             val model = viewModel {
                 SettingsModel(AppSettingsServices(graph, openManager, switchProfile, applyLanguage, afterRestore, activity, openLegal), accounts = false)
             }
+            // Accounts only for an unrestricted profile (spec 51 §3, FR-36); re-checked on every profile change.
+            val trakt = graph.trakt
+            val household by graph.data.profiles.household.collectAsState()
+            androidx.compose.runtime.LaunchedEffect(household) {
+                model.setAccounts(trakt != null && trakt.access.allowed(household.active.id))
+            }
             SettingsScreen(
                 model,
                 onBack = {
                     back()
                     // A key or the follows may have changed; the cache decides whether it costs a request (SPORT-NAV-03).
                     if (graph.flags.sport) graph.sport.feed.refresh()
+                },
+                accounts = trakt?.let { host ->
+                    { start ->
+                        val profile = household.active
+                        val panel = viewModel(key = "trakt-panel:${profile.id}") { com.sohva.tv.feature.trakt.ui.TraktPanelModel(host, profile.id) }
+                        com.sohva.tv.feature.trakt.ui.TraktAccountsPane(panel, profile.displayName(androidx.compose.ui.res.stringResource(R.string.profile_default_name)), start)
+                    }
                 },
             )
         }

@@ -128,7 +128,7 @@ class TraktAuthClient(base: OkHttpClient, private val credentials: TraktCredenti
         if (!type.equals("bearer", ignoreCase = true)) throw TraktException(TraktFailure.INVALID_RESPONSE)
         val c = created?.takeIf { it in 0..253_402_300_799 } ?: throw TraktException(TraktFailure.INVALID_RESPONSE)
         val e = expiresIn?.takeIf { it in 1..31_536_000 } ?: throw TraktException(TraktFailure.INVALID_RESPONSE)
-        return TraktTokens(access ?: throw TraktException(TraktFailure.INVALID_RESPONSE), refresh ?: throw TraktException(TraktFailure.INVALID_RESPONSE), (c + e) * 1_000)
+        return TraktTokens(access ?: throw TraktException(TraktFailure.INVALID_RESPONSE), refresh ?: throw TraktException(TraktFailure.INVALID_RESPONSE), (c + e) * 1_000, e * 1_000)
     }
 
     private fun failOn(code: Int, r: TraktResponse) {

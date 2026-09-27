@@ -66,6 +66,7 @@ class ClearStateRule : ExternalResource() {
             if (graph.sport.ticker.shown.value) graph.sport.ticker.toggle()
             // Discover (M9): every profile's addons, order, progress and Library, and the response cache.
             graph.discover?.resetForTests()
+            graph.trakt?.resetForTests()
             // A restore the test stopped half-way leaves its marker (spec 71 §8).
             graph.data.backup.markRestoring(false)
             graph.metadata.useEndpoints("https://api.themoviedb.org/3/".toHttpUrl(), "https://api.tvmaze.com/".toHttpUrl())

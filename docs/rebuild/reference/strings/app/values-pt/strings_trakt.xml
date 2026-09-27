@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trakt_profile">Perfil Sohva: %1$s</string>
+    <string name="trakt_connect">Ligar ao Trakt</string>
+    <string name="trakt_reconnect">Iniciar sessão novamente</string>
+    <string name="trakt_disconnect">Desligar</string>
+    <string name="trakt_cancel">Cancelar início de sessão</string>
+    <string name="trakt_not_connected">Não ligado</string>
+    <string name="trakt_connected">Ligado como %1$s</string>
+    <string name="trakt_reauthorization">O Trakt já não aceita o início de sessão guardado. Inicie sessão novamente para continuar a sincronizar.</string>
+    <string name="trakt_waiting">Aprove o Sohva TV no Trakt</string>
+    <string name="trakt_scan">Leia o código com o telemóvel, ou abra o endereço e introduza o código.</string>
+    <string name="trakt_qr_description">Código QR de início de sessão do Trakt</string>
+    <string name="trakt_unconfigured">Esta versão não tem credenciais de aplicação do Trakt, por isso não é possível ligar contas.</string>
+    <string name="trakt_help">Os filmes e episódios que reproduz em VOD e Discover são registados na sua conta Trakt, e o seu progresso e marcas de visto do Trakt aparecem aqui nos títulos. A TV em direto e a TV a pedido não são registadas.</string>
+    <string name="trakt_disconnect_help">Ao desligar, o início de sessão é removido desta TV. O seu histórico do Trakt fica como está.</string>
+    <string name="trakt_cancelled_background">O início de sessão parou porque o Sohva passou para segundo plano. Comece de novo quando quiser.</string>
+    <string name="trakt_denied">A autorização foi recusada. Pode tentar de novo.</string>
+    <string name="trakt_expired">O código expirou. Inicie sessão novamente para obter um novo código.</string>
+    <string name="trakt_code_unusable">Este código já não pode ser usado. Inicie sessão novamente.</string>
+    <string name="trakt_rate_limited">O Trakt pediu-nos para esperar. Tente novamente mais tarde.</string>
+    <string name="trakt_connection_error">Não foi possível concluir a ligação. Tente novamente.</string>
+    <string name="home_watch_next">Ver a seguir</string>
+    <string name="home_recommended">Recomendado para si</string>
+    <string name="trakt_title_loading">A procurar este título nas suas fontes…</string>
+    <string name="trakt_title_unavailable">Este título não está disponível nas suas fontes neste momento.</string>
+</resources>

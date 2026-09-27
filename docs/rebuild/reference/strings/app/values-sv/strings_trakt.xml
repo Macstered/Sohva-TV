@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trakt_profile">Sohva-profil: %1$s</string>
+    <string name="trakt_connect">Anslut Trakt</string>
+    <string name="trakt_reconnect">Logga in igen</string>
+    <string name="trakt_disconnect">Koppla från</string>
+    <string name="trakt_cancel">Avbryt inloggning</string>
+    <string name="trakt_not_connected">Inte ansluten</string>
+    <string name="trakt_connected">Ansluten som %1$s</string>
+    <string name="trakt_reauthorization">Trakt godkänner inte längre den sparade inloggningen. Logga in igen för att fortsätta synkronisera.</string>
+    <string name="trakt_waiting">Godkänn Sohva TV på Trakt</string>
+    <string name="trakt_scan">Skanna koden med telefonen, eller öppna adressen och ange koden.</string>
+    <string name="trakt_qr_description">QR-kod för Trakt-inloggning</string>
+    <string name="trakt_unconfigured">Den här versionen saknar Trakt-appuppgifter, så konton kan inte anslutas.</string>
+    <string name="trakt_help">Filmer och avsnitt du spelar i VOD och Discover registreras på ditt Trakt-konto, och dina Trakt-framsteg och sedd-markeringar visas här på titlarna. Live-tv och catch-up registreras inte.</string>
+    <string name="trakt_disconnect_help">När du kopplar från tas inloggningen bort från den här tv:n. Din Trakt-historik förblir som den är.</string>
+    <string name="trakt_cancelled_background">Inloggningen avbröts eftersom Sohva gick till bakgrunden. Börja om när du är redo.</string>
+    <string name="trakt_denied">Godkännandet nekades. Du kan försöka igen.</string>
+    <string name="trakt_expired">Koden har gått ut. Börja om inloggningen för att få en ny kod.</string>
+    <string name="trakt_code_unusable">Den här koden kan inte längre användas. Börja om inloggningen.</string>
+    <string name="trakt_rate_limited">Trakt bad oss vänta. Försök igen senare.</string>
+    <string name="trakt_connection_error">Anslutningen kunde inte slutföras. Försök igen.</string>
+    <string name="home_watch_next">Se härnäst</string>
+    <string name="home_recommended">Rekommenderat för dig</string>
+    <string name="trakt_title_loading">Söker efter titeln i dina källor…</string>
+    <string name="trakt_title_unavailable">Den här titeln finns inte i dina källor just nu.</string>
+</resources>

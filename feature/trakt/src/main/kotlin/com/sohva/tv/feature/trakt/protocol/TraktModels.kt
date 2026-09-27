@@ -31,8 +31,8 @@ class TraktCredentials(val clientId: String, val clientSecret: String) {
     }
 }
 
-/** An account's tokens (FR-03); [expiresAt] is wall-clock milliseconds. */
-class TraktTokens(val access: String, val refresh: String, val expiresAt: Long) {
+/** An account's tokens (FR-03); [expiresAt] is wall-clock milliseconds, [lifetimeMs] as issued. */
+class TraktTokens(val access: String, val refresh: String, val expiresAt: Long, val lifetimeMs: Long) {
     override fun toString(): String = "TraktTokens(expiresAt=$expiresAt)"
 }
 

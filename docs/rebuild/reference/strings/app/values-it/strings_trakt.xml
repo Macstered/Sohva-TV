@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trakt_profile">Profilo Sohva: %1$s</string>
+    <string name="trakt_connect">Collega Trakt</string>
+    <string name="trakt_reconnect">Accedi di nuovo</string>
+    <string name="trakt_disconnect">Scollega</string>
+    <string name="trakt_cancel">Annulla accesso</string>
+    <string name="trakt_not_connected">Non collegato</string>
+    <string name="trakt_connected">Collegato come %1$s</string>
+    <string name="trakt_reauthorization">Trakt non accetta più l\'accesso salvato. Accedi di nuovo per continuare a sincronizzare.</string>
+    <string name="trakt_waiting">Approva Sohva TV su Trakt</string>
+    <string name="trakt_scan">Scansiona il codice con il telefono, oppure apri l\'indirizzo e inserisci il codice.</string>
+    <string name="trakt_qr_description">Codice QR di accesso a Trakt</string>
+    <string name="trakt_unconfigured">Questa versione non ha le credenziali dell\'applicazione Trakt, quindi non è possibile collegare account.</string>
+    <string name="trakt_help">I film e gli episodi che riproduci in VOD e Discover vengono registrati nel tuo account Trakt, e i tuoi progressi e segni di visto su Trakt compaiono qui sui titoli. La TV in diretta e la TV on demand non vengono registrate.</string>
+    <string name="trakt_disconnect_help">Scollegando rimuovi l\'accesso da questo televisore. La tua cronologia Trakt resta com\'è.</string>
+    <string name="trakt_cancelled_background">L\'accesso si è interrotto perché Sohva è passata in secondo piano. Ricomincia quando vuoi.</string>
+    <string name="trakt_denied">L\'autorizzazione è stata rifiutata. Puoi riprovare.</string>
+    <string name="trakt_expired">Il codice è scaduto. Ricomincia l\'accesso per un nuovo codice.</string>
+    <string name="trakt_code_unusable">Questo codice non è più utilizzabile. Ricomincia l\'accesso.</string>
+    <string name="trakt_rate_limited">Trakt ci ha chiesto di aspettare. Riprova più tardi.</string>
+    <string name="trakt_connection_error">Non è stato possibile completare la connessione. Riprova.</string>
+    <string name="home_watch_next">Guarda dopo</string>
+    <string name="home_recommended">Consigliati per te</string>
+    <string name="trakt_title_loading">Ricerca di questo titolo nelle tue sorgenti…</string>
+    <string name="trakt_title_unavailable">Questo titolo non è disponibile dalle tue sorgenti al momento.</string>
+</resources>

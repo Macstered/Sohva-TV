@@ -54,8 +54,12 @@ import java.util.Locale
  * selected section is composed (SET-FR-16). Back closes the source page first, then leaves
  * (SET-FR-03); dialogs close themselves before either.
  */
+/**
+ * [accounts] is the host's Accounts pane (Trakt, spec 51 §5.1), given the pane's first focus
+ * target; without it the section is not shown (SET-FR-11).
+ */
 @Composable
-fun SettingsScreen(model: SettingsModel, onBack: () -> Unit) {
+fun SettingsScreen(model: SettingsModel, onBack: () -> Unit, accounts: (@Composable (FocusRequester) -> Unit)? = null) {
     val state by model.ui.collectAsState()
     val paneStart = remember { FocusRequester() }
     val railSelected = remember { FocusRequester() }
@@ -68,7 +72,7 @@ fun SettingsScreen(model: SettingsModel, onBack: () -> Unit) {
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(26.dp)) {
                 SettingsRail(state, model::select, railSelected, Modifier.width(214.dp).fillMaxHeight())
-                SettingsPane(state, model, paneStart, Modifier.weight(1f).fillMaxHeight())
+                SettingsPane(state, model, paneStart, accounts, Modifier.weight(1f).fillMaxHeight())
             }
         }
     }
@@ -138,6 +142,7 @@ private fun SettingsPane(
     state: SettingsState,
     model: SettingsModel,
     start: FocusRequester,
+    accounts: (@Composable (FocusRequester) -> Unit)?,
     modifier: Modifier,
 ) {
     Column(
@@ -159,7 +164,7 @@ private fun SettingsPane(
             SettingsSection.BACKUP -> BackupPane(model.backup, start)
             SettingsSection.ABOUT -> AboutPane(model.about, start)
             SettingsSection.SPORT -> SportPane(model.sport, start)
-            else -> PendingSection(state.section)
+            SettingsSection.ACCOUNTS -> if (accounts != null) accounts(start) else PendingSection(state.section)
         }
     }
 }

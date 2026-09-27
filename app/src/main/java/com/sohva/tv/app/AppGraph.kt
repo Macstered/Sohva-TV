@@ -114,6 +114,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     val discover: com.sohva.tv.feature.discover.DiscoverHost? by lazy { if (flags.discover) com.sohva.tv.app.discover.DiscoverGraph.build(this) else null }
 
     /** The addon player's bridge to Discover (spec 50 §4.12); none where the build has no addons. */
+    /** Trakt (spec 51): in every build; without credentials its panel says it is not configured. */
+    val trakt: com.sohva.tv.feature.trakt.TraktHost? by lazy { if (flags.trakt) com.sohva.tv.app.trakt.TraktGraph.build(this) else null }
+
     val addonPlayback: com.sohva.tv.app.discover.AddonPlaybackBridge? by lazy { discover?.let { com.sohva.tv.app.discover.AddonPlaybackBridge(this, it) } }
 
     /**
