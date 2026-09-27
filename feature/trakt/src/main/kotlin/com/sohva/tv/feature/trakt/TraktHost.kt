@@ -14,12 +14,16 @@ import com.sohva.tv.feature.trakt.protocol.TraktIdentityClient
 import com.sohva.tv.feature.trakt.protocol.TraktTokens
 import com.sohva.tv.feature.trakt.scrobble.TraktScrobbler
 import com.sohva.tv.feature.trakt.scrobble.TraktScrobbles
+import com.sohva.tv.feature.trakt.shelf.TraktShelves
 import com.sohva.tv.feature.trakt.store.TraktAccount
 import com.sohva.tv.feature.trakt.store.TraktAccountStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
@@ -87,6 +91,7 @@ class TraktHost(
     /** Device tests: every Trakt record gone and the build's own credentials and origins back. */
     suspend fun resetForTests() {
         withContext(dispatchers.io) { store.clearAll() }
+        shelves.clear()
         credentials = original.first
         origins = original.second
         clients = null
@@ -107,6 +112,13 @@ class TraktHost(
     val accounts: StateFlow<Map<String, TraktAccount?>> = _accounts.asStateFlow()
 
     private val refreshLock = Mutex()
+    private val _syncRequests = MutableSharedFlow<String>(extraBufferCapacity = 4)
+
+    /** Profiles that want a sync now: a new sign-in (FR-21). */
+    val syncRequests: SharedFlow<String> = _syncRequests.asSharedFlow()
+
+    /** Home's stored Watch next and Recommended lists (FR-25, -28). */
+    val shelves: TraktShelves by lazy { TraktShelves(this) }
 
     /** The persisted scrobble queue (FR-19, -20). */
     val scrobbles: TraktScrobbles by lazy { TraktScrobbles(this) }
@@ -140,11 +152,13 @@ class TraktHost(
         if (before != null && before.uuid != result.identity.uuid) {
             store.forgetState(profile)
             forgetCache(profile)
+            shelves.forget(profile)
         }
         val account = TraktAccount(result.identity.username, result.identity.uuid, result.tokens, reauthorize = false)
         store.saveAccount(profile, account)
         publish(profile, account)
         log.info("trakt", "signed in")
+        _syncRequests.tryEmit(profile)
     }
 
     /**
@@ -190,6 +204,7 @@ class TraktHost(
     suspend fun disconnect(profile: String) = withContext(dispatchers.io) {
         store.forget(profile)
         forgetCache(profile)
+        shelves.forget(profile)
         publish(profile, null)
         log.info("trakt", "disconnected")
     }

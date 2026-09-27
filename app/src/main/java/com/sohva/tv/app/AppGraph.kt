@@ -100,6 +100,8 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
                 diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
                 // Today's games for Home, Search and reminders, after Home's first read (spec 60 SPORT-FR-29).
                 if (flags.sport) sport.feed.start()
+                // Trakt's sync loop follows the active profile from here on (spec 51 FR-21).
+                traktLoop?.let { loop -> appScope.launch { data.profiles.activeChanges.collect(loop::start) } }
             },
         )
     }
@@ -116,6 +118,13 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** The addon player's bridge to Discover (spec 50 §4.12); none where the build has no addons. */
     /** Trakt (spec 51): in every build; without credentials its panel says it is not configured. */
     val trakt: com.sohva.tv.feature.trakt.TraktHost? by lazy { if (flags.trakt) com.sohva.tv.app.trakt.TraktGraph.build(this) else null }
+
+    /** Trakt's read side and its loop for the active profile (spec 51 FR-21, -22); started after Home's first resume read. */
+    val traktSync: com.sohva.tv.feature.trakt.sync.TraktSync? by lazy { trakt?.let { com.sohva.tv.feature.trakt.sync.TraktSync(it, data.traktState, it.shelves) } }
+    val traktLoop: com.sohva.tv.feature.trakt.sync.TraktSyncLoop? by lazy {
+        val host = trakt ?: return@lazy null
+        com.sohva.tv.feature.trakt.sync.TraktSyncLoop(host, traktSync!!, host.shelves, playbackActive)
+    }
 
     val addonPlayback: com.sohva.tv.app.discover.AddonPlaybackBridge? by lazy { discover?.let { com.sohva.tv.app.discover.AddonPlaybackBridge(this, it) } }
 

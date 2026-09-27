@@ -56,6 +56,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         SportQuotaEntity::class,
         EventChannelDecisionEntity::class,
         TeamAliasEntity::class,
+        TraktStateEntity::class,
     ],
     version = SohvaDatabase.VERSION,
     exportSchema = true,
@@ -82,6 +83,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 7, to = 8, spec = SohvaDatabase.SearchTablesCreated::class),
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -162,7 +164,7 @@ abstract class SohvaDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION: Int = 10
+        const val VERSION: Int = 11
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

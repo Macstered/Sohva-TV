@@ -37,7 +37,7 @@ object TraktGraph {
             appScope = graph.appScope,
             offline = graph.flags.demoContent,
             monotonic = { SystemClock.elapsedRealtime() },
-            forgetCache = { },
+            forgetCache = { graph.data.traktState.forget(it) },
         )
     }
 

@@ -118,7 +118,9 @@ class TraktAccountStore(private val prefs: TraktPrefs, private val cipher: Trakt
     }
 
     companion object {
-        val STATE_KEYS: List<String> = listOf("pending", "active", "activity", "format", "recommendations", "nextup")
+        val STATE_KEYS: List<String> = listOf(
+            "pending", "active", "activity", "activity-mw", "activity-mp", "activity-ew", "activity-ep", "format", "recommendations", "nextup",
+        )
         val PROFILE_KEYS: List<String> = STATE_KEYS + "account"
 
         /** Trakt's access tokens last three months; used when a stored record has no lifetime. */
