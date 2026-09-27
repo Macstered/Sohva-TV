@@ -3,6 +3,9 @@ package com.sohva.tv.feature.player
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.hardware.display.DisplayManager
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,7 +35,28 @@ internal fun DisplayRateMatch(model: PlayerModel) {
         val candidates = display.supportedModes.filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
         val chosen = rate?.let { r -> DisplayRate.pick(r, candidates.map { it.refreshRate }) }
         val id = chosen?.let { c -> candidates.first { it.refreshRate == c }.modeId } ?: original
-        if (w.attributes.preferredDisplayModeId != id) w.attributes = w.attributes.apply { preferredDisplayModeId = id }
+        if (w.attributes.preferredDisplayModeId != id) {
+            w.attributes = w.attributes.apply { preferredDisplayModeId = id }
+            // Even a request for the mode already shown can make the TV re-negotiate HDMI.
+            if (id != 0) model.displaySwitching(id)
+        }
+    }
+    // A mode switch drops the HDMI audio output for about a second (seen on the Shield): the player
+    // is told when the display reaches the mode it asked for, so it can rebuild its audio output.
+    DisposableEffect(view) {
+        val manager = view.context.getSystemService(DisplayManager::class.java)
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) = Unit
+
+            override fun onDisplayRemoved(displayId: Int) = Unit
+
+            override fun onDisplayChanged(displayId: Int) {
+                val display = view.display ?: return
+                if (display.displayId == displayId) model.displayChanged(display.mode.modeId)
+            }
+        }
+        manager?.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
+        onDispose { manager?.unregisterDisplayListener(listener) }
     }
     DisposableEffect(window) {
         onDispose { window?.let { it.attributes = it.attributes.apply { preferredDisplayModeId = original } } }

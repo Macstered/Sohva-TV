@@ -95,9 +95,14 @@ class DiscoverPlaybackTest {
             mediaBase = "http://${deviceAddress()}:${server.port}"
             host.testAllowHttp = true
             runBlocking { host.manager.install(graph.data.profiles.activeId, "http://127.0.0.1:${server.port}/cfg/manifest.json") }
+            // `-e matchFrameRate off` on a real TV: tells a display-mode switch apart from other causes.
+            if (InstrumentationRegistry.getArguments().getString("matchFrameRate") == "off") runBlocking { graph.data.preferences.setMatchFrameRate(false) }
         }
 
-        override fun after() = server.close()
+        override fun after() {
+            runBlocking { graph.data.preferences.setMatchFrameRate(true) }
+            server.close()
+        }
     }
     private val compose = createAndroidComposeRule<MainActivity>()
 
