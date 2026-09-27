@@ -45,3 +45,22 @@ explicit wording for this release.
 
 - The "updating" first-start state needs new strings (plan/04 §17): default a centred line
   "Updating Sohva TV…" in the seven languages, shown only past one second.
+
+## Status (28 September 2026)
+
+- Part 1 (the rest of beta 23's data) done: `Beta23UpgradeTest` on the emulator.
+- Part 2 (inventory) done: 38 items proved or fixed; GUIDE-49 fixed (a restriction change now
+  reaches an open guide), PLAY-44 built (demo stills). Open: **SRC-42**, which needs the slow box.
+- Part 3 (release pipeline): `tools/package_release.py` (APK safety and document audits, both
+  install profiles, SHA256SUMS, tester ZIP, assets.json; refuses to overwrite), the audits run in
+  every `check_all`; `verify_release_dex.py` adds the launch smoke and writes the receipt. The nine
+  tester documents are in `docs/release/`, with a Finnish privacy policy; `SECURITY.md` at the root.
+  Packaging itself waits until the slow-box check, because a packaged build is frozen at its code.
+- Part 4 (performance): recorded in `docs/performance-log.md`; start-up measured next to M5 on the
+  same host (+2–4 %). The slow box is the owner's check.
+- Part 5 (real upgrade over beta 23, 27 Sept, emulator-5570): beta 23 build 57 from the release APK,
+  driven through its own screens: an M3U source (the fixture's `small.m3u`), a favourite, a watched
+  channel and the Nord theme; then the rebuild's signed release (code 100) installed over it with
+  `adb install -r`. First start 841 ms (no "Updating" line needed); the import log names the parts;
+  beta 23's files were removed; on screen the source is in use, the three channels re-imported, the
+  favourite and its Favourites list, the recent channel in Home's hero and the Nord theme are all there.
