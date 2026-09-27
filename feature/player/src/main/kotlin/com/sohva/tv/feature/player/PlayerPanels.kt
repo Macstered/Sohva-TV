@@ -1,5 +1,8 @@
 package com.sohva.tv.feature.player
 
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -141,7 +144,8 @@ internal fun TrackPicker(model: PlayerModel, which: Picker) {
     val type = if (which == Picker.AUDIO) C.TRACK_TYPE_AUDIO else C.TRACK_TYPE_TEXT
     Box(Modifier.fillMaxSize().roundFill(Sohva.palette.scrim.copy(alpha = 0.65f), 0.dp), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.widthIn(390.dp, 520.dp).heightIn(max = 520.dp).roundFill(Sohva.palette.panel.copy(alpha = 0.97f), Sohva.shapes.large).padding(20.dp).testTag("player-picker"),
+            Modifier.widthIn(390.dp, 520.dp).heightIn(max = 520.dp).roundFill(Sohva.palette.panel.copy(alpha = 0.97f), Sohva.shapes.large).padding(20.dp).testTag("player-picker")
+                .keepFocusInside(),
         ) {
             Text(
                 stringResource(if (which == Picker.AUDIO) R.string.player_select_audio else R.string.player_select_subtitles),
@@ -343,3 +347,16 @@ private fun GroupColumn(view: GroupListView) {
         state.scrollToItem(maxOf(0, view.selected - rows / 2))
     }
 }
+
+/**
+ * A panel over the picture keeps the D-pad inside it (AGENTS.md §5 rule 2): a move past its edge
+ * goes nowhere instead of to the transport controls behind it.
+ */
+internal fun Modifier.keepFocusInside(): Modifier =
+    focusProperties { onExit = { if (requestedFocusDirection in KEY_MOVES) cancelFocusChange() } }.focusGroup()
+
+/** Nothing outside may take focus while a panel is up: not by the D-pad, not when the focused row goes away. */
+internal fun Modifier.refuseFocus(refuse: Boolean): Modifier =
+    if (refuse) focusProperties { onEnter = { cancelFocusChange() } }.focusGroup() else this
+
+private val KEY_MOVES = setOf(FocusDirection.Left, FocusDirection.Right, FocusDirection.Up, FocusDirection.Down, FocusDirection.Next, FocusDirection.Previous)
