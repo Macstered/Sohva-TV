@@ -10,6 +10,7 @@ import com.sohva.tv.feature.trakt.protocol.TraktAuthClient
 import com.sohva.tv.feature.trakt.protocol.TraktCredentials
 import com.sohva.tv.feature.trakt.protocol.TraktException
 import com.sohva.tv.feature.trakt.protocol.TraktFailure
+import com.sohva.tv.feature.trakt.protocol.TraktGate
 import com.sohva.tv.feature.trakt.protocol.TraktIdentityClient
 import com.sohva.tv.feature.trakt.protocol.TraktTokens
 import com.sohva.tv.feature.trakt.scrobble.TraktScrobbler
@@ -74,11 +75,16 @@ class TraktHost(
 
     @Volatile private var clients: Clients? = null
 
+    /** One door for every Trakt request of the app: waits after a 429, spaced writes, counts (decision "Trakt request pacing"). */
+    @Volatile
+    var gate: TraktGate = TraktGate()
+        private set
+
     private fun clients(): Clients = clients ?: synchronized(this) {
         clients ?: Clients(
-            TraktAuthClient(http(), credentials, origins.first),
-            TraktIdentityClient(http(), credentials, origins.second),
-            TraktApiClient(http(), credentials, dispatchers.parse, origins.second),
+            TraktAuthClient(http(), credentials, origins.first, gate),
+            TraktIdentityClient(http(), credentials, origins.second, gate),
+            TraktApiClient(http(), credentials, dispatchers.parse, origins.second, gate = gate),
         ).also { clients = it }
     }
 
@@ -92,6 +98,7 @@ class TraktHost(
     suspend fun resetForTests() {
         withContext(dispatchers.io) { store.clearAll() }
         shelves.clear()
+        gate = TraktGate()
         credentials = original.first
         origins = original.second
         clients = null
@@ -101,6 +108,7 @@ class TraktHost(
     /** Device tests: a fake Trakt at [url] with test credentials; cached accounts are read again. */
     fun useTestServer(url: HttpUrl, testCredentials: TraktCredentials) {
         credentials = testCredentials
+        gate = TraktGate()
         origins = url to url
         clients = null
         _accounts.value = emptyMap()

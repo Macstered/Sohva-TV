@@ -151,7 +151,9 @@ class TraktProtocolTest {
         val cases = mapOf(401 to TraktFailure.REAUTHORIZE, 403 to TraktFailure.CONFIGURATION, 429 to TraktFailure.RATE_LIMITED, 502 to TraktFailure.SERVICE, 422 to TraktFailure.REJECTED)
         for ((status, expected) in cases) {
             answer(status, "{}", "Retry-After" to "7")
-            val e = failure { api.scrobble("acc", TraktItem.Movie(TraktIds(tmdb = 1)), ScrobbleAction.PAUSE, 5.0) }
+            // Each case on its own door: after a 429 the shared one would refuse without asking (decision "Trakt request pacing").
+            val fresh = TraktApiClient(base, credentials, Dispatchers.Unconfined, server.url("/"))
+            val e = failure { fresh.scrobble("acc", TraktItem.Movie(TraktIds(tmdb = 1)), ScrobbleAction.PAUSE, 5.0) }
             assertEquals(expected, e.failure)
             if (status == 429) assertEquals(7L, e.retryAfterSeconds)
         }

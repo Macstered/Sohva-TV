@@ -25,5 +25,9 @@
     <string name="home_recommended">Suosituksia sinulle</string>
     <string name="trakt_title_loading">Etsitään nimikettä lähteistäsi…</string>
     <string name="trakt_title_unavailable">Nimike ei ole juuri nyt saatavilla lähteistäsi.</string>
+    <plurals name="trakt_rate_limited_wait">
+        <item quantity="one">Trakt pyysi odottamaan. Yritä uudelleen %1$d minuutin kuluttua.</item>
+        <item quantity="other">Trakt pyysi odottamaan. Yritä uudelleen %1$d minuutin kuluttua.</item>
+    </plurals>
     <string name="settings_section_accounts">Tilit</string>
 </resources>

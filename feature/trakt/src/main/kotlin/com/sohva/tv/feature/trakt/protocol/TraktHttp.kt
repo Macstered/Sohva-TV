@@ -27,7 +27,14 @@ class TraktResponse(val code: Int, val body: Buffer, private val headers: okhttp
  * (a redirect never forwards a code, secret or bearer token), no retry, no cache, its own timeout
  * per call and body limit. Bodies and raw errors are never logged.
  */
-internal class TraktHttp(base: OkHttpClient, timeoutSeconds: Long, private val maxBytes: Long) {
+internal class TraktHttp(
+    base: OkHttpClient,
+    timeoutSeconds: Long,
+    private val maxBytes: Long,
+    private val gate: TraktGate,
+    /** Trakt's one-write-per-second rule is for the API; sign-in polls keep their own interval. */
+    private val spaceWrites: Boolean = true,
+) {
     private val client = base.newBuilder()
         .connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
         .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
@@ -44,7 +51,16 @@ internal class TraktHttp(base: OkHttpClient, timeoutSeconds: Long, private val m
      * back, so a caller on the main thread never touches the socket (AGENTS.md §4 rule 1; a TLS read
      * there is a NetworkOnMainThreadException).
      */
-    suspend fun call(request: Request): TraktResponse {
+    suspend fun call(request: Request, gateOn429: Boolean = true): TraktResponse {
+        // The shared door (decision "Trakt request pacing"): refused during a wait, writes spaced.
+        gate.enter(write = spaceWrites && request.method != "GET")
+        val response = send(request)
+        // The device poll's 429 means "poll slower" and is handled by the sign-in itself.
+        if (response.code == 429 && gateOn429) gate.limited(response.retryAfterSeconds())
+        return response
+    }
+
+    private suspend fun send(request: Request): TraktResponse {
         val call = client.newCall(request)
         return suspendCancellableCoroutine { cont ->
             cont.invokeOnCancellation { call.cancel() }

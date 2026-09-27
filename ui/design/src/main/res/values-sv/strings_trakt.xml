@@ -25,4 +25,8 @@
     <string name="home_recommended">Rekommenderat för dig</string>
     <string name="trakt_title_loading">Söker efter titeln i dina källor…</string>
     <string name="trakt_title_unavailable">Den här titeln finns inte i dina källor just nu.</string>
+    <plurals name="trakt_rate_limited_wait">
+        <item quantity="one">Trakt bad oss vänta. Försök igen om %1$d minut.</item>
+        <item quantity="other">Trakt bad oss vänta. Försök igen om %1$d minuter.</item>
+    </plurals>
 </resources>
