@@ -110,12 +110,23 @@ class DiscoverDataTest {
     // ---- Client (FR-25…28) ----
 
     @Test
-    fun theClientRefusesRedirectsAndOversizeBodies() = runBlocking {
+    fun theClientFollowsOnlyTrustedRedirectsAndRefusesOversizeBodies() = runBlocking {
         answers["/moved"] = { MockResponse.Builder().code(302).addHeader("Location", url("/cfg/manifest.json")).build() }
+        answers["/away"] = { MockResponse.Builder().code(302).addHeader("Location", "http://192.0.2.9/cfg/manifest.json").build() }
+        answers["/loop"] = { MockResponse.Builder().code(302).addHeader("Location", url("/loop")).build() }
         answers["/big"] = { ok("x".repeat((2 * 1024 * 1024) + 1)) }
         answers["/chunked"] = { MockResponse.Builder().chunkedBody("y".repeat((2 * 1024 * 1024) + 10), 8_192).build() }
-        assertEquals(AddonFailure.REDIRECT, failure { client.get(server.url("/moved")) })
-        assertEquals(listOf("/moved"), requests)
+        // Decision "Addon redirects": followed within the rule, by hand.
+        client.get(server.url("/moved"))
+        assertEquals(listOf("/moved", "/cfg/manifest.json"), requests)
+        requests.clear()
+        // Plain HTTP to another host is refused before any request goes there.
+        assertEquals(AddonFailure.REDIRECT, failure { client.get(server.url("/away")) })
+        assertEquals(listOf("/away"), requests)
+        requests.clear()
+        // At most three hops.
+        assertEquals(AddonFailure.REDIRECT, failure { client.get(server.url("/loop")) })
+        assertEquals(4, requests.size)
         assertEquals(AddonFailure.RESPONSE_TOO_LARGE, failure { client.get(server.url("/big")) })
         assertEquals(AddonFailure.RESPONSE_TOO_LARGE, failure { client.get(server.url("/chunked")) })
         assertEquals(AddonFailure.HTTP_ERROR, failure { client.get(server.url("/missing")) })

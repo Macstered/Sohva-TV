@@ -213,7 +213,7 @@ private fun OptionCard(option: SubtitleOption, language: String, selected: Boole
 @Composable
 internal fun AddonSubtitleLayers(model: PlayerModel, subs: AddonSubtitles) {
     val syncOpen by subs.syncOpen.collectAsStateWithLifecycle()
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().keepFocusInside()) {
         if (syncOpen) SubtitleSyncPanel(model, subs, Modifier.align(Alignment.TopCenter)) else AddonSubtitlePicker(model, subs)
     }
 }

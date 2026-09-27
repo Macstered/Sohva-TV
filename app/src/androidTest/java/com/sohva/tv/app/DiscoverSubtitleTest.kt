@@ -1,5 +1,6 @@
 package com.sohva.tv.app
 
+import androidx.compose.ui.test.hasAnyAncestor
 import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -186,5 +187,26 @@ class DiscoverSubtitleTest {
         assertEquals(1, count("/subs/en.srt"))
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(5_000) { exists("addon-subtitle-picker") }
+    }
+
+    /** Owner report 27 Sept: focus left the subtitle picker for the transport controls behind it. */
+    @Test
+    fun focusNeverLeavesThePickerForTheControlsBehindIt() {
+        play()
+        openPicker()
+        assertTrue("the controls stay drawn behind the picker", exists("player-transport-subtitles"))
+        val inside = { compose.onAllNodes(isFocused() and hasAnyAncestor(hasTestTag("addon-subtitle-picker"))).fetchSemanticsNodes().isNotEmpty() }
+        val moves = List(8) { KeyEvent.KEYCODE_DPAD_DOWN } + List(3) { KeyEvent.KEYCODE_DPAD_RIGHT } + List(3) { KeyEvent.KEYCODE_DPAD_LEFT } +
+            List(12) { KeyEvent.KEYCODE_DPAD_UP }
+        for (key in moves) {
+            press(key)
+            assertTrue("focus left the picker for ${focusedTag()}", inside())
+        }
+        // The list grows under focus: still nowhere else.
+        click("addon-subtitles-show-all")
+        for (key in List(10) { KeyEvent.KEYCODE_DPAD_DOWN } + List(3) { KeyEvent.KEYCODE_DPAD_LEFT } + List(12) { KeyEvent.KEYCODE_DPAD_UP }) {
+            press(key)
+            assertTrue("focus left the picker for ${focusedTag()}", inside())
+        }
     }
 }

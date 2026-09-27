@@ -30,8 +30,10 @@ class AddonAnswer(val body: Buffer, val hints: CacheHints)
 /**
  * The one client for addon JSON (spec 50 §4.5), built on the app's shared OkHttp base so pools and
  * threads are shared (plan/03 §4.12) but with its own rules: at most four requests app-wide in
- * FIFO order, 15 s connect, read and call timeouts, redirects never followed, no retry, `Accept:
- * application/json`. Failures carry only their kind and status, never the URL (FR-28).
+ * FIFO order, 15 s connect, read and call timeouts, no retry, `Accept: application/json`.
+ * Failures carry only their kind and status, never the URL (FR-28). Redirects are followed by hand
+ * under the trusted-origin rule of [RedirectRule] (decision "Addon redirects"); OkHttp never
+ * follows one by itself.
  */
 class AddonClient(base: OkHttpClient, private val maxBytes: Long = MAX_BYTES) {
     private val client = base.newBuilder()
@@ -47,9 +49,27 @@ class AddonClient(base: OkHttpClient, private val maxBytes: Long = MAX_BYTES) {
     private val permits = Semaphore(PERMITS)
 
     suspend fun get(url: HttpUrl): AddonAnswer = permits.withPermit {
+        var current = url
+        repeat(RedirectRule.MAX_HOPS + 1) {
+            when (val hop = fetch(current)) {
+                is Hop.Answer -> return@withPermit hop.answer
+                is Hop.Redirect -> current = RedirectRule.next(current, hop.location) ?: throw AddonException(AddonFailure.REDIRECT, hop.status)
+            }
+        }
+        throw AddonException(AddonFailure.REDIRECT)
+    }
+
+    /** One hop, read completely on OkHttp's thread. */
+    private sealed interface Hop {
+        class Answer(val answer: AddonAnswer) : Hop
+
+        class Redirect(val location: String?, val status: Int) : Hop
+    }
+
+    private suspend fun fetch(url: HttpUrl): Hop {
         val request = Request.Builder().url(url).get().header("Accept", "application/json").build()
         val call = client.newCall(request)
-        suspendCancellableCoroutine { cont ->
+        return suspendCancellableCoroutine { cont ->
             // Cancelling the caller cancels the call; the permit is freed as withPermit returns (FR-28).
             cont.invokeOnCancellation { call.cancel() }
             call.enqueue(
@@ -67,8 +87,9 @@ class AddonClient(base: OkHttpClient, private val maxBytes: Long = MAX_BYTES) {
         }
     }
 
-    private fun read(response: Response): AddonAnswer = response.use {
+    private fun read(response: Response): Hop = response.use {
         val status = it.code
+        if (status in RedirectRule.STATUSES) return Hop.Redirect(it.header("Location"), status)
         if (status in 300..399) throw AddonException(AddonFailure.REDIRECT, status)
         if (status !in 200..299) throw AddonException(AddonFailure.HTTP_ERROR, status)
         val body = it.body
@@ -91,7 +112,7 @@ class AddonClient(base: OkHttpClient, private val maxBytes: Long = MAX_BYTES) {
             cc.maxAgeSeconds >= 0 -> cc.maxAgeSeconds.toLong()
             else -> null
         }
-        AddonAnswer(out, CacheHints(maxAge, cc.noStore, staleAllowed = !cc.mustRevalidate && !cc.noCache))
+        Hop.Answer(AddonAnswer(out, CacheHints(maxAge, cc.noStore, staleAllowed = !cc.mustRevalidate && !cc.noCache)))
     }
 
     companion object {

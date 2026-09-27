@@ -89,7 +89,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     if (stats) InfoLine(model)
     DialReadout(dial, stats)
     if (box) LiveInfoBox(model, Modifier.align(Alignment.BottomStart))
-    if (controls) TransportControls(model, Modifier.align(Alignment.BottomStart))
+    // Under a picker or the quick actions the controls stay drawn but never take focus.
+    if (controls) TransportControls(model, Modifier.align(Alignment.BottomStart).refuseFocus(picker != null || quick))
     skipped?.let { SkipFeedbackLabel(it, Modifier.align(Alignment.BottomCenter)) }
     if (buffering) BufferingIndicator(Modifier.align(Alignment.Center))
     if (listOpen) ChannelListPanel(model, Modifier.align(Alignment.CenterEnd))
