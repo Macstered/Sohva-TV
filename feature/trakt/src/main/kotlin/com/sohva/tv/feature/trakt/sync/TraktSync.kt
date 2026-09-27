@@ -62,12 +62,14 @@ class TraktSync(
             pull(profile, account.uuid, force)
             true
         } catch (e: TraktException) {
-            host.log.info("trakt", "sync abandoned (${e.failure.name.lowercase()})")
+            val wait = host.gate.waitSeconds().takeIf { it > 0 }?.let { ", Trakt asked to wait $it s" }.orEmpty()
+            host.log.info("trakt", "sync abandoned (${e.failure.name.lowercase()}$wait)")
             false
         }
     }
 
     private suspend fun pull(profile: String, uuid: String, force: Boolean) {
+        val before = host.gate.requests
         val stamps = withContext(host.dispatchers.io) { readStamps(profile) }
         val full = force || stamps.format < FORMAT_VERSION
         var acts = activities(profile)
@@ -122,7 +124,7 @@ class TraktSync(
             // Written last: a sync cut short leaves the old format and the next one is full again.
             host.store.putLong("format:$profile", FORMAT_VERSION)
         }
-        host.log.info("trakt", "synced ${table.count(profile)} Trakt titles")
+        host.log.info("trakt", "synced ${table.count(profile)} Trakt titles; ${host.gate.requests - before} requests")
         shows?.let { list ->
             if (list.isNotEmpty() && list.all { it.episodes.isEmpty() }) host.log.info("trakt", "watched shows came without seasons")
             watchNext(profile, uuid, list)

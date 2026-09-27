@@ -40,7 +40,7 @@ class TraktHttpThreadTest {
         try {
             val size = runBlocking {
                 withContext(caller.asCoroutineDispatcher()) {
-                    TraktHttp(base, 10, 1024L * 1024).call(Request.Builder().url(server.url("/")).build()).body.size
+                    TraktHttp(base, 10, 1024L * 1024, com.sohva.tv.feature.trakt.protocol.TraktGate()).call(Request.Builder().url(server.url("/")).build()).body.size
                 }
             }
             assertEquals(512L * 1024, size)

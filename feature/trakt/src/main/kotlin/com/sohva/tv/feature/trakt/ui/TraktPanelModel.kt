@@ -30,6 +30,8 @@ data class TraktPanelState(
     val signingIn: Boolean = false,
     val prompt: TraktPrompt? = null,
     val message: TraktMessage? = null,
+    /** With RATE_LIMITED: the whole minutes Trakt asked us to wait, rounded up. */
+    val waitMinutes: Int? = null,
 )
 
 /**
@@ -68,7 +70,10 @@ class TraktPanelModel(private val host: TraktHost, private val profile: String) 
                     host.saveSignIn(profile, result)
                     _state.update { it.copy(signingIn = false, prompt = null, message = null) }
                 }
-                is SignInResult.Failed -> _state.update { it.copy(signingIn = false, prompt = null, message = message(result.reason)) }
+                is SignInResult.Failed -> {
+                    val wait = host.gate.waitSeconds().takeIf { result.reason == SignInFailure.RATE_LIMITED && it > 0 }?.let { ((it + 59) / 60).toInt() }
+                    _state.update { it.copy(signingIn = false, prompt = null, message = message(result.reason), waitMinutes = wait) }
+                }
             }
         }
     }

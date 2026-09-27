@@ -24,8 +24,9 @@ class TraktApiClient(
     private val parse: CoroutineDispatcher,
     private val origin: HttpUrl = ORIGIN,
     private val pageCap: Int = PAGE_CAP,
+    gate: TraktGate = TraktGate(),
 ) {
-    private val http = TraktHttp(base, TIMEOUT_S, MAX_BYTES)
+    private val http = TraktHttp(base, TIMEOUT_S, MAX_BYTES, gate)
 
     // ---- Scrobbles (FR-18) ----
 

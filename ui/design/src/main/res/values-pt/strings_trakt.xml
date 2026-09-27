@@ -25,4 +25,8 @@
     <string name="home_recommended">Recomendado para si</string>
     <string name="trakt_title_loading">A procurar este título nas suas fontes…</string>
     <string name="trakt_title_unavailable">Este título não está disponível nas suas fontes neste momento.</string>
+    <plurals name="trakt_rate_limited_wait">
+        <item quantity="one">O Trakt pediu-nos para esperar. Tente novamente dentro de %1$d minuto.</item>
+        <item quantity="other">O Trakt pediu-nos para esperar. Tente novamente dentro de %1$d minutos.</item>
+    </plurals>
 </resources>

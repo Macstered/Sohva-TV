@@ -59,7 +59,7 @@ fun TraktAccountsPane(model: TraktPanelModel, profileName: String, start: FocusR
         )
         if (!s.configured) Note(stringResource(R.string.trakt_unconfigured), "trakt-unconfigured")
         s.prompt?.let { Pairing(it) }
-        s.message?.let { Text(messageText(it), Modifier.padding(horizontal = 14.dp).testTag("trakt-message"), style = Sohva.typography.body, color = Sohva.palette.textMuted) }
+        s.message?.let { Text(messageText(it, s.waitMinutes), Modifier.padding(horizontal = 14.dp).testTag("trakt-message"), style = Sohva.typography.body, color = Sohva.palette.textMuted) }
         Note(stringResource(R.string.trakt_help), "trakt-help")
         if (account != null) {
             TvActionButton(
@@ -100,6 +100,14 @@ private fun Pairing(prompt: TraktPrompt) {
 private fun Note(text: String, tag: String) {
     Text(text, Modifier.padding(horizontal = 14.dp).testTag(tag), style = Sohva.typography.body, color = Sohva.palette.textMuted)
 }
+
+@Composable
+private fun messageText(message: TraktMessage, waitMinutes: Int?): String =
+    if (message == TraktMessage.RATE_LIMITED && waitMinutes != null) {
+        androidx.compose.ui.res.pluralStringResource(R.plurals.trakt_rate_limited_wait, waitMinutes, waitMinutes)
+    } else {
+        messageText(message)
+    }
 
 @Composable
 private fun messageText(message: TraktMessage): String = stringResource(

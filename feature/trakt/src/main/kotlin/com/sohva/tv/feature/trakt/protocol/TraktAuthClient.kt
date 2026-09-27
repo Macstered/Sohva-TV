@@ -22,8 +22,13 @@ sealed interface RefreshResult {
  * refresh, on `auth.trakt.tv` only, 20 s per call, 64 KiB bodies. The device code, the client
  * secret and tokens go only in request bodies to that origin and are never logged.
  */
-class TraktAuthClient(base: OkHttpClient, private val credentials: TraktCredentials, private val origin: HttpUrl = ORIGIN) {
-    private val http = TraktHttp(base, TIMEOUT_S, MAX_BYTES)
+class TraktAuthClient(
+    base: OkHttpClient,
+    private val credentials: TraktCredentials,
+    private val origin: HttpUrl = ORIGIN,
+    gate: TraktGate = TraktGate(),
+) {
+    private val http = TraktHttp(base, TIMEOUT_S, MAX_BYTES, gate, spaceWrites = false)
 
     /** Step 1: only the client id is sent; only the official activation page is accepted. */
     suspend fun deviceCode(): DeviceCode {
@@ -58,7 +63,7 @@ class TraktAuthClient(base: OkHttpClient, private val credentials: TraktCredenti
         val body = TraktJson.write {
             beginObject().name("client_id").value(credentials.clientId).name("client_secret").value(credentials.clientSecret).name("code").value(code.deviceCode).endObject()
         }
-        val r = post("oauth/device/token", body)
+        val r = post("oauth/device/token", body, gateOn429 = false)
         return when (r.code) {
             200 -> DevicePoll.Granted(tokens(r))
             400 -> when (error(r)) {
@@ -89,7 +94,7 @@ class TraktAuthClient(base: OkHttpClient, private val credentials: TraktCredenti
         throw TraktException(TraktFailure.INVALID_RESPONSE)
     }
 
-    private suspend fun post(path: String, json: String): TraktResponse {
+    private suspend fun post(path: String, json: String, gateOn429: Boolean = true): TraktResponse {
         if (!credentials.configured) throw TraktException(TraktFailure.CONFIGURATION)
         val request = Request.Builder().url(origin.newBuilder().addPathSegments(path).build())
             .header("Accept", "application/json")
@@ -97,7 +102,7 @@ class TraktAuthClient(base: OkHttpClient, private val credentials: TraktCredenti
             .header("trakt-api-key", TraktHttp.safe(credentials.clientId))
             .post(json.toRequestBody(JSON))
             .build()
-        return http.call(request)
+        return http.call(request, gateOn429)
     }
 
     private fun error(r: TraktResponse): String? = runCatching {
@@ -159,8 +164,13 @@ class TraktAuthClient(base: OkHttpClient, private val credentials: TraktCredenti
 }
 
 /** `users/settings` (FR-02 step 5): the uuid is required; the username never stands in for it. */
-class TraktIdentityClient(base: OkHttpClient, private val credentials: TraktCredentials, private val origin: HttpUrl = TraktApiClient.ORIGIN) {
-    private val http = TraktHttp(base, 20, 64L * 1024)
+class TraktIdentityClient(
+    base: OkHttpClient,
+    private val credentials: TraktCredentials,
+    private val origin: HttpUrl = TraktApiClient.ORIGIN,
+    gate: TraktGate = TraktGate(),
+) {
+    private val http = TraktHttp(base, 20, 64L * 1024, gate, spaceWrites = false)
 
     suspend fun identity(access: String): TraktIdentity {
         val request = Request.Builder().url(origin.newBuilder().addPathSegments("users/settings").build())
