@@ -33,22 +33,30 @@ class SubtitleDownloader(base: OkHttpClient) {
     suspend fun get(start: HttpUrl): ByteArray {
         var url = start
         repeat(MAX_REDIRECTS + 1) {
-            val response = call(url)
-            response.use { r ->
-                if (r.code in REDIRECTS) {
-                    val next = r.header("Location")?.let { url.resolve(it) } ?: throw AddonException(AddonFailure.REDIRECT, r.code)
-                    if (url.isHttps && !next.isHttps) throw AddonException(AddonFailure.REDIRECT, r.code)
+            when (val hop = call(url)) {
+                is Hop.Body -> return hop.bytes
+                is Hop.Redirect -> {
+                    val next = hop.location?.let { url.resolve(it) } ?: throw AddonException(AddonFailure.REDIRECT, hop.code)
+                    if (url.isHttps && !next.isHttps) throw AddonException(AddonFailure.REDIRECT, hop.code)
                     url = next
-                    return@repeat
                 }
-                if (r.code !in 200..299) throw AddonException(AddonFailure.HTTP_ERROR, r.code)
-                return read(r)
             }
         }
         throw AddonException(AddonFailure.REDIRECT)
     }
 
-    private suspend fun call(url: HttpUrl): Response {
+    /** One hop's outcome, read completely on OkHttp's thread. */
+    private sealed interface Hop {
+        class Redirect(val location: String?, val code: Int) : Hop
+
+        class Body(val bytes: ByteArray) : Hop
+    }
+
+    /**
+     * One request. The body is read on OkHttp's callback thread, so a caller on the main thread
+     * never reads the socket (AGENTS.md §4 rule 1; a TLS read there crashes the app).
+     */
+    private suspend fun call(url: HttpUrl): Hop {
         val call = client.newCall(Request.Builder().url(url).get().build())
         return suspendCancellableCoroutine { cont ->
             cont.invokeOnCancellation { call.cancel() }
@@ -59,7 +67,16 @@ class SubtitleDownloader(base: OkHttpClient) {
                     }
 
                     override fun onResponse(call: Call, response: Response) {
-                        cont.resume(response) { _, _, _ -> response.close() }
+                        val hop = runCatching {
+                            response.use { r ->
+                                when {
+                                    r.code in REDIRECTS -> Hop.Redirect(r.header("Location"), r.code)
+                                    r.code !in 200..299 -> throw AddonException(AddonFailure.HTTP_ERROR, r.code)
+                                    else -> Hop.Body(read(r))
+                                }
+                            }
+                        }
+                        hop.fold({ cont.resume(it) { _, _, _ -> } }, { cont.resumeWithException(it) })
                     }
                 },
             )

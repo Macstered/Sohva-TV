@@ -90,6 +90,8 @@ class TraktAccountsTest {
 
     @Test
     fun withoutCredentialsThePanelSaysNotConfigured() {
+        // A build made on a machine with the ignored credentials file has them; this test takes them away.
+        host.useTestServer(server.url("/"), TraktCredentials.NONE)
         openAccounts()
         assertTrue(exists("trakt-unconfigured"))
         assertTrue(exists("trakt-help"))
