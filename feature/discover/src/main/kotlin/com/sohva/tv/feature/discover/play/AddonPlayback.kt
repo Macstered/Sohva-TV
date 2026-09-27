@@ -31,12 +31,15 @@ class AddonPlayback(
     val next: TitleRequest?,
     /** A progress session: snapshots from older sessions never overwrite newer ones (FR-106). */
     val session: Long,
+    /** The episode's own numbers when the addon gave them (Trakt, spec 51 FR-14). */
+    val season: Int? = null,
+    val episode: Int? = null,
 ) {
     val movie: Boolean get() = videoType == "movie"
 
     /** Retry with fresh source (FR-91): the same playback and progress session with a newly resolved stream. */
     fun withStream(token: String, stream: AddonStream): AddonPlayback =
-        AddonPlayback(token, profile, source, stream, identity, videoType, title, savedTitle, artwork, logo, startMs, traktFraction, next, session)
+        AddonPlayback(token, profile, source, stream, identity, videoType, title, savedTitle, artwork, logo, startMs, traktFraction, next, session, season, episode)
 
     override fun toString(): String = "AddonPlayback($token)"
 }

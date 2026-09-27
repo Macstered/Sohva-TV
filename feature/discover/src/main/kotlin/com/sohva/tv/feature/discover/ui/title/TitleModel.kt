@@ -241,6 +241,7 @@ class TitleModel(private val host: DiscoverHost, private val profile: String, pr
             savedTitle = (page as? TitlePage.Episode)?.video?.title?.takeIf { it.isNotBlank() } ?: preview.name,
             artwork = Artwork(preview.name, preview.poster, preview.background), logo = preview.logo,
             startMs = if (resume) s.progress?.resumeMs ?: 0 else 0, traktFraction = null, next = next, session = host.nextSession(),
+            season = (page as? TitlePage.Episode)?.video?.season, episode = (page as? TitlePage.Episode)?.video?.episode,
         )
         host.keepPlayback(playback)
         _started.value = playback.token

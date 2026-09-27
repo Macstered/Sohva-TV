@@ -65,6 +65,9 @@ class AddonSession internal constructor(
     private var waitingForPicker = false
     private var trackPrefsSet = false
 
+    /** Trakt scrobbles (spec 51 FR-17): one per playback, kept across a fresh-source retry. */
+    private val scrobbler = env.scrobbler(play.token)
+
     val key: String get() = "addon:$token"
 
     val subtitles: AddonSubtitles = AddonSubtitles(
@@ -167,6 +170,7 @@ class AddonSession internal constructor(
                     return@launch
                 }
                 snapshot()
+                model.controller?.let { c -> scrobbler?.progress(c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: 0) }
             }
         }
     }
@@ -195,6 +199,7 @@ class AddonSession internal constructor(
                 ended = true
                 loop?.cancel()
                 snapshot(end = true)
+                scrobbler?.ended()
                 model.navigation.addonFinished(token)
             }
         }
@@ -202,6 +207,8 @@ class AddonSession internal constructor(
 
     fun onPlaying(playing: Boolean) {
         if (!playing && _stage.value == null && !ended) snapshot(force = true)
+        val c = model.controller ?: return
+        if (_stage.value == null) scrobbler?.playing(playing, c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: 0)
     }
 
     /** The picker closed: true when start-up finished under it and playback should begin now. */
@@ -258,6 +265,7 @@ class AddonSession internal constructor(
     }
 
     fun release() {
+        model.controller?.let { c -> scrobbler?.release(c.currentPosition.coerceAtLeast(0), c.duration.takeIf { it > 0 } ?: 0) }
         subtitles.release()
         loop?.cancel()
         snapshot(force = true)

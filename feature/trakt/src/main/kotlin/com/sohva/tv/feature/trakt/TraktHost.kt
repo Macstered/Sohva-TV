@@ -12,6 +12,8 @@ import com.sohva.tv.feature.trakt.protocol.TraktException
 import com.sohva.tv.feature.trakt.protocol.TraktFailure
 import com.sohva.tv.feature.trakt.protocol.TraktIdentityClient
 import com.sohva.tv.feature.trakt.protocol.TraktTokens
+import com.sohva.tv.feature.trakt.scrobble.TraktScrobbler
+import com.sohva.tv.feature.trakt.scrobble.TraktScrobbles
 import com.sohva.tv.feature.trakt.store.TraktAccount
 import com.sohva.tv.feature.trakt.store.TraktAccountStore
 import kotlinx.coroutines.CoroutineDispatcher
@@ -105,6 +107,19 @@ class TraktHost(
     val accounts: StateFlow<Map<String, TraktAccount?>> = _accounts.asStateFlow()
 
     private val refreshLock = Mutex()
+
+    /** The persisted scrobble queue (FR-19, -20). */
+    val scrobbles: TraktScrobbles by lazy { TraktScrobbles(this) }
+
+    /**
+     * A scrobbler for one title on a player (FR-15), running its pause settle on [main]; its item
+     * is given later with [TraktScrobbler.begin] once resolved.
+     */
+    fun scrobbler(profile: String, main: CoroutineScope): TraktScrobbler =
+        TraktScrobbler(profile, { p, item, action, pct -> scrobbles.submit(p, item, action, pct) }, { p, pct -> scrobbles.active(p, pct) }, main)
+
+    /** Whether [profile] should scrobble at all: a configured build, access, and an account (even one waiting for a new sign-in). */
+    suspend fun scrobbles(profile: String): Boolean = configured && access.allowed(profile) && account(profile) != null
 
     suspend fun account(profile: String): TraktAccount? {
         _accounts.value[profile]?.let { return it }

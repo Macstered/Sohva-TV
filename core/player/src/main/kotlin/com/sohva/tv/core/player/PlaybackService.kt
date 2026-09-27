@@ -40,6 +40,9 @@ class PlaybackService : MediaSessionService() {
 
     /** The film or episode playing, whose position is saved (spec 30 §4.21); null for live and catch-up. */
     private var vodKey: String? = null
+
+    /** The film or episode's Trakt scrobbles (spec 51 FR-16); never for live or catch-up. */
+    private var scrobbler: com.sohva.tv.core.model.player.TitleScrobbler? = null
     private var progressJob: Job? = null
 
     // The main dispatcher is the player's application thread (Q-10 keeps the dedicated looper open).
@@ -81,6 +84,8 @@ class PlaybackService : MediaSessionService() {
 
     private fun releaseStream() {
         progressJob?.cancel()
+        scrobbler?.release(player.currentPosition, durationOrZero())
+        scrobbler = null
         vodKey = null
         lease?.release()
         lease = null
@@ -104,19 +109,28 @@ class PlaybackService : MediaSessionService() {
         progressJob = scope.launch {
             while (true) {
                 delay(PROGRESS_MS)
-                if (player.isPlaying) saveProgress()
+                if (player.isPlaying) {
+                    saveProgress()
+                    scrobbler?.progress(player.currentPosition, durationOrZero())
+                }
             }
         }
     }
+
+    private fun durationOrZero(): Long = player.duration.takeIf { it != C.TIME_UNSET } ?: 0L
 
     private inner class Watcher : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             env.setPlaybackActive(isPlaying)
             if (!isPlaying) saveProgress()
+            scrobbler?.playing(isPlaying, player.currentPosition, durationOrZero())
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (playbackState == Player.STATE_ENDED) saveProgress()
+            if (playbackState == Player.STATE_ENDED) {
+                saveProgress()
+                scrobbler?.ended()
+            }
         }
 
         /** Clearing the items releases the source and its lease (PLAY-FR-23). */
@@ -190,6 +204,7 @@ class PlaybackService : MediaSessionService() {
                 lease = taken
                 if (vod) {
                     vodKey = stream.key
+                    scrobbler = env.vodScrobbler(stream.key)
                     startProgressLoop()
                 }
                 val placeholder = registry.register(stream)
