@@ -263,6 +263,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             data.beta23Categories.run()
             // Beta 23's Discover data (decision A1); Discover itself is built only when old files exist.
             if (flags.discover) com.sohva.tv.app.discover.Beta23DiscoverImport(this@AppGraph).run()
+            // Beta 23's Trakt accounts (decision A1); Trakt is built only when the old file exists.
+            if (flags.trakt) com.sohva.tv.app.trakt.Beta23TraktImport(this@AppGraph).run()
+            // The demo build's fictional Trakt account (spec 51 FR-37); Trakt itself stays offline there.
+            if (flags.trakt && flags.demoContent) trakt?.let { com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(it, data.profiles.activeId) }
         }
         // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
         if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)

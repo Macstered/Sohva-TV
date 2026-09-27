@@ -27,6 +27,16 @@ class TraktOverlay(private val db: SohvaDatabase) {
         return keys.chunked(LOOKUP).flatMap { dao.byKeys(profile, it) }.associateBy { it.key }
     }
 
+    /** Films gain the IMDb id Trakt holds for their TMDB id, so Home can merge them with Discover copies (TRAKT-23). */
+    fun withImdb(profile: String, items: List<ContinueItem>): List<ContinueItem> {
+        val rows = films(profile, items.filter { it.season == null && it.discover == null }.map { it.tmdbId?.let { id -> "tmdb:$id" } })
+        if (rows.isEmpty()) return items
+        return items.map { item ->
+            val imdb = item.tmdbId?.let { rows["movie:tmdb:$it"]?.imdb }
+            if (imdb == null || item.season != null) item else item.copy(imdbId = imdb)
+        }
+    }
+
     /** One episode's Trakt row and its playlist runtime; null when the series has no TMDB match. */
     fun episode(profile: String, seriesKey: String, season: Int, number: Int): TraktStateEntity? {
         val show = dao.seriesTmdb(seriesKey)?.toLongOrNull() ?: return null

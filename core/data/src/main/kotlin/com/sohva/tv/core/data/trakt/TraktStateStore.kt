@@ -17,6 +17,12 @@ interface TraktStateTable {
     suspend fun write(profile: String, deletes: List<String>, upserts: List<TraktStateEntity>)
 
     suspend fun count(profile: String): Int
+
+    /** The rows paused now (Trakt keeps ≤ 500), through the (profile_id, progress) index. */
+    suspend fun paused(profile: String): List<TraktStateEntity>
+
+    /** Rows by key, ≤ 200 per call. */
+    suspend fun byKeys(profile: String, keys: List<String>): List<TraktStateEntity>
 }
 
 /**
@@ -58,6 +64,10 @@ class TraktStateStore(private val db: SohvaDatabase, private val io: CoroutineDi
 
     override suspend fun count(profile: String): Int = withContext(io) { dao.count(profile) }
 
+    override suspend fun paused(profile: String): List<TraktStateEntity> = withContext(io) { dao.paused(profile, PAUSED_MAX) }
+
+    override suspend fun byKeys(profile: String, keys: List<String>): List<TraktStateEntity> = withContext(io) { dao.byKeys(profile, keys) }
+
     /** Disconnect, a different account, or a removed profile (FR-10, §6). */
     suspend fun forget(profile: String) {
         withContext(io) { dao.deleteProfile(profile) }
@@ -67,5 +77,6 @@ class TraktStateStore(private val db: SohvaDatabase, private val io: CoroutineDi
     companion object {
         const val CHUNK: Int = 500
         const val LOOKUP: Int = 200
+        private const val PAUSED_MAX = 1_000
     }
 }

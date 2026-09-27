@@ -45,3 +45,10 @@ Recommended, first-sync notice), PROF-09/-14, ADDON-34/-52, SET-11 (Accounts sec
 ## Open questions (spec 51 §10), settled by the owner's rule
 
 The spec's proposal where it makes one, else beta 23 (recorded in docs/decisions.md).
+
+## Status (27 September 2026)
+
+Done: parts 1–6; TRAKT-01…30 and the Trakt parts of SHELL-18, HOME-09/20–23/31, PROF-09/14,
+PLAY-46, VOD-16/52, META-20, ADDON-34/52, SET-53 and SEC-29 are ticked. Waiting for the owner: the
+manual check with a real account on the Shield (spec 51 §11 "Manual"; the build needs the ignored
+credentials file) and the low-end box check; the upgrade over a real beta 23 install belongs to M11.

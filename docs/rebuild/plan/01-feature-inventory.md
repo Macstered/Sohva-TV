@@ -58,7 +58,7 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-15** Player shortcuts to Home, the guide, Sohva Sport and "guide at this channel" reset the stack to that screen.
 - [ ] **SHELL-16** Resuming a film or episode from Home puts its library page and its details page under the player, so Back walks Details, then Movies/Series, then Home.
 - [ ] **SHELL-17** A finished film returns to its details page; a finished episode starts the next one (when autoplay is on) or returns to the series page, also when playback began in Search.
-- [ ] **SHELL-18** A Trakt card on Home opens the library's own details page when the title is in the library, otherwise the Trakt title page.
+- [x] **SHELL-18** A Trakt card on Home opens the library's own details page when the title is in the library, otherwise the Trakt title page.
 - [x] **SHELL-19** Returning to Movies or Series restores the browse position; returning to Sohva Sport restores the open match card; returning to the guide focuses the channel.
 - [x] **SHELL-20** Home navigation rail down the left edge: icons only at rest, widening over the content with labels when it takes focus.
 - [x] **SHELL-21** Rail destinations: Live TV, Sohva Sport, Movies, Series, Search, Discover (only when available), Who is watching (only with two or more profiles), Settings, under a Home marker.
@@ -93,7 +93,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 
 - [x] **HOME-07** Library films paused locally (not finished, position > 0), newest first.
 - [x] **HOME-08** Library episodes paused locally; one card per series, the newest episode standing for the series.
-- [ ] **HOME-09** Library copies paused on Trakt (unrestricted profiles with Trakt), merged with the local positions; a newer local position of the same copy wins.
+- [x] **HOME-09** Library copies paused on Trakt (unrestricted profiles with Trakt), merged with the local positions; a newer local position of the same copy wins.
 - [x] **HOME-10** Discover titles paused in Discover (not completed, position > 0), one card per addon title (series: newest episode).
 - [x] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M9.)*
 - [x] **HOME-12** At most 12 cards, newest first.
@@ -107,10 +107,10 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 
 **Trakt rows**
 
-- [ ] **HOME-20** Watch next: landscape cards for the next episode of up to 8 recently watched shows ("S1 E2 · title").
-- [ ] **HOME-21** Recommended for you: poster cards, up to 20 (10 films and 10 shows interleaved), with the year.
-- [ ] **HOME-22** OK on a Trakt card opens the library's own details page when a matching copy exists, otherwise the Trakt title page.
-- [ ] **HOME-23** "Trakt history is waiting for its first sync" note at the top centre after connecting, until the first sync stores its stamp.
+- [x] **HOME-20** Watch next: landscape cards for the next episode of up to 8 recently watched shows ("S1 E2 · title").
+- [x] **HOME-21** Recommended for you: poster cards, up to 20 (10 films and 10 shows interleaved), with the year.
+- [x] **HOME-22** OK on a Trakt card opens the library's own details page when a matching copy exists, otherwise the Trakt title page.
+- [x] **HOME-23** "Trakt history is waiting for its first sync" note at the top centre after connecting, until the first sync stores its stamp.
 
 **Sport and channels**
 
@@ -124,7 +124,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-28** The hero describes the focused card once focus has rested for 180 ms.
 - [x] **HOME-29** With nothing focused, or the rail focused, the hero shows the idle subject at once: the newest Continue watching title with progress, else a recent channel, else Welcome.
 - [x] **HOME-30** Kicker line per subject (Continue watching / Live now with a red dot / Live TV / Today's sport / Watch next / Recommended for you / Welcome), a large title, a facts line, an optional progress bar and an optional two-line synopsis.
-- [ ] **HOME-31** Synopsis and backdrop come from the same sources as the details pages (metadata match first, provider text second); a Trakt title's text comes from TMDB in the metadata language, never English first. *(library and channel part done in M5; Trakt part in M10.)*
+- [x] **HOME-31** Synopsis and backdrop come from the same sources as the details pages (metadata match first, provider text second); a Trakt title's text comes from TMDB in the metadata language, never English first. *(library and channel part done in M5; Trakt part in M10.)*
 - [x] **HOME-32** Backdrop artwork at the top right, fading into the ground at its bottom and left edge, over the bundled Live TV artwork; a match shows its two crests large and faint instead.
 - [x] **HOME-33** The backdrop crossfades (250 ms) when the subject's artwork changes; the hero text changes without animation.
 
@@ -175,7 +175,7 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 - [x] **PROF-06** "Ask who is watching at start" switch (default on), shown once there is more than one profile.
 - [x] **PROF-07** Who is watching at start: a full-screen picker of large tiles, the last active profile focused, when the household has more than one profile and the switch is on.
 - [x] **PROF-08** Who is watching on the Home rail (only with two or more profiles), opening the same picker.
-- [ ] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches done in M8; Discover done in M9; Trakt M10.)*
+- [x] **PROF-09** Per profile: favourite channels, favourite matches, recent channels, last channel, locked channels, watched positions, allowed groups, Trakt account and its cache, Discover addons, catalog order and visibility, Library and progress. *(channels, locks, groups, positions and the library done in M6; favourite matches done in M8; Discover done in M9; Trakt M10.)*
 
 **What this profile may see**
 
@@ -183,7 +183,7 @@ Spec: [specs/04-profiles-parental.md](../specs/04-profiles-parental.md) · Miles
 - [x] **PROF-11** Multi-choice group pickers ("Groups for <name>"), one row per group across sources, with the sources named; changes apply at once.
 - [x] **PROF-12** A restricted profile sees only its groups in the guide, the player's channel list, Movies, Series, Search and Home's recent channels.
 - [x] **PROF-13** Playing, catching up or zapping to a channel outside the groups is refused with the toast "This profile cannot watch that channel".
-- [ ] **PROF-14** A restricted profile never sees Discover (no rail item, no Continue watching cards, direct access denied) or Trakt (no Accounts section, no Trakt rows, no first-sync note). *(the rail's Discover item and the Accounts section's place done in M6; Discover's checks done in M9; Trakt (M10) adds its own.)*
+- [x] **PROF-14** A restricted profile never sees Discover (no rail item, no Continue watching cards, direct access denied) or Trakt (no Accounts section, no Trakt rows, no first-sync note). *(the rail's Discover item and the Accounts section's place done in M6; Discover's checks done in M9; Trakt (M10) adds its own.)*
 - [x] **PROF-15** A note under the group rows says whether the PIN guards the restriction (red when no PIN is set).
 
 **Parental PIN**
@@ -455,7 +455,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-43** Playback published as a media session (system media controls, voice "pause").
 - [ ] **PLAY-44** Demo build shows a still picture instead of a stream.
 - [x] **PLAY-45** Playback failures written to the diagnostics log without addresses or credentials.
-- [ ] **PLAY-46** Trakt scrobbling of VOD playback ([Trakt](../specs/51-trakt.md)).
+- [x] **PLAY-46** Trakt scrobbling of VOD playback ([Trakt](../specs/51-trakt.md)).
 - [x] **PLAY-47** Discover player shares the transport controls, track picker, skip ladder and subtitle look.
 
 ## Remote button mapping
@@ -503,7 +503,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 - [x] **VOD-13** One card per film when several playlists, groups or qualities carry it, marked "×N".
 - [x] **VOD-14** "When a film has more than one version" setting chooses the copy a folded card opens (None, Finnish audio, Finnish subtitles, Largest picture).
 - [x] **VOD-15** A folded card takes a missing poster, year, rating or genre from its other copies.
-- [ ] **VOD-16** Watched tick on film posters, whichever copy was watched (Trakt marks included).
+- [x] **VOD-16** Watched tick on film posters, whichever copy was watched (Trakt marks included).
 - [x] **VOD-17** Search inside the selected destination by provider title or matched title.
 - [x] **VOD-18** The previous wall stays visible (not selectable) until the next one is ready; loading, failure, empty and no-results messages.
 - [x] **VOD-19** Wall order follows the library organisation (A–Z by default, per-group sort, manual order); History by recency.
@@ -548,7 +548,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 - [x] **VOD-49** Continue watching feed for Home: one card per film or series, newest first.
 - [x] **VOD-50** Held-OK actions on a Continue watching card: Resume, Start from beginning, Mark as watched, Remove from Continue watching.
 - [x] **VOD-51** Next-episode lookup across seasons (for autoplay).
-- [ ] **VOD-52** Trakt positions and watched marks overlaid on library progress.
+- [x] **VOD-52** Trakt positions and watched marks overlaid on library progress.
 
 **Match picker**
 
@@ -596,7 +596,7 @@ Spec: [specs/41-metadata-enrichment.md](../specs/41-metadata-enrichment.md) · M
 - [x] **META-17** Series page: TMDB series with details (runtime, rating, cast), TVmaze as a fallback.
 - [x] **META-18** Selected episode: TMDB episode or TVmaze episode by number, 350 ms after the selection rests.
 - [x] **META-19** Guide hero: programme lookup by title 350 ms after the selection rests (synopsis, year, still, "TMDB x.x" rating chip).
-- [ ] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language. *(film, series and programme lookups done in M5; Trakt part in M10.)*
+- [x] **META-20** Home hero: film, series/episode and live-programme lookups; Trakt titles by TMDB id in the metadata language. *(film, series and programme lookups done in M5; Trakt part in M10.)*
 - [x] **META-21** A missing library poster is repaired from the details record when a page opens.
 - [x] **META-22** "Source: TMDB" / "Source: TVmaze" opens the matched record's web page (film page, series page, guide hero).
 
@@ -723,7 +723,7 @@ Spec: [specs/50-discover-addons.md](../specs/50-discover-addons.md) · Milestone
 - [x] **ADDON-31** One shelf per ready-to-browse catalog (no required choice), in the saved order.
 - [x] **ADDON-32** Saved shelves render at once and revalidate; "Showing saved titles; provider unavailable." when stale.
 - [x] **ADDON-33** "Show all" at the end of each shelf opens the paged grid.
-- [ ] **ADDON-34** Trakt progress bars and watched ticks on movie posters and episode cards. *(Trakt part: arrives with M10.)*
+- [x] **ADDON-34** Trakt progress bars and watched ticks on movie posters and episode cards. *(Trakt part: arrives with M10.)*
 - [x] **ADDON-35** Collapsible icon rail: Home, Library, Search, Discover (compass), Addons & setup, Back to home.
 - [x] **ADDON-36** Focus returns to the card, Show all button or rail item the viewer left.
 - [x] **ADDON-37** Missing Continue-watching artwork is repaired once per Discover visit.
@@ -750,7 +750,7 @@ Spec: [specs/50-discover-addons.md](../specs/50-discover-addons.md) · Milestone
 - [x] **ADDON-49** Scraper chooser filters providers; Refresh re-resolves sources.
 - [x] **ADDON-50** Unsupported transports (torrent, external link, YouTube, NZB, archives, local bridge) are listed as "Unsupported transport" and never started.
 - [x] **ADDON-51** Continue watching and Start from beginning start the first playable source automatically.
-- [ ] **ADDON-52** Resume from the local position, or from a newer Trakt pause. *(local resume done in M9; the Trakt pause arrives with M10.)*
+- [x] **ADDON-52** Resume from the local position, or from a newer Trakt pause. *(local resume done in M9; the Trakt pause arrives with M10.)*
 - [x] **ADDON-53** Playback loading screen: backdrop, pulsing logo or title, stage text, Cancel and Subtitles.
 - [x] **ADDON-54** Addon player with the shared bottom controls (transport, audio, subtitles, aspect Fit/Zoom/Fill), D-pad seek and media keys.
 - [x] **ADDON-55** Retry with a freshly resolved source after a failure or a background stop.
@@ -790,42 +790,42 @@ Spec: [specs/51-trakt.md](../specs/51-trakt.md) · Milestone: M10 · 30 items
 
 **Account**
 
-- [ ] **TRAKT-01** Settings › Accounts section with a Trakt panel (unrestricted profiles only).
-- [ ] **TRAKT-02** Connect Trakt with a device code: QR of the activation address, the address and the code shown on the TV.
-- [ ] **TRAKT-03** Cancel sign-in with the button or Back; leaving the foreground cancels sign-in.
-- [ ] **TRAKT-04** One Trakt account per Sohva profile; the panel names the profile and shows "Connected as <username>".
-- [ ] **TRAKT-05** "Sign in again" when an account exists (replaces the saved sign-in).
-- [ ] **TRAKT-06** "Sign in again" state explained when Trakt no longer accepts the saved sign-in.
-- [ ] **TRAKT-07** Disconnect removes the sign-in and the cached Trakt data from this TV only.
-- [ ] **TRAKT-08** "Not configured" state when the build has no Trakt application credentials.
-- [ ] **TRAKT-09** Error messages for declined, expired, unusable code, rate limit and connection failure.
-- [ ] **TRAKT-10** Tokens refreshed automatically before they expire.
-- [ ] **TRAKT-11** Removing a Sohva profile disconnects its Trakt account.
+- [x] **TRAKT-01** Settings › Accounts section with a Trakt panel (unrestricted profiles only).
+- [x] **TRAKT-02** Connect Trakt with a device code: QR of the activation address, the address and the code shown on the TV.
+- [x] **TRAKT-03** Cancel sign-in with the button or Back; leaving the foreground cancels sign-in.
+- [x] **TRAKT-04** One Trakt account per Sohva profile; the panel names the profile and shows "Connected as <username>".
+- [x] **TRAKT-05** "Sign in again" when an account exists (replaces the saved sign-in).
+- [x] **TRAKT-06** "Sign in again" state explained when Trakt no longer accepts the saved sign-in.
+- [x] **TRAKT-07** Disconnect removes the sign-in and the cached Trakt data from this TV only.
+- [x] **TRAKT-08** "Not configured" state when the build has no Trakt application credentials.
+- [x] **TRAKT-09** Error messages for declined, expired, unusable code, rate limit and connection failure.
+- [x] **TRAKT-10** Tokens refreshed automatically before they expire.
+- [x] **TRAKT-11** Removing a Sohva profile disconnects its Trakt account.
 
 **Scrobbling**
 
-- [ ] **TRAKT-12** Start / pause / stop scrobbles from the VOD player (movies and episodes).
-- [ ] **TRAKT-13** Start / pause / stop scrobbles from the Discover player (movies and episodes).
-- [ ] **TRAKT-14** Nothing is sent for Live TV, catch-up, or titles without a TMDB/IMDb id.
-- [ ] **TRAKT-15** A rebuffer is not a pause (2.5 s settle before a pause is sent).
-- [ ] **TRAKT-16** Scrobbles that cannot be delivered are kept and retried (latest report per title wins).
-- [ ] **TRAKT-17** A playback interrupted by a crash or kill is closed with a pause on the next start.
+- [x] **TRAKT-12** Start / pause / stop scrobbles from the VOD player (movies and episodes).
+- [x] **TRAKT-13** Start / pause / stop scrobbles from the Discover player (movies and episodes).
+- [x] **TRAKT-14** Nothing is sent for Live TV, catch-up, or titles without a TMDB/IMDb id.
+- [x] **TRAKT-15** A rebuffer is not a pause (2.5 s settle before a pause is sent).
+- [x] **TRAKT-16** Scrobbles that cannot be delivered are kept and retried (latest report per title wins).
+- [x] **TRAKT-17** A playback interrupted by a crash or kill is closed with a pause on the next start.
 
 **Read side**
 
-- [ ] **TRAKT-18** Background sync of the account's paused positions and watched marks: at profile start, 3 s after each reported stop, every 15 minutes — only when Trakt reports new activity.
-- [ ] **TRAKT-19** Trakt progress bars and watched ticks on VOD library cards, series episode lists and Continue watching.
-- [ ] **TRAKT-20** Trakt progress bars and watched ticks on Discover movie posters and episode cards.
-- [ ] **TRAKT-21** Continue watching includes library titles paused on Trakt (e.g. on another device).
-- [ ] **TRAKT-22** Resume from a Trakt pause: Discover by fraction; VOD when the runtime is known.
-- [ ] **TRAKT-23** One Continue watching card per movie across Discover and VOD copies, bridged by Trakt ids.
-- [ ] **TRAKT-24** Home "Watch next" row: next unwatched episode of up to 8 recently watched shows.
-- [ ] **TRAKT-25** Home "Recommended for you" row: 10 movies and 10 shows, interleaved, refreshed twice a day.
-- [ ] **TRAKT-26** Home hero for Trakt cards: synopsis and backdrop from TMDB by id in the metadata language; Trakt's text as fallback.
-- [ ] **TRAKT-27** Opening a Trakt card: the library's own page when a copy is matched to the same TMDB record; otherwise a lookup over the Discover addons (IMDb, then TMDB); otherwise "not available".
-- [ ] **TRAKT-28** "Trakt history is waiting for its first sync" notice on Home right after connecting.
-- [ ] **TRAKT-29** Restricted profiles: no Accounts section, no Trakt rows, no notice.
-- [ ] **TRAKT-30** Demo (screenshot) build: a fictional connected account seeded offline, no network.
+- [x] **TRAKT-18** Background sync of the account's paused positions and watched marks: at profile start, 3 s after each reported stop, every 15 minutes — only when Trakt reports new activity.
+- [x] **TRAKT-19** Trakt progress bars and watched ticks on VOD library cards, series episode lists and Continue watching.
+- [x] **TRAKT-20** Trakt progress bars and watched ticks on Discover movie posters and episode cards.
+- [x] **TRAKT-21** Continue watching includes library titles paused on Trakt (e.g. on another device).
+- [x] **TRAKT-22** Resume from a Trakt pause: Discover by fraction; VOD when the runtime is known.
+- [x] **TRAKT-23** One Continue watching card per movie across Discover and VOD copies, bridged by Trakt ids.
+- [x] **TRAKT-24** Home "Watch next" row: next unwatched episode of up to 8 recently watched shows.
+- [x] **TRAKT-25** Home "Recommended for you" row: 10 movies and 10 shows, interleaved, refreshed twice a day.
+- [x] **TRAKT-26** Home hero for Trakt cards: synopsis and backdrop from TMDB by id in the metadata language; Trakt's text as fallback.
+- [x] **TRAKT-27** Opening a Trakt card: the library's own page when a copy is matched to the same TMDB record; otherwise a lookup over the Discover addons (IMDb, then TMDB); otherwise "not available".
+- [x] **TRAKT-28** "Trakt history is waiting for its first sync" notice on Home right after connecting.
+- [x] **TRAKT-29** Restricted profiles: no Accounts section, no Trakt rows, no notice.
+- [x] **TRAKT-30** Demo (screenshot) build: a fictional connected account seeded offline, no network.
 
 ## Sohva Sport
 
@@ -962,7 +962,7 @@ Spec: [specs/70-settings.md](../specs/70-settings.md) · Milestone: M7 · 40 ite
 - [x] **SET-50** Playlists: source list, add M3U / Xtream, set up from a phone, source pages ([10](../specs/10-sources-and-import.md), [11](../specs/11-phone-setup.md)).
 - [x] **SET-51** Remote buttons: press/hold grid for twelve buttons, reset ([31](../specs/31-remote-button-mapping.md)).
 - [x] **SET-52** Library: TMDB and TVmaze switches, TMDB key with Save and Test, metadata language, preferred film version, Manage groups & content, groups of your own, Clear metadata cache, TMDB and TVmaze website buttons ([41](../specs/41-metadata-enrichment.md), [42](../specs/42-library-organization.md)).
-- [ ] **SET-53** Accounts: the Trakt panel, hidden for restricted profiles ([51](../specs/51-trakt.md)).
+- [x] **SET-53** Accounts: the Trakt panel, hidden for restricted profiles ([51](../specs/51-trakt.md)).
 - [x] **SET-54** Sohva Sport: channel country/language priority, API-Sports key, followed sports and competitions ([60](../specs/60-sohva-sport.md)).
 - [x] **SET-55** Parental controls: set, change or remove the household PIN ([04](../specs/04-profiles-parental.md)).
 - [x] **SET-56** Backup & tools: encrypted backup save and restore, Clear all guide data ([71](../specs/71-backup-restore.md)).
@@ -1079,7 +1079,7 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 - [ ] **SEC-26** A release-document audit runs over the tester package.
 - [ ] **SEC-27** An APK safety audit checks package, version, label, non-debuggable, the permission allowlist, the signing certificate and secret-shaped content in every APK entry.
 - [x] **SEC-28** Gitleaks scans the full public history, the staged commit and the release package.
-- [ ] **SEC-29** Build-time secrets (the Trakt client id and secret) are injected at build time and never appear in the public source.
+- [x] **SEC-29** Build-time secrets (the Trakt client id and secret) are injected at build time and never appear in the public source.
 
 ## Localisation
 

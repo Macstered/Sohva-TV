@@ -146,6 +146,12 @@ class TraktHost(
     /** A sign-in for [profile] (FR-02), checking its access before every step. */
     fun signIn(profile: String): TraktSignIn = TraktSignIn(auth, identity, monotonic) { access.allowed(profile) }
 
+    /** Accounts written by the beta 23 importer: read again, and a sync asked for each (decision A1). */
+    fun accountsImported(profiles: Collection<String>) {
+        _accounts.update { it - profiles.toSet() }
+        profiles.forEach { _syncRequests.tryEmit(it) }
+    }
+
     /** FR-02 step 7 and §6: a different account than before starts with an empty cache, stamp and queue. */
     suspend fun saveSignIn(profile: String, result: SignInResult.Success) = withContext(dispatchers.io) {
         val before = store.account(profile)

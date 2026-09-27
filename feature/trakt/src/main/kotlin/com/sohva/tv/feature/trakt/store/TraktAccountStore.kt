@@ -37,7 +37,8 @@ class AndroidTraktPrefs(context: Context) : TraktPrefs {
     override fun keys(): Set<String> = prefs.all.keys
 
     companion object {
-        const val FILE: String = "trakt_accounts"
+        /** Not beta 23's `trakt_accounts`: that file stays for the importer, readable only with the old key (decision A1). */
+        const val FILE: String = "sohva_trakt_accounts"
     }
 }
 
@@ -51,7 +52,7 @@ class TraktAccount(val username: String, val uuid: String, val tokens: TraktToke
 }
 
 /**
- * Per-profile Trakt records (§6) in `trakt_accounts`, values encrypted: the account, the pending
+ * Per-profile Trakt records (§6) in `sohva_trakt_accounts`, values encrypted: the account, the pending
  * scrobbles, the in-flight START, the activity stamp and format version, and Home's two lists.
  */
 class TraktAccountStore(private val prefs: TraktPrefs, private val cipher: TraktCipher) {

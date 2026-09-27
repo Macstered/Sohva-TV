@@ -54,6 +54,8 @@ data class ContinueItem(
     val discover: DiscoverResume? = null,
     /** A Trakt pause without a known runtime: the card's bar (spec 51 FR-34). */
     val fraction: Float? = null,
+    /** The film's IMDb id as Trakt knows it: bridges a Discover copy to this one (spec 02 HOME-FR-20, TRAKT-23). */
+    val imdbId: String? = null,
 ) {
     companion object {
         fun of(row: ContinueRow): ContinueItem = ContinueItem(
@@ -241,7 +243,7 @@ class ProgressStore(
             .toList()
         if (!traktAllowed(who)) return@withContext local
         // Spec 51 FR-34: library copies paused on Trakt join the local list.
-        TraktOverlay.join(local, trakt.continueItems(who, limit), limit)
+        trakt.withImdb(who, TraktOverlay.join(local, trakt.continueItems(who, limit), limit))
     }
 
     private fun WatchProgressEntity.toProgress() = Progress(positionMs, durationMs, completed, updatedAt)

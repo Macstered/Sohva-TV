@@ -59,6 +59,12 @@ class FakeTable : TraktStateTable {
 
     override suspend fun count(profile: String): Int = synchronized(rows) { rows.keys.count { it.first == profile } }
 
+    override suspend fun paused(profile: String): List<TraktStateEntity> = synchronized(rows) {
+        rows.values.filter { it.profileId == profile && it.progress > 0 && it.progress < 100 }
+    }
+
+    override suspend fun byKeys(profile: String, keys: List<String>): List<TraktStateEntity> = synchronized(rows) { keys.mapNotNull { rows[profile to it] } }
+
     fun row(key: String): TraktStateEntity? = synchronized(rows) { rows["p" to key] }
 }
 
@@ -225,6 +231,24 @@ class TraktSyncTest {
         clock.now += 2 * 60 * 60 * 1000L
         sync.recommendations("p")
         assertEquals(2, paths.size)
+    }
+
+    @Test
+    fun theDemoSeedsAnOfflineAccountOnceAndNeverCallsTrakt() = runBlocking {
+        val h = TraktHost(
+            TraktCredentials("fictional-client-id", "not-a-real-secret"), { OkHttpClient() }, store(), clock,
+            TraktDispatchers(Dispatchers.Unconfined, Dispatchers.Unconfined), { true }, FakeLog(), CoroutineScope(Dispatchers.Unconfined),
+            offline = true, monotonic = { 0L }, forgetCache = {}, authOrigin = server.url("/"), apiOrigin = server.url("/"),
+        )
+        com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(h, "p")
+        assertEquals("sohva-demo", h.account("p")?.username)
+        assertEquals(3, h.shelves.read("p", TraktShelfKind.WATCH_NEXT)!!.cards.size)
+        assertFalse(TraktSync(h, FakeTable(), h.shelves).sync("p", force = true))
+        // A disconnect sticks: the next start seeds nothing.
+        h.disconnect("p")
+        com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(h, "p")
+        assertNull(h.account("p"))
+        assertTrue(paths.toString(), paths.isEmpty())
     }
 
     @Test

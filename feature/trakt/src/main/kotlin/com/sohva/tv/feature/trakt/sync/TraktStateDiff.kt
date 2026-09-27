@@ -54,18 +54,27 @@ class TraktStateDiff(private val table: TraktStateTable) {
         val p = paused?.associateByTo(HashMap()) { it.key }
         val deletes = ArrayList<String>()
         val upserts = ArrayList<TraktStateEntity>()
-        var after = ""
-        while (true) {
-            val page = table.page(profile, kind, after, PAGE)
-            for (old in page) {
-                val next = merge(old, w?.remove(old.key), p?.remove(old.key), w != null, p != null)
-                when {
-                    next == null -> deletes += old.key
-                    next != old -> upserts += next
-                }
+        fun visit(old: TraktStateEntity) {
+            val next = merge(old, w?.remove(old.key), p?.remove(old.key), w != null, p != null)
+            when {
+                next == null -> deletes += old.key
+                next != old -> upserts += next
             }
-            if (page.size < PAGE) break
-            after = page.last().key
+        }
+        if (w == null && p != null) {
+            // Only the pauses changed: only rows paused now or named by the new list can change, so
+            // the history is not walked (a new pause on a large account is a few indexed reads).
+            val old = table.paused(profile).filter { it.kind == kind }.associateByTo(LinkedHashMap()) { it.key }
+            p.keys.filterNot(old::containsKey).chunked(LOOKUP).forEach { chunk -> table.byKeys(profile, chunk).forEach { old[it.key] = it } }
+            old.values.forEach(::visit)
+        } else {
+            var after = ""
+            while (true) {
+                val page = table.page(profile, kind, after, PAGE)
+                page.forEach(::visit)
+                if (page.size < PAGE) break
+                after = page.last().key
+            }
         }
         // What is left is new to the cache.
         val fresh = LinkedHashSet<String>().apply { w?.keys?.let(::addAll); p?.keys?.let(::addAll) }
@@ -75,6 +84,7 @@ class TraktStateDiff(private val table: TraktStateTable) {
 
     companion object {
         const val PAGE: Int = 2_000
+        private const val LOOKUP = 200
 
         /**
          * One key's row: watched flag, plays and watch time from [w] (or the stored row when the
