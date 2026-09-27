@@ -1,5 +1,8 @@
 package com.sohva.tv.feature.discover.ui.search
 
+import com.sohva.tv.feature.discover.ui.components.marked
+import com.sohva.tv.feature.discover.ui.components.movieMarkKey
+import com.sohva.tv.feature.discover.ui.components.rememberMarks
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -156,10 +159,11 @@ private fun ResultRow(
             Text(emptyText, Modifier.padding(top = 6.dp), style = Sohva.typography.label, color = Sohva.palette.textMuted)
             return@Column
         }
+        val marks = rememberMarks(remember(hits) { hits.mapNotNull { movieMarkKey(it.item.type, it.item.id) } })
         LazyRow(state = state, contentPadding = PaddingValues(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.testTag("discover-search-$row")) {
             itemsIndexed(hits, key = { _, h -> h.key }) { i, h ->
                 PosterCard(
-                    PosterContent(h.item.name, h.item.poster), 112.dp, { open(h.owner, h.item) },
+                    PosterContent(h.item.name, h.item.poster).marked(movieMarkKey(h.item.type, h.item.id)?.let(marks::get)), 112.dp, { open(h.owner, h.item) },
                     (if (i == 0) Modifier.focusRequester(first) else Modifier).onFocusChanged { if (it.isFocused) model.lastFocus = row }
                         .testTag("discover-search-card-${h.item.id}"),
                 )

@@ -169,6 +169,7 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
                 }
             }
         }
+        is AppRoute.TraktTitle -> com.sohva.tv.app.trakt.TraktTitleDestination(route, stack, graph) { back() }
         is AppRoute.AddonPlayer -> {
             val bridge = graph.addonPlayback
             val play = remember(route) { bridge?.play(route.token) }

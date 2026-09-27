@@ -48,7 +48,13 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         }
     }
 
-    val data: DataGraph by lazy { DataGraph(app, dispatchers) }
+    val data: DataGraph by lazy {
+        DataGraph(app, dispatchers).also { d ->
+            // Trakt's history on the library (spec 51 FR-32 to -36): unrestricted profiles only; building
+            // Trakt's host reads nothing, and rows exist only for connected accounts.
+            if (flags.trakt) d.progress.traktAllowed = { profile -> trakt?.access?.allowed(profile) == true }
+        }
+    }
 
     /** Work that outlives a screen: imports started from Settings keep going (spec 10 SRC-FR-94). */
     val appScope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + dispatchers.io) }
@@ -94,7 +100,12 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
                     com.sohva.tv.core.data.home.ContinueMerge.merge(library.await(), addons.await(), HomeModel.RESUME_CARDS)
                 }
             },
-            changes = discover?.let { host -> kotlinx.coroutines.flow.merge(data.walls.changes(), host.progress.changes.map { }) } ?: data.walls.changes(),
+            // Trakt's cache counts as a change too (spec 51 FR-34); its first value is not one.
+            changes = kotlinx.coroutines.flow.merge(
+                data.walls.changes(),
+                data.traktState.revision.drop(1).map { },
+                discover?.progress?.changes?.map { } ?: kotlinx.coroutines.flow.emptyFlow(),
+            ),
             playing = playbackActive,
             onFirstSettled = {
                 diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
@@ -118,6 +129,11 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     /** The addon player's bridge to Discover (spec 50 §4.12); none where the build has no addons. */
     /** Trakt (spec 51): in every build; without credentials its panel says it is not configured. */
     val trakt: com.sohva.tv.feature.trakt.TraktHost? by lazy { if (flags.trakt) com.sohva.tv.app.trakt.TraktGraph.build(this) else null }
+
+    /** Trakt's marks for Discover cards and resume (spec 51 FR-31, -35): free to build, looked up per screen. */
+    val titleMarks: com.sohva.tv.core.model.vod.TitleMarks by lazy {
+        if (flags.trakt) com.sohva.tv.app.trakt.TraktTitleMarks(this) else com.sohva.tv.core.model.vod.TitleMarks.NONE
+    }
 
     /** Trakt's read side and its loop for the active profile (spec 51 FR-21, -22); started after Home's first resume read. */
     val traktSync: com.sohva.tv.feature.trakt.sync.TraktSync? by lazy { trakt?.let { com.sohva.tv.feature.trakt.sync.TraktSync(it, data.traktState, it.shelves) } }

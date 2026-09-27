@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.discover
 
+import com.sohva.tv.core.model.vod.TitleMarks
 import android.annotation.SuppressLint
 import android.content.Context
 import androidx.core.content.edit
@@ -45,6 +46,8 @@ class DiscoverHost(
     val log: DiagnosticsLog,
     /** An app-lifetime scope: progress writes outlive the screens that start them (FR-106). */
     val appScope: CoroutineScope,
+    /** Trakt's marks for cards and resume (spec 51 FR-31, -35); none without Trakt. */
+    val marks: TitleMarks = TitleMarks.NONE,
     /** The viewer's playback settings: VOD languages and subtitle look apply to addon playback too (FR-85, -104). */
     val playback: suspend () -> PlaybackSettings,
 ) {

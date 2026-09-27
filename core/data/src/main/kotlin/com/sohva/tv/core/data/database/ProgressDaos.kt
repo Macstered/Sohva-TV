@@ -111,6 +111,10 @@ interface ProgressDao {
     @Query(ProgressSql.TICKS_WORK)
     fun ticksWork(profile: String, workKeys: List<String>): List<TickRow>
 
+    /** An episode's playlist runtime in milliseconds, 0 when unknown (spec 51 FR-33). */
+    @Query("SELECT COALESCE(duration_s, 0) * 1000 FROM episode WHERE key = :key")
+    fun episodeRuntime(key: String): Long
+
     @Query(ProgressSql.SEASON)
     fun season(seriesKey: String, season: Int): List<SeasonEpisode>
 

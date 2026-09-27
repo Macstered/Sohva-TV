@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "fbe0284a9887f359ef81a99973d2909e",
+    "identityHash": "1ff2c0eab9383f79e99932a4e533dbd3",
     "entities": [
       {
         "tableName": "app_meta",
@@ -2863,13 +2863,23 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_trakt_state_profile_id_imdb` ON `${TABLE_NAME}` (`profile_id`, `imdb`)"
+          },
+          {
+            "name": "index_trakt_state_profile_id_progress",
+            "unique": false,
+            "columnNames": [
+              "profile_id",
+              "progress"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_trakt_state_profile_id_progress` ON `${TABLE_NAME}` (`profile_id`, `progress`)"
           }
         ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fbe0284a9887f359ef81a99973d2909e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1ff2c0eab9383f79e99932a4e533dbd3')"
     ]
   }
 }

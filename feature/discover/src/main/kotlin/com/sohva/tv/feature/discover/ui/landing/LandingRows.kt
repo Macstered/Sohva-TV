@@ -1,5 +1,8 @@
 package com.sohva.tv.feature.discover.ui.landing
 
+import com.sohva.tv.feature.discover.ui.components.marked
+import com.sohva.tv.feature.discover.ui.components.movieMarkKey
+import com.sohva.tv.feature.discover.ui.components.rememberMarks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -151,6 +154,7 @@ internal fun Shelf(
         }
         note?.let { Text(it, style = Sohva.typography.caption, color = Sohva.palette.textMuted, maxLines = 2) }
         val items = shelf.items
+        val marks = rememberMarks(remember(items) { items.orEmpty().mapNotNull { movieMarkKey(it.type, it.id) } })
         LazyRow(
             state = state, contentPadding = PaddingValues(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -180,7 +184,7 @@ internal fun Shelf(
                 itemsIndexed(list, key = { _, m -> "${m.type}:${m.id}" }) { i, item ->
                     val id = "${item.type}:${item.id}"
                     PosterCard(
-                        PosterContent(item.name, item.poster), CARD_WIDTH, { open(entry, item) },
+                        PosterContent(item.name, item.poster).marked(movieMarkKey(item.type, item.id)?.let(marks::get)), CARD_WIDTH, { open(entry, item) },
                         Modifier.focusRequester(targets.item(row, id)).then(if (i == 0) Modifier.focusRequester(targets.first(row)) else Modifier)
                             .leftToRail(i == 0, moves)
                             .onFocusChanged {

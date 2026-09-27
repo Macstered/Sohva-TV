@@ -1,26 +1,48 @@
 package com.sohva.tv.core.data
 
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.database.TraktSql
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Spec 51 §9: the sync's keyset walk and diff writes use the primary key, never a sort. */
+/**
+ * Spec 51 §9: the sync's keyset walk, its diff writes, the visible-title lookups and the library
+ * overlay all start from keys or an index, never a scan or a sort, with and without statistics.
+ */
 class TraktQueryPlanTest {
-    private fun assertKeyed(sql: String) {
+    private fun assertKeyed(name: String, sql: String) {
         QueryPlanHarness.open(SohvaDatabase.VERSION).use { db ->
             for (analyzed in listOf(false, true)) {
                 if (analyzed) db.analyze()
-                val plan = db.plan(sql).joinToString(" | ")
-                assertTrue(plan, plan.contains("SEARCH") && !plan.contains("TEMP B-TREE") && !plan.contains("SCAN"))
+                val plan = db.plan(sql)
+                val text = plan.joinToString(" | ")
+                assertTrue("$name ($analyzed): $text", plan.first().startsWith("SEARCH"))
+                assertFalse("$name ($analyzed): $text", Regex("""\bSCAN\b""").containsMatchIn(text) || text.contains("TEMP B-TREE"))
             }
         }
     }
 
     @Test
-    fun statePageWalksThePrimaryKey() =
-        assertKeyed("SELECT * FROM trakt_state WHERE profile_id = :profile AND kind = :kind AND key > :after ORDER BY key LIMIT :limit")
+    fun syncQueriesUseThePrimaryKey() {
+        assertKeyed("page", "SELECT * FROM trakt_state WHERE profile_id = :profile AND kind = :kind AND key > :after ORDER BY key LIMIT :limit")
+        assertKeyed("delete", "DELETE FROM trakt_state WHERE profile_id = :profile AND key IN (:a, :b)")
+    }
 
     @Test
-    fun stateDeleteUsesThePrimaryKey() =
-        assertKeyed("DELETE FROM trakt_state WHERE profile_id = :profile AND key IN (:a, :b)")
+    fun visibleTitleLookupsUseTheirIndexes() {
+        assertKeyed("imdb", "SELECT * FROM trakt_state WHERE profile_id = :profile AND imdb IN (:a, :b)")
+        assertKeyed("tmdb", "SELECT * FROM trakt_state WHERE profile_id = :profile AND tmdb IN (:a, :b)")
+    }
+
+    @Test
+    fun libraryOverlayStartsFromKeys() {
+        val queries = mapOf(
+            "by keys" to TraktSql.BY_KEYS, "paused" to TraktSql.PAUSED, "series tmdb" to TraktSql.SERIES_TMDB,
+            "series episodes" to TraktSql.SERIES_EPISODES, "film copies" to TraktSql.FILM_COPIES,
+            "series copies" to TraktSql.SERIES_COPIES, "episode at" to TraktSql.EPISODE_AT,
+            "film route" to TraktSql.FILM_ROUTE, "series route" to TraktSql.SERIES_ROUTE,
+        )
+        for ((name, sql) in queries) assertKeyed(name, sql)
+    }
 }

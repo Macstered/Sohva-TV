@@ -1,5 +1,10 @@
 package com.sohva.tv.feature.discover.ui.title
 
+import com.sohva.tv.ui.design.components.WatchedBadge
+import com.sohva.tv.ui.design.components.ProgressBar
+import com.sohva.tv.core.model.vod.TitleMark
+import com.sohva.tv.feature.discover.ui.components.episodeMarkKey
+import com.sohva.tv.feature.discover.ui.components.rememberMarks
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -118,7 +123,7 @@ private fun PlayablePage(model: TitleModel, s: TitleState, episode: AddonVideo?)
             if (s.loading) Text(stringResource(R.string.addon_ui_loading_title_information), style = Sohva.typography.label, color = Sohva.palette.textDim)
             s.failure?.let { Text(stringResource(R.string.addon_ui_full_details_unavailable, failureText(it)), style = Sohva.typography.label, color = Sohva.palette.textDim) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                val resume = s.progress != null
+                val resume = s.canResume
                 TvActionButton(
                     stringResource(if (resume) R.string.home_hero_resume else R.string.addon_find_sources),
                     { if (resume) model.start(fromBeginning = false) else firstSource.requestFocus() },
@@ -236,8 +241,11 @@ private fun SeriesPage(model: TitleModel, s: TitleState) {
         if (!s.loading && s.seasons.isEmpty()) {
             TvActionButton(stringResource(R.string.addon_ui_retry_episode_details), model::retry, Modifier.testTag("discover-title-retry"), compact = true)
         }
+        val marks = rememberMarks(remember(s.episodes) { s.episodes.mapNotNull { episodeMarkKey(s.preview.id, it.season, it.episode) } })
         LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), contentPadding = PaddingValues(8.dp)) {
-            items(s.episodes, key = { it.id }) { video -> EpisodeCard(video, s.preview.background) { model.openEpisode(video) } }
+            items(s.episodes, key = { it.id }) { video ->
+                EpisodeCard(video, s.preview.background, episodeMarkKey(s.preview.id, video.season, video.episode)?.let(marks::get)) { model.openEpisode(video) }
+            }
         }
     }
     LaunchedEffect(s.season, s.seasons.size) { chips[s.season]?.requestFocusWhenAttached() }
@@ -245,7 +253,7 @@ private fun SeriesPage(model: TitleModel, s: TitleState) {
 
 /** §5.3 episode card: 230 dp, a 130 dp image (the thumbnail, else the series background) under a scrim, "S1 · E2 · title". */
 @Composable
-private fun EpisodeCard(video: AddonVideo, fallback: String?, open: () -> Unit) {
+private fun EpisodeCard(video: AddonVideo, fallback: String?, mark: TitleMark?, open: () -> Unit) {
     val style = SurfaceStyle(corner = Sohva.shapes.medium, resting = Sohva.palette.surface, focusScale = 1f, padding = PaddingValues(0.dp))
     val label = listOfNotNull(video.season?.let { "S$it" }, video.episode?.let { "E$it" }, video.title).joinToString(" · ")
     TvSurface(open, Modifier.width(230.dp).height(130.dp).testTag("discover-episode-${video.id}"), style = style) {
@@ -253,6 +261,9 @@ private fun EpisodeCard(video: AddonVideo, fallback: String?, open: () -> Unit) 
             (video.thumbnail ?: fallback)?.let { Still(it) }
             Box(Modifier.fillMaxSize().drawBehind { drawRect(Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color.Transparent, androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.85f)))) })
             Text(label, Modifier.align(Alignment.BottomStart).padding(10.dp), maxLines = 2, overflow = TextOverflow.Ellipsis, style = Sohva.typography.label, color = androidx.compose.ui.graphics.Color.White)
+            // The Trakt bar or tick (spec 51 section 5.2).
+            mark?.fraction?.let { f -> ProgressBar({ f }, Modifier.align(Alignment.BottomStart).testTag("discover-progress"), height = 4.dp, track = Sohva.palette.background.copy(alpha = 0f)) }
+            if (mark != null && mark.watched && mark.fraction == null) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(6.dp).testTag("discover-watched"), size = 22.dp)
         }
     }
 }

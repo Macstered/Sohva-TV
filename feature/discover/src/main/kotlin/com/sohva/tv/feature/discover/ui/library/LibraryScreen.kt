@@ -1,5 +1,8 @@
 package com.sohva.tv.feature.discover.ui.library
 
+import com.sohva.tv.feature.discover.ui.components.marked
+import com.sohva.tv.feature.discover.ui.components.movieMarkKey
+import com.sohva.tv.feature.discover.ui.components.rememberMarks
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -116,6 +119,7 @@ fun LibraryScreen(model: LibraryModel, back: () -> Unit, open: (LibraryTitle) ->
             }
         }
         val titles = s.titles
+        val marks = rememberMarks(remember(s.shown) { s.shown.mapNotNull { movieMarkKey(it.type, it.id) } })
         when {
             titles == null -> Text(stringResource(R.string.addon_ui_loading_saved_titles), style = Sohva.typography.body, color = Sohva.palette.textMuted)
             s.shown.isEmpty() -> Text(
@@ -136,7 +140,7 @@ fun LibraryScreen(model: LibraryModel, back: () -> Unit, open: (LibraryTitle) ->
                     val key = "${t.installation}|${t.type}|${t.id}"
                     val requester = remember(key) { requesters.getOrPut(key) { FocusRequester() } }
                     PosterCard(
-                        PosterContent(t.name, t.poster, caption = t.year.orEmpty()), 132.dp,
+                        PosterContent(t.name, t.poster, caption = t.year.orEmpty()).marked(movieMarkKey(t.type, t.id)?.let(marks::get)), 132.dp,
                         { if (t.installation in s.enabled) open(t) else orphan = t },
                         Modifier.focusRequester(requester).onFocusChanged { if (it.isFocused) model.lastFocused = key }
                             .testTag("discover-library-card-${t.id}"),

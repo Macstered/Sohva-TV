@@ -45,6 +45,17 @@ class TraktStateStore(private val db: SohvaDatabase, private val io: CoroutineDi
         _revision.value++
     }
 
+    /**
+     * The rows of the titles on screen (§9 rule: only visible keys, never the whole table), by
+     * either id; a row found by both comes once.
+     */
+    suspend fun rows(profile: String, imdbs: Collection<String>, tmdbs: Collection<Long>): List<TraktStateEntity> = withContext(io) {
+        val out = LinkedHashMap<String, TraktStateEntity>()
+        imdbs.distinct().chunked(LOOKUP).forEach { chunk -> dao.byImdb(profile, chunk).forEach { out[it.key] = it } }
+        tmdbs.distinct().chunked(LOOKUP).forEach { chunk -> dao.byTmdb(profile, chunk).forEach { out[it.key] = it } }
+        out.values.toList()
+    }
+
     override suspend fun count(profile: String): Int = withContext(io) { dao.count(profile) }
 
     /** Disconnect, a different account, or a removed profile (FR-10, §6). */
@@ -55,5 +66,6 @@ class TraktStateStore(private val db: SohvaDatabase, private val io: CoroutineDi
 
     companion object {
         const val CHUNK: Int = 500
+        const val LOOKUP: Int = 200
     }
 }

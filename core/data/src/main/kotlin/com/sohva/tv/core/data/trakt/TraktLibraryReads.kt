@@ -16,4 +16,9 @@ class TraktLibraryReads(private val db: SohvaDatabase, private val io: Coroutine
     suspend fun match(contentKey: String): TraktMatchRow? = withContext(io) { dao.match(contentKey) }
 
     suspend fun episode(episodeKey: String): TraktEpisodeRow? = withContext(io) { dao.episode(episodeKey) }
+
+    /** FR-30: the library's own page for a Trakt title: a film by its TMDB identity, a series only when TMDB matched it. */
+    suspend fun filmFor(tmdb: Long): String? = withContext(io) { dao.filmRoute("tmdb:$tmdb") }
+
+    suspend fun seriesFor(tmdb: Long): String? = withContext(io) { dao.seriesRoute(tmdb.toString()) }
 }

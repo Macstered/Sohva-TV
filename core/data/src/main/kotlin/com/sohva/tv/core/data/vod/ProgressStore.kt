@@ -5,6 +5,7 @@ import com.sohva.tv.core.data.database.CONTENT_MOVIE
 import com.sohva.tv.core.data.database.ContinueRow
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.WatchProgressEntity
+import com.sohva.tv.core.data.trakt.TraktOverlay
 import com.sohva.tv.core.model.metadata.TitleCleaner
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.model.vod.WatchedRule
@@ -14,11 +15,18 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 /** A title's saved place for the active profile. */
-data class Progress(val positionMs: Long, val durationMs: Long, val completed: Boolean, val updatedAt: Long) {
+data class Progress(
+    val positionMs: Long,
+    val durationMs: Long,
+    val completed: Boolean,
+    val updatedAt: Long,
+    /** A Trakt pause without a known runtime: only the bar, no resume point (spec 51 FR-33, Q1). */
+    val traktFraction: Float? = null,
+) {
     /** Where Resume starts: nothing when finished (spec 40 VOD-FR-92). */
     val resumeMs: Long get() = if (completed) 0 else positionMs
 
-    val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else traktFraction ?: 0f
 }
 
 
@@ -44,6 +52,8 @@ data class ContinueItem(
     val updatedAt: Long,
     /** Set for a title paused in Discover (spec 02 HOME-FR-18): what its card opens. */
     val discover: DiscoverResume? = null,
+    /** A Trakt pause without a known runtime: the card's bar (spec 51 FR-34). */
+    val fraction: Float? = null,
 ) {
     companion object {
         fun of(row: ContinueRow): ContinueItem = ContinueItem(
@@ -94,6 +104,13 @@ class ProgressStore(
     private val profile: () -> String,
 ) {
     private val dao get() = db.progress()
+    private val trakt = TraktOverlay(db)
+
+    /**
+     * Whether the profile sees Trakt's history (spec 51 FR-36: never a restricted profile). The app
+     * sets it when Trakt exists; rows exist only for connected accounts.
+     */
+    @Volatile var traktAllowed: suspend (String) -> Boolean = { false }
 
     /** Any progress write, and once at the start. */
     fun changes(): Flow<Unit> = db.invalidationTracker.createFlow("watch_progress").map { }
@@ -115,7 +132,18 @@ class ProgressStore(
         val own = dao.get(who, contentKey)
         val work = if (ContentKeys.isFilm(contentKey)) dao.film(contentKey)?.workKey else null
         val shared = work?.let { dao.newestOfWork(who, it) }
-        listOfNotNull(own, shared).maxByOrNull { it.updatedAt }?.toProgress()
+        val local = listOfNotNull(own, shared).maxByOrNull { it.updatedAt }?.toProgress()
+        if (!traktAllowed(who)) return@withContext local
+        // Spec 51 FR-33: the newer of the local place and Trakt's; films by identity, episodes by series match.
+        when {
+            work != null -> TraktOverlay.merge(local, trakt.film(who, work))
+            ContentKeys.isEpisode(contentKey) -> {
+                val slot = db.trakt().episode(contentKey)
+                val row = slot?.let { trakt.episode(who, it.seriesKey, it.season, it.number) }
+                TraktOverlay.merge(local, row, row?.let { db.progress().episodeRuntime(contentKey) } ?: 0)
+            }
+            else -> local
+        }
     }
 
     /**
@@ -130,15 +158,27 @@ class ProgressStore(
         val own = dao.ticksOwn(who, page.map { it.first }).associateBy { it.key }
         val works = page.mapNotNull { it.second }.distinct()
         val work = if (works.isEmpty()) emptyMap() else dao.ticksWork(who, works).groupBy { it.key }.mapValues { (_, rows) -> rows.maxBy { it.updatedAt } }
+        val traktRows = if (traktAllowed(who)) trakt.films(who, page.map { it.second }) else emptyMap()
         page.filter { (key, workKey) ->
             val newest = listOfNotNull(own[key], workKey?.let(work::get)).maxByOrNull { it.updatedAt }
-            newest?.completed == true
+            val local = newest?.let { Progress(0, 0, it.completed, it.updatedAt) }
+            // Spec 51 FR-33: a newer Trakt watched mark ticks the film; a newer Trakt pause unticks it.
+            val merged = TraktOverlay.merge(local, TraktOverlay.filmKey(workKey)?.let(traktRows::get))
+            merged?.completed == true
         }.mapTo(HashSet()) { it.first }
     }
 
     /** Every episode row of one series (VOD-FR-95): one query, keyed by episode key. */
     suspend fun ofSeries(seriesKey: String): Map<String, Progress> = withContext(io) {
-        dao.ofSeries(profile(), seriesKey).associate { it.contentKey to it.toProgress() }
+        val who = profile()
+        val local = dao.ofSeries(who, seriesKey).associate { it.contentKey to it.toProgress() }
+        if (!traktAllowed(who)) return@withContext local
+        val rows = trakt.series(who, seriesKey)
+        if (rows.isEmpty()) return@withContext local
+        (local.keys + rows.keys).mapNotNull { key ->
+            val row = rows[key]
+            TraktOverlay.merge(local[key], row?.first, row?.second ?: 0)?.let { key to it }
+        }.toMap()
     }
 
     /** "Mark as watched" (VOD-FR-96): finished at whatever duration is known (0 when never played). */
@@ -194,11 +234,14 @@ class ProgressStore(
         val who = profile()
         val rows = (dao.continueFilms(who, READ_MAX) + dao.continueEpisodes(who, READ_MAX)).sortedByDescending { it.updatedAt }
         val seen = HashSet<String>()
-        rows.asSequence()
+        val local = rows.asSequence()
             .filter { seen.add(it.seriesKey ?: it.workKey ?: it.contentKey) }
             .take(limit)
             .map(ContinueItem::of)
             .toList()
+        if (!traktAllowed(who)) return@withContext local
+        // Spec 51 FR-34: library copies paused on Trakt join the local list.
+        TraktOverlay.join(local, trakt.continueItems(who, limit), limit)
     }
 
     private fun WatchProgressEntity.toProgress() = Progress(positionMs, durationMs, completed, updatedAt)

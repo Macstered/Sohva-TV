@@ -1,5 +1,9 @@
 package com.sohva.tv.feature.home
 
+import com.sohva.tv.ui.design.theme.Sohva
+import com.sohva.tv.ui.design.text.Text
+import com.sohva.tv.ui.design.R
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +52,7 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
     val list = rememberLazyListState()
     val railRequesters = remember(items) { items.associateWith { FocusRequester() } }
     val empty by model.empty.collectAsStateWithLifecycle()
+    val firstSync by model.firstSync.collectAsStateWithLifecycle()
     // Right or Back from the rail: the card last focused, else Welcome on an empty Home (HOME-FR-83).
     val backToRows: () -> Unit = {
         val target = focus.lastCard?.let(focus::card) ?: focus.welcome.takeIf { empty }
@@ -71,6 +76,13 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
         Column(Modifier.fillMaxSize().padding(start = 96.dp, end = 24.dp)) {
             Box(Modifier.fillMaxWidth().fillMaxHeight(0.46f).padding(top = 16.dp, bottom = 12.dp)) {
                 HomeHeader(now, zone)
+                if (firstSync) {
+                    // HOME-FR-48: top centre of the hero band, 8 dp from the top.
+                    Text(
+                        stringResource(R.string.home_trakt_first_sync), Modifier.align(Alignment.TopCenter).padding(top = 8.dp).testTag("home-trakt-first-sync"),
+                        style = Sohva.typography.body, color = Sohva.palette.textMuted,
+                    )
+                }
                 HeroPanel(
                     hero, details, now, zone, if (empty) focus.welcome else null, railRequesters.getValue(items.first()), model::openGuide,
                     Modifier.align(Alignment.BottomStart).fillMaxWidth(0.56f),
@@ -121,6 +133,7 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus) {
             first is HomeRow.Resume -> first.cards.firstOrNull()?.let { focus.card(it.key) }
             first is HomeRow.Channels -> first.cards.firstOrNull()?.let { focus.card(it.key) }
             first is HomeRow.Sport -> first.cards.firstOrNull()?.let { focus.card(it.key) }
+            first is HomeRow.Trakt -> first.cards.firstOrNull()?.let { focus.card(it.key) }
             empty -> focus.welcome
             else -> null
         }
@@ -129,6 +142,7 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus) {
                 is HomeRow.Resume -> row.cards.map { it.key }
                 is HomeRow.Channels -> row.cards.map { it.key }
                 is HomeRow.Sport -> row.cards.map { it.key }
+                is HomeRow.Trakt -> row.cards.map { it.key }
                 is HomeRow.Status -> emptyList()
             }
         }
@@ -151,6 +165,7 @@ private fun successor(rows: List<HomeRow>, focus: HomeFocus): FocusRequester? {
     val cards = when (val row = rows.getOrNull(focus.focusedRow)) {
         is HomeRow.Resume -> row.cards.map { it.key }
         is HomeRow.Channels -> row.cards.map { it.key }
+        is HomeRow.Trakt -> row.cards.map { it.key }
         else -> emptyList()
     }
     val key = cards.getOrNull(focus.lastIndex) ?: cards.lastOrNull() ?: return null
