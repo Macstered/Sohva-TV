@@ -32,7 +32,11 @@ internal fun DisplayRateMatch(model: PlayerModel) {
         val candidates = display.supportedModes.filter { it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight }
         val chosen = rate?.let { r -> DisplayRate.pick(r, candidates.map { it.refreshRate }) }
         val id = chosen?.let { c -> candidates.first { it.refreshRate == c }.modeId } ?: original
-        if (w.attributes.preferredDisplayModeId != id) w.attributes = w.attributes.apply { preferredDisplayModeId = id }
+        if (w.attributes.preferredDisplayModeId != id) {
+            w.attributes = w.attributes.apply { preferredDisplayModeId = id }
+            // Even a request for the mode already shown can make the TV re-negotiate HDMI (see PlayerModel).
+            if (id != 0) model.displaySwitching()
+        }
     }
     DisposableEffect(window) {
         onDispose { window?.let { it.attributes = it.attributes.apply { preferredDisplayModeId = original } } }

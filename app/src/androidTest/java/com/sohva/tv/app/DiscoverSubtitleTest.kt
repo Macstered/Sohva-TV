@@ -16,6 +16,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.core.model.settings.VodLanguageSlot
 import com.sohva.tv.feature.home.RailItem
+import com.sohva.tv.ui.design.R
 import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.NetworkInterface
@@ -126,6 +127,9 @@ class DiscoverSubtitleTest {
     private fun text(tag: String): String = compose.onNodeWithTag(tag).fetchSemanticsNode().config
         .getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
 
+    /** The app's own text, in whatever language the device uses. */
+    private fun string(id: Int): String = AppLocales.texts(graph.app).getString(id)
+
     private fun count(path: String) = requests.count { it == path }
 
     private fun play() {
@@ -152,7 +156,7 @@ class DiscoverSubtitleTest {
         assertEquals(0, count("/subs/en.srt"))
         openPicker()
         // Only the preferred language is listed, and its option is the one selected.
-        compose.waitUntil(5_000) { compose.onAllNodes(hasText("✓ Selected")).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText(string(R.string.addon_ui_selected))).fetchSemanticsNodes().isNotEmpty() }
         assertTrue(exists("addon-subtitles-language-fi"))
         assertTrue(!exists("addon-subtitles-language-en"))
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
@@ -164,7 +168,7 @@ class DiscoverSubtitleTest {
         play()
         assertEquals(0, requests.count { it.startsWith("/subs/") })
         openPicker()
-        compose.waitUntil(5_000) { compose.onAllNodes(hasText("Choose subtitle languages in Sohva Settings, or show all languages below.")).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5_000) { compose.onAllNodes(hasText(string(R.string.addon_ui_choose_subtitle_languages_in_sohva_settings_or_show_all_languages))).fetchSemanticsNodes().isNotEmpty() }
         click("addon-subtitles-show-all")
         click("addon-subtitles-language-en")
         compose.onNode(hasClickAction() and hasAnyDescendant(hasText("Synthetic provider")), useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
@@ -178,7 +182,7 @@ class DiscoverSubtitleTest {
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         // Applied by preparing the stream again at the same place; the file is not downloaded again.
         compose.waitUntil(20_000) { count("/media/film1.mp4") > prepared && !text("addon-sync-status").contains("…") }
-        assertTrue(text("addon-sync-status"), text("addon-sync-status").startsWith("Left / right"))
+        assertTrue(text("addon-sync-status"), text("addon-sync-status") == string(R.string.addon_ui_left_right_0_1_s_hold_1_s_ok_or_apply_to_preview_playback_may_brie))
         assertEquals(1, count("/subs/en.srt"))
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(5_000) { exists("addon-subtitle-picker") }

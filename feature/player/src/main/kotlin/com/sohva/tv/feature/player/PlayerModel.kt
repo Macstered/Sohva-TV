@@ -2,6 +2,7 @@ package com.sohva.tv.feature.player
 
 import com.sohva.tv.core.model.profile.ChannelAdmission
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -332,6 +333,35 @@ class PlayerModel(
 
     fun now(): Long = env.clock.wallMillis()
 
+    // ---- Display mode switches (PLAY-FR-103, decision "Audio after a display mode switch") ----
+
+    private var switchRequestedAt = 0L
+    private var audioRecovery: Job? = null
+
+    /** The player asked the display for a mode (frame-rate matching); the switch takes a moment. */
+    fun displaySwitching() {
+        switchRequestedAt = SystemClock.elapsedRealtime()
+    }
+
+    /**
+     * On the Shield a mode switch makes the TV re-negotiate HDMI; the HDMI audio output disappears
+     * for about a second, the system says "audio becoming noisy", and the player pauses as it would
+     * for unplugged headphones. A pause for that reason soon after our own switch is undone once the
+     * output is back.
+     */
+    private fun pausedByNoisyAudio() {
+        if (SystemClock.elapsedRealtime() - switchRequestedAt > SWITCH_WINDOW_MS) return
+        audioRecovery?.cancel()
+        audioRecovery = viewModelScope.launch {
+            delay(AUDIO_SETTLE_MS)
+            val c = controller ?: return@launch
+            if (c.mediaItemCount > 0 && c.playbackState != Player.STATE_ENDED && !c.playWhenReady) {
+                env.logFailure("playing again after a display mode switch")
+                c.play()
+            }
+        }
+    }
+
     fun cycleShape() {
         _shape.value = _shape.value.next()
     }
@@ -572,6 +602,10 @@ class PlayerModel(
 
         override fun onPlayerError(error: PlaybackException) = onError(error)
 
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) pausedByNoisyAudio()
+        }
+
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             addon?.onPlaying(isPlaying)
         }
@@ -631,5 +665,11 @@ class PlayerModel(
         const val BOX_MS: Long = 5_000
         const val NOW_TICK_MS: Long = 30_000
         const val EXTERNAL_WAIT_MS: Long = 150
+
+        /** How long the HDMI audio output takes to return after a mode switch (about 1 s on the Shield), with margin. */
+        const val AUDIO_SETTLE_MS: Long = 1_500
+
+        /** A pause for noisy audio later than this after our display request is not ours. */
+        const val SWITCH_WINDOW_MS: Long = 10_000
     }
 }

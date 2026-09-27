@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.feature.home.RailItem
+import com.sohva.tv.ui.design.R
 import java.util.concurrent.ConcurrentLinkedQueue
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.Dispatcher
@@ -69,6 +70,9 @@ class LibraryPlaybackTest {
         compose.waitUntil(timeout) { runCatching { compose.onNodeWithTag(tag).assertIsFocused() }.isSuccess }
     }
 
+    /** The app's own text, in whatever language the device uses. */
+    private fun string(id: Int): String = AppLocales.texts(graph.app).getString(id)
+
     private fun text(tag: String): String = compose.onNodeWithTag(tag, useUnmergedTree = false).fetchSemanticsNode().config
         .getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
 
@@ -92,14 +96,14 @@ class LibraryPlaybackTest {
         open(RailItem.MOVIES, "library-row-group:drama", "library-card-${LibraryFixture.key(0)}")
         compose.waitUntil(10_000) { exists("screen-film") }
         awaitFocus("details-watch")
-        assertTrue(text("details-watch"), text("details-watch").contains("Resume"))
+        assertTrue(text("details-watch"), text("details-watch").contains(string(R.string.details_resume)))
         assertTrue(exists("details-progress"))
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(15_000) { requests.contains("/vod/0.mp4") }
         // Eight seconds of clip, then the page again with the film watched and Watch focused.
         compose.waitUntil(40_000) { exists("screen-film") && !exists("screen-player") }
         awaitFocus("details-watch")
-        compose.waitUntil(10_000) { text("details-mark").contains("unwatched") }
+        compose.waitUntil(10_000) { text("details-mark") == string(R.string.details_mark_unwatched) }
         assertTrue(runBlocking { graph.data.progress.of(LibraryFixture.key(0)) }!!.completed)
         // Back returns to the wall on the same card, now ticked as watched (VOD-FR-37).
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
@@ -113,7 +117,7 @@ class LibraryPlaybackTest {
         open(RailItem.SERIES, "library-row-group:crime", "library-card-${LibraryFixture.seriesKey(0)}")
         compose.waitUntil(10_000) { exists("screen-series-page") }
         awaitFocus("details-watch")
-        assertTrue(text("details-watch"), text("details-watch").contains("Continue"))
+        assertTrue(text("details-watch"), text("details-watch").contains(string(R.string.series_continue_episode)))
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(15_000) { requests.contains("/vod/10001.mp4") }
         // The first episode ends; the second starts from the beginning in its place.
