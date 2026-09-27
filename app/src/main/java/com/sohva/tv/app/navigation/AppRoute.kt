@@ -29,6 +29,19 @@ sealed interface AppRoute {
      * after process death: the token is gone, so it restores to the page underneath.
      */
     data class AddonPlayer(val token: String) : AppRoute
+
+    /**
+     * A Trakt title not in the library (spec 51 FR-30, §5.3): looked up in the viewer's addons,
+     * then replaced by its Discover page. Restores to Home after process death.
+     */
+    data class TraktTitle(
+        val show: Boolean,
+        val title: String,
+        val imdb: String?,
+        val tmdb: Long?,
+        val season: Int? = null,
+        val number: Int? = null,
+    ) : AppRoute
     data object ProfilePicker : AppRoute
     data object Settings : AppRoute
 
@@ -112,6 +125,7 @@ object AppRouteCodec : RouteCodec<AppRoute> {
         is AppRoute.Player -> "player"
         is AppRoute.VodPlayer -> "player"
         is AppRoute.AddonPlayer -> "player"
+        is AppRoute.TraktTitle -> "trakt"
         // A gate restores to the screen underneath: it never opens by itself after a restart.
         is AppRoute.PinGate, is AppRoute.ProfileGate -> "gate"
     }

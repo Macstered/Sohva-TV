@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.home
 
+import kotlinx.coroutines.flow.emitAll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sohva.tv.core.data.home.RecentChannel
@@ -55,6 +56,18 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
 
     private val channels = MutableStateFlow<List<RecentChannel>?>(null)
 
+    /** HOME-FR-32: Trakt's lists only after Continue watching's first read has settled. */
+    private val trakt = flow {
+        emit(TraktLists.EMPTY)
+        env.resume.filter { it.settled }.first()
+        emitAll(env.trakt)
+    }
+
+    private val _firstSync = MutableStateFlow(false)
+
+    /** HOME-FR-48: the note that Trakt's history has not synced yet. */
+    val firstSync: StateFlow<Boolean> = _firstSync.asStateFlow()
+
     private val _empty = MutableStateFlow(false)
 
     /** Home is empty (HOME-FR-46): both reads answered, no status card, no rows. Welcome then takes focus. */
@@ -68,7 +81,10 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
     init {
         viewModelScope.launch { channels.value = runCatching { env.recentChannels(env.now()) }.getOrDefault(emptyList()) }
         viewModelScope.launch {
-            combine(env.resume, channels, env.sportGames) { resume, recent, games -> Triple(build(resume, recent.orEmpty(), games), resume, recent) }.collect { (rows, resume, recent) ->
+            combine(env.resume, channels, env.sportGames, trakt) { resume, recent, games, lists ->
+                _firstSync.value = lists.firstSync && resume.settled
+                Triple(build(resume, recent.orEmpty(), games, lists), resume, recent)
+            }.collect { (rows, resume, recent) ->
                 latest = rows
                 publish()
                 _empty.value = rows.isEmpty() && resume.settled && recent != null
@@ -136,6 +152,8 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
 
     fun open(card: SportCard) = env.openSportGame(card.event)
 
+    fun open(card: TraktCard) = env.openTrakt(card)
+
     fun markWatched(card: ResumeCard) {
         viewModelScope.launch { env.markWatched(card) }
     }
@@ -144,14 +162,17 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
         viewModelScope.launch { env.remove(card) }
     }
 
-    private fun build(resume: ResumeState, recent: List<RecentChannel>, games: List<SportEvent>): List<HomeRow> = buildList {
+    private fun build(resume: ResumeState, recent: List<RecentChannel>, games: List<SportEvent>, trakt: TraktLists): List<HomeRow> = buildList {
         when (resume) {
             is ResumeState.Ready -> add(HomeRow.Resume(resume.items.take(RESUME_CARDS).map(::card).distinctBy { it.key }))
             ResumeState.Loading -> add(HomeRow.Status(failed = false))
             ResumeState.Failed -> add(HomeRow.Status(failed = true))
             ResumeState.Empty -> Unit
         }
+        // HOME-FR-01's order: Continue watching, Watch next, Today's sport, Recommended, Recent channels.
+        if (trakt.next.isNotEmpty()) add(HomeRow.Trakt(trakt.next.distinctBy { it.key }, next = true))
         if (games.isNotEmpty()) add(HomeRow.Sport(games.take(SPORT_CARDS).map { SportCard("sport:${it.id}", it) }, games.size))
+        if (trakt.recommended.isNotEmpty()) add(HomeRow.Trakt(trakt.recommended.distinctBy { it.key }, next = false))
         if (recent.isNotEmpty()) add(HomeRow.Channels(recent.map { ChannelCard("channel:${it.id}", it) }.distinctBy { it.key }))
     }
 
@@ -163,7 +184,7 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
 
         /** A card from a Continue watching entry (HOME-FR-13): the display title, fraction and minutes left. */
         fun card(item: ContinueItem): ResumeCard {
-            val fraction = if (item.durationMs > 0) (item.positionMs.toFloat() / item.durationMs).coerceIn(0f, 1f) else 0f
+            val fraction = if (item.durationMs > 0) (item.positionMs.toFloat() / item.durationMs).coerceIn(0f, 1f) else item.fraction ?: 0f
             val left = if (item.durationMs > 0) maxOf(1, ((item.durationMs - item.positionMs) / MINUTE_MS).toInt()) else null
             val image = item.replacementPoster?.takeIf { item.replacePoster } ?: item.posterUrl ?: item.replacementPoster
             // A Discover card's key is its own (HOME-FR-23); its title is the addon's name as stored.
@@ -185,6 +206,10 @@ internal object StructureLock {
             is HomeRow.Channels -> {
                 val fresh = (next as? HomeRow.Channels)?.cards.orEmpty().associateBy { it.key }
                 HomeRow.Channels(row.cards.map { fresh[it.key] ?: it })
+            }
+            is HomeRow.Trakt -> {
+                val fresh = (next as? HomeRow.Trakt)?.cards.orEmpty().associateBy { it.key }
+                HomeRow.Trakt(row.cards.map { fresh[it.key] ?: it }, row.next)
             }
             is HomeRow.Sport -> {
                 val next2 = next as? HomeRow.Sport

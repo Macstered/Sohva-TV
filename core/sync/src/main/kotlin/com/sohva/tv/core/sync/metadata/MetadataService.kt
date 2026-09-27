@@ -97,6 +97,16 @@ class MetadataService(
         }
     }
 
+    /**
+     * A TMDB record by id in the metadata language (spec 51 FR-29, spec 02 HOME-FR-69), cached per
+     * id, type and language; null when metadata or TMDB is off.
+     */
+    suspend fun tmdbById(type: MediaType, id: String): MetadataRecord? {
+        val config = settings.current()
+        if (!config.enabled || TmdbCredential.of(config.credential) == null) return null
+        return shared("by-id:${type.name}:$id:${config.language.lowercase()}") { byId(MetadataProvider.TMDB, type, id, config) }
+    }
+
     /** A series page's lookup with details (META-FR-34 does the details inside the search). */
     suspend fun seriesDetails(request: MetadataRequest): MetadataRecord? = enrich(request.copy(type = MediaType.SERIES))
 

@@ -185,6 +185,20 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     override fun onCleared() = services.closePhoneSetup()
 
     /** OK on a rail row: closes the source page and moves focus into the section (SET-FR-12). */
+    /**
+     * Accounts exists only for an unrestricted profile (spec 51 §3); when it goes while shown,
+     * Settings falls back to Sources.
+     */
+    fun setAccounts(on: Boolean) = state.update {
+        if (it.accounts == on) {
+            it
+        } else if (!on && it.section == SettingsSection.ACCOUNTS) {
+            it.copy(accounts = false, section = SettingsSection.SOURCES, page = null, focus = it.focus.next(FocusTarget.SectionStart))
+        } else {
+            it.copy(accounts = on)
+        }
+    }
+
     fun select(section: SettingsSection) = state.update {
         it.copy(section = section, page = null, confirmingDelete = false, focus = it.focus.next(FocusTarget.SectionStart))
     }

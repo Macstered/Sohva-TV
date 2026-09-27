@@ -68,9 +68,9 @@ class WallReads(private val db: SohvaDatabase, private val io: CoroutineDispatch
     private val dao get() = db.walls()
     private val orders = GroupOrderPages { db.walls() }
 
-    /** Any write that can change a wall or its rail: imports, source edits, progress. */
+    /** Any write that can change a wall or its rail: imports, source edits, progress, Trakt's history (spec 51 FR-32). */
     fun changes(): Flow<Unit> =
-        db.invalidationTracker.createFlow("movie", "series", "content_group", "source", "watch_progress", "genre_count").map { }
+        db.invalidationTracker.createFlow("movie", "series", "content_group", "source", "watch_progress", "genre_count", "trakt_state").map { }
 
     /**
      * The room's provider groups of the enabled sources, merged by `lowercase(trim(name))` and

@@ -1,5 +1,7 @@
 package com.sohva.tv.app.home
 
+import com.sohva.tv.feature.home.TraktLists
+import com.sohva.tv.feature.home.TraktCard
 import com.sohva.tv.app.profile.ChannelStarter
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.library.AppTitleEnvironment
@@ -72,6 +74,7 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
             else -> film(subject.card)
         }
         is HeroSubject.Channel -> channel(subject.card)
+        is HeroSubject.Trakt -> trakt(subject.card)
         // The crests are the picture (SPORT-FR-97); no lookup.
         is HeroSubject.Sport, HeroSubject.Welcome -> null
     }
@@ -111,6 +114,23 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
             ?: series.plot
         return HeroDetails(synopsis, seriesMatch?.backdropUrl ?: series.backdropUrl)
     }
+
+    /**
+     * HOME-FR-69, spec 51 FR-29: TMDB's record by id in the metadata language when the title has
+     * a TMDB id and TMDB is on; its overview and backdrop, else Trakt's overview, fanart, poster.
+     */
+    private suspend fun trakt(card: TraktCard): HeroDetails {
+        val record = card.tmdb?.let { id -> graph.metadata.tmdbById(if (card.show) MediaType.SERIES else MediaType.MOVIE, id.toString()) }
+        return HeroDetails(
+            record?.overview?.takeIf { it.isNotBlank() } ?: card.overview,
+            record?.let { Artwork.url(it.backdrop, Artwork.BACKDROP) } ?: card.fanart ?: card.poster,
+        )
+    }
+
+    /** Home's Trakt lists (HOME-FR-30…32, -48), from memory after the first read; built in [HomeTrakt]. */
+    override val trakt: Flow<TraktLists> get() = HomeTrakt.lists(graph)
+
+    override fun openTrakt(card: TraktCard) = HomeTrakt.open(graph, stack, card)
 
     /** HOME-FR-70: the programme's match gives the picture; a channel's hero has no synopsis line. */
     private suspend fun channel(card: ChannelCard): HeroDetails? {

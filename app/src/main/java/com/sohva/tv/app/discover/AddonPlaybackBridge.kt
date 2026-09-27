@@ -79,6 +79,17 @@ class AddonPlaybackBridge(private val graph: AppGraph, private val host: Discove
 
     override fun milestone(name: String, sinceStartMs: Long) = graph.diagnostics.info("addon", "$name ${sinceStartMs}ms")
 
+    /** Trakt (spec 51 FR-14, -17): the catalog's own ids; custom ids and other types send nothing. */
+    override fun scrobbler(token: String): com.sohva.tv.core.model.player.TitleScrobbler? {
+        val trakt = graph.trakt ?: return null
+        val p = host.playback(token) ?: return null
+        val item = com.sohva.tv.feature.trakt.scrobble.TraktItems.addon(p.identity.mediaType, p.identity.mediaId, p.identity.videoId, p.season, p.episode) ?: return null
+        val main = kotlinx.coroutines.CoroutineScope(graph.appScope.coroutineContext + graph.dispatchers.main)
+        val scrobbler = trakt.scrobbler(p.profile, main)
+        main.launch { scrobbler.begin(item.takeIf { trakt.scrobbles(p.profile) }) }
+        return scrobbler
+    }
+
     // ---- Subtitles (spec 50 §4.13) ----
 
     /** A candidate behind its session-only key: its address and provider (null: the stream's own). */

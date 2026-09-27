@@ -51,6 +51,11 @@ sealed interface HomeRow {
         override val key: String = RECENT
     }
 
+    /** Watch next ([next]) or Recommended for you (HOME-FR-30, -31). */
+    data class Trakt(val cards: List<TraktCard>, val next: Boolean) : HomeRow {
+        override val key: String = if (next) WATCH_NEXT else RECOMMENDED
+    }
+
     /** The first 6 of today's games; [total] counts them all (HOME-FR-33, spec 60 SPORT-FR-97). */
     data class Sport(val cards: List<SportCard>, val total: Int) : HomeRow {
         override val key: String = SPORT
@@ -60,6 +65,8 @@ sealed interface HomeRow {
         const val CONTINUE: String = "continue-watching"
         const val SPORT: String = "todays-sport"
         const val RECENT: String = "recent-channels"
+        const val WATCH_NEXT: String = "watch-next"
+        const val RECOMMENDED: String = "recommended"
     }
 }
 
@@ -71,6 +78,9 @@ sealed interface HeroSubject {
 
     /** A focused Today's sport card (spec 60 SPORT-FR-97). */
     data class Sport(val card: SportCard) : HeroSubject
+
+    /** A focused Watch next or Recommended card (HOME-FR-63, spec 51 FR-29). */
+    data class Trakt(val card: TraktCard) : HeroSubject
 
     data object Welcome : HeroSubject
 }
@@ -114,6 +124,12 @@ interface HomeEnvironment {
 
     /** Sohva Sport with this game's hub open once the day's list holds it (spec 60 §3). */
     fun openSportGame(event: SportEvent) = Unit
+
+    /** Watch next, Recommended and the first-sync note (HOME-FR-30…32, -48); read after Continue watching settles. */
+    val trakt: Flow<TraktLists> get() = flowOf(TraktLists.EMPTY)
+
+    /** HOME-FR-22: the library copy's details, else the Trakt title page. */
+    fun openTrakt(card: TraktCard) = Unit
 
     /** The low memory class of plan/07 §2.2: the hero decodes at half size and does not crossfade. */
     val lowMemory: Boolean

@@ -54,7 +54,7 @@ object DiscoverGraph {
         }
         return DiscoverHost(
             graph.app, cipher, { graph.sync.http.client }, graph.clock,
-            DiscoverDispatchers(graph.dispatchers.io, graph.dispatchers.ui), access, graph.diagnostics, graph.appScope,
+            DiscoverDispatchers(graph.dispatchers.io, graph.dispatchers.ui), access, graph.diagnostics, graph.appScope, graph.titleMarks,
         ) { withContext(graph.dispatchers.io) { graph.data.preferences.playback() } }
     }
 

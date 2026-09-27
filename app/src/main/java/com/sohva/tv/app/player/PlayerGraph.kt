@@ -27,6 +27,7 @@ import java.util.Locale
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 
@@ -89,6 +90,20 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
     /** An addon stream by its in-memory token (spec 50 FR-95); unknown after a process restart. */
     override suspend fun resolveAddon(token: String): ResolvedStream? = graph.addonPlayback?.resolve(token)
+
+    /** Trakt (spec 51 FR-13, -16): the scrobbler starts silent and learns its item off the main thread. */
+    override fun vodScrobbler(contentKey: String): com.sohva.tv.core.model.player.TitleScrobbler? {
+        val trakt = graph.trakt ?: return null
+        if (!trakt.configured) return null
+        val profile = graph.data.profiles.activeId
+        val main = kotlinx.coroutines.CoroutineScope(graph.appScope.coroutineContext + graph.dispatchers.main)
+        val scrobbler = trakt.scrobbler(profile, main)
+        main.launch {
+            val item = if (trakt.scrobbles(profile)) runCatching { com.sohva.tv.app.trakt.TraktVodIdentity(graph).item(contentKey) }.getOrNull() else null
+            scrobbler.begin(item)
+        }
+        return scrobbler
+    }
 
     override suspend fun saveProgress(contentKey: String, positionMs: Long, durationMs: Long) =
         graph.data.progress.save(contentKey, positionMs, durationMs)

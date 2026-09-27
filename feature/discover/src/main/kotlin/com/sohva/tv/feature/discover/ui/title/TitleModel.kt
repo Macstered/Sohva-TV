@@ -1,5 +1,8 @@
 package com.sohva.tv.feature.discover.ui.title
 
+import com.sohva.tv.feature.discover.ui.components.movieMarkKey
+import com.sohva.tv.feature.discover.ui.components.episodeMarkKey
+import com.sohva.tv.core.model.vod.TitleMark
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sohva.tv.feature.discover.DiscoverHost
@@ -54,12 +57,22 @@ data class TitleState(
     val noProviders: Boolean = false,
     val scraper: String? = null,
     val progress: WatchEntry? = null,
+    /** When the local entry was last written, completed or not (FR-82's "newer than the local entry"). */
+    val localAt: Long? = null,
+    /** Trakt's mark for this movie or episode (spec 51 FR-35). */
+    val trakt: TitleMark? = null,
     val inLibrary: Boolean? = null,
     val libraryFailed: Boolean = false,
     val libraryFull: Boolean = false,
     val pending: PendingStart? = null,
     val noPlayable: Boolean = false,
 ) {
+    /** A Trakt pause newer than the local entry, or with none (FR-82, -88): resume by its fraction. */
+    val traktResume: Float? get() = trakt?.fraction?.takeIf { localAt == null || trakt.updatedAt > localAt }
+
+    /** Continue watching instead of Find sources (FR-82). */
+    val canResume: Boolean get() = progress != null || traktResume != null
+
     val sourcesLoading: Boolean get() = sources?.any { it.state is ProviderState.Loading } == true
 
     val shown: List<ProviderSources> get() = sources.orEmpty().filter { scraper == null || it.installation.id == scraper }
@@ -135,7 +148,12 @@ class TitleModel(private val host: DiscoverHost, private val profile: String, pr
         val video = videoId() ?: return
         viewModelScope.launch {
             val saved = runCatching { withContext(host.dispatchers.io) { host.progress.get(profile, identity(video)) } }.getOrNull()
-            _state.update { it.copy(progress = saved?.takeIf { e -> e.positionMs > 0 && !e.completed }) }
+            val key = when (val page = _state.value.page) {
+                is TitlePage.Episode -> episodeMarkKey(request.preview.id, page.video.season, page.video.episode)
+                else -> movieMarkKey(request.preview.type, request.preview.id)
+            }
+            val mark = key?.let { k -> runCatching { host.marks.marks(listOf(k))[k] }.getOrNull() }
+            _state.update { it.copy(progress = saved?.takeIf { e -> e.positionMs > 0 && !e.completed }, localAt = saved?.updatedAt, trakt = mark) }
         }
         resolveSources()
         if (autoplay) {
@@ -178,7 +196,7 @@ class TitleModel(private val host: DiscoverHost, private val profile: String, pr
     fun chooseSeason(season: Int?) = _state.update { it.copy(season = season) }
 
     fun openEpisode(video: AddonVideo) {
-        _state.update { it.copy(page = TitlePage.Episode(video), season = video.season, sources = null, progress = null, pending = null, noPlayable = false) }
+        _state.update { it.copy(page = TitlePage.Episode(video), season = video.season, sources = null, progress = null, localAt = null, trakt = null, pending = null, noPlayable = false) }
         afterPage()
     }
 
@@ -240,7 +258,10 @@ class TitleModel(private val host: DiscoverHost, private val profile: String, pr
             videoType = request.preview.type, title = title,
             savedTitle = (page as? TitlePage.Episode)?.video?.title?.takeIf { it.isNotBlank() } ?: preview.name,
             artwork = Artwork(preview.name, preview.poster, preview.background), logo = preview.logo,
-            startMs = if (resume) s.progress?.resumeMs ?: 0 else 0, traktFraction = null, next = next, session = host.nextSession(),
+            // A newer Trakt pause starts at 0 and seeks once the duration is known (FR-88).
+            startMs = if (resume && s.traktResume == null) s.progress?.resumeMs ?: 0 else 0,
+            traktFraction = if (resume) s.traktResume else null, next = next, session = host.nextSession(),
+            season = (page as? TitlePage.Episode)?.video?.season, episode = (page as? TitlePage.Episode)?.video?.episode,
         )
         host.keepPlayback(playback)
         _started.value = playback.token

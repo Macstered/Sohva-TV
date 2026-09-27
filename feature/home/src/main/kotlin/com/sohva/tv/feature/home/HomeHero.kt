@@ -226,6 +226,11 @@ private fun heroText(subject: HeroSubject, details: HeroDetails?, now: Long, zon
         )
     }
     is HeroSubject.Sport -> sportText(subject.card.event, zoneId)
+    // HOME-FR-63, -69: the synopsis waits for TMDB's answer; Trakt's own overview is its fallback there.
+    is HeroSubject.Trakt -> HeroText(
+        stringResource(if (subject.card.next) R.string.home_watch_next else R.string.home_recommended), false,
+        subject.card.title, traktFacts(subject.card), null, details?.synopsis,
+    )
     HeroSubject.Welcome -> HeroText(
         stringResource(R.string.home_hero_welcome), false, stringResource(R.string.home_live_tv), "", null,
         stringResource(R.string.home_live_tv_description),

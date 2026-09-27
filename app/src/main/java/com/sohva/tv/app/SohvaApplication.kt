@@ -32,7 +32,7 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
             // allowed read is the locale file in attachBaseContext below Android 13.
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectDiskReads().detectDiskWrites().detectNetwork().penaltyLog().build())
         }
-        graph = AppGraph(this, FeatureFlags.resolve(BuildInfo.KIND, BuildInfo.TRAKT_CONFIGURED))
+        graph = AppGraph(this, FeatureFlags.resolve(BuildInfo.KIND))
     }
 
     // WorkManager initialises on first use, after the first frame (the manifest removes its start-up initializer).

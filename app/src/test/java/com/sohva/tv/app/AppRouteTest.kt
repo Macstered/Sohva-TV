@@ -51,11 +51,11 @@ class AppRouteTest {
 
     @Test
     fun discoverIsOnTheRailOnlyWhereTheBuildAllowsIt() {
-        assertTrue(RailItem.DISCOVER in railItems(FeatureFlags.resolve(BuildKind.RELEASE, false), severalProfiles = false, restricted = false))
-        assertFalse(RailItem.DISCOVER in railItems(FeatureFlags.resolve(BuildKind.DEMO, false), severalProfiles = false, restricted = false))
+        assertTrue(RailItem.DISCOVER in railItems(FeatureFlags.resolve(BuildKind.RELEASE), severalProfiles = false, restricted = false))
+        assertFalse(RailItem.DISCOVER in railItems(FeatureFlags.resolve(BuildKind.DEMO), severalProfiles = false, restricted = false))
         // Spec 04 PROF-FR-14, -16: never for a restricted profile; Who is watching only with two or more profiles.
-        assertFalse(RailItem.DISCOVER in railItems(FeatureFlags.resolve(BuildKind.RELEASE, false), severalProfiles = true, restricted = true))
-        assertFalse(RailItem.PROFILES in railItems(FeatureFlags.resolve(BuildKind.DEBUG, false), severalProfiles = false, restricted = false))
-        assertTrue(RailItem.PROFILES in railItems(FeatureFlags.resolve(BuildKind.DEBUG, false), severalProfiles = true, restricted = false))
+        assertFalse(RailItem.DISCOVER in railItems(FeatureFlags.resolve(BuildKind.RELEASE), severalProfiles = true, restricted = true))
+        assertFalse(RailItem.PROFILES in railItems(FeatureFlags.resolve(BuildKind.DEBUG), severalProfiles = false, restricted = false))
+        assertTrue(RailItem.PROFILES in railItems(FeatureFlags.resolve(BuildKind.DEBUG), severalProfiles = true, restricted = false))
     }
 }

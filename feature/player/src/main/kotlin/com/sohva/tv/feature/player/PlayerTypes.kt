@@ -192,6 +192,9 @@ interface AddonPlaybackEnv {
     /** FR-101: downloads and recognises a candidate, re-checking its provider afterwards. */
     suspend fun downloadSubtitle(token: String, key: String): SubtitleDownload
 
+    /** Trakt scrobbles for this addon playback (spec 51 FR-17); null when nothing is sent. */
+    fun scrobbler(token: String): com.sohva.tv.core.model.player.TitleScrobbler? = null
+
     /** "Show all languages" (FR-97): global and persisted. */
     val showAllLanguages: kotlinx.coroutines.flow.StateFlow<Boolean>
 

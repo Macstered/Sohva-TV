@@ -109,6 +109,7 @@ private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: Ho
             val title = when (row) {
                 is HomeRow.Channels -> R.string.home_recent_channels
                 is HomeRow.Sport -> R.string.home_sports_today
+                is HomeRow.Trakt -> if (row.next) R.string.home_watch_next else R.string.home_recommended
                 else -> R.string.home_continue_watching
             }
             Text(stringResource(title), style = Sohva.typography.headline.copy(fontWeight = FontWeight.Bold), color = Sohva.palette.textPrimary, maxLines = 1)
@@ -166,6 +167,13 @@ private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: Ho
                     Modifier.card(model, focus, req, card.key, rowIndex, index, HeroSubject.Sport(card)).testTag("home-sport-${card.event.id}"),
                 ) { model.open(card) }
             }
+            is HomeRow.Trakt -> CardRow(row.cards, rowIndex) { index, card ->
+                val req = remember { focus.card(card.key) }
+                TraktCardView(
+                    card,
+                    Modifier.card(model, focus, req, card.key, rowIndex, index, HeroSubject.Trakt(card)).testTag("home-trakt-${card.key}"),
+                ) { model.open(card) }
+            }
             is HomeRow.Channels -> CardRow(row.cards, rowIndex) { index, card ->
                 val req = remember { focus.card(card.key) }
                 ChannelCardView(
@@ -185,7 +193,7 @@ private fun <T : Any> CardRow(cards: List<T>, rowIndex: Int, card: @Composable (
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
         modifier = Modifier.testTag("home-row-$rowIndex"),
     ) {
-        itemsIndexed(cards, key = { _, c -> (c as? ResumeCard)?.key ?: (c as? SportCard)?.key ?: (c as ChannelCard).key }) { index, c -> card(index, c) }
+        itemsIndexed(cards, key = { _, c -> (c as? ResumeCard)?.key ?: (c as? SportCard)?.key ?: (c as? TraktCard)?.key ?: (c as ChannelCard).key }) { index, c -> card(index, c) }
     }
 }
 

@@ -45,7 +45,8 @@ object ContinueMerge {
         val d = item.discover
         if (d == null) {
             val id = item.tmdbId?.toLongOrNull()?.takeIf { it > 0 && item.season == null }
-            return listOfNotNull("vod:${item.groupKey}", id?.let { "movie:tmdb:$it" })
+            val imdbAlias = item.imdbId?.takeIf { item.season == null && imdb.matches(it) }?.let { "movie:imdb:$it" }
+            return listOfNotNull("vod:${item.groupKey}", id?.let { "movie:tmdb:$it" }, imdbAlias)
         }
         val film = when {
             d.mediaType != "movie" -> null

@@ -1,5 +1,6 @@
 package com.sohva.tv.app.metadata
 
+import com.sohva.tv.core.model.metadata.MediaType
 import androidx.annotation.VisibleForTesting
 import androidx.work.WorkManager
 import com.sohva.tv.app.AppGraph
@@ -97,6 +98,11 @@ class MetadataGraph(private val graph: AppGraph) {
     /** A lookup on the io dispatcher; null when metadata is off (spec 41 META-FR-43). */
     suspend fun enrich(request: MetadataRequest): MetadataRecord? = withContext(graph.dispatchers.io) {
         if (!settings.current().enabled) null else service.enrich(request)
+    }
+
+    /** A TMDB record by id (spec 51 FR-29); null when metadata or TMDB is off. */
+    suspend fun tmdbById(type: MediaType, id: String): MetadataRecord? = withContext(graph.dispatchers.io) {
+        if (!settings.current().enabled) null else service.tmdbById(type, id)
     }
 
     /** The wall's foreground budget (spec 41 Q10), on the bulk dispatcher; nothing with metadata off. */

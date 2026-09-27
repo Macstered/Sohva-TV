@@ -16,8 +16,12 @@ val signingProps: Properties? = signingFile.takeIf { it.isFile }?.let { file ->
 }
 
 // Trakt client credentials stay in the ignored .local/ folder; builds without them (CI, public
-// clones) compile a Trakt-less app (plan/05 §3.4, §4.12).
-val traktConfigured: Boolean = rootProject.file(".local/trakt/trakt-credentials.properties").isFile
+// clones) compile an app whose Accounts panel says Trakt is not configured (spec 51 FR-01).
+val traktFile: File = rootProject.file(".local/trakt/trakt-credentials.properties")
+val traktProps: Properties? = traktFile.takeIf { it.isFile }?.let { file -> Properties().apply { file.inputStream().use { load(it) } } }
+
+/** Printable ASCII without quotes or backslashes (FR-01); anything else is left out. */
+fun traktValue(key: String): String = traktProps?.getProperty(key)?.trim()?.takeIf { v -> v.isNotEmpty() && v.all { it in '!'..'~' && it != '"' && it != '\\' } }.orEmpty()
 
 android {
     namespace = "com.sohva.tv.app"
@@ -35,7 +39,8 @@ android {
         // they never leave the emulator (decision "Updater test").
         providers.gradleProperty("sohva.versionCode").orNull?.let { versionCode = it.toInt() }
         providers.gradleProperty("sohva.versionName").orNull?.let { versionName = it }
-        buildConfigField("boolean", "TRAKT_CONFIGURED", traktConfigured.toString())
+        buildConfigField("String", "TRAKT_CLIENT_ID", "\"${traktValue("TRAKT_CLIENT_ID")}\"")
+        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${traktValue("TRAKT_CLIENT_SECRET")}\"")
         // The public release feed (spec 72 §7.1). The emulator's update test builds a release against a
         // local feed with -Psohva.updateFeed; nothing published is built that way (decision "Updater test").
         val feed = providers.gradleProperty("sohva.updateFeed").getOrElse("https://api.github.com/repos/Macstered/Sohva-TV/releases?per_page=10")
@@ -112,6 +117,7 @@ dependencies {
     implementation(project(":feature:settings"))
     implementation(project(":feature:sport"))
     implementation(project(":feature:discover"))
+    implementation(project(":feature:trakt"))
     implementation(project(":feature:live"))
     implementation(project(":feature:player"))
     implementation(project(":feature:channels"))

@@ -108,7 +108,7 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
                     }, onLeave = host::leave)
                 } else {
                     val stack = rememberBackStack(AppRouteCodec) { startRoutes(start.snapshot.startupScreen, lastChannel) }
-                    CompositionLocalProvider(LocalArtwork provides graph.artwork) {
+                    CompositionLocalProvider(LocalArtwork provides graph.artwork, com.sohva.tv.feature.discover.ui.components.LocalTitleMarks provides graph.titleMarks) {
                         NavHost(stack) { route -> AppDestination(route, stack, graph) }
                     }
                     // Due reminders and notification taps, over whatever screen is up (spec 22 REM-FR-21).

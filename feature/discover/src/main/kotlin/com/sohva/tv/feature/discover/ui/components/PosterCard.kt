@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.discover.ui.components
 
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -74,8 +75,8 @@ fun PosterCard(content: PosterContent, width: Dp, onClick: () -> Unit, modifier:
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).background(Brush.verticalGradient(listOf(p.surface, p.background)), shape)) {
             Poster(content, width)
-            content.progress?.let { f -> ProgressBar({ f }, Modifier.align(Alignment.BottomStart), height = 4.dp, track = p.background.copy(alpha = 0f)) }
-            if (content.watched) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(6.dp), size = 22.dp)
+            content.progress?.let { f -> ProgressBar({ f }, Modifier.align(Alignment.BottomStart).testTag("discover-progress"), height = 4.dp, track = p.background.copy(alpha = 0f)) }
+            if (content.watched) WatchedBadge(Modifier.align(Alignment.TopEnd).padding(6.dp).testTag("discover-watched"), size = 22.dp)
             if (focused) {
                 val corner = Sohva.shapes.medium
                 Box(Modifier.fillMaxSize().drawBehind {

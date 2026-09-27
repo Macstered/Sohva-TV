@@ -17,7 +17,12 @@ class AppProfileSettings(private val graph: AppGraph, private val switch: (Strin
 
     override suspend fun add(name: String): Boolean = store.add(name)
 
-    override suspend fun remove(profileId: String) = store.remove(profileId)
+    /** A removed profile takes its Discover data and its Trakt account with it (plan/04 §15.8, spec 51 FR-11). */
+    override suspend fun remove(profileId: String) {
+        store.remove(profileId)
+        graph.discover?.forgetProfile(profileId)
+        graph.trakt?.disconnect(profileId)
+    }
 
     override fun switchTo(profileId: String) = switch(profileId)
 

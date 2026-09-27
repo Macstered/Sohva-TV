@@ -218,6 +218,21 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom10To11KeepingViewerDataAndAddingTraktState() {
+        helper.createDatabase(name, 10).use {
+            it.execSQL("INSERT INTO favourite_channel (profile_id, channel_key, added_at) VALUES ('default', 's1:c1', 1)")
+        }
+        helper.runMigrationsAndValidate(name, 11, true).use { db ->
+            db.query("SELECT channel_key FROM favourite_channel").use { assertEquals(1, it.count) }
+            db.execSQL(
+                "INSERT INTO trakt_state (profile_id, key, kind, tmdb, imdb, season, number, progress, watched, plays, updated_at) " +
+                    "VALUES ('default', 'movie:tmdb:603', 'movie', 603, NULL, NULL, NULL, 42.5, 0, 0, 1)",
+            )
+            db.query("SELECT progress FROM trakt_state WHERE profile_id = 'default' AND tmdb = 603").use { assertEquals(1, it.count) }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

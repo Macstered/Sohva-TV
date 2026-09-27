@@ -31,6 +31,12 @@ interface PlayerEnvironment {
     /** An addon stream chosen on a Discover title page (spec 50 §4.11), by its in-memory token; null when gone. */
     suspend fun resolveAddon(token: String): ResolvedStream? = null
 
+    /**
+     * Trakt scrobbles for a film or an episode (spec 51 FR-16); null when nothing is sent (no
+     * account, a restricted profile, a build without Trakt). Live channels and catch-up never ask.
+     */
+    fun vodScrobbler(contentKey: String): com.sohva.tv.core.model.player.TitleScrobbler? = null
+
     /** Saves where a film or an episode got to (spec 30 PLAY-FR-130..131); the store applies the watched rule. */
     suspend fun saveProgress(contentKey: String, positionMs: Long, durationMs: Long)
 

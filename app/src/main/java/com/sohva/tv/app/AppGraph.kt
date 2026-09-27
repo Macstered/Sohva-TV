@@ -48,7 +48,13 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         }
     }
 
-    val data: DataGraph by lazy { DataGraph(app, dispatchers) }
+    val data: DataGraph by lazy {
+        DataGraph(app, dispatchers).also { d ->
+            // Trakt's history on the library (spec 51 FR-32 to -36): unrestricted profiles only; building
+            // Trakt's host reads nothing, and rows exist only for connected accounts.
+            if (flags.trakt) d.progress.traktAllowed = { profile -> trakt?.access?.allowed(profile) == true }
+        }
+    }
 
     /** Work that outlives a screen: imports started from Settings keep going (spec 10 SRC-FR-94). */
     val appScope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + dispatchers.io) }
@@ -94,12 +100,19 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
                     com.sohva.tv.core.data.home.ContinueMerge.merge(library.await(), addons.await(), HomeModel.RESUME_CARDS)
                 }
             },
-            changes = discover?.let { host -> kotlinx.coroutines.flow.merge(data.walls.changes(), host.progress.changes.map { }) } ?: data.walls.changes(),
+            // Trakt's cache counts as a change too (spec 51 FR-34); its first value is not one.
+            changes = kotlinx.coroutines.flow.merge(
+                data.walls.changes(),
+                data.traktState.revision.drop(1).map { },
+                discover?.progress?.changes?.map { } ?: kotlinx.coroutines.flow.emptyFlow(),
+            ),
             playing = playbackActive,
             onFirstSettled = {
                 diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
                 // Today's games for Home, Search and reminders, after Home's first read (spec 60 SPORT-FR-29).
                 if (flags.sport) sport.feed.start()
+                // Trakt's sync loop follows the active profile from here on (spec 51 FR-21).
+                traktLoop?.let { loop -> appScope.launch { data.profiles.activeChanges.collect(loop::start) } }
             },
         )
     }
@@ -114,6 +127,21 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     val discover: com.sohva.tv.feature.discover.DiscoverHost? by lazy { if (flags.discover) com.sohva.tv.app.discover.DiscoverGraph.build(this) else null }
 
     /** The addon player's bridge to Discover (spec 50 §4.12); none where the build has no addons. */
+    /** Trakt (spec 51): in every build; without credentials its panel says it is not configured. */
+    val trakt: com.sohva.tv.feature.trakt.TraktHost? by lazy { if (flags.trakt) com.sohva.tv.app.trakt.TraktGraph.build(this) else null }
+
+    /** Trakt's marks for Discover cards and resume (spec 51 FR-31, -35): free to build, looked up per screen. */
+    val titleMarks: com.sohva.tv.core.model.vod.TitleMarks by lazy {
+        if (flags.trakt) com.sohva.tv.app.trakt.TraktTitleMarks(this) else com.sohva.tv.core.model.vod.TitleMarks.NONE
+    }
+
+    /** Trakt's read side and its loop for the active profile (spec 51 FR-21, -22); started after Home's first resume read. */
+    val traktSync: com.sohva.tv.feature.trakt.sync.TraktSync? by lazy { trakt?.let { com.sohva.tv.feature.trakt.sync.TraktSync(it, data.traktState, it.shelves) } }
+    val traktLoop: com.sohva.tv.feature.trakt.sync.TraktSyncLoop? by lazy {
+        val host = trakt ?: return@lazy null
+        com.sohva.tv.feature.trakt.sync.TraktSyncLoop(host, traktSync!!, host.shelves, playbackActive)
+    }
+
     val addonPlayback: com.sohva.tv.app.discover.AddonPlaybackBridge? by lazy { discover?.let { com.sohva.tv.app.discover.AddonPlaybackBridge(this, it) } }
 
     /**
@@ -235,6 +263,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             data.beta23Categories.run()
             // Beta 23's Discover data (decision A1); Discover itself is built only when old files exist.
             if (flags.discover) com.sohva.tv.app.discover.Beta23DiscoverImport(this@AppGraph).run()
+            // Beta 23's Trakt accounts (decision A1); Trakt is built only when the old file exists.
+            if (flags.trakt) com.sohva.tv.app.trakt.Beta23TraktImport(this@AppGraph).run()
+            // The demo build's fictional Trakt account (spec 51 FR-37); Trakt itself stays offline there.
+            if (flags.trakt && flags.demoContent) trakt?.let { com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(it, data.profiles.activeId) }
         }
         // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
         if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)

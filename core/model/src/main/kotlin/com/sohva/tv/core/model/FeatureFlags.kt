@@ -10,6 +10,10 @@ enum class BuildKind { RELEASE, DEBUG, LAB, DEMO }
 data class FeatureFlags(
     val sport: Boolean,
     val discover: Boolean,
+    /**
+     * Trakt's Accounts panel, sync and scrobbles. Present in every build: without application
+     * credentials it says "not configured" (spec 51 TRAKT-08); the demo build runs it offline (FR-37).
+     */
     val trakt: Boolean,
     val reminders: Boolean,
     val publicUpdates: Boolean,
@@ -18,10 +22,10 @@ data class FeatureFlags(
     val metadataWorker: Boolean = true,
 ) {
     companion object {
-        fun resolve(kind: BuildKind, traktConfigured: Boolean): FeatureFlags = FeatureFlags(
+        fun resolve(kind: BuildKind): FeatureFlags = FeatureFlags(
             sport = true,
             discover = kind != BuildKind.DEMO,
-            trakt = traktConfigured,
+            trakt = true,
             reminders = kind != BuildKind.LAB,
             publicUpdates = kind == BuildKind.RELEASE,
             demoContent = kind == BuildKind.DEMO,

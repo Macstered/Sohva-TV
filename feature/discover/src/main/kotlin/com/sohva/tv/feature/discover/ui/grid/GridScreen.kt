@@ -1,5 +1,8 @@
 package com.sohva.tv.feature.discover.ui.grid
 
+import com.sohva.tv.feature.discover.ui.components.marked
+import com.sohva.tv.feature.discover.ui.components.movieMarkKey
+import com.sohva.tv.feature.discover.ui.components.rememberMarks
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -171,6 +174,7 @@ private fun TextForm(extras: List<CatalogExtra>, values: Map<String, String>, ap
 private fun Titles(model: GridModel, s: GridState, firstCard: FocusRequester, open: (String, MetaPreview) -> Unit) {
     val grid = rememberLazyGridState()
     val owner = s.entry?.installation?.id ?: return
+    val marks = rememberMarks(remember(s.titles) { s.titles.mapNotNull { movieMarkKey(it.type, it.id) } })
     LazyVerticalGrid(
         GridCells.Adaptive(132.dp), Modifier.fillMaxWidth().testTag("discover-grid-titles"), grid, PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp), horizontalArrangement = Arrangement.spacedBy(18.dp),
@@ -178,7 +182,7 @@ private fun Titles(model: GridModel, s: GridState, firstCard: FocusRequester, op
         itemsIndexed(s.titles, key = { _, m -> "${m.type}:${m.id}" }) { i, m ->
             val caption = listOfNotNull(m.releaseInfo, m.imdbRating).joinToString(" · ")
             PosterCard(
-                PosterContent(m.name, m.poster, caption = caption), 132.dp, { open(owner, m) },
+                PosterContent(m.name, m.poster, caption = caption).marked(movieMarkKey(m.type, m.id)?.let(marks::get)), 132.dp, { open(owner, m) },
                 (if (i == 0) Modifier.focusRequester(firstCard) else Modifier).testTag("discover-grid-card-${m.id}"),
             )
         }

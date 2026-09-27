@@ -28,6 +28,14 @@ class ContinueMergeTest {
     }
 
     @Test
+    fun traktsImdbIdBridgesALibraryFilmToItsDiscoverCopy() {
+        // TRAKT-23: the library copy carries the IMDb id Trakt holds for TMDB 603.
+        val bridged = film("a", 100, tmdb = "603").copy(imdbId = "tt0133093")
+        val merged = ContinueMerge.merge(listOf(bridged), listOf(addon("movie", "tt0133093", "tt0133093", 200)), 12)
+        assertEquals(listOf("discover:inst:tt0133093:tt0133093"), merged.map { it.contentKey })
+    }
+
+    @Test
     fun anImdbFilmOnlyMergesWithAnotherImdbAliasAndSeriesNeverMerge() {
         val merged = ContinueMerge.merge(
             listOf(film("a", 100, tmdb = "603"), episode("x", "e1", 50)),

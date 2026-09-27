@@ -103,6 +103,12 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val progress: ProgressStore by lazy { ProgressStore(database, dispatchers.io, SystemClock) { profiles.activeId } }
     val titles: TitleReads by lazy { TitleReads(database, dispatchers.io, SystemClock) }
 
+    /** Trakt's reads of the library's matches and episodes (spec 51 FR-13). */
+    val traktLibrary: com.sohva.tv.core.data.trakt.TraktLibraryReads by lazy { com.sohva.tv.core.data.trakt.TraktLibraryReads(database, dispatchers.io) }
+
+    /** The Trakt history cache (spec 51 §6). */
+    val traktState: com.sohva.tv.core.data.trakt.TraktStateStore by lazy { com.sohva.tv.core.data.trakt.TraktStateStore(database, dispatchers.io) }
+
     /** Search's groups (spec 03). */
     val search: SearchReads by lazy { SearchReads(database, dispatchers.io) { profiles.activeId } }
 
