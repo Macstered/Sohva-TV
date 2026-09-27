@@ -249,6 +249,21 @@ class ProfilesTest {
         compose.waitUntil(10_000) { text("guide-list-empty").startsWith("This profile's groups are not in the current sources") }
     }
 
+    /** GUIDE-49: a change to the profile's groups applies while the guide is open. */
+    @Test
+    fun aRestrictionChangeAppliesWhileTheGuideIsOpen() = start({
+        twoProfiles(active = KIDS)
+        kidsSee("g1")
+    }) {
+        openGuide()
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        awaitFocus("guide-rail-group:g1")
+        assertFalse(exists("guide-rail-group:g2"))
+        runBlocking { graph.data.profiles.setAllowed(KIDS, OrgRoom.LIVE, "g2", true) }
+        compose.waitUntil(10_000) { exists("guide-rail-group:g2") }
+        assertFalse(exists("guide-rail-group:g0"))
+    }
+
     /** Spec 04 §11 "Settings": a profile is added, switched to, limited to chosen groups and removed with what it kept. */
     @Test
     fun settingsAddsSwitchesLimitsAndRemovesAProfile() = start {

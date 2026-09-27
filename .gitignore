@@ -32,3 +32,6 @@ Thumbs.db
 
 # Python
 __pycache__/
+
+# Packaged releases (tools/package_release.py): APKs and ZIPs never enter git.
+/release/

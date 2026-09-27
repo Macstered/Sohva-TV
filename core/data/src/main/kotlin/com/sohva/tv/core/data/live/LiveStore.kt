@@ -50,11 +50,13 @@ class LiveStore(
     override val sources: Flow<List<LiveSource>> = live.observeSources().flowOn(io)
 
     /**
-     * One signal per write to the tables a guide list depends on (GUIDE-FR-37); the first emission
-     * is the current state, not a write (spec 20 §10).
+     * One signal per write to the tables a guide list depends on (GUIDE-FR-37), a profile's allowed
+     * groups included, so a changed restriction applies while the guide is open (GUIDE-49); the
+     * first emission is the current state, not a write (spec 20 §10).
      */
-    override fun changes(): Flow<Unit> =
-        db.invalidationTracker.createFlow("channel", "content_group", "source", "source_status", "channel_list", "channel_list_member").map { }
+    override fun changes(): Flow<Unit> = db.invalidationTracker.createFlow(
+        "channel", "content_group", "source", "source_status", "channel_list", "channel_list_member", "profile_allowed_group",
+    ).map { }
 
     /** A new guide snapshot or a source edit re-reads the visible programmes (§8 "Import while open"). */
     override fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }

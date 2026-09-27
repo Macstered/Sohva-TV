@@ -76,6 +76,14 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     val controls by model.transport.visible.collectAsStateWithLifecycle()
     val skipped by model.transport.feedback.collectAsStateWithLifecycle()
     VideoSurface(model)
+    val demo by model.demo.collectAsStateWithLifecycle()
+    // The demo build's still picture fills the screen, cropped, under the chrome (PLAY-FR-25).
+    demo?.let {
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(it), null, Modifier.fillMaxSize().testTag("player-demo-picture"),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+        )
+    }
     // In the corner only the picture is drawn; the overlays' state stays in the model (PLAY-FR-111).
     if (LocalPictureInPicture.current) return
     model.addon?.let { session ->

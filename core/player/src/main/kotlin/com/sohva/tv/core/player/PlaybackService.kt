@@ -252,6 +252,8 @@ class PlaybackService : MediaSessionService() {
         session.player = next
         player.release()
         player = next
+        // PLAY-26: the next playback runs on the chosen buffer profile.
+        env.log.info("player", "buffer profile ${wanted.name}")
     }
 
     companion object {

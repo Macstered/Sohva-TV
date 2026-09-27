@@ -15,6 +15,7 @@ import hashlib
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from sohva_device import REPO_ROOT, adb, latest_build_tool, require_rebuild_emulator
@@ -71,7 +72,22 @@ def main() -> None:
         print("Usually a composable with too many parameters; pass a state object instead.")
         sys.exit(1)
 
+    # Launch smoke (plan/06 §6 gate 8): the verified APK cold-starts and is still alive 8 s later.
+    adb(args.serial, "shell", "am", "force-stop", PACKAGE)
+    # Through the exported launcher alias (beta 23's name, kept so launcher shortcuts survive).
+    launch = adb(args.serial, "shell", "am", "start", "-W", "-n", f"{PACKAGE}/com.streammate.tv.app.MainActivity")
+    if "Status: ok" not in launch:
+        sys.exit("The release APK did not start:\n" + launch)
+    total = next((line.split(":")[1].strip() for line in launch.splitlines() if line.startswith("TotalTime")), "?")
+    time.sleep(8)
+    if not adb(args.serial, "shell", "pidof", PACKAGE).strip():
+        sys.exit("The release app died within 8 s of starting.")
+    adb(args.serial, "shell", "am", "force-stop", PACKAGE)
+    print(f"Launch smoke: started in {total} ms and alive 8 s later.")
+
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+    # The receipt packaging requires (plan/06 §6 gate 5): this exact APK was verified.
+    apk.with_name(apk.name + ".dex-verified").write_text(digest + "\n", encoding="utf-8")
     print(f"Release dex verifies ({ran} dex2oat lines, no rejections). {apk.name} sha256 {digest}")
 
 

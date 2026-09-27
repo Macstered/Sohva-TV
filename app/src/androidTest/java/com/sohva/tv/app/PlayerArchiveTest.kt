@@ -1,5 +1,7 @@
 package com.sohva.tv.app
 
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
 import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -106,6 +108,32 @@ class PlayerArchiveTest {
         awaitFocus("guide-row-0")
     }
 
+    /** CATCH-12: catch-up of a locked channel meets the PIN first, and the channel counts as recently watched. */
+    @Test
+    fun aLockedChannelsArchiveAsksForThePinAndIsRecordedAsWatched() {
+        val graph = (instrumentation.targetContext.applicationContext as SohvaApplication).graph
+        kotlinx.coroutines.runBlocking {
+            graph.data.profiles.setPin("2468")
+            graph.data.profiles.setLocked(CHANNEL, true)
+        }
+        openGuide()
+        compose.waitUntil(5_000) { exists("guide-hero-archive") }
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("screen-pin") }
+        assertTrue("nothing plays before the PIN", requests.none { it.startsWith("/live/0.mp4") })
+        // The PIN field takes text once it is opened, as a viewer's OK does.
+        compose.onNodeWithTag("parental-pin").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(androidx.compose.ui.test.hasSetTextAction()).performTextReplacement("2468")
+        compose.onNodeWithTag("parental-unlock").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        compose.waitUntil(15_000) { requests.any { it.startsWith("/live/0.mp4?utc=") } }
+        compose.waitUntil(5_000) {
+            graph.data.database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM recent_channel WHERE channel_key = ?", arrayOf(CHANNEL))
+                .use { it.moveToFirst() && it.getInt(0) == 1 }
+        }
+    }
+
     @Test
     fun aChannelWithoutCatchUpPlaysLiveAndShowsNoArchiveButton() {
         openGuide()
@@ -142,5 +170,9 @@ class PlayerArchiveTest {
         // Digits are not dialled in catch-up.
         press(KeyEvent.KEYCODE_5)
         assertFalse(exists("player-dial"))
+    }
+
+    private companion object {
+        const val CHANNEL = "fixture-0:c0"
     }
 }

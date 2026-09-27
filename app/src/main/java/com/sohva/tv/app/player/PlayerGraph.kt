@@ -139,6 +139,13 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
         override val ticker: com.sohva.tv.feature.player.ScoreTickerSource? get() = if (graph.flags.sport) graph.sport.ticker else null
 
+        /** The demo build's pictures live in its own source set, so they are found by name there only (PLAY-44). */
+        @android.annotation.SuppressLint("DiscouragedApi")
+        override fun demoPicture(key: String): Int? {
+            if (!graph.flags.demoContent) return null
+            return graph.app.resources.getIdentifier(DemoPictures.nameFor(key), "drawable", graph.app.packageName).takeIf { it != 0 }
+        }
+
         override suspend fun externalStream(channelKey: String): ExternalStream? {
             val stream = resolveLive(channelKey) ?: return null
             val headers = buildMap {

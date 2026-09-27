@@ -96,6 +96,16 @@ class PlayerLiveTest {
         }
     }
 
+    /** PLAY-26: a changed buffer profile applies to the next playback (the idle player is rebuilt). */
+    @Test
+    fun aChangedBufferProfileAppliesToTheNextPlayback() {
+        openPlayerOnFirstChannel()
+        val graph = (instrumentation.targetContext.applicationContext as SohvaApplication).graph
+        kotlinx.coroutines.runBlocking { graph.data.preferences.setBuffer(com.sohva.tv.core.model.player.BufferProfile.STABILITY) }
+        press(KeyEvent.KEYCODE_CHANNEL_UP)
+        compose.waitUntil(10_000) { graph.diagnostics.snapshot().any { it.contains("buffer profile STABILITY") } }
+    }
+
     private fun openPlayerOnFirstChannel() {
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
         compose.focusRail(RailItem.LIVE_TV)
