@@ -101,3 +101,20 @@ Installed with `adb install -r` (no install profile: `verify`, the sideload case
 The frame counters cover everything since the first start, so they cannot separate key presses from
 loading and the uncompiled first minutes; p90 44 ms is above two vsyncs overall. The owner reports
 browsing, playback and the import during playback as fine (SRC-42's observation).
+
+## 28 September 2026: M12 phase A, the Home layout (before and after, same session)
+
+Emulator sohva_rebuild_tv30 (API 30 TV x86, 1080p), cold-booted, `benchmarkRelease` (R8), `CompilationMode.Full`, the
+owner-scale fixture plus `HomeFixture` (`HomeBenchmark`, 5 iterations each). Before = `main` at 7da3ba3; after = branch
+`m12-home-rows` with the default layout (the layout is read on every Home entry either way).
+
+| Measure | Before | After | Budget |
+|---|---|---|---|
+| Cold start → first frame (time to initial display), median | 398 ms (342–422) | 391 ms (367–404) | – |
+| Cold start → Home drawn, first card focused (time to full display), median | 863 ms (787–931) | 810 ms (770–857) | ≤ 4 s low-end |
+| Main-thread CPU per press along Continue watching (Running in `doFrame`), median | 2.05 ms (1.89–2.15) | 2.07 ms (1.87–2.41) | ≤ 8 ms |
+| `Home:Screen` compositions during the 30 presses | 0 | 0 | 0 (spec 02 §9.6) |
+| `Home:Screen` compositions over a cold start | 6 | 6 | – |
+
+Within the stand-in's noise: HOME-FR-92 holds. A hidden row does no work (unit tests count the reads; device tests with a
+gated recent-channel read check the first focus both before and after a key press).

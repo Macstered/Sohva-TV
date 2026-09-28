@@ -98,7 +98,12 @@ class SettingsAboutTest {
         compose.waitUntil(10_000) { exists(RailItem.SETTINGS.tag) }
         compose.onNodeWithTag(RailItem.SETTINGS.tag).performSemanticsAction(SemanticsActions.OnClick)
         compose.waitUntil(10_000) { exists("settings-section-sources") }
-        compose.onNodeWithTag("settings-section-about").performSemanticsAction(SemanticsActions.OnClick)
+        // About is the last section, below the list's visible part: walk to it as a viewer does.
+        compose.waitUntil(10_000) { compose.onAllNodes(isFocused()).fetchSemanticsNodes().isNotEmpty() }
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        awaitFocus("settings-section-sources")
+        walkTo("settings-section-about")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus(first)
     }
 

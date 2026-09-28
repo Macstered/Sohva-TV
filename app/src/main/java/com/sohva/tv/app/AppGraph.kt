@@ -237,6 +237,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     @Volatile
     var liveReadsOverride: com.sohva.tv.core.data.live.LiveReads? = null
 
+    /** Tests only: awaited before Home reads its recent channels, so that row can be made slow (AGENTS §8). */
+    @Volatile
+    var homeRecentGate: (suspend () -> Unit)? = null
+
     /** Tests only: awaited before a wall reads a page next to its window, so a page can be made slow (AGENTS §8). */
     @Volatile
     var wallPageGate: (suspend () -> Unit)? = null

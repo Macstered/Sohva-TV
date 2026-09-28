@@ -57,6 +57,12 @@ internal class HomeFocus {
     val status = FocusRequester()
     val welcome = FocusRequester()
     var place by mutableStateOf(HomePlace.NONE)
+
+    /**
+     * The viewer has pressed a key on this Home entry. Until then the first focus follows the first
+     * row as rows arrive; after it, arriving data never moves focus (spec 02 HOME-FR-93).
+     */
+    var touched = false
     var lastCard: String? = null
     var lastIndex = 0
     var focusedRow by mutableIntStateOf(0)

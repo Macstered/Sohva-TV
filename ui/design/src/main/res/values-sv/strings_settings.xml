@@ -213,4 +213,9 @@
     <string name="link_open_elsewhere">Den här tv:n kan inte öppna länken. Skanna koden eller skriv adressen på en annan enhet.</string>
     <string name="about_palettes_title">Licenser för färgpaletter</string>
     <string name="error_api_sports_quota">Dagens API-Sports-kvot är förbrukad. Den återställs varje dag; sparade matcher visas fortfarande.</string>
+    <string name="home_layout_intro">Välj ordningen på startsidans rader och vilka rader som visas.</string>
+    <string name="home_layout_for_profile">Rader på startsidan för %1$s. Varje profil har sina egna.</string>
+    <string name="home_layout_reset">Återställ standard</string>
+    <string name="home_layout_order_help">Välj en rad för att plocka upp den, flytta den med Upp och Ned och tryck OK för att placera den.</string>
+    <string name="home_layout_visibility_help">En dold rad laddas inte alls, vilket också håller startsidan snabb på långsammare tv-boxar.</string>
 </resources>

@@ -213,4 +213,9 @@
     <string name="link_open_elsewhere">Este televisor no puede abrir el enlace. Escanea el código o escribe la dirección en otro dispositivo.</string>
     <string name="about_palettes_title">Licencias de las paletas de colores</string>
     <string name="error_api_sports_quota">La cuota de API-Sports de hoy se ha agotado. Se restablece cada día; los partidos guardados siguen en pantalla.</string>
+    <string name="home_layout_intro">Elige el orden de las filas de Inicio y cuáles se muestran.</string>
+    <string name="home_layout_for_profile">Filas de Inicio para %1$s. Cada perfil tiene las suyas.</string>
+    <string name="home_layout_reset">Restablecer</string>
+    <string name="home_layout_order_help">Selecciona una fila para cogerla, muévela con Arriba y Abajo y pulsa OK para colocarla.</string>
+    <string name="home_layout_visibility_help">Una fila oculta no se carga, lo que también mantiene Inicio rápido en los descodificadores más lentos.</string>
 </resources>

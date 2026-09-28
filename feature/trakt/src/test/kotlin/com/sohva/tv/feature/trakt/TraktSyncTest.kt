@@ -137,6 +137,28 @@ class TraktSyncTest {
         assertNull(TraktStateDiff.merge(paused, null, null, true, true))
     }
 
+    /**
+     * Spec 02 HOME-FR-87: with Watch next hidden on the profile's Home, the watched state still
+     * syncs but no show's progress is asked for; dropping the shelf clears store and memory, so
+     * showing the row again rebuilds it (the loop syncs fully when no shelf is stored).
+     */
+    @Test
+    fun aHiddenWatchNextSyncsTheStateWithoutProgressCalls() = runBlocking {
+        fullAccount()
+        val h = host()
+        val table = FakeTable()
+        assertTrue(TraktSync(h, table, h.shelves).sync("p", watchNext = false))
+        assertEquals(true, table.row("episode:tmdb:1399:1:2")?.watched)
+        assertTrue("no progress calls: $paths", paths.none { it.endsWith("/progress/watched") })
+        assertNull(h.shelves.read("p", TraktShelfKind.WATCH_NEXT))
+
+        assertTrue(TraktSync(h, table, h.shelves).sync("p", force = true))
+        assertEquals("Episode three", h.shelves.read("p", TraktShelfKind.WATCH_NEXT)!!.cards.single().episodeTitle)
+        h.shelves.drop("p", TraktShelfKind.WATCH_NEXT)
+        assertNull(h.shelves.read("p", TraktShelfKind.WATCH_NEXT))
+        assertNull("gone from the store too", h.store.secret("${TraktShelfKind.WATCH_NEXT.key}:p"))
+    }
+
     @Test
     fun aFirstSyncFetchesEverythingSkipsIdlessTitlesAndBuildsWatchNext() = runBlocking {
         fullAccount()

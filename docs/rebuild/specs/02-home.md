@@ -151,11 +151,11 @@ the lookup returns (SHELL-FR-17).
 
 ### 4.1 Row order and visibility
 
-- HOME-FR-01 Row keys and order: `continue-watching`, `watch-next`, `todays-sport`,
-  `recommended`, `recent-channels`. There is no setting for order or visibility in beta 23
-  (see open questions). A row is drawn only when it has at least one card, except that
-  Continue watching is drawn as a single status card while its first read is loading or has
-  failed (4.8).
+- HOME-FR-01 Row keys and default order: `continue-watching`, `watch-next`, `todays-sport`,
+  `recommended`, `recent-channels`. Beta 23 had no setting for order or visibility; the rebuild's
+  Home layout (4.14, M12) lets each profile change both. A row is drawn only when it has at least
+  one card, except that Continue watching is drawn as a single status card while its first read is
+  loading or has failed (4.8).
 - HOME-FR-02 Row titles (`headline` Bold, `textPrimary`) and hints (`label`, `textDim`):
 
   | Row | Title | Hint |
@@ -407,6 +407,46 @@ the lookup returns (SHELL-FR-17).
 - HOME-FR-73 A change of picture crossfades over **250 ms**; while a new picture downloads,
   the bundled floor shows through. Image requests for the hero decode at most 1920×1080 px in
   `RGB_565` (rebuild: art-box size, 9.2).
+
+### 4.14 Home layout (M12, rebuild)
+
+- HOME-FR-86 Each profile has its own Home layout: the rows of HOME-FR-01 in an order, each shown
+  or hidden. The default is HOME-FR-01's order with every row shown. It is stored as one text
+  value, `home_layout[:<profile id>]`: the row ids in order, comma-separated, a hidden row's id
+  preceded by `-` (for example `continue-watching,-watch-next,todays-sport`). Ids are text, never a
+  fixed list, so later row kinds (Trakt lists, M12 phase B) need no format change. Reading it
+  drops unknown and repeated ids and keeps the stored order; a built-in row the stored value lacks
+  is added at the end, shown. An absent value is the default.
+- HOME-FR-87 Home draws its rows in the layout's order. A hidden row is not drawn and its data is
+  not read or fetched for that profile: the recent channels are not read; Watch next's progress
+  calls and Recommended's request are not made by the Trakt sync (FR-21 cycle), and a hidden
+  Watch next's stored shelf is dropped, so showing it again fetches it afresh. Today's sport's feed
+  keeps running (Search, the score ticker and reminders read it). A hidden Continue watching has no
+  row and no status card; its projection still runs (the player and the hero's details use it).
+- HOME-FR-88 The layout never shows what the profile may not see: a restricted profile has no
+  Trakt rows whatever its layout (HOME-36).
+- HOME-FR-89 The structure lock (4.9), first focus, Back and the idle hero (HOME-FR-61) work on the
+  rows as drawn; with Continue watching hidden the idle hero is a recent channel, else Welcome.
+- HOME-FR-90 Settings › Home edits the active profile's layout and names that profile. Two modes,
+  as Discover's catalogue organiser (spec 50 FR-55): **Order**, where OK picks a row up, Up and
+  Down (Page Up / Page Down, Home / End) move it, OK places it (on its first press, never a repeat)
+  and Back cancels the move; the order is written once, when placed. **Show or hide**, one switch
+  row per Home row, written at once. **Reset to default** writes the default (removes the value).
+  Focus stays on the row being moved and returns to it after Back.
+- HOME-FR-91 The layout is in the backup: `profileData.<id>.homeLayout`, an optional text in the
+  form of HOME-FR-86. The format stays 2 (spec 71), so the file still restores in beta 23, which
+  ignores the field. A backup without it restores the default. Removing a profile removes its
+  layout (spec 04 PROF-FR-06).
+- HOME-FR-93 A layout can put a row first whose data comes later than Continue watching's (recent
+  channels read at entry, Trakt after the first read settles, Today's sport after its feed starts).
+  Until the viewer presses a key on this Home entry, the first focus follows HOME-FR-28's first card
+  of the first row as rows arrive; after the first key press, arriving data never moves focus (4.9).
+  With the default order nothing arrives above the first focus, so nothing changes there.
+- HOME-FR-92 The layout adds no work before Home's first read: it is read from the preferences
+  already in memory for the start snapshot. Home's cold start to the first focused card and the
+  main-thread CPU per press along a row stay within the stand-in's noise of the values measured
+  before M12 (docs/performance-log.md). In Settings › Home a move is one list change and one
+  recomposition of the moved rows; nothing is written until OK.
 
 ### 4.13 Focus and keys
 
@@ -710,9 +750,8 @@ within one or two vsyncs; Java heap in steady browsing ≤ 64 MB.
 
 ### Open questions
 
-- The Home row editor (order and visibility per profile, Settings › Home) and Trakt list rows
-  are planned in `docs/HOME_ROWS_AND_TRAKT_LISTS_PLAN.md` phases 2–4 but are not in beta 23.
-  Does the rebuild include them from the start?
+- ~~The Home row editor and Trakt list rows: in the rebuild from the start?~~ Settled 28 September
+  2026: milestone M12 (`docs/home-rows-plan.md`); the row editor is 4.14, Trakt list rows follow.
 - Should Remove / Mark as watched on a Trakt-sourced card also clear the Trakt pause (a Trakt
   API write) or hide the card locally until Trakt's position changes?
 - Should Continue watching for a restricted profile be narrowed by its allowed film and series

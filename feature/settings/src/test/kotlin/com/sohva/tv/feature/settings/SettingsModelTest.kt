@@ -72,6 +72,10 @@ class SettingsModelTest {
             override fun startupScreen() = flowOf(com.sohva.tv.core.model.settings.StartupScreen.HOME)
             override suspend fun setStartupScreen(value: com.sohva.tv.core.model.settings.StartupScreen) = Unit
         }
+        override val home: HomeLayoutServices = object : HomeLayoutServices {
+            override val current = kotlinx.coroutines.flow.flowOf(HomeLayoutView(null, com.sohva.tv.core.model.home.HomeLayout.DEFAULT))
+            override suspend fun save(layout: com.sohva.tv.core.model.home.HomeLayout) = Unit
+        }
         override val sport: SportSettingsServices = object : SportSettingsServices {
             override fun hasKey() = kotlinx.coroutines.flow.flowOf(false)
 

@@ -60,6 +60,8 @@ class TraktHost(
     private val monotonic: () -> Long,
     /** Removes the profile's `trakt_state` rows (FR-10). */
     private val forgetCache: suspend (String) -> Unit,
+    /** The Home shelves [String]'s layout shows; a hidden one is not fetched (spec 02 HOME-FR-87). */
+    val shelvesShown: suspend (String) -> Set<com.sohva.tv.feature.trakt.shelf.TraktShelfKind> = { com.sohva.tv.feature.trakt.shelf.TraktShelfKind.entries.toSet() },
     /** Trakt's two origins; a test points them at its own server. */
     authOrigin: HttpUrl = TraktAuthClient.ORIGIN,
     apiOrigin: HttpUrl = TraktApiClient.ORIGIN,
@@ -153,6 +155,11 @@ class TraktHost(
 
     /** A sign-in for [profile] (FR-02), checking its access before every step. */
     fun signIn(profile: String): TraktSignIn = TraktSignIn(auth, identity, monotonic) { access.allowed(profile) }
+
+    /** A sync for [profile] soon, as after a sign-in: Home's layout just showed a Trakt row again. */
+    fun requestSync(profile: String) {
+        _syncRequests.tryEmit(profile)
+    }
 
     /** Accounts written by the beta 23 importer: read again, and a sync asked for each (decision A1). */
     fun accountsImported(profiles: Collection<String>) {

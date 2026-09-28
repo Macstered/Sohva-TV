@@ -55,11 +55,11 @@ class TraktSync(
      * FR-22. [force] fetches everything (no Watch next stored yet, or an older sync format).
      * Returns false when there is nothing to sync with or a call failed.
      */
-    suspend fun sync(profile: String, force: Boolean = false): Boolean = lock.withLock {
+    suspend fun sync(profile: String, force: Boolean = false, watchNext: Boolean = true): Boolean = lock.withLock {
         if (!host.configured || !host.access.allowed(profile)) return false
         val account = host.account(profile)?.takeIf { it.tokens != null } ?: return false
         try {
-            pull(profile, account.uuid, force)
+            pull(profile, account.uuid, force, watchNext)
             true
         } catch (e: TraktException) {
             val wait = host.gate.waitSeconds().takeIf { it > 0 }?.let { ", Trakt asked to wait $it s" }.orEmpty()
@@ -68,7 +68,7 @@ class TraktSync(
         }
     }
 
-    private suspend fun pull(profile: String, uuid: String, force: Boolean) {
+    private suspend fun pull(profile: String, uuid: String, force: Boolean, watchNext: Boolean) {
         val before = host.gate.requests
         val stamps = withContext(host.dispatchers.io) { readStamps(profile) }
         val full = force || stamps.format < FORMAT_VERSION
@@ -127,7 +127,8 @@ class TraktSync(
         host.log.info("trakt", "synced ${table.count(profile)} Trakt titles; ${host.gate.requests - before} requests")
         shows?.let { list ->
             if (list.isNotEmpty() && list.all { it.episodes.isEmpty() }) host.log.info("trakt", "watched shows came without seasons")
-            watchNext(profile, uuid, list)
+            // A hidden Watch next makes no progress calls (spec 02 HOME-FR-87).
+            if (watchNext) watchNext(profile, uuid, list)
         }
     }
 

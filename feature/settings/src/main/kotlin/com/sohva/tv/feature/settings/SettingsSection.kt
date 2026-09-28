@@ -8,6 +8,9 @@ import com.sohva.tv.ui.design.components.TvIcons
 /** The rail's sections in rail order (spec 70 SET-FR-10). [built] is false until their milestone. */
 enum class SettingsSection(@StringRes val label: Int, @DrawableRes val icon: Int, val tag: String, val built: Boolean) {
     GENERAL(R.string.settings_section_general, TvIcons.Settings, "general", built = true),
+
+    /** Settings › Home (spec 02 HOME-FR-90, M12): the active profile's Home rows. */
+    HOME(R.string.home_nav_home, TvIcons.Home, "home", built = true),
     SOURCES(R.string.settings_section_sources, TvIcons.Channels, "sources", built = true),
     PLAYBACK(R.string.settings_section_playback, TvIcons.Play, "playback", built = true),
     REMOTE(R.string.settings_section_remote, TvIcons.Aspect, "remote", built = true),

@@ -213,4 +213,9 @@
     <string name="link_open_elsewhere">Dieser Fernseher kann den Link nicht öffnen. Scanne den Code oder gib die Adresse auf einem anderen Gerät ein.</string>
     <string name="about_palettes_title">Lizenzen der Farbpaletten</string>
     <string name="error_api_sports_quota">Das heutige API-Sports-Kontingent ist aufgebraucht. Es wird täglich zurückgesetzt; gespeicherte Spiele bleiben sichtbar.</string>
+    <string name="home_layout_intro">Lege die Reihenfolge der Zeilen auf der Startseite fest und welche angezeigt werden.</string>
+    <string name="home_layout_for_profile">Zeilen auf der Startseite für %1$s. Jedes Profil hat eigene.</string>
+    <string name="home_layout_reset">Auf Standard zurücksetzen</string>
+    <string name="home_layout_order_help">Wähle eine Zeile, um sie aufzunehmen, verschiebe sie mit Auf und Ab und platziere sie mit OK.</string>
+    <string name="home_layout_visibility_help">Eine ausgeblendete Zeile wird gar nicht geladen; so bleibt die Startseite auch auf langsameren TV-Boxen schnell.</string>
 </resources>

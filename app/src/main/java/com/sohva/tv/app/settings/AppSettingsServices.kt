@@ -57,6 +57,7 @@ class AppSettingsServices(
     override val about: com.sohva.tv.feature.settings.AboutSettingsServices = AppAboutSettings(graph, activity, openLegal)
 
     override val sport: com.sohva.tv.feature.settings.SportSettingsServices = AppSportSettings(graph)
+    override val home: com.sohva.tv.feature.settings.HomeLayoutServices = AppHomeLayoutSettings(graph)
 
     override fun sources(): Flow<List<Source>> = flow { emitAll(graph.data.sources.observe()) }.flowOn(io)
 

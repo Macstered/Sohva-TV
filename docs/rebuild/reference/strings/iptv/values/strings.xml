@@ -882,4 +882,9 @@
     <string name="link_open_elsewhere">This TV cannot open the link. Scan the code or type the address on another device.</string>
     <string name="about_palettes_title">Colour palette licences</string>
     <string name="error_api_sports_quota">Today\'s API-Sports quota is used up. It resets daily; saved games stay on screen.</string>
+    <string name="home_layout_intro">Choose the order of Home\'s rows and which rows it shows.</string>
+    <string name="home_layout_for_profile">Rows on Home for %1$s. Each profile has its own.</string>
+    <string name="home_layout_reset">Reset to default</string>
+    <string name="home_layout_order_help">Select a row to pick it up, move it with Up and Down, then press OK to place it.</string>
+    <string name="home_layout_visibility_help">A hidden row is not loaded at all, which also keeps Home quick on slower TV boxes.</string>
 </resources>

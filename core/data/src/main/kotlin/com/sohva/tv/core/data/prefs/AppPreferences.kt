@@ -3,6 +3,7 @@ package com.sohva.tv.core.data.prefs
 import com.sohva.tv.core.data.backup.BackupPreferences
 import com.sohva.tv.core.data.backup.BackupProfile
 import com.sohva.tv.core.data.backup.ProfileKept
+import com.sohva.tv.core.model.home.HomeLayout
 import com.sohva.tv.core.model.profile.Profile
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -62,6 +63,20 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
     /** [profileId]'s last channel (spec 30 PLAY-FR-57), under `last_channel_id[:id]` (spec 04 §6). */
     fun lastChannel(profileId: String): Flow<String?> = key(stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId))) { it }
 
+    /** [profileId]'s Home layout (spec 02 HOME-FR-86), under `home_layout[:id]`; absent = the default. */
+    fun homeLayout(profileId: String): Flow<HomeLayout> = key(homeLayoutKey(profileId), HomeLayout::decode)
+
+    /** The stored text of [profileId]'s layout for the backup (HOME-FR-91); null for the default. */
+    suspend fun homeLayoutText(profileId: String): String? = store.data.first()[homeLayoutKey(profileId)]
+
+    /** Writes [profileId]'s layout; the default is stored as no value. */
+    suspend fun setHomeLayout(profileId: String, layout: HomeLayout) {
+        val text = layout.encode()
+        store.edit { if (text == null) it.remove(homeLayoutKey(profileId)) else it[homeLayoutKey(profileId)] = text }
+    }
+
+    private fun homeLayoutKey(profileId: String) = stringPreferencesKey(Profiles.key(HOME_LAYOUT_KEY, profileId))
+
     /** The household (spec 04 §6): profiles, the active one, ask at start, "a PIN exists". */
     val household: Flow<Household> = store.data.map(::householdOf).distinctUntilChanged()
 
@@ -80,7 +95,10 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
     /** Removes [profileId]'s own keys (PROF-FR-06); its database rows go separately. */
     suspend fun forgetProfile(profileId: String) {
         if (profileId == Profiles.DEFAULT_ID) return
-        store.edit { it.remove(stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId))) }
+        store.edit {
+            it.remove(stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, profileId)))
+            it.remove(homeLayoutKey(profileId))
+        }
     }
 
     /**
@@ -412,6 +430,8 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
             for ((id, kept) in profiles) {
                 kept.lastChannelId?.let { prefs[stringPreferencesKey(Profiles.key(LAST_CHANNEL_KEY, id))] = it }
                 if (kept.favouriteEventIds.isNotEmpty()) prefs[stringSetPreferencesKey(Profiles.key(FAVOURITE_EVENTS_KEY, id))] = kept.favouriteEventIds.toSet()
+                // Stored as read back, so what the file brings is what Home draws (HOME-FR-91).
+                HomeLayout.decode(kept.homeLayout).encode()?.let { prefs[homeLayoutKey(id)] = it }
             }
         }
     }
@@ -440,6 +460,7 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         private val TIME_ZONE = stringPreferencesKey("time_zone")
         private const val LAST_CHANNEL_KEY = "last_channel_id"
         private const val FAVOURITE_EVENTS_KEY = "favourite_event_ids"
+        private const val HOME_LAYOUT_KEY = "home_layout"
 
         // Sohva Sport's (spec 60, M8) under beta 23's names, so a restored backup keeps them until then.
         private val FOLLOWED_SPORTS = stringSetPreferencesKey("followed_sports")
@@ -491,7 +512,7 @@ class AppPreferences(private val store: DataStore<Preferences>) : MetadataPrefer
         )
 
         /** Per-profile keys (`<base>` and `<base>:<profileId>`), carried in `profileData`. */
-        internal val PER_PROFILE: Set<String> = setOf(LAST_CHANNEL_KEY, FAVOURITE_EVENTS_KEY)
+        internal val PER_PROFILE: Set<String> = setOf(LAST_CHANNEL_KEY, FAVOURITE_EVENTS_KEY, HOME_LAYOUT_KEY)
 
         /** Kept by a restore: this TV's own state (spec 71 §6.3). */
         internal val DEVICE_LOCAL: Set<String> = setOf("reminder_overlay_asked", "metadata_key_refused")

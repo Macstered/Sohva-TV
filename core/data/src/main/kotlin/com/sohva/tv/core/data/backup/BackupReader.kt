@@ -252,6 +252,7 @@ object BackupReader {
             val id = r.nextName()
             val lists = HashMap<String, List<String>>()
             var last: String? = null
+            var layout: String? = null
             r.beginObject()
             while (r.hasNext()) {
                 when (val name = r.nextName()) {
@@ -259,6 +260,7 @@ object BackupReader {
                     "allowedLiveGroupKeys", "allowedMovieGroupKeys", "allowedSeriesGroupKeys",
                     -> lists[name] = strings(r, "profileData.$name")
                     "lastChannelId" -> last = optionalString(r, "profileData.lastChannelId")
+                    "homeLayout" -> layout = optionalString(r, "profileData.homeLayout")
                     else -> r.skipValue()
                 }
             }
@@ -272,6 +274,7 @@ object BackupReader {
                 allowedLive = lists["allowedLiveGroupKeys"].orEmpty(),
                 allowedMovies = lists["allowedMovieGroupKeys"].orEmpty(),
                 allowedSeries = lists["allowedSeriesGroupKeys"].orEmpty(),
+                homeLayout = layout,
             )
         }
         r.endObject()

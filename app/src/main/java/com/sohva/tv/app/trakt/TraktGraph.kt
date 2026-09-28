@@ -5,6 +5,7 @@ import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.BuildInfo
 import com.sohva.tv.feature.trakt.TraktAccess
 import com.sohva.tv.feature.trakt.TraktDispatchers
+import kotlinx.coroutines.flow.first
 import com.sohva.tv.feature.trakt.TraktHost
 import com.sohva.tv.feature.trakt.protocol.TraktCredentials
 import com.sohva.tv.feature.trakt.store.AndroidTraktPrefs
@@ -38,6 +39,13 @@ object TraktGraph {
             offline = graph.flags.demoContent,
             monotonic = { SystemClock.elapsedRealtime() },
             forgetCache = { graph.data.traktState.forget(it) },
+            shelvesShown = { profile ->
+                val layout = graph.data.preferences.homeLayout(profile).first()
+                buildSet {
+                    if (layout.isShown(com.sohva.tv.core.model.home.HomeLayout.WATCH_NEXT)) add(com.sohva.tv.feature.trakt.shelf.TraktShelfKind.WATCH_NEXT)
+                    if (layout.isShown(com.sohva.tv.core.model.home.HomeLayout.RECOMMENDED)) add(com.sohva.tv.feature.trakt.shelf.TraktShelfKind.RECOMMENDED)
+                }
+            },
         )
     }
 
