@@ -899,4 +899,7 @@
     <string name="home_layout_trakt">Trakt rows</string>
     <string name="home_layout_trakt_help">Add up to 8 Trakt lists to Home. Charts need no account; watchlists need this profile\'s Trakt account.</string>
     <string name="home_layout_trakt_full">Home already has 8 added rows. Remove one to add another.</string>
+    <string name="details_find_in_discover">Find in Discover</string>
+    <string name="series_seasons_missing">Your sources have %1$d of %2$d seasons.</string>
+    <string name="series_seasons_missing_discover">Your sources have %1$d of %2$d seasons. Find in Discover may have the rest.</string>
 </resources>

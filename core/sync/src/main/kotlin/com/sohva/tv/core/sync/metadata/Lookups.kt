@@ -83,6 +83,8 @@ internal object RecordCodec {
             w.name("popularity").value(r.popularity)
             w.name("attribution").value(r.attributionUrl)
             w.name("details").value(r.detailsLoaded)
+            w.name("imdb").value(r.imdb)
+            w.name("aired").value(r.airedSeasons)
             w.endObject()
         }
         return buffer.readUtf8()
@@ -125,6 +127,8 @@ internal object RecordCodec {
             popularity = (o["popularity"] as? Number)?.toDouble(),
             attributionUrl = str("attribution"),
             detailsLoaded = o["details"] == true,
+            imdb = str("imdb"),
+            airedSeasons = int("aired"),
         )
     }.getOrNull()
 }

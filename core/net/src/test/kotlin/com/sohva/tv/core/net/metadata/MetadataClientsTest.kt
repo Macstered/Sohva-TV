@@ -90,6 +90,25 @@ class MetadataClientsTest {
         assertTrue(m.detailsLoaded)
     }
 
+    /** Spec 40 VOD-FR-112, -113: the IMDb id for Discover and the seasons aired so far, never an announced one. */
+    @Test
+    fun seriesDetailsCarryTheImdbIdAndTheSeasonsAired() = runBlocking {
+        json("""{"id":1399,"name":"A fictional saga","number_of_seasons":6,"last_episode_to_air":{"season_number":5,"episode_number":10},"external_ids":{"imdb_id":"tt0944947"}}""")
+        val s = tmdb.series("1399", "en-US", TmdbCredential.of("tok")!!)!!
+        assertEquals("credits,external_ids", server.takeRequest().url.queryParameter("append_to_response"))
+        assertEquals("tt0944947", s.imdb)
+        assertEquals(5, s.airedSeasons)
+        // Nothing aired, no IMDb id: known and empty, not "not asked".
+        json("""{"id":2,"name":"Announced"}""")
+        val none = tmdb.series("2", "en-US", TmdbCredential.of("tok")!!)!!
+        assertEquals("", none.imdb)
+        assertEquals(0, none.airedSeasons)
+        json("""{"id":603,"title":"The Matrix","imdb_id":"tt0133093"}""")
+        assertEquals("tt0133093", tmdb.movie("603", "en-US", TmdbCredential.of("tok")!!)!!.imdb)
+        json("""[{"show":{"id":5,"name":"Northern Line","externals":{"imdb":"tt7654321"}}}]""")
+        assertEquals("tt7654321", tvmaze.search("Northern Line").single().imdb)
+    }
+
     @Test
     fun aZeroRatingIsNoRating() = runBlocking {
         json("""{"id":1,"name":"Show","vote_average":0,"episode_run_time":[0,42]}""")

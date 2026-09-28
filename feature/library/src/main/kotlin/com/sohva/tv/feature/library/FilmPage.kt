@@ -33,6 +33,7 @@ import androidx.tracing.trace
 import com.sohva.tv.core.data.vod.Progress
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.SohvaTvBrand
+import com.sohva.tv.ui.design.components.NavIcons
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
 import com.sohva.tv.ui.design.text.Text
@@ -123,6 +124,8 @@ private fun FilmActions(model: FilmModel, progress: Progress?, source: String?, 
     val scope = rememberCoroutineScope()
     val toTop = Modifier.onFocusChanged { if (it.isFocused) scrollToTop(scope, scroll) }
     val resume = progress?.resumeMs?.takeIf { it > 0 }
+    val discover by model.discover.collectAsStateWithLifecycle()
+    val discoverButton = remember { FocusRequester() }
     ActionRow {
         DetailsButton(
             stringResource(if (resume != null) R.string.details_resume else R.string.action_watch),
@@ -140,12 +143,21 @@ private fun FilmActions(model: FilmModel, progress: Progress?, source: String?, 
             toTop.testTag("details-mark"),
             icon = TvIcons.Check,
         )
+        if (discover) {
+            DetailsButton(stringResource(R.string.details_find_in_discover), model::findInDiscover, toTop.focusRequester(discoverButton).testTag("details-discover"), icon = NavIcons.Discover)
+        }
         if (source != null) {
             DetailsButton(stringResource(R.string.metadata_source, source), model::openSource, toTop.testTag("details-source"), icon = TvIcons.Info)
         }
         DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.focusRequester(wrong).testTag("details-wrong"), icon = TvIcons.Search)
     }
-    LaunchedEffect(Unit) { primary.requestFocusWhenAttached() }
+    LaunchedEffect(Unit) { if (!model.backFromDiscover) primary.requestFocusWhenAttached() }
+    LaunchedEffect(discover) {
+        if (discover && model.backFromDiscover) {
+            model.backFromDiscover = false
+            discoverButton.requestFocusWhenAttached()
+        }
+    }
     picker?.let { open ->
         // Focus goes back to "Wrong details?" before the dialog hides (lessons 4.1).
         MatchPickerDialog(open) {

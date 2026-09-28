@@ -65,6 +65,14 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
     /** The open match picker, if any (VOD-FR-104). */
     val picker: StateFlow<MatchPicker?> = _picker.asStateFlow()
 
+    private val _discover = MutableStateFlow(false)
+
+    /** "Find in Discover" is offered: Discover is there for this profile and the title has an id (VOD-FR-112). */
+    val discover: StateFlow<Boolean> = _discover.asStateFlow()
+
+    /** "Find in Discover" opened the lookup: back on this page, focus returns to the button (AGENTS.md §5 rule 2). */
+    var backFromDiscover: Boolean = false
+
     private val _episodes = MutableStateFlow(EpisodesState())
     val episodesState: StateFlow<EpisodesState> = _episodes.asStateFlow()
 
@@ -76,6 +84,11 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
     private var firstAnswer = true
 
     init {
+        viewModelScope.launch {
+            // The button waits for an id; a title Discover cannot be asked about shows none (VOD-FR-112).
+            if (!env.discoverAvailable()) return@launch
+            _metadata.collect { _discover.value = it?.discoverIds?.isNotEmpty() == true }
+        }
         viewModelScope.launch {
             val record = env.series(key) ?: run {
                 _gone.value = true
@@ -204,6 +217,14 @@ class SeriesModel(private val env: TitleEnvironment, val key: String) : ViewMode
 
     fun openSource() {
         _metadata.value?.sourceUrl?.let(env::openUrl)
+    }
+
+    /** "Find in Discover" (VOD-FR-112): the same lookup a Trakt card makes. */
+    fun findInDiscover() {
+        val metadata = _metadata.value ?: return
+        val record = _page.value?.record ?: return
+        backFromDiscover = true
+        env.openInDiscover(series = true, metadata.title ?: record.replacementTitle ?: record.name, metadata.discoverIds)
     }
 
     private fun knownMs(card: EpisodeCard): Long = maxOf(card.progress?.durationMs ?: 0, (card.record.durationSeconds ?: 0) * 1_000L)

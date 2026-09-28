@@ -890,4 +890,7 @@
     <string name="home_layout_trakt">Trakt-rivit</string>
     <string name="home_layout_trakt_help">Lisää etusivulle enintään 8 Trakt-listaa. Listaukset eivät vaadi tiliä, katselulistat vaativat tämän profiilin Trakt-tilin.</string>
     <string name="home_layout_trakt_full">Etusivulla on jo 8 lisättyä riviä. Poista yksi, jos haluat lisätä toisen.</string>
+    <string name="details_find_in_discover">Etsi Discoverista</string>
+    <string name="series_seasons_missing">Lähteissäsi on %1$d / %2$d tuotantokautta.</string>
+    <string name="series_seasons_missing_discover">Lähteissäsi on %1$d / %2$d tuotantokautta. Loput voivat löytyä Discoverista.</string>
 </resources>

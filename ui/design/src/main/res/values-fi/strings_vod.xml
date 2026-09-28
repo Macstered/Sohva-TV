@@ -162,4 +162,7 @@
     <string name="metadata_language_title">Metatietojen kieli</string>
     <string name="metadata_language_help">TMDB:n nimet, juonet ja kuvat tällä kielellä; vaihto päivittää ne taustalla.</string>
     <string name="metadata_language_label">Kieli</string>
+    <string name="details_find_in_discover">Etsi Discoverista</string>
+    <string name="series_seasons_missing">Lähteissäsi on %1$d / %2$d tuotantokautta.</string>
+    <string name="series_seasons_missing_discover">Lähteissäsi on %1$d / %2$d tuotantokautta. Loput voivat löytyä Discoverista.</string>
 </resources>

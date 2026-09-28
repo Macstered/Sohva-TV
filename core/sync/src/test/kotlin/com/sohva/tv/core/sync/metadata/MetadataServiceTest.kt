@@ -109,6 +109,40 @@ class MetadataServiceTest {
         assertEquals(1, calls.get())
     }
 
+    /**
+     * Spec 40 VOD-FR-112, -113: a series record cached before the aired seasons and IMDb id were kept
+     * is fetched again once when its page opens; after that the cache answers.
+     */
+    @Test
+    fun anOlderSeriesRecordGetsItsSeasonsAndImdbIdOnce() = runBlocking {
+        val search = """{"results":[{"id":1399,"name":"Fictional Saga","first_air_date":"2011-04-17","popularity":90}]}"""
+        // The details call as an older build made it: no external ids, no last episode.
+        answer = { r -> if (r.url.encodedPath.endsWith("/tv/1399")) json("""{"id":1399,"name":"Fictional Saga","first_air_date":"2011-04-17"}""") else json(search) }
+        val request = MetadataRequest(MediaType.SERIES, "Fictional Saga (2011)")
+        val old = service.seriesDetails(request)!!
+        assertEquals(0, old.airedSeasons)
+        // Make the stored record look like one written before this change.
+        db.openHelper.writableDatabase.execSQL(
+            "UPDATE metadata_cache SET payload = replace(replace(payload, ',\"imdb\":\"\"', ''), ',\"aired\":0', '') WHERE external_id = '1399'",
+        )
+        service.forgetMemory()
+        answer = { r ->
+            if (r.url.encodedPath.endsWith("/tv/1399")) {
+                json("""{"id":1399,"name":"Fictional Saga","first_air_date":"2011-04-17","last_episode_to_air":{"season_number":5},"external_ids":{"imdb_id":"tt0944947"}}""")
+            } else {
+                json(search)
+            }
+        }
+        val before = calls.get()
+        val fresh = service.seriesDetails(request)!!
+        assertEquals(5, fresh.airedSeasons)
+        assertEquals("tt0944947", fresh.imdb)
+        assertEquals(before + 1, calls.get())
+        service.forgetMemory()
+        assertEquals(5, service.seriesDetails(request)!!.airedSeasons)
+        assertEquals("the cache answers now", before + 1, calls.get())
+    }
+
     @Test
     fun aMissIsRememberedButAFailureIsNot() = runBlocking {
         answer = { json("""{"results":[]}""") }

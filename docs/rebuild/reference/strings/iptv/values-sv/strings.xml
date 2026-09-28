@@ -880,4 +880,7 @@
     <string name="home_layout_trakt">Trakt-rader</string>
     <string name="home_layout_trakt_help">Lägg till upp till 8 Trakt-listor på startsidan. Topplistor kräver inget konto, bevakningslistor kräver profilens Trakt-konto.</string>
     <string name="home_layout_trakt_full">Startsidan har redan 8 tillagda rader. Ta bort en för att lägga till en annan.</string>
+    <string name="details_find_in_discover">Sök i Discover</string>
+    <string name="series_seasons_missing">Dina källor har %1$d av %2$d säsonger.</string>
+    <string name="series_seasons_missing_discover">Dina källor har %1$d av %2$d säsonger. Resten kan finnas i Discover.</string>
 </resources>

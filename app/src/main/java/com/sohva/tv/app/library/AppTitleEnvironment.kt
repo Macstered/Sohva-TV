@@ -125,6 +125,13 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
 
     override fun openUrl(url: String) = navigation.openUrl(url)
 
+    override suspend fun discoverAvailable(): Boolean {
+        val host = graph.discover ?: return false
+        return withContext(io) { host.access.allowed(graph.data.profiles.activeId) }
+    }
+
+    override fun openInDiscover(series: Boolean, title: String, ids: List<String>) = navigation.openInDiscover(series, title, ids)
+
     private fun choice(target: PickerTarget) = ChoiceTarget(
         target.key,
         MetadataRequest(if (target.film) MediaType.MOVIE else MediaType.SERIES, target.name, target.year, contentKey = target.key),
@@ -155,7 +162,18 @@ class AppTitleEnvironment(private val graph: AppGraph, private val navigation: T
         sourceUrl = record.attributionUrl ?: record.provider.home,
         detailsLoaded = record.detailsLoaded,
         similar = record.similar.map { SimilarReference(it.externalId, it.title, it.alternativeTitles, it.year, it.poster) },
+        discoverIds = discoverIds(record),
+        airedSeasons = record.airedSeasons?.takeIf { record.type == MediaType.SERIES },
     )
+
+    /** IMDb first, as Discover's addons know it best, then TMDB's own id (VOD-FR-112); an episode asks nothing. */
+    private fun discoverIds(record: MetadataRecord): List<String> {
+        if (record.type != MediaType.MOVIE && record.type != MediaType.SERIES) return emptyList()
+        return listOfNotNull(
+            record.imdb?.takeIf { it.startsWith("tt") },
+            record.externalId.takeIf { record.provider == MetadataProvider.TMDB }?.let { "tmdb:$it" },
+        )
+    }
 }
 
 /** Where a details page goes: the player, another film page, a web page. */
@@ -166,4 +184,7 @@ interface TitleNavigation {
 
     /** Opens [url] in whatever the TV has; nothing happens when it has nothing (VOD-FR-66). */
     fun openUrl(url: String)
+
+    /** "Find in Discover" (VOD-FR-112): the title looked up in the viewer's addons. */
+    fun openInDiscover(series: Boolean, title: String, ids: List<String>) = Unit
 }

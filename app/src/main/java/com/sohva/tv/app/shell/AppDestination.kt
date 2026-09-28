@@ -340,6 +340,15 @@ private fun vodStarter(stack: BackStack<AppRoute>, graph: AppGraph) = object : T
         // A TV without a browser has nothing to open it with; the page stays as it was (VOD-FR-66).
         runCatching { graph.app.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
+
+    // The lookup Trakt's cards make (spec 51 FR-30): it replaces itself with the Discover page, or
+    // says the title is not available; Back returns to this details page (VOD-FR-112).
+    override fun openInDiscover(series: Boolean, title: String, ids: List<String>) {
+        val imdb = ids.firstOrNull { it.startsWith("tt") }
+        val tmdb = ids.firstOrNull { it.startsWith("tmdb:") }?.removePrefix("tmdb:")?.toLongOrNull()
+        if (imdb == null && tmdb == null) return
+        stack.push(AppRoute.TraktTitle(series, title, imdb, tmdb, null, null))
+    }
 }
 
 /**

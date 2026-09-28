@@ -881,4 +881,7 @@
     <string name="home_layout_trakt">Righe Trakt</string>
     <string name="home_layout_trakt_help">Aggiungi fino a 8 liste Trakt alla Home. Le classifiche non richiedono un account; le watchlist richiedono l\'account Trakt di questo profilo.</string>
     <string name="home_layout_trakt_full">La Home ha già 8 righe aggiunte. Rimuovine una per aggiungerne un\'altra.</string>
+    <string name="details_find_in_discover">Cerca in Discover</string>
+    <string name="series_seasons_missing">Le tue fonti hanno %1$d stagioni su %2$d.</string>
+    <string name="series_seasons_missing_discover">Le tue fonti hanno %1$d stagioni su %2$d. Il resto potrebbe essere in Discover.</string>
 </resources>

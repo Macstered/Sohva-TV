@@ -86,7 +86,8 @@ class MetadataService(
      */
     suspend fun filmDetails(request: MetadataRequest): MetadataRecord? {
         val found = enrich(request.copy(type = MediaType.MOVIE)) ?: return null
-        if (found.detailsLoaded || found.provider != MetadataProvider.TMDB) return found
+        // A record cached before the IMDb id was kept is fetched again once (spec 40 VOD-FR-112).
+        if ((found.detailsLoaded && found.imdb != null) || found.provider != MetadataProvider.TMDB) return found
         val config = settings.current()
         val credential = TmdbCredential.of(config.credential) ?: return found
         val s = Lookups.sanitise(request.copy(type = MediaType.MOVIE), config.language) ?: return found
@@ -127,7 +128,20 @@ class MetadataService(
     }
 
     /** A series page's lookup with details (META-FR-34 does the details inside the search). */
-    suspend fun seriesDetails(request: MetadataRequest): MetadataRecord? = enrich(request.copy(type = MediaType.SERIES))
+    suspend fun seriesDetails(request: MetadataRequest): MetadataRecord? {
+        val found = enrich(request.copy(type = MediaType.SERIES)) ?: return null
+        // A TMDB record cached before the aired seasons and IMDb id were kept: `tv/{id}` once more
+        // (spec 40 VOD-FR-112, -113), then it is cached like any other.
+        if (found.provider != MetadataProvider.TMDB || found.airedSeasons != null) return found
+        val config = settings.current()
+        val credential = TmdbCredential.of(config.credential) ?: return found
+        val s = Lookups.sanitise(request.copy(type = MediaType.SERIES), config.language) ?: return found
+        return shared("details:${s.key}") {
+            val details = runCatching { tmdb.series(found.externalId, s.language, credential) }.getOrNull() ?: return@shared found
+            store(s, MetadataProvider.TMDB, details)
+            details
+        }
+    }
 
     /** The selected episode (META-FR-35): the series chosen first, then the episode by number. */
     suspend fun episode(series: MetadataRequest, season: Int, episode: Int): MetadataRecord? =

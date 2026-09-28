@@ -76,12 +76,13 @@ class TmdbClient(private val http: MetadataHttp, private val base: HttpUrl = "ht
             similar = similar,
             attributionUrl = "https://www.themoviedb.org/movie/${base.externalId}",
             detailsLoaded = true,
+            imdb = text(o["imdb_id"]).orEmpty(),
         )
     }
 
-    /** Series details with credits (META-FR-34). */
+    /** Series details with credits, the IMDb id and the seasons aired (META-FR-34, spec 40 VOD-FR-112, -113). */
     suspend fun series(id: String, language: String, credential: TmdbCredential): MetadataRecord? {
-        val o = obj(get("tv/$id", credential, "language" to language, "append_to_response" to "credits"))
+        val o = obj(get("tv/$id", credential, "language" to language, "append_to_response" to "credits,external_ids"))
         val base = record(o, MediaType.SERIES) ?: return null
         return base.copy(
             runtimeMinutes = list(o["episode_run_time"]).firstNotNullOfOrNull { int(it)?.takeIf { m -> m > 0 } },
@@ -90,6 +91,8 @@ class TmdbClient(private val http: MetadataHttp, private val base: HttpUrl = "ht
             cast = cast(o),
             attributionUrl = "https://www.themoviedb.org/tv/${base.externalId}",
             detailsLoaded = true,
+            imdb = text(obj(o["external_ids"])["imdb_id"]).orEmpty(),
+            airedSeasons = int(obj(o["last_episode_to_air"])["season_number"])?.coerceAtLeast(0) ?: 0,
         )
     }
 
@@ -182,6 +185,7 @@ class TvmazeClient(private val http: MetadataHttp, private val base: HttpUrl = "
                 backdrop = Artwork.httpsOrNull(obj(show["image"])["original"] as? String),
                 year = year(show["premiered"]),
                 attributionUrl = Artwork.httpsOrNull(show["url"] as? String) ?: "https://www.tvmaze.com/shows/$id",
+                imdb = text(obj(show["externals"])["imdb"]).orEmpty(),
             )
         }.take(12)
     }
