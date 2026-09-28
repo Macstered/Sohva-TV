@@ -880,4 +880,7 @@
     <string name="home_layout_trakt">Linhas do Trakt</string>
     <string name="home_layout_trakt_help">Adicione até 8 listas do Trakt ao Início. As tabelas não precisam de conta; as listas para ver precisam da conta Trakt deste perfil.</string>
     <string name="home_layout_trakt_full">O Início já tem 8 linhas adicionadas. Remova uma para adicionar outra.</string>
+    <string name="details_find_in_discover">Procurar no Discover</string>
+    <string name="series_seasons_missing">As suas fontes têm %1$d de %2$d temporadas.</string>
+    <string name="series_seasons_missing_discover">As suas fontes têm %1$d de %2$d temporadas. O resto pode estar no Discover.</string>
 </resources>

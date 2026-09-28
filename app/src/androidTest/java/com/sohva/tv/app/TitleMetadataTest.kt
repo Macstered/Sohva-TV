@@ -82,7 +82,13 @@ class TitleMetadataTest {
     private fun exists(tag: String) = compose.onAllNodesWithTagExists(tag)
 
     private fun awaitFocus(tag: String, timeout: Long = 10_000) {
-        compose.waitUntil(timeout) { runCatching { compose.onNodeWithTag(tag).assertIsFocused() }.isSuccess }
+        try {
+            compose.waitUntil(timeout) { runCatching { compose.onNodeWithTag(tag).assertIsFocused() }.isSuccess }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            val focused = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+                .map { it.config.getOrNull(SemanticsProperties.TestTag) }
+            throw AssertionError("$tag not focused; focused: $focused", e)
+        }
     }
 
     private fun text(tag: String): String = runCatching {
@@ -150,6 +156,45 @@ class TitleMetadataTest {
         compose.onNodeWithTag("series-episode-${LibraryFixture.episodeKey(0, 2)}").performSemanticsAction(SemanticsActions.RequestFocus)
         compose.waitUntil(10_000) { shows("52 min") }
         assertTrue(!shows("48 min"))
+    }
+
+    /**
+     * Spec 40 VOD-FR-112, -113: the library has season 1 of a show TMDB says has aired 3. The page
+     * says so and offers "Find in Discover", which asks the addons (none here: "not available");
+     * Back returns to the page with focus on the button.
+     */
+    @Test
+    fun aSeriesMissingSeasonsOffersDiscover() {
+        compose.focusRail(RailItem.SERIES)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+        focusAndPress("library-row-group:crime")
+        focusAndPress("library-card-${LibraryFixture.seriesKey(0)}")
+        compose.waitUntil(10_000) { exists("screen-series-page") }
+        compose.waitUntil(15_000) { text("details-seasons-missing").contains("1 of 3") }
+        assertTrue(text("details-seasons-missing"), text("details-seasons-missing").contains("Find in Discover"))
+        awaitFocus("details-watch")
+        focusAndPress("details-discover")
+        compose.waitUntil(10_000) { exists("screen-trakt-title") }
+        compose.waitUntil(15_000) { text("trakt-title-status").isNotEmpty() && exists("trakt-title-back") }
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("screen-series-page") }
+        awaitFocus("details-discover")
+    }
+
+    /** Spec 40 VOD-FR-112 on the film page: TMDB's id is enough to ask Discover; Back returns focus to the button. */
+    @Test
+    fun aFilmOffersDiscoverAndBackReturnsToTheButton() {
+        compose.focusRail(RailItem.MOVIES)
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+        focusAndPress("library-row-group:drama")
+        focusAndPress("library-card-${LibraryFixture.key(0)}")
+        compose.waitUntil(10_000) { exists("screen-film") }
+        compose.waitUntil(15_000) { text("details-title") == "Harbour Lights" }
+        focusAndPress("details-discover")
+        compose.waitUntil(10_000) { exists("screen-trakt-title") }
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("screen-film") }
+        awaitFocus("details-discover")
     }
 
     /** Spec 41 Q10: a card the focus rests on is looked up in the foreground, and the wall shows the new title. */
@@ -227,7 +272,8 @@ class TitleMetadataTest {
             """{"id":1004,"title":"Drama 0004","release_date":"1990-06-01"}]}}"""
         const val SHOW_SEARCH = """{"results":[{"id":77,"name":"Northern Lights","original_name":"Northern Line 0","first_air_date":"2020-02-01","popularity":3.0}]}"""
         const val SHOW = """{"id":77,"name":"Northern Lights","original_name":"Northern Line 0","overview":"A night train and its passengers.","first_air_date":"2020-02-01",""" +
-            """"episode_run_time":[45],"vote_average":8.3,"genres":[{"id":80}],""" +
+            """"episode_run_time":[45],"vote_average":8.3,"genres":[{"id":80}],"last_episode_to_air":{"season_number":3},""" +
+            """"external_ids":{"imdb_id":"tt7000077"},""" +
             """"credits":{"cast":[{"name":"Aino Example","character":"Driver"},{"name":"Otto Sample","character":"Guard"}]}}"""
         const val EPISODE = """{"id":%1${'$'}d,"name":"Chapter %1${'$'}d","season_number":1,"episode_number":%1${'$'}d,"runtime":%2${'$'}d}"""
     }

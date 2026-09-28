@@ -88,6 +88,15 @@ interface TitleEnvironment {
 
     /** "Source: …" asks the platform to open the record's page; failure is ignored (VOD-FR-66). */
     fun openUrl(url: String)
+
+    /** Whether "Find in Discover" can be offered: Discover is in the build and this profile may use it (VOD-FR-112). */
+    suspend fun discoverAvailable(): Boolean = false
+
+    /**
+     * Looks the title up in the viewer's Discover addons by [ids] (IMDb first, then `tmdb:<n>`) and
+     * opens its Discover page, or says it is not available (VOD-FR-112).
+     */
+    fun openInDiscover(series: Boolean, title: String, ids: List<String>) = Unit
 }
 
 /**
@@ -110,6 +119,10 @@ data class TitleMetadata(
     /** True once the film details call answered: only then does Similar appear (VOD-FR-70). */
     val detailsLoaded: Boolean,
     val similar: List<SimilarReference>,
+    /** The ids Discover is asked with, IMDb first (VOD-FR-112); empty when the title has none. */
+    val discoverIds: List<String> = emptyList(),
+    /** Seasons aired so far, when TMDB knows them (VOD-FR-113). */
+    val airedSeasons: Int? = null,
 )
 
 /** The title a match picker works on: its key and the page's own lookup (META-FR-73). */

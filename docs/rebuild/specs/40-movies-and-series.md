@@ -533,6 +533,20 @@ Destinations (the shell's stack, [App shell](01-app-shell-navigation.md) §3):
   unless the viewer has already picked a season. Beta 23 requests no focus before that (open
   question 8).
 
+- VOD-FR-112 **Rebuild (owner, 28 September 2026):** "Find in Discover" (`details_find_in_discover`) on the
+  film and series pages, after the other actions, when Discover is in the build, the profile may use it
+  ([Discover](50-discover-addons.md)) and the title's metadata gives an id: IMDb first (TMDB's
+  `external_ids`, a film's `imdb_id`, TVmaze's `externals.imdb`), then `tmdb:<id>`. OK opens Trakt's title
+  lookup ([Trakt](51-trakt.md) FR-30): the viewer's addons are asked by those ids and the first answer's
+  Discover page replaces the lookup, else it says the title is not available. Back returns to this page
+  with focus on the button. A record cached before the ids were kept is fetched again once, when its page
+  opens.
+- VOD-FR-113 **Rebuild:** when TMDB's last aired episode is in a later season than the library has
+  seasons (specials not counted), the series page says under its facts "Your sources have %1$d of
+  %2$d seasons." (`series_seasons_missing`), or with "Find in Discover may have the rest."
+  (`series_seasons_missing_discover`) when VOD-FR-112's button is there. An announced season that has
+  not aired does not count. No extra request: the series details call already made asks for it.
+
 ### 4.12 Progress, watched state and history
 
 - VOD-FR-89 Positions are written by the players ([Player](30-player.md)) through one call

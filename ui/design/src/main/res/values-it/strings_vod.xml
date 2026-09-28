@@ -162,4 +162,7 @@
     <string name="metadata_language_title">Lingua dei metadati</string>
     <string name="metadata_language_help">Titoli, trame e immagini di TMDB in questa lingua; cambiandola vengono aggiornati in background.</string>
     <string name="metadata_language_label">Lingua</string>
+    <string name="details_find_in_discover">Cerca in Discover</string>
+    <string name="series_seasons_missing">Le tue fonti hanno %1$d stagioni su %2$d.</string>
+    <string name="series_seasons_missing_discover">Le tue fonti hanno %1$d stagioni su %2$d. Il resto potrebbe essere in Discover.</string>
 </resources>

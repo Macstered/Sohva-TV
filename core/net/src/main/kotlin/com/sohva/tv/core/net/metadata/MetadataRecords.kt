@@ -71,6 +71,16 @@ data class MetadataRecord(
     val popularity: Double? = null,
     val attributionUrl: String? = null,
     val detailsLoaded: Boolean = false,
+    /**
+     * The title's IMDb id, for finding it in Discover (spec 40 VOD-FR-112). Null: not asked yet
+     * (a record cached before this field); empty: the provider has none.
+     */
+    val imdb: String? = null,
+    /**
+     * A series' seasons aired so far: the season of TMDB's last aired episode, so an announced
+     * season does not count (VOD-FR-113). Null: not asked yet; 0: nothing aired.
+     */
+    val airedSeasons: Int? = null,
 ) {
     fun candidate(): Candidate = Candidate(externalId, type, title, alternativeTitles, year, season, episode, popularity)
 }

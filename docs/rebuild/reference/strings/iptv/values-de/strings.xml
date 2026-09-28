@@ -880,4 +880,7 @@
     <string name="home_layout_trakt">Trakt-Zeilen</string>
     <string name="home_layout_trakt_help">Füge der Startseite bis zu 8 Trakt-Listen hinzu. Charts brauchen kein Konto, Merklisten das Trakt-Konto dieses Profils.</string>
     <string name="home_layout_trakt_full">Die Startseite hat schon 8 hinzugefügte Zeilen. Entferne eine, um eine andere hinzuzufügen.</string>
+    <string name="details_find_in_discover">In Discover suchen</string>
+    <string name="series_seasons_missing">Deine Quellen haben %1$d von %2$d Staffeln.</string>
+    <string name="series_seasons_missing_discover">Deine Quellen haben %1$d von %2$d Staffeln. Den Rest findest du vielleicht in Discover.</string>
 </resources>

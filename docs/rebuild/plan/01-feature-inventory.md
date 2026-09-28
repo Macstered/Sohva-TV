@@ -577,6 +577,8 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 - [x] **VOD-56** Genre vocabulary of 22 genres with localized names, plus Unsorted.
 - [x] **VOD-57** Title initials placeholder for missing artwork and cast photos.
 - [x] **VOD-58** Catalogue lookups used elsewhere: search (films, series, episodes), playable stream, title by key, next episode.
+- [x] **VOD-59** "Find in Discover" on film and series pages: the title looked up in the viewer's addons by IMDb/TMDB id; Back returns to the button (VOD-FR-112).
+- [x] **VOD-60** The series page says when the library has fewer seasons than have aired (VOD-FR-113).
 
 ## Metadata enrichment
 

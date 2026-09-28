@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tracing.trace
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.SohvaTvBrand
+import com.sohva.tv.ui.design.components.NavIcons
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.errorMessage
@@ -109,6 +110,7 @@ private fun SeriesColumn(model: SeriesModel, page: SeriesPageState, metadata: Ti
             maxLines = 2,
         )
         SeriesFacts(model, page, metadata)
+        SeasonsHint(model, metadata)
         Text(
             metadata?.overview ?: record.plot?.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_details_available),
             Modifier.fillMaxWidth(0.62f).padding(top = 16.dp),
@@ -151,6 +153,26 @@ private fun SeriesFacts(model: SeriesModel, page: SeriesPageState, metadata: Tit
     FactsRow(metadata?.rating ?: page.record.rating, facts, page.quality, Modifier.padding(top = 12.dp))
 }
 
+/**
+ * "Your sources have 3 of 5 seasons." when the library has fewer seasons than TMDB says have aired,
+ * pointing at "Find in Discover" when it is offered (VOD-FR-113). Specials do not count.
+ */
+@Composable
+private fun SeasonsHint(model: SeriesModel, metadata: TitleMetadata?) {
+    val seasons by model.seasons.collectAsStateWithLifecycle()
+    val discover by model.discover.collectAsStateWithLifecycle()
+    val aired = metadata?.airedSeasons ?: return
+    val have = seasons.count { it > 0 }
+    if (have == 0 || have >= aired) return
+    Text(
+        stringResource(if (discover) R.string.series_seasons_missing_discover else R.string.series_seasons_missing, have, aired),
+        Modifier.fillMaxWidth(0.62f).padding(top = 10.dp).testTag("details-seasons-missing"),
+        style = Sohva.typography.label,
+        color = Sohva.palette.textMuted,
+        maxLines = 2,
+    )
+}
+
 /** "Cast: a, b, c" on at most two lines, 0.62 of the width: tiles pushed the episodes off screen (VOD-FR-79). */
 @Composable
 private fun CastLine(cast: List<CastCard>) {
@@ -171,6 +193,7 @@ internal class SeriesFocus {
     val refresh = FocusRequester()
     val season = FocusRequester()
     val firstEpisode = FocusRequester()
+    val discover = FocusRequester()
     val wrong = FocusRequester()
 
     /** True once the viewer pressed a key: arriving episodes then leave focus alone. */
@@ -195,6 +218,7 @@ private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: Scroll
     val scope = rememberCoroutineScope()
     val toTop = Modifier.onFocusChanged { if (it.isFocused) scrollToTop(scope, scroll) }
     val resume = card?.progress?.resumeMs?.takeIf { it > 0 }
+    val discover by model.discover.collectAsStateWithLifecycle()
     ActionRow {
         if (card != null) {
             DetailsButton(
@@ -218,6 +242,9 @@ private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: Scroll
             DetailsButton(stringResource(R.string.series_mark_season_watched), model::markSeasonWatched, toTop.testTag("details-mark-season"), icon = TvIcons.Check)
         }
         DetailsButton(stringResource(R.string.series_refresh_episodes), model::refresh, toTop.focusRequester(focus.refresh).testTag("details-refresh"), icon = TvIcons.Refresh)
+        if (discover) {
+            DetailsButton(stringResource(R.string.details_find_in_discover), model::findInDiscover, toTop.focusRequester(focus.discover).testTag("details-discover"), icon = NavIcons.Discover)
+        }
         DetailsButton(stringResource(R.string.match_picker_open), model::wrongDetails, toTop.focusRequester(focus.wrong).testTag("details-wrong"), icon = TvIcons.Search)
         if (source != null) {
             DetailsButton(stringResource(R.string.metadata_source, source), model::openSource, toTop.testTag("details-source"), icon = TvIcons.Info)
@@ -234,8 +261,16 @@ private fun SeriesActions(model: SeriesModel, focus: SeriesFocus, scroll: Scroll
     val ready = card != null
     LaunchedEffect(ready) {
         when {
+            model.backFromDiscover -> Unit
             !ready && !focus.touched -> focus.refresh.requestFocusWhenAttached()
             ready && !focus.touched && !model.seasonChosen -> focus.watch.requestFocusWhenAttached()
+        }
+    }
+    // After the effect above, which leaves focus alone while this is pending.
+    LaunchedEffect(discover) {
+        if (discover && model.backFromDiscover) {
+            model.backFromDiscover = false
+            focus.discover.requestFocusWhenAttached()
         }
     }
 }
