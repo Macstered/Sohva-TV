@@ -64,3 +64,5 @@ explicit wording for this release.
   `adb install -r`. First start 841 ms (no "Updating" line needed); the import log names the parts;
   beta 23's files were removed; on screen the source is in use, the three channels re-imported, the
   favourite and its Favourites list, the recent channel in Home's hero and the Nord theme are all there.
+- Upgrade notice (28 Sept, the owner's wording): after the import, a one-time notice over the first
+  screen says the app was rebuilt, what came across and that the guide and libraries are reloading.

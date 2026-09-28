@@ -8,6 +8,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
+import android.view.KeyEvent
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.app.discover.Beta23DiscoverImport
@@ -42,6 +47,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 
 /**
@@ -62,8 +68,10 @@ class Beta23UpgradeTest {
     private val film = LibraryFixture.key(0)
     private val channel = "s1:c1"
 
+    private val compose = createComposeRule()
+
     @get:Rule
-    val clear = ClearStateRule()
+    val rules: RuleChain = RuleChain.outerRule(ClearStateRule()).around(compose)
 
     @Before
     fun seed() {
@@ -213,5 +221,29 @@ class Beta23UpgradeTest {
         assertTrue(context.getDatabasePath(Beta23Database.FILE).exists())
         assertNotNull(graph.data.appMeta.value(Beta23SourceImport.MARKER))
         graph.data.appMeta.delete(Beta23SourceImport.MARKER)
+    }
+
+    /**
+     * Decision "Upgrade notice": the first start after beta 23 says once, over the first screen, what
+     * came across and that the guide and libraries are reloading. OK is focused and closes it; the
+     * next start (beta 23's files gone) does not show it again.
+     */
+    @Test
+    fun theFirstStartAfterBeta23ExplainsTheRebuildOnce() {
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(20_000) { compose.onAllNodesWithTagExists("upgrade-notice") }
+            compose.waitUntil(5_000) { runCatching { compose.onNodeWithTag("upgrade-notice-ok").assertIsFocused() }.isSuccess }
+            assertTrue(compose.onAllNodesWithTextExists(context.getString(com.sohva.tv.ui.design.R.string.upgrade_notice_title)))
+            InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER)
+            compose.waitUntil(5_000) { !compose.onAllNodesWithTagExists("upgrade-notice") }
+            // The saved first screen (beta 23's "GUIDE") is under it and keeps the app open.
+            compose.waitUntil(10_000) { compose.onAllNodesWithTagExists("screen-guide") }
+        }
+        ActivityScenario.launch(MainActivity::class.java).use {
+            compose.waitUntil(10_000) { compose.onAllNodesWithTagExists("screen-guide") }
+            android.os.SystemClock.sleep(1_000)
+            compose.waitForIdle()
+            assertFalse(compose.onAllNodesWithTagExists("upgrade-notice"))
+        }
     }
 }

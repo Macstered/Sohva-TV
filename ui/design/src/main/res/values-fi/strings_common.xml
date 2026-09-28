@@ -56,6 +56,10 @@
     <string name="error_backup_structure">Varmuuskopion rakenne on virheellinen</string>
     <string name="error_pin_format">PIN-koodin pitää olla 4–8 numeroa</string>
     <string name="launch_updating">Päivitetään Sohva TV:tä…</string>
+    <string name="upgrade_notice_title">Sohva TV on rakennettu uudelleen</string>
+    <string name="upgrade_notice_kept">Soittolistat, profiilit, suosikit, katselukohdat, muistutukset, lisäosat ja Trakt-yhteys siirtyivät.</string>
+    <string name="upgrade_notice_reload">Opas, elokuvat ja sarjat ladataan uudelleen palveluntarjoajilta. Tähän voi mennä muutama minuutti; mitään ei menetetty.</string>
+    <string name="upgrade_notice_ok">OK</string>
     <string name="action_back">Takaisin</string>
     <string name="action_refresh">Päivitä</string>
     <string name="action_refreshing">Päivitetään…</string>

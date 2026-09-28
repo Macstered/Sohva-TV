@@ -55,4 +55,8 @@
     <string name="error_backup_structure">Säkerhetskopians struktur är ogiltig</string>
     <string name="error_pin_format">PIN-koden måste ha 4–8 siffror</string>
     <string name="launch_updating">Uppdaterar Sohva TV…</string>
+    <string name="upgrade_notice_title">Sohva TV har byggts om</string>
+    <string name="upgrade_notice_kept">Dina spellistor, profiler, favoriter, positioner, påminnelser, tillägg och Trakt-anslutning har flyttats över.</string>
+    <string name="upgrade_notice_reload">Guiden, filmerna och serierna laddas om från dina leverantörer. Det kan ta några minuter; inget har gått förlorat.</string>
+    <string name="upgrade_notice_ok">OK</string>
 </resources>

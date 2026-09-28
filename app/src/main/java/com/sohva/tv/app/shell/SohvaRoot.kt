@@ -42,7 +42,8 @@ import kotlinx.coroutines.withContext
 
 /** What the first app frame needs, read once off the main thread (plan/03 §4.9). */
 @Immutable
-data class StartState(val snapshot: StartSnapshot, val tier: DeviceTier)
+/** [upgraded]: this start brought beta 23's data across, so the one-time notice shows (decision "Upgrade notice"). */
+data class StartState(val snapshot: StartSnapshot, val tier: DeviceTier, val upgraded: Boolean = false)
 
 /** Hooks the root calls on the activity. */
 interface RootHost {
@@ -63,13 +64,14 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
     var start by remember { mutableStateOf<StartState?>(null) }
     var updating by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
+        var upgraded = false
         // An upgrade over beta 23 imports its viewer data before the first screen is chosen (plan/04
         // §17): file checks only on every other start; "Updating…" only when it takes over a second.
         withContext(graph.dispatchers.io) {
             val upgrade = com.sohva.tv.app.migration.Beta23Upgrade(graph)
             if (upgrade.pending()) {
                 val note = launch { delay(UPDATING_AFTER_MS); updating = true }
-                upgrade.run()
+                upgraded = upgrade.run() is com.sohva.tv.app.migration.Beta23Upgrade.Result.Done
                 note.cancel()
             }
         }
@@ -90,7 +92,7 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
                 "startup",
                 "snapshot=${ms(t0, t1)} tier=${ms(t1, t2)} ground=${ms(t2, t3)} ms; tier=${tier.memory} reducedMotion=${tier.reducedMotion}",
             )
-            StartState(snapshot, tier)
+            StartState(snapshot, tier, upgraded)
         }
     }
     val corner by graph.inPictureInPicture.collectAsState()
@@ -129,6 +131,9 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
                     }
                     // Due reminders and notification taps, over whatever screen is up (spec 22 REM-FR-21).
                     ReminderLayer(graph, stack)
+                    // Once, after the import from beta 23; kept closed across an activity recreation.
+                    var notice by rememberSaveable { mutableStateOf(start.upgraded) }
+                    if (notice) com.sohva.tv.app.migration.UpgradeNotice { notice = false }
                 }
             }
         }

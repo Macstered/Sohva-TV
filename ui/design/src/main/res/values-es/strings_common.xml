@@ -56,6 +56,10 @@
     <string name="error_backup_structure">La estructura de la copia de seguridad no es válida</string>
     <string name="error_pin_format">El PIN debe tener de 4 a 8 dígitos</string>
     <string name="launch_updating">Actualizando Sohva TV…</string>
+    <string name="upgrade_notice_title">Sohva TV se ha reconstruido</string>
+    <string name="upgrade_notice_kept">Tus listas, perfiles, favoritos, posiciones, recordatorios, complementos y la conexión con Trakt se han conservado.</string>
+    <string name="upgrade_notice_reload">La guía, las películas y las series se están volviendo a cargar desde tus proveedores. Puede tardar unos minutos; no se ha perdido nada.</string>
+    <string name="upgrade_notice_ok">Aceptar</string>
     <string name="action_back">Atrás</string>
     <string name="action_refresh">Actualizar</string>
     <string name="action_refreshing">Actualizando…</string>
