@@ -1,7 +1,6 @@
 package com.sohva.tv.ui.design.components
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sohva.tv.ui.design.theme.Sohva
 
 /**
  * Loads artwork decoded at the size it is drawn (AGENTS.md §4 rule 5). The app provides one
@@ -54,12 +55,18 @@ fun LogoTile(name: String, url: String?, size: Dp, modifier: Modifier = Modifier
     LaunchedEffect(url, px) {
         if (!url.isNullOrBlank()) image = loader.load(url, px, px, opaque = false)
     }
+    val tile = Sohva.palette.surfaceRaised
     Box(modifier) {
         InitialsTile(name, Modifier.size(size), fontSize = fontSize)
+        // The logo or the initials, never both, as in the guide: a logo narrower or shorter than its
+        // tile left the initials showing round it. Covered in the draw phase, so a loading logo
+        // recomposes nothing (plan/07 §4.7).
         Box(
-            Modifier.size(size).padding(padding).drawBehind {
+            Modifier.size(size).drawBehind {
                 val bitmap = image ?: return@drawBehind
-                drawFitted(bitmap, this.size.width, this.size.height)
+                drawRoundRect(tile, cornerRadius = CornerRadius(TILE_CORNER.toPx()))
+                val inset = padding.toPx()
+                drawFitted(bitmap, this.size.width - 2 * inset, this.size.height - 2 * inset, Offset(inset, inset))
             },
         )
     }
@@ -72,3 +79,6 @@ fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFitted(bitmap: ImageBit
     val dh = (bitmap.height * scale).toInt()
     drawImage(bitmap, dstOffset = IntOffset((at.x + (w - dw) / 2).toInt(), (at.y + (h - dh) / 2).toInt()), dstSize = IntSize(dw, dh))
 }
+
+/** InitialsTile's corner, so a loaded logo's tile matches the placeholder it covers. */
+private val TILE_CORNER = 8.dp
