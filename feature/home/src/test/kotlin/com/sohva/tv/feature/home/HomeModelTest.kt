@@ -113,6 +113,17 @@ class HomeModelTest {
         assertEquals(1, env.looked.size)
     }
 
+    /** A Discover card is landscape: the addon's background, else its poster (decision "Discover card art"). */
+    @Test
+    fun aDiscoverCardShowsTheAddonsBackground() {
+        fun paused(background: String?) = item("d").copy(
+            posterUrl = "https://provider.example/poster.jpg",
+            discover = com.sohva.tv.core.data.vod.DiscoverResume("i", "movie", "tt0000001", "tt0000001", null, background),
+        )
+        assertEquals("https://provider.example/wide.jpg", HomeModel.card(paused("https://provider.example/wide.jpg")).image)
+        assertEquals("https://provider.example/poster.jpg", HomeModel.card(paused(null)).image)
+    }
+
     private companion object {
         const val NOW = 1_790_000_000_000L
     }

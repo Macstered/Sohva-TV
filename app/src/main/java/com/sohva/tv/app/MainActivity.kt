@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity(), RootHost {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val graph = (application as SohvaApplication).graph
+        graph.markLaunch()
         val metrics = resources.displayMetrics
         val screen = IntSize(metrics.widthPixels, metrics.heightPixels)
         OpenRequest.of(intent)?.let { graph.openRequest.value = it }

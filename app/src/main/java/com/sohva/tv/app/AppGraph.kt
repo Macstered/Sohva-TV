@@ -38,8 +38,26 @@ import java.util.concurrent.atomic.AtomicBoolean
 class AppGraph(val app: Application, val flags: FeatureFlags) {
     val clock: Clock = SystemClock
 
-    /** When the graph (so, near enough, the process) started: the start-up log lines count from it. */
-    private val startedAt: Long = android.os.SystemClock.elapsedRealtime()
+    /**
+     * What the start-up log lines count from (spec 02 HOME-FR-26): the process start for a cold launch.
+     * A process an update, a reminder or a refresh started earlier without a screen counts from the
+     * first activity instead; counting from the process once logged 54 s for a 7 s start on the
+     * owner's Shield (decision "Start-up timing base").
+     */
+    @Volatile
+    var launchedAt: Long = android.os.SystemClock.elapsedRealtime()
+        private set
+
+    @Volatile
+    private var launchMarked = false
+
+    /** Called by the activity when it is created; only the first one counts. */
+    fun markLaunch() {
+        if (launchMarked) return
+        launchMarked = true
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - launchedAt > WARM_PROCESS_MS) launchedAt = now
+    }
     val dispatchers: AppDispatchers by lazy { AndroidDispatchers() }
 
     val diagnostics: DiagnosticsLog by lazy {
@@ -115,7 +133,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             ),
             playing = playbackActive,
             onFirstSettled = {
-                diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
+                diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - launchedAt} ms")
                 // Today's games for Home, Search and reminders, after Home's first read (spec 60 SPORT-FR-29).
                 if (flags.sport) sport.feed.start()
                 // Trakt's sync loop follows the active profile from here on (spec 51 FR-21).
@@ -206,6 +224,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     @Volatile
     var liveReadsOverride: com.sohva.tv.core.data.live.LiveReads? = null
 
+    /** Tests only: awaited before a wall reads a page next to its window, so a page can be made slow (AGENTS §8). */
+    @Volatile
+    var wallPageGate: (suspend () -> Unit)? = null
+
     val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
 
     /** Picture in picture (spec 30 PLAY-FR-110): a player is the top destination. */
@@ -295,6 +317,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     private companion object {
         const val LOG_TAG = "SohvaTV"
+
+        /** A process older than this when the first activity starts was started without a screen. */
+        private const val WARM_PROCESS_MS = 5_000L
         const val RELEASE_PACKAGE = "com.streammate.tv"
     }
 }

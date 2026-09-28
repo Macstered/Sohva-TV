@@ -42,10 +42,10 @@ class RefreshSchedulerTest {
         override fun nowMillis(): Long = h.clock.now
     }
 
-    private fun worker(host: Host, kinds: Set<RefreshKind>, now: Boolean): RefreshWorker =
+    private fun worker(host: Host, kinds: Set<RefreshKind>, now: Boolean, freshMs: Long = 0): RefreshWorker =
         TestListenableWorkerBuilder<RefreshWorker>(context)
             .setWorkerFactory(RefreshWorkerFactory(host))
-            .setInputData(RefreshWorker.input(kinds, null, now))
+            .setInputData(RefreshWorker.input(kinds, null, now, freshMs))
             .build()
 
     @Test
@@ -98,6 +98,27 @@ class RefreshSchedulerTest {
         val host = Host(foreground = false, neverImported = 1)
         assertEquals(ListenableWorker.Result.retry(), worker(host, setOf(RefreshKind.PLAYLIST), now = false).doWork())
         assertEquals(ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = true).doWork())
+    }
+
+    /**
+     * Seen on the owner's Shield after the upgrade: the first scheduled run waited while the viewer was
+     * in the app, then redid every source the first sync had just imported. A scheduled run now skips
+     * what succeeded within half its period; the next cycle imports again.
+     */
+    @Test
+    fun aScheduledRunSkipsWhatTheFirstSyncJustImported() = runBlocking {
+        h.addM3u()
+        h.serve("/list.m3u", "#EXTM3U\n#EXTINF:-1,A\nhttp://s.example/a\n")
+        val host = Host(foreground = false, neverImported = 0)
+        val half = TimeUnit.HOURS.toMillis(2)
+        assertEquals(ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = true).doWork())
+        assertEquals(1, h.requests.size)
+        h.clock.now += TimeUnit.MINUTES.toMillis(12)
+        assertEquals(ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = false, freshMs = half).doWork())
+        assertEquals("imported 12 minutes ago: skipped", 1, h.requests.size)
+        h.clock.now += TimeUnit.HOURS.toMillis(4)
+        assertEquals(ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = false, freshMs = half).doWork())
+        assertEquals("the next cycle imports", 2, h.requests.size)
     }
 
     @Test

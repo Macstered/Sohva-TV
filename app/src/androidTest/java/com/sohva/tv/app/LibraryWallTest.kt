@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.feature.home.RailItem
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -163,6 +164,39 @@ class LibraryWallTest {
             at = now
         }
         assertTrue("stopped at $at after $presses presses", at == 180)
+    }
+
+    /**
+     * Seen on the owner's Shield: at the last loaded row, a Down pressed while the next page was still
+     * being read did nothing, and a second press was needed. The press now waits and completes once
+     * the page lands: one row, no second press, and a card keeps focus throughout (§9.3).
+     */
+    @Test
+    fun aDownIntoTheNextPageMovesOnceThePageLands() {
+        val open = kotlinx.coroutines.flow.MutableStateFlow(true)
+        graph.wallPageGate = { open.first { it } }
+        try {
+            openMovies()
+            openDrama()
+            intoWall()
+            open.value = false
+            // Row 19 (cards 114–119) is the first page's last row.
+            repeat(19) { i ->
+                press(KeyEvent.KEYCODE_DPAD_DOWN)
+                awaitFocus(card((i + 1) * 6))
+            }
+            press(KeyEvent.KEYCODE_DPAD_DOWN)
+            Thread.sleep(500)
+            compose.waitForIdle()
+            assertTrue("focus kept while the page is read: ${focusedTags()}", focusedCard() == 114)
+            open.value = true
+            awaitFocus(card(120))
+            Thread.sleep(500)
+            compose.waitForIdle()
+            assertTrue("one row only: ${focusedTags()}", focusedCard() == 120)
+        } finally {
+            graph.wallPageGate = null
+        }
     }
 
     /** VOD-24 (VOD-FR-56): leaving Movies and coming back finds the same group and card, past the first page. */
