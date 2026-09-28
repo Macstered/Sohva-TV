@@ -30,7 +30,7 @@ class HomeLayoutTest {
     @Test
     fun unknownAndRepeatedIdsAreDroppedAndAMissingBuiltInRowIsAddedAtTheEnd() {
         // A later version's row kind, a repeat and a row this text lacks (Recommended).
-        val layout = HomeLayout.decode(" todays-sport , trakt:list:42 ,-todays-sport,continue-watching,watch-next,recent-channels,,")
+        val layout = HomeLayout.decode(" todays-sport , trakt:a-later-kind ,-todays-sport,continue-watching,watch-next,recent-channels,,")
         assertEquals(listOf("todays-sport", "continue-watching", "watch-next", "recent-channels", "recommended"), layout.rows.map { it.id })
         assertTrue("an added row is shown", layout.isShown("recommended"))
         assertTrue("the first of a repeat wins", layout.isShown("todays-sport"))
@@ -54,7 +54,7 @@ class HomeLayoutTest {
         assertEquals(HomeLayout.TRAKT_TRENDING_MOVIES, layout.rows.last().id)
         assertTrue(layout.isShown(HomeLayout.TRAKT_TRENDING_MOVIES))
         assertEquals("a repeat adds nothing", layout, layout.withAdded(HomeLayout.TRAKT_TRENDING_MOVIES))
-        assertEquals("an unknown id adds nothing", layout, layout.withAdded("trakt:list:42"))
+        assertEquals("an unknown id adds nothing", layout, layout.withAdded("trakt:a-later-kind"))
         assertEquals("built-in rows are never removed", layout, layout.withRemoved(HomeLayout.CONTINUE))
         assertNull(layout.withRemoved(HomeLayout.TRAKT_TRENDING_MOVIES).encode())
         HomeLayout.ADDABLE.forEach { layout = layout.withAdded(it) }
@@ -74,6 +74,20 @@ class HomeLayoutTest {
         assertEquals(layout, layout.withLibraryOnly(HomeLayout.CONTINUE, true))
         assertFalse(HomeLayout.decode("continue-watching!").isLibraryOnly(HomeLayout.CONTINUE))
         assertFalse(layout.withLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES, false).isLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES))
+    }
+
+    /** HOME-FR-99: a Trakt list by number is an added row like the others and counts towards the eight. */
+    @Test
+    fun traktListsAreAddedRowsByNumber() {
+        val layout = HomeLayout.decode("trakt:list:26421!,continue-watching,trakt:list:abc,trakt:list:0,trakt:list:1234567890123")
+        assertEquals(listOf("trakt:list:26421"), layout.added)
+        assertTrue(layout.isLibraryOnly("trakt:list:26421"))
+        assertEquals(layout, HomeLayout.decode(layout.encode()))
+        assertEquals(26421L, HomeLayout.traktListId("trakt:list:26421"))
+        assertEquals(null, HomeLayout.traktListId("trakt:trending-movies"))
+        var many = HomeLayout.DEFAULT
+        (1L..9L).forEach { many = many.withAdded(HomeLayout.traktList(it)) }
+        assertEquals(HomeLayout.MAX_ADDED, many.added.size)
     }
 
     @Test

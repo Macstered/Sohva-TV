@@ -14,6 +14,7 @@ import com.sohva.tv.core.net.phone.PhoneReceiver
 import com.sohva.tv.core.net.phone.PhoneServer
 import com.sohva.tv.core.net.phone.PhoneState
 import com.sohva.tv.core.net.phone.PhoneSubmission
+import com.sohva.tv.core.net.phone.TraktListPageTexts
 import com.sohva.tv.ui.design.R
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,6 +27,12 @@ import kotlinx.coroutines.runBlocking
  */
 class PhoneSetup(private val graph: AppGraph) {
     val server: PhoneServer by lazy { PhoneServer(ResourceAnswers(graph.app), Receiver()) }
+
+    /**
+     * Settings › Home's handler while the page is in Trakt list mode (spec 02 HOME-FR-100): adds the
+     * list and answers its name, or null when it could not.
+     */
+    @Volatile var onTraktList: (suspend (String) -> String?)? = null
 
     /** Phone-sent channel logos (spec 21 CHAN-FR-42). */
     val logos: ChannelLogoStore by lazy { ChannelLogoStore(graph.app) }
@@ -63,6 +70,11 @@ class PhoneSetup(private val graph: AppGraph) {
                 }
                 // Addon lists go to Discover's own one-use server, never this one.
                 is PhoneSubmission.AddonList -> false
+                is PhoneSubmission.TraktList -> {
+                    val name = onTraktList?.invoke(submission.text)
+                    submission.added.name = name
+                    name != null
+                }
             }
         }
     }
@@ -106,6 +118,24 @@ private class ResourceAnswers(private val app: Context) : PhoneAnswers {
     override fun forbidden(): String = context().getString(R.string.phone_setup_page_forbidden)
 
     override fun badRequest(): String = context().getString(R.string.phone_setup_page_bad_request)
+
+    override fun traktListPage(): TraktListPageTexts {
+        val c = context()
+        return TraktListPageTexts(
+            languageTag = (ConfigurationCompat.getLocales(c.resources.configuration)[0] ?: java.util.Locale.ENGLISH).toLanguageTag(),
+            title = c.getString(R.string.phone_list_page_title),
+            help = c.getString(R.string.phone_list_page_help),
+            label = c.getString(R.string.phone_list_page_label),
+            send = c.getString(R.string.phone_setup_page_send),
+            privacy = c.getString(R.string.phone_setup_page_privacy),
+        )
+    }
+
+    override fun traktListAdded(name: String): String = context().getString(R.string.phone_list_added, name)
+
+    override fun traktListNotFound(): String = context().getString(R.string.phone_list_not_found)
+
+    override fun traktListInvalid(): String = context().getString(R.string.phone_list_invalid)
 
     override fun logoPage(channelName: String): LogoPageTexts {
         val c = context()

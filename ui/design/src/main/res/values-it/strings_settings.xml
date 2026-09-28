@@ -232,4 +232,16 @@
     <string name="home_layout_trakt_full">La Home ha già 8 righe aggiunte. Rimuovine una per aggiungerne un\'altra.</string>
     <string name="home_trakt_in_library">In libreria</string>
     <string name="home_layout_library_only">Solo titoli nella mia libreria</string>
+    <string name="trakt_row_list">Lista Trakt</string>
+    <string name="home_layout_lists">Liste Trakt</string>
+    <string name="home_layout_add_list">Aggiungi una lista Trakt</string>
+    <string name="home_layout_list_phone">Dal telefono</string>
+    <string name="home_layout_list_help">Scrivi l\'indirizzo trakt.tv di una lista, il suo numero o parole del nome, poi scegli Cerca. Si possono aggiungere solo liste pubbliche.</string>
+    <string name="home_layout_list_query">Indirizzo, numero o nome</string>
+    <string name="home_layout_list_none">Nessuna lista pubblica corrisponde. Controlla l\'indirizzo o prova altre parole.</string>
+    <string name="home_layout_list_private">Quella lista è privata: solo il proprietario può vederla. Chiedigli di renderla pubblica su trakt.tv.</string>
+    <string name="home_layout_list_failed">Impossibile raggiungere Trakt. Controlla la connessione del televisore e riprova.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d titoli · %3$d mi piace</string>
+    <string name="home_layout_list_phone_help">Scansiona il codice, incolla sul telefono l\'indirizzo trakt.tv della lista e invialo. Puoi inviare più liste.</string>
+    <string name="home_layout_list_added">Aggiunta alla Home: %1$s</string>
 </resources>

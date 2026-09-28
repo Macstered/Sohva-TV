@@ -15,7 +15,47 @@ interface HomeLayoutServices {
     val current: Flow<HomeLayoutView>
 
     suspend fun save(layout: HomeLayout)
+
+    /** "Add a Trakt list" (HOME-FR-99): an address, a number or words from a name. */
+    suspend fun findLists(text: String): ListFinding = ListFinding.Failed
+
+    /** Adds [list] at the end of the layout, shown, with its name kept for its row. */
+    suspend fun addList(list: ListChoice) = Unit
+
+    /** The phone page in Trakt list mode (HOME-FR-100). */
+    val listPhone: Flow<ListPhone> get() = kotlinx.coroutines.flow.flowOf(ListPhone.Closed)
+
+    fun openListPhone() = Unit
+
+    fun closeListPhone() = Unit
 }
+
+/** A public Trakt list the search found (HOME-FR-99). */
+data class ListChoice(val id: Long, val name: String, val owner: String?, val items: Int, val likes: Int)
+
+/** What "Add a Trakt list" found (HOME-FR-99). */
+sealed interface ListFinding {
+    data class Found(val lists: List<ListChoice>) : ListFinding
+
+    data object Nothing : ListFinding
+
+    /** An address of a list only its owner can see. */
+    data object Private : ListFinding
+
+    data object Failed : ListFinding
+}
+
+/** The phone page for Trakt lists (HOME-FR-100); [Open.added] names the lists it has added so far. */
+sealed interface ListPhone {
+    data object Closed : ListPhone
+
+    data object NoNetwork : ListPhone
+
+    data class Open(val url: String, val qr: com.sohva.tv.core.model.phone.QrMatrix?, val added: List<String> = emptyList()) : ListPhone
+}
+
+/** The "Add a Trakt list" dialog (HOME-FR-99): the typed text, and the search's state and answer. */
+data class ListDialogUi(val query: String = "", val searching: Boolean = false, val finding: ListFinding? = null)
 
 /**
  * [unavailable]: rows this profile never has, left out of the list: Trakt's for a restricted
@@ -26,6 +66,10 @@ data class HomeLayoutView(
     val layout: HomeLayout,
     val unavailable: Set<String> = emptySet(),
     val addable: List<String> = emptyList(),
+    /** Public lists' own names by row id (HOME-FR-99). */
+    val names: Map<String, String> = emptyMap(),
+    /** Public lists can be added: Trakt is in the build and this profile may use it (HOME-FR-99). */
+    val lists: Boolean = false,
 )
 
 /** Reorder, Show / hide, or Trakt rows: add and remove (HOME-FR-94). */
@@ -38,6 +82,8 @@ data class HomeLayoutUi(
     val order: List<String> = emptyList(),
     val moving: String? = null,
     val original: List<String> = emptyList(),
+    val listDialog: ListDialogUi? = null,
+    val phoneOpen: Boolean = false,
 )
 
 /**
@@ -105,6 +151,44 @@ class HomeLayoutSettings internal constructor(private val services: HomeLayoutSe
         val layout = _state.value.view?.layout ?: return
         save(layout.withLibraryOnly(id, !layout.isLibraryOnly(id)))
     }
+
+    // ---- Trakt lists (HOME-FR-99, -100) ----
+
+    fun openListDialog() = _state.update { if (it.moving != null) it else it.copy(listDialog = ListDialogUi()) }
+
+    fun closeListDialog() = _state.update { it.copy(listDialog = null) }
+
+    fun setListQuery(text: String) = _state.update { s -> s.listDialog?.let { s.copy(listDialog = it.copy(query = text.take(300))) } ?: s }
+
+    fun searchLists() {
+        val dialog = _state.value.listDialog ?: return
+        if (dialog.query.isBlank() || dialog.searching) return
+        _state.update { it.copy(listDialog = dialog.copy(searching = true, finding = null)) }
+        scope.launch {
+            val found = services.findLists(dialog.query)
+            _state.update { s -> s.listDialog?.let { s.copy(listDialog = it.copy(searching = false, finding = found)) } ?: s }
+        }
+    }
+
+    /** OK on a result: the list joins Home; the dialog closes. At 8 added rows nothing is added. */
+    fun chooseList(list: ListChoice) {
+        val layout = _state.value.view?.layout ?: return
+        if (layout.added.size >= HomeLayout.MAX_ADDED) return
+        _state.update { it.copy(listDialog = null) }
+        scope.launch { services.addList(list) }
+    }
+
+    fun openPhone() {
+        _state.update { it.copy(phoneOpen = true) }
+        services.openListPhone()
+    }
+
+    fun closePhone() {
+        services.closeListPhone()
+        _state.update { it.copy(phoneOpen = false) }
+    }
+
+    val listPhone: Flow<ListPhone> get() = services.listPhone
 
     fun reset() {
         if (_state.value.moving != null) return

@@ -47,6 +47,8 @@ data class TraktCard(
     val source: String? = null,
     /** The viewer's sources have this title (HOME-FR-98): the card shows "In library". */
     val owned: Boolean = false,
+    /** A public list's own name for the hero's kicker (HOME-FR-99). */
+    val sourceName: String? = null,
 ) {
     /** Watch next is landscape (fanart, else poster); Recommended a poster (poster, else fanart). */
     val image: String? get() = if (next) fanart ?: poster else poster ?: fanart
@@ -62,6 +64,8 @@ data class TraktLists(
     val recommended: List<TraktCard>,
     val firstSync: Boolean,
     val rows: Map<String, List<TraktCard>> = emptyMap(),
+    /** Public lists' own names by row id (HOME-FR-99). */
+    val names: Map<String, String> = emptyMap(),
 ) {
     companion object {
         val EMPTY: TraktLists = TraktLists(emptyList(), emptyList(), false)

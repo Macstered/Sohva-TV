@@ -149,7 +149,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-44** Settings › Home › Trakt rows adds and removes lists with the remote; added rows reorder and hide like the others (HOME-FR-96).
 - [x] **HOME-47** Back to Home returns focus to the card last used, else its row's first card (HOME-FR-97).
 - [x] **HOME-45** Trakt cards mark titles already in the library, and each added row can show only those (HOME-FR-98).
-- [ ] **HOME-46** Any public Trakt list by address, number or name, on the TV and from the phone page (phase C).
+- [x] **HOME-46** Any public Trakt list by address, number or name, on the TV and from the phone page (HOME-FR-99, -100).
 
 ## Search
 

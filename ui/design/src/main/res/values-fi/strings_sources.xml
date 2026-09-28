@@ -143,4 +143,10 @@
     <string name="phone_setup_page_logo_sending">Lähetetään televisioon…</string>
     <string name="phone_setup_page_logo_saved">Logo tallennettu televisioon kanavalle %1$s. Voit sulkea tämän sivun.</string>
     <string name="phone_setup_page_logo_invalid">Tiedosto ei ole kuva, jonka puhelin osaa lukea.</string>
+    <string name="phone_list_page_title">Lähetä Trakt-lista televisioon</string>
+    <string name="phone_list_page_help">Liitä listan trakt.tv-osoite tai sen numero.</string>
+    <string name="phone_list_page_label">Listan osoite</string>
+    <string name="phone_list_added">Lisätty television etusivulle: %1$s.</string>
+    <string name="phone_list_not_found">Listaa ei voitu lisätä. Se voi olla yksityinen, tai etusivulla on jo 8 lisättyä riviä.</string>
+    <string name="phone_list_invalid">Tämä ei ole trakt.tv-listan osoite tai numero.</string>
 </resources>

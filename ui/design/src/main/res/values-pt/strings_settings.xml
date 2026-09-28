@@ -232,4 +232,16 @@
     <string name="home_layout_trakt_full">O Início já tem 8 linhas adicionadas. Remova uma para adicionar outra.</string>
     <string name="home_trakt_in_library">Na biblioteca</string>
     <string name="home_layout_library_only">Só títulos da minha biblioteca</string>
+    <string name="trakt_row_list">Lista do Trakt</string>
+    <string name="home_layout_lists">Listas do Trakt</string>
+    <string name="home_layout_add_list">Adicionar uma lista do Trakt</string>
+    <string name="home_layout_list_phone">A partir do telemóvel</string>
+    <string name="home_layout_list_help">Escreva o endereço trakt.tv de uma lista, o número ou palavras do nome e escolha Procurar. Só se podem adicionar listas públicas.</string>
+    <string name="home_layout_list_query">Endereço, número ou nome</string>
+    <string name="home_layout_list_none">Nenhuma lista pública corresponde. Verifique o endereço ou experimente outras palavras.</string>
+    <string name="home_layout_list_private">Essa lista é privada: só o dono a pode ver. Peça-lhe que a torne pública no trakt.tv.</string>
+    <string name="home_layout_list_failed">Não foi possível contactar o Trakt. Verifique a ligação da TV e tente novamente.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d títulos · %3$d gostos</string>
+    <string name="home_layout_list_phone_help">Leia o código, cole no telemóvel o endereço trakt.tv da lista e envie-o. Pode enviar várias listas.</string>
+    <string name="home_layout_list_added">Adicionada ao Início: %1$s</string>
 </resources>

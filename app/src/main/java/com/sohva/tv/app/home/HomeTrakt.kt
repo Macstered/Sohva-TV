@@ -52,8 +52,10 @@ internal object HomeTrakt {
                         rows = sources.associate { s ->
                             // A watchlist shows only while the profile has its account (it is the account's).
                             val cards = if (s.account && accounts[profile] == null) null else lists[s.key(profile)]?.cards
-                            s.id to cards.orEmpty().map { card(it, next = false, source = s.id) }
+                            val name = lists[s.key(profile)]?.title?.takeIf { s.listId != null }
+                            s.id to cards.orEmpty().map { card(it, next = false, source = s.id, sourceName = name) }
                         },
+                        names = sources.mapNotNull { s -> s.listId?.let { lists[s.key(profile)]?.title }?.let { s.id to it } }.toMap(),
                     )
                 }.map(owned::mark),
             )
@@ -84,8 +86,8 @@ internal object HomeTrakt {
     }
 
     /** An added row's card key starts with its row, so a title in two rows keeps two focus places (HOME-FR-94). */
-    private fun card(c: com.sohva.tv.feature.trakt.shelf.TraktCard, next: Boolean, source: String? = null) = TraktCard(
-        key = source?.let { "$it/${c.key}" } ?: c.key, next = next, source = source, show = c.kind == TraktKind.SHOW, title = c.title, year = c.year,
+    private fun card(c: com.sohva.tv.feature.trakt.shelf.TraktCard, next: Boolean, source: String? = null, sourceName: String? = null) = TraktCard(
+        key = source?.let { "$it/${c.key}" } ?: c.key, next = next, source = source, sourceName = sourceName, show = c.kind == TraktKind.SHOW, title = c.title, year = c.year,
         season = c.season, number = c.number, episodeTitle = c.episodeTitle, poster = c.poster, fanart = c.fanart,
         overview = c.overview, tmdb = c.ids.tmdb, imdb = c.ids.imdb,
     )

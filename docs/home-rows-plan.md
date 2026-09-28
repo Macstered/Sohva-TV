@@ -130,3 +130,7 @@ seven languages; every capability an inventory ID; decisions recorded as they ar
   watchlists gone with the account, restricted profiles, the loop without an account, Home rows, Settings holder) and
   device tests (`TraktRowsDeviceTest`: a chart fetched and drawn first with focus; adding one with the remote).
   Still to check on a real box: that the build's Trakt client id is accepted for the public charts.
+- Phase B, second round (build 110): "In library" marks on Trakt cards and a library-only filter per added row (HOME-45).
+- Phase C on branch `m12c-trakt-lists`: any public Trakt list by address, number or name in Settings › Home, and from the
+  phone page (HOME-FR-99, -100; HOME-46). Checked on the emulator against the real Trakt: a name search found public lists,
+  three were added and Home drew them under their own names.

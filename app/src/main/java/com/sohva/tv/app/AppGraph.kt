@@ -241,6 +241,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     @Volatile
     var homeRecentGate: (suspend () -> Unit)? = null
 
+    /** Tests only: awaited before a Trakt list is added, as on a slow box (spec 02 HOME-FR-99). */
+    @Volatile
+    var traktListGate: (suspend () -> Unit)? = null
+
     /** Tests only: awaited before a wall reads a page next to its window, so a page can be made slow (AGENTS §8). */
     @Volatile
     var wallPageGate: (suspend () -> Unit)? = null

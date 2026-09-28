@@ -885,4 +885,22 @@
     <string name="series_seasons_missing_discover">As suas fontes têm %1$d de %2$d temporadas. O resto pode estar no Discover.</string>
     <string name="home_trakt_in_library">Na biblioteca</string>
     <string name="home_layout_library_only">Só títulos da minha biblioteca</string>
+    <string name="trakt_row_list">Lista do Trakt</string>
+    <string name="home_layout_lists">Listas do Trakt</string>
+    <string name="home_layout_add_list">Adicionar uma lista do Trakt</string>
+    <string name="home_layout_list_phone">A partir do telemóvel</string>
+    <string name="home_layout_list_help">Escreva o endereço trakt.tv de uma lista, o número ou palavras do nome e escolha Procurar. Só se podem adicionar listas públicas.</string>
+    <string name="home_layout_list_query">Endereço, número ou nome</string>
+    <string name="home_layout_list_none">Nenhuma lista pública corresponde. Verifique o endereço ou experimente outras palavras.</string>
+    <string name="home_layout_list_private">Essa lista é privada: só o dono a pode ver. Peça-lhe que a torne pública no trakt.tv.</string>
+    <string name="home_layout_list_failed">Não foi possível contactar o Trakt. Verifique a ligação da TV e tente novamente.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d títulos · %3$d gostos</string>
+    <string name="home_layout_list_phone_help">Leia o código, cole no telemóvel o endereço trakt.tv da lista e envie-o. Pode enviar várias listas.</string>
+    <string name="home_layout_list_added">Adicionada ao Início: %1$s</string>
+    <string name="phone_list_page_title">Enviar uma lista do Trakt para a TV</string>
+    <string name="phone_list_page_help">Cole o endereço trakt.tv de uma lista ou o número.</string>
+    <string name="phone_list_page_label">Endereço da lista</string>
+    <string name="phone_list_added">Adicionada ao Início da TV: %1$s.</string>
+    <string name="phone_list_not_found">Não foi possível adicionar a lista. Pode ser privada, ou o Início já tem 8 linhas adicionadas.</string>
+    <string name="phone_list_invalid">Isso não é o endereço nem o número de uma lista do trakt.tv.</string>
 </resources>
