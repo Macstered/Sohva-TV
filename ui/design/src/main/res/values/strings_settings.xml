@@ -226,4 +226,16 @@
     <string name="home_layout_reset">Reset to default</string>
     <string name="home_layout_order_help">Select a row to pick it up, move it with Up and Down, then press OK to place it.</string>
     <string name="home_layout_visibility_help">A hidden row is not loaded at all, which also keeps Home quick on slower TV boxes.</string>
+    <string name="trakt_row_watchlist_movies">Watchlist: movies</string>
+    <string name="trakt_row_watchlist_shows">Watchlist: series</string>
+    <string name="trakt_row_trending_movies">Trending movies</string>
+    <string name="trakt_row_trending_shows">Trending series</string>
+    <string name="trakt_row_popular_movies">Popular movies</string>
+    <string name="trakt_row_popular_shows">Popular series</string>
+    <string name="trakt_row_anticipated_movies">Most anticipated movies</string>
+    <string name="trakt_row_anticipated_shows">Most anticipated series</string>
+    <string name="trakt_row_box_office">Box office</string>
+    <string name="home_layout_trakt">Trakt rows</string>
+    <string name="home_layout_trakt_help">Add up to 8 Trakt lists to Home. Charts need no account; watchlists need this profile\'s Trakt account.</string>
+    <string name="home_layout_trakt_full">Home already has 8 added rows. Remove one to add another.</string>
 </resources>

@@ -218,4 +218,16 @@
     <string name="home_layout_reset">Ripristina predefiniti</string>
     <string name="home_layout_order_help">Seleziona una riga per prenderla, spostala con Su e Giù, poi premi OK per posarla.</string>
     <string name="home_layout_visibility_help">Una riga nascosta non viene caricata, così la Home resta veloce anche sui box TV più lenti.</string>
+    <string name="trakt_row_watchlist_movies">Watchlist: film</string>
+    <string name="trakt_row_watchlist_shows">Watchlist: serie</string>
+    <string name="trakt_row_trending_movies">Film di tendenza</string>
+    <string name="trakt_row_trending_shows">Serie di tendenza</string>
+    <string name="trakt_row_popular_movies">Film popolari</string>
+    <string name="trakt_row_popular_shows">Serie popolari</string>
+    <string name="trakt_row_anticipated_movies">Film più attesi</string>
+    <string name="trakt_row_anticipated_shows">Serie più attese</string>
+    <string name="trakt_row_box_office">Box office</string>
+    <string name="home_layout_trakt">Righe Trakt</string>
+    <string name="home_layout_trakt_help">Aggiungi fino a 8 liste Trakt alla Home. Le classifiche non richiedono un account; le watchlist richiedono l\'account Trakt di questo profilo.</string>
+    <string name="home_layout_trakt_full">La Home ha già 8 righe aggiunte. Rimuovine una per aggiungerne un\'altra.</string>
 </resources>

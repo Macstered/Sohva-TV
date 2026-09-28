@@ -1,7 +1,6 @@
 package com.sohva.tv.feature.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -20,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sohva.tv.core.model.home.HomeLayout
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.ListRowLayout
+import com.sohva.tv.ui.design.components.homeRowTitle
 import com.sohva.tv.ui.design.components.SettingsGroup
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.SettingsSwitchRow
@@ -68,6 +68,12 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
                 stringResource(R.string.addon_ui_show_hide), { home.mode(HomeLayoutMode.VISIBILITY) }, Modifier.testTag("settings-home-visibility"),
                 TvIcons.Channels, SurfaceState(selected = s.mode == HomeLayoutMode.VISIBILITY), compact = true,
             )
+            if (view.addable.isNotEmpty()) {
+                TvActionButton(
+                    stringResource(R.string.home_layout_trakt), { home.mode(HomeLayoutMode.ADD) }, Modifier.testTag("settings-home-trakt"),
+                    TvIcons.StarOutline, SurfaceState(selected = s.mode == HomeLayoutMode.ADD), compact = true,
+                )
+            }
             TvActionButton(stringResource(R.string.home_layout_reset), home::reset, Modifier.testTag("settings-home-reset"), TvIcons.Refresh, compact = true)
         }
         Text(
@@ -75,6 +81,8 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
                 when {
                     s.moving != null -> R.string.addon_ui_move_controls
                     s.mode == HomeLayoutMode.ORDER -> R.string.home_layout_order_help
+                    s.mode == HomeLayoutMode.ADD && view.layout.added.size >= HomeLayout.MAX_ADDED -> R.string.home_layout_trakt_full
+                    s.mode == HomeLayoutMode.ADD -> R.string.home_layout_trakt_help
                     else -> R.string.home_layout_visibility_help
                 },
             ),
@@ -82,15 +90,28 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
             style = Sohva.typography.label,
             color = Sohva.palette.textDim,
         )
+        if (s.mode == HomeLayoutMode.ADD) {
+            // HOME-FR-94: one switch per list; at the limit the others stay reachable but do nothing.
+            val full = view.layout.added.size >= HomeLayout.MAX_ADDED
+            view.addable.forEach { id ->
+                val added = id in view.layout.added
+                SettingsSwitchRow(
+                    stringResource(homeRowTitle(id)), added, { home.toggleAdded(id) },
+                    Modifier.focusRequester(row(id)).testTag("settings-home-add-$id"),
+                    enabled = added || !full, keepsFocus = true,
+                )
+            }
+            return@SettingsGroup
+        }
         s.order.forEachIndexed { index, id ->
             val shown = view.layout.isShown(id)
             if (s.mode == HomeLayoutMode.VISIBILITY) {
-                SettingsSwitchRow(stringResource(rowTitle(id)), shown, { home.toggle(id) }, Modifier.focusRequester(row(id)).testTag("settings-home-switch-$id"))
+                SettingsSwitchRow(stringResource(homeRowTitle(id)), shown, { home.toggle(id) }, Modifier.focusRequester(row(id)).testTag("settings-home-switch-$id"))
             } else {
                 val moving = s.moving == id
                 val keys = if (!moving) Modifier else Modifier.moveKeys({ ROWS_PER_PAGE }, { delta, to -> home.move(delta, to) }, home::place)
                 TvListRow(
-                    stringResource(rowTitle(id)), { home.pickUp(id) },
+                    stringResource(homeRowTitle(id)), { home.pickUp(id) },
                     keys.focusRequester(row(id)).testTag("settings-home-row-$id"),
                     supporting = when {
                         moving -> stringResource(R.string.addon_ui_moving_position, index + 1)
@@ -109,16 +130,6 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
         val id = s.moving ?: return@LaunchedEffect
         row(id).requestFocusWhenAttached()
     }
-}
-
-/** Home's own row titles (spec 02 HOME-FR-02). */
-@StringRes
-private fun rowTitle(id: String): Int = when (id) {
-    HomeLayout.CONTINUE -> R.string.home_continue_watching
-    HomeLayout.WATCH_NEXT -> R.string.home_watch_next
-    HomeLayout.SPORT -> R.string.home_sports_today
-    HomeLayout.RECOMMENDED -> R.string.home_recommended
-    else -> R.string.home_recent_channels
 }
 
 /** Page Up / Page Down in a list of a handful of rows: to the other end. */

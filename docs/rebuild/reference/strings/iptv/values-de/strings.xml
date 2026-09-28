@@ -868,4 +868,16 @@
     <string name="home_layout_reset">Auf Standard zurücksetzen</string>
     <string name="home_layout_order_help">Wähle eine Zeile, um sie aufzunehmen, verschiebe sie mit Auf und Ab und platziere sie mit OK.</string>
     <string name="home_layout_visibility_help">Eine ausgeblendete Zeile wird gar nicht geladen; so bleibt die Startseite auch auf langsameren TV-Boxen schnell.</string>
+    <string name="trakt_row_watchlist_movies">Merkliste: Filme</string>
+    <string name="trakt_row_watchlist_shows">Merkliste: Serien</string>
+    <string name="trakt_row_trending_movies">Angesagte Filme</string>
+    <string name="trakt_row_trending_shows">Angesagte Serien</string>
+    <string name="trakt_row_popular_movies">Beliebte Filme</string>
+    <string name="trakt_row_popular_shows">Beliebte Serien</string>
+    <string name="trakt_row_anticipated_movies">Meisterwartete Filme</string>
+    <string name="trakt_row_anticipated_shows">Meisterwartete Serien</string>
+    <string name="trakt_row_box_office">Kinocharts</string>
+    <string name="home_layout_trakt">Trakt-Zeilen</string>
+    <string name="home_layout_trakt_help">Füge der Startseite bis zu 8 Trakt-Listen hinzu. Charts brauchen kein Konto, Merklisten das Trakt-Konto dieses Profils.</string>
+    <string name="home_layout_trakt_full">Die Startseite hat schon 8 hinzugefügte Zeilen. Entferne eine, um eine andere hinzuzufügen.</string>
 </resources>

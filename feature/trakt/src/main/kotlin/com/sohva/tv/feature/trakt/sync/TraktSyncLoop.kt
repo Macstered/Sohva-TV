@@ -19,7 +19,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * delivers queued scrobbles (§8 rule), refreshes Recommended and syncs, then waits 15 minutes or
  * for a request (a delivered STOP, a new sign-in) plus 3 s. While video plays the loop waits
  * (§9 rule): scrobbles still go out, the history download does not compete with the decoder.
- * Restricted profiles, profiles without an account and the demo build idle (FR-36, -37).
+ * Restricted profiles and the demo build idle (FR-36, -37); a profile without an account only
+ * refreshes the public charts its Home shows (spec 02 HOME-FR-94).
  */
 class TraktSyncLoop(
     private val host: TraktHost,
@@ -49,11 +50,15 @@ class TraktSyncLoop(
     private suspend fun loop(profile: String) {
         if (host.offline) return
         if (host.scrobbles(profile)) host.scrobbles.closeInterrupted(profile)
+        var asked = false
         while (true) {
             playing.first { !it }
             if (host.scrobbles(profile)) cycle(profile)
-            val asked = withTimeoutOrNull(CYCLE_MS) { merge(host.scrobbles.stops, host.syncRequests).first { it == profile } }
-            if (asked != null) delay(AFTER_REQUEST_MS)
+            // Home's added rows (spec 02 HOME-FR-94): charts need no account, so they refresh for every
+            // unrestricted profile; a request (a sign-in, a row just added) refetches the watchlists.
+            host.rowsShown(profile).takeIf { it.isNotEmpty() }?.let { sync.rows(profile, it, force = asked) }
+            asked = withTimeoutOrNull(CYCLE_MS) { merge(host.scrobbles.stops, host.syncRequests).first { it == profile } } != null
+            if (asked) delay(AFTER_REQUEST_MS)
         }
     }
 

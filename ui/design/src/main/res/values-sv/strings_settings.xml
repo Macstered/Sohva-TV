@@ -218,4 +218,16 @@
     <string name="home_layout_reset">Återställ standard</string>
     <string name="home_layout_order_help">Välj en rad för att plocka upp den, flytta den med Upp och Ned och tryck OK för att placera den.</string>
     <string name="home_layout_visibility_help">En dold rad laddas inte alls, vilket också håller startsidan snabb på långsammare tv-boxar.</string>
+    <string name="trakt_row_watchlist_movies">Bevakningslista: filmer</string>
+    <string name="trakt_row_watchlist_shows">Bevakningslista: serier</string>
+    <string name="trakt_row_trending_movies">Filmer som trendar</string>
+    <string name="trakt_row_trending_shows">Serier som trendar</string>
+    <string name="trakt_row_popular_movies">Populära filmer</string>
+    <string name="trakt_row_popular_shows">Populära serier</string>
+    <string name="trakt_row_anticipated_movies">Mest efterlängtade filmer</string>
+    <string name="trakt_row_anticipated_shows">Mest efterlängtade serier</string>
+    <string name="trakt_row_box_office">Biotoppen</string>
+    <string name="home_layout_trakt">Trakt-rader</string>
+    <string name="home_layout_trakt_help">Lägg till upp till 8 Trakt-listor på startsidan. Topplistor kräver inget konto, bevakningslistor kräver profilens Trakt-konto.</string>
+    <string name="home_layout_trakt_full">Startsidan har redan 8 tillagda rader. Ta bort en för att lägga till en annan.</string>
 </resources>

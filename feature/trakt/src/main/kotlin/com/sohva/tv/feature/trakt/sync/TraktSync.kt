@@ -11,6 +11,7 @@ import com.sohva.tv.feature.trakt.protocol.TraktKind
 import com.sohva.tv.feature.trakt.protocol.WatchedMovie
 import com.sohva.tv.feature.trakt.protocol.WatchedShow
 import com.sohva.tv.feature.trakt.shelf.TraktCard
+import com.sohva.tv.feature.trakt.shelf.TraktRowSource
 import com.sohva.tv.feature.trakt.shelf.TraktShelf
 import com.sohva.tv.feature.trakt.shelf.TraktShelfKind
 import com.sohva.tv.feature.trakt.shelf.TraktShelves
@@ -220,6 +221,34 @@ class TraktSync(
             host.log.info("trakt", "recommendations: ${cards.size} titles")
         } catch (e: TraktException) {
             host.log.info("trakt", "recommendations kept (${e.failure.name.lowercase()})")
+        }
+    }
+
+    /**
+     * Home's added Trakt rows (spec 02 HOME-FR-94): each shown list older than its lifetime is
+     * fetched again, one at a time; [force] refetches watchlists (a sign-in, a row just added).
+     * Charts need no account, watchlists need usable tokens. A failure keeps the stored list.
+     */
+    suspend fun rows(profile: String, ids: List<String>, force: Boolean = false) {
+        if (!host.configured || !host.access.allowed(profile)) return
+        for (source in ids.mapNotNull(TraktRowSource::of)) {
+            val stored = host.rowLists.read(profile, source)
+            val fresh = stored != null && host.clock.wallMillis() - stored.at < source.maxAgeMs
+            if (fresh && !(force && source.account)) continue
+            try {
+                val titles = if (source.account) {
+                    val account = host.account(profile)?.takeIf { it.tokens != null } ?: continue
+                    host.withTokens(profile) { host.api.list(it.access, source.path, source.kind, TraktRowSource.TITLES) }
+                        .takeIf { sameAccount(profile, account.uuid) } ?: continue
+                } else {
+                    host.api.list(null, source.path, source.kind, TraktRowSource.TITLES)
+                }
+                val cards = titles.map { TraktCard(it.kind, it.ids, it.title, it.year, it.overview, it.poster, it.fanart) }
+                host.rowLists.save(profile, source, TraktShelf(host.clock.wallMillis(), cards))
+                host.log.info("trakt", "row ${source.name.lowercase()}: ${cards.size} titles")
+            } catch (e: TraktException) {
+                host.log.info("trakt", "row ${source.name.lowercase()} kept (${e.failure.name.lowercase()})")
+            }
         }
     }
 

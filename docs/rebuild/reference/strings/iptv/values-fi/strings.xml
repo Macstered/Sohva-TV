@@ -878,4 +878,16 @@
     <string name="home_layout_reset">Palauta oletukset</string>
     <string name="home_layout_order_help">Valitse rivi, siirrä sitä ylös- ja alas-painikkeilla ja aseta se paikalleen OK-painikkeella.</string>
     <string name="home_layout_visibility_help">Piilotettua riviä ei ladata lainkaan, mikä pitää etusivun nopeana myös hitaammissa TV-bokseissa.</string>
+    <string name="trakt_row_watchlist_movies">Katselulista: elokuvat</string>
+    <string name="trakt_row_watchlist_shows">Katselulista: sarjat</string>
+    <string name="trakt_row_trending_movies">Trendaavat elokuvat</string>
+    <string name="trakt_row_trending_shows">Trendaavat sarjat</string>
+    <string name="trakt_row_popular_movies">Suositut elokuvat</string>
+    <string name="trakt_row_popular_shows">Suositut sarjat</string>
+    <string name="trakt_row_anticipated_movies">Odotetuimmat elokuvat</string>
+    <string name="trakt_row_anticipated_shows">Odotetuimmat sarjat</string>
+    <string name="trakt_row_box_office">Elokuvateatterien kärki</string>
+    <string name="home_layout_trakt">Trakt-rivit</string>
+    <string name="home_layout_trakt_help">Lisää etusivulle enintään 8 Trakt-listaa. Listaukset eivät vaadi tiliä, katselulistat vaativat tämän profiilin Trakt-tilin.</string>
+    <string name="home_layout_trakt_full">Etusivulla on jo 8 lisättyä riviä. Poista yksi, jos haluat lisätä toisen.</string>
 </resources>

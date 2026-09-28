@@ -19,11 +19,17 @@ interface HomeLayoutServices {
 
 /**
  * [unavailable]: rows this profile never has, left out of the list: Trakt's for a restricted
- * profile (HOME-FR-88) or a build without the feature.
+ * profile (HOME-FR-88) or a build without the feature. [addable]: the rows it can add (HOME-FR-94).
  */
-data class HomeLayoutView(val profileName: String?, val layout: HomeLayout, val unavailable: Set<String> = emptySet())
+data class HomeLayoutView(
+    val profileName: String?,
+    val layout: HomeLayout,
+    val unavailable: Set<String> = emptySet(),
+    val addable: List<String> = emptyList(),
+)
 
-enum class HomeLayoutMode { ORDER, VISIBILITY }
+/** Reorder, Show / hide, or Trakt rows: add and remove (HOME-FR-94). */
+enum class HomeLayoutMode { ORDER, VISIBILITY, ADD }
 
 /** [order] is the list as drawn: the stored order, or the draft of a move in progress. */
 data class HomeLayoutUi(
@@ -85,6 +91,13 @@ class HomeLayoutSettings internal constructor(private val services: HomeLayoutSe
     fun toggle(id: String) {
         val view = _state.value.view ?: return
         save(view.layout.withShown(id, !view.layout.isShown(id)))
+    }
+
+    /** Trakt rows: an added row goes, another is added at the end while fewer than 8 are (HOME-FR-94). */
+    fun toggleAdded(id: String) {
+        val layout = _state.value.view?.layout ?: return
+        val next = if (id in layout.added) layout.withRemoved(id) else layout.withAdded(id)
+        if (next != layout) save(next)
     }
 
     fun reset() {

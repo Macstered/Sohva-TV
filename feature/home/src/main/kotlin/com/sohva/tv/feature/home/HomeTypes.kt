@@ -52,9 +52,9 @@ sealed interface HomeRow {
         override val key: String = RECENT
     }
 
-    /** Watch next ([next]) or Recommended for you (HOME-FR-30, -31). */
-    data class Trakt(val cards: List<TraktCard>, val next: Boolean) : HomeRow {
-        override val key: String = if (next) WATCH_NEXT else RECOMMENDED
+    /** Watch next ([next]), Recommended for you (HOME-FR-30, -31), or an added Trakt row by its layout [id] (HOME-FR-94). */
+    data class Trakt(val cards: List<TraktCard>, val next: Boolean, val id: String = if (next) WATCH_NEXT else RECOMMENDED) : HomeRow {
+        override val key: String = id
     }
 
     /** The first 6 of today's games; [total] counts them all (HOME-FR-33, spec 60 SPORT-FR-97). */
@@ -126,7 +126,7 @@ interface HomeEnvironment {
     /** Sohva Sport with this game's hub open once the day's list holds it (spec 60 §3). */
     fun openSportGame(event: SportEvent) = Unit
 
-    /** Watch next, Recommended and the first-sync note (HOME-FR-30…32, -48); read after Continue watching settles. */
+    /** Watch next, Recommended, the added Trakt rows and the first-sync note (HOME-FR-30…32, -48, -94); read after Continue watching settles. */
     val trakt: Flow<TraktLists> get() = flowOf(TraktLists.EMPTY)
 
     /** HOME-FR-22: the library copy's details, else the Trakt title page. */

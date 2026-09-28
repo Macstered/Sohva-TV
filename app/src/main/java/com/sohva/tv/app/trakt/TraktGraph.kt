@@ -46,6 +46,10 @@ object TraktGraph {
                     if (layout.isShown(com.sohva.tv.core.model.home.HomeLayout.RECOMMENDED)) add(com.sohva.tv.feature.trakt.shelf.TraktShelfKind.RECOMMENDED)
                 }
             },
+            rowsShown = { profile ->
+                val layout = graph.data.preferences.homeLayout(profile).first()
+                layout.added.filter(layout::isShown)
+            },
         )
     }
 

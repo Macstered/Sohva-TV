@@ -74,4 +74,22 @@ class HomeLayoutSettingsTest {
         val s = settings(Fake(unavailable = setOf(HomeLayout.WATCH_NEXT, HomeLayout.RECOMMENDED)))
         assertEquals(listOf("continue-watching", "todays-sport", "recent-channels"), s.state.value.order)
     }
+
+    /** HOME-FR-94: Trakt rows are added at the end and removed again; at 8 nothing more is added. */
+    @Test
+    fun traktRowsAreAddedAndRemovedUpToEight() = runTest(UnconfinedTestDispatcher()) {
+        val fake = Fake()
+        val s = settings(fake)
+        s.toggleAdded(HomeLayout.TRAKT_BOX_OFFICE)
+        assertEquals(HomeLayout.TRAKT_BOX_OFFICE, s.state.value.order.last())
+        assertEquals(listOf(HomeLayout.TRAKT_BOX_OFFICE), fake.stored.value.added)
+        s.toggleAdded(HomeLayout.TRAKT_BOX_OFFICE)
+        assertEquals(HomeLayout.DEFAULT, fake.stored.value)
+        HomeLayout.ADDABLE.forEach(s::toggleAdded)
+        assertEquals(HomeLayout.MAX_ADDED, fake.stored.value.added.size)
+        assertEquals("the ninth changes nothing, so nothing is written", 2 + HomeLayout.MAX_ADDED, fake.writes.size)
+        // Every row id Settings and Home can list has a title of its own.
+        val titles = (HomeLayout.BUILT_IN + HomeLayout.ADDABLE).map { com.sohva.tv.ui.design.components.homeRowTitle(it) }
+        assertEquals(titles.size, titles.toSet().size)
+    }
 }

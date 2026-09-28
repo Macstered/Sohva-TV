@@ -447,6 +447,24 @@ the lookup returns (SHELL-FR-17).
   main-thread CPU per press along a row stay within the stand-in's noise of the values measured
   before M12 (docs/performance-log.md). In Settings › Home a move is one list change and one
   recomposition of the moved rows; nothing is written until OK.
+- HOME-FR-94 Added Trakt rows (M12 phase B). A profile may add up to 8 rows from Trakt, each a layout
+  id `trakt:<source>`: public charts, which need no account (trending, popular and most anticipated
+  movies and series, box office), and the profile's own watchlists of movies and of series, which need
+  its account. A public chart is read with the app's key only, no Authorization header. Each row
+  holds Trakt's first 30 titles in Trakt's order, drawn with Recommended's poster card and title rule
+  and opening through HOME-FR-22; its card key starts with the row id, so a title in two rows keeps two
+  focus places. A row without titles is left out (HOME-FR-01). Added rows can be ordered, hidden and
+  removed like any row; a text with more than 8 keeps the first 8 (HOME-FR-86).
+- HOME-FR-95 Fetching. Trakt's sync loop (spec 51 FR-21) refreshes only the added rows the layout
+  shows, one list at a time, never while video plays, for any unrestricted profile (charts run
+  without an account). A chart lasts 6 hours and is shared by every profile; a watchlist lasts an
+  hour, is refetched when Settings adds or shows a Trakt row or the profile signs in, and is removed
+  with the account (disconnect or a different account). A failure keeps the stored list. Home reads
+  the stored lists once per entry from memory after Continue watching settles (HOME-FR-32).
+- HOME-FR-96 Settings › Home has a third mode, **Trakt rows**, when the build has Trakt and the
+  profile may use it: one switch per list (watchlists only with an account) that adds the row at the
+  end of the layout, shown, or removes it. At 8 added rows the other switches do nothing and the help
+  line says so. A watchlist row whose account is gone is not listed and draws nothing.
 
 ### 4.13 Focus and keys
 

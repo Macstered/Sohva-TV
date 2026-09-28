@@ -71,7 +71,8 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
         env.resume.filter { it.settled }.first()
         emitAll(
             layout.flatMapLatest { l ->
-                if (l != null && (l.isShown(HomeRow.WATCH_NEXT) || l.isShown(HomeRow.RECOMMENDED))) env.trakt else flowOf(TraktLists.EMPTY)
+                val shown = l != null && (l.isShown(HomeRow.WATCH_NEXT) || l.isShown(HomeRow.RECOMMENDED) || l.added.any(l::isShown))
+                if (shown) env.trakt else flowOf(TraktLists.EMPTY)
             },
         )
     }
@@ -197,6 +198,8 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
                 HomeRow.SPORT -> if (games.isNotEmpty()) add(HomeRow.Sport(games.take(SPORT_CARDS).map { SportCard("sport:${it.id}", it) }, games.size))
                 HomeRow.RECOMMENDED -> if (trakt.recommended.isNotEmpty()) add(HomeRow.Trakt(trakt.recommended.distinctBy { it.key }, next = false))
                 HomeRow.RECENT -> if (recent.isNotEmpty()) add(HomeRow.Channels(recent.map { ChannelCard("channel:${it.id}", it) }.distinctBy { it.key }))
+                // An added Trakt row (HOME-FR-94): drawn once its list has titles, like the built-in Trakt rows.
+                else -> trakt.rows[id]?.takeIf { it.isNotEmpty() }?.let { add(HomeRow.Trakt(it.distinctBy { c -> c.key }, next = false, id = id)) }
             }
         }
     }
@@ -236,7 +239,7 @@ internal object StructureLock {
             }
             is HomeRow.Trakt -> {
                 val fresh = (next as? HomeRow.Trakt)?.cards.orEmpty().associateBy { it.key }
-                HomeRow.Trakt(row.cards.map { fresh[it.key] ?: it }, row.next)
+                HomeRow.Trakt(row.cards.map { fresh[it.key] ?: it }, row.next, row.id)
             }
             is HomeRow.Sport -> {
                 val next2 = next as? HomeRow.Sport

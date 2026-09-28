@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sohva.tv.ui.design.components.homeRowTitle
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
@@ -115,7 +116,7 @@ private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: Ho
             val title = when (row) {
                 is HomeRow.Channels -> R.string.home_recent_channels
                 is HomeRow.Sport -> R.string.home_sports_today
-                is HomeRow.Trakt -> if (row.next) R.string.home_watch_next else R.string.home_recommended
+                is HomeRow.Trakt -> homeRowTitle(row.id)
                 else -> R.string.home_continue_watching
             }
             Text(stringResource(title), style = Sohva.typography.headline.copy(fontWeight = FontWeight.Bold), color = Sohva.palette.textPrimary, maxLines = 1)
