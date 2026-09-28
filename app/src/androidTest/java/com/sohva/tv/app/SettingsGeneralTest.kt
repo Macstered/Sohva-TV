@@ -101,6 +101,34 @@ class SettingsGeneralTest {
         assertTrue(label("settings-language").contains("System default"))
     }
 
+    /**
+     * A tester reported that Down from Colour theme skipped Channel numbers and landed on Time zone,
+     * so the numbers could not be turned off; the owner's boxes landed correctly. Focus search weighs
+     * the distance down against the distance sideways: the switch sits at the far right of its row,
+     * so on a wider pane (a smaller interface size or a lower screen density) the full-width Time zone
+     * row below it won. Every interface size must stop on Channel numbers, both ways.
+     */
+    @Test
+    fun downFromTheThemeStopsOnChannelNumbersAtEveryInterfaceSize() {
+        for (scale in com.sohva.tv.core.model.settings.InterfaceScale.entries) {
+            kotlinx.coroutines.runBlocking { prefs.setScale(scale) }
+            if (!exists("settings-color-theme")) openSection("general", "settings-language")
+            walkTo("settings-color-theme")
+            press(KeyEvent.KEYCODE_DPAD_DOWN)
+            try {
+                awaitFocus("settings-channel-numbers")
+            } catch (e: AssertionError) {
+                throw AssertionError("interface size $scale: ${e.message}", e)
+            }
+            press(KeyEvent.KEYCODE_DPAD_DOWN)
+            awaitFocus("settings-time-zone")
+            press(KeyEvent.KEYCODE_DPAD_UP)
+            awaitFocus("settings-channel-numbers")
+            press(KeyEvent.KEYCODE_DPAD_UP)
+            awaitFocus("settings-color-theme")
+        }
+    }
+
     /** SET-FR-52, -21: a theme applies at once and focus comes back to its row. */
     @Test
     fun aColourThemeAppliesAtOnceAndFocusReturnsToItsRow() {

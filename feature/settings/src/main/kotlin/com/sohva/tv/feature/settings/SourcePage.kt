@@ -23,7 +23,7 @@ import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.FieldInput
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.SettingsRow
-import com.sohva.tv.ui.design.components.SettingsSwitch
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvUrlField
@@ -135,9 +135,10 @@ private fun SourceRows(page: SourceDraft, state: SettingsState, model: SettingsM
             input = TEXT_FIELD,
         )
     }
-    SettingsRow(stringResource(R.string.source_enabled_title), subtitle = stringResource(R.string.source_enabled_help)) {
-        SettingsSwitch(page.enabled, { model.edit { it.copy(enabled = !it.enabled) } }, Modifier.testTag("settings-source-enabled"))
-    }
+    SettingsSwitchRow(
+        stringResource(R.string.source_enabled_title), page.enabled, { model.edit { it.copy(enabled = !it.enabled) } },
+        Modifier.testTag("settings-source-enabled"), subtitle = stringResource(R.string.source_enabled_help),
+    )
     SettingsRow(stringResource(R.string.source_connection_limit_title), subtitle = stringResource(R.string.source_connection_limit_help)) {
         val limits = SourceRules.CONNECTION_LIMITS
         TvActionButton(

@@ -40,7 +40,7 @@ import com.sohva.tv.ui.design.components.FieldInput
 import com.sohva.tv.ui.design.components.SettingsGroup
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.SettingsRow
-import com.sohva.tv.ui.design.components.SettingsSwitch
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.SettingsValueRow
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
@@ -186,9 +186,10 @@ private fun CustomGroupEditor(library: LibrarySettings, initial: CustomGroup?, o
                 LazyColumn(Modifier.weight(1f).testTag("custom-group-genres"), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     items(genres, key = { it.wire }) { genre ->
                         val on = genre in chosen
-                        SettingsRow(stringResource(genreLabel(genre)), icon = if (on) TvIcons.Check else null) {
-                            SettingsSwitch(on, { chosen = if (on) chosen - genre else chosen + genre }, Modifier.testTag("custom-group-genre-${genre.wire}"))
-                        }
+                        SettingsSwitchRow(
+                            stringResource(genreLabel(genre)), on, { chosen = if (on) chosen - genre else chosen + genre },
+                            Modifier.testTag("custom-group-genre-${genre.wire}"), if (on) TvIcons.Check else null,
+                        )
                     }
                 }
                 // Down from any of the three fields goes to Save, the first button, not the one nearest.

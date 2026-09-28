@@ -82,11 +82,20 @@ class TraktGateTest {
     @Test
     fun writesLeaveAtLeastASecondApart() = runBlocking {
         val gate = TraktGate()
-        val client = api(gate)
+        // When each request leaves the client, not when the server sees it: under a busy build a
+        // delayed delivery made two arrivals closer than the gate had sent them.
+        val sent = ConcurrentLinkedQueue<Long>()
+        // An event listener, since the Trakt client drops interceptors on purpose.
+        val http = OkHttpClient.Builder().eventListener(object : okhttp3.EventListener() {
+            override fun callStart(call: okhttp3.Call) {
+                sent += System.nanoTime() / 1_000_000
+            }
+        }).build()
+        val client = TraktApiClient(http, creds, Dispatchers.Unconfined, server.url("/"), gate = gate)
         client.scrobble("acc", movie, ScrobbleAction.START, 1.0)
         client.scrobble("acc", movie, ScrobbleAction.PAUSE, 2.0)
         client.scrobble("acc", movie, ScrobbleAction.STOP, 100.0)
-        val times = arrivals.map { it.second }
+        val times = sent.toList()
         assertEquals(3, times.size)
         assertTrue("gaps ${times.zipWithNext { a, b -> b - a }}", times.zipWithNext { a, b -> b - a }.all { it >= TraktGate.WRITE_GAP_MS - 20 })
     }

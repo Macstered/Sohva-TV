@@ -34,8 +34,7 @@ import com.sohva.tv.ui.design.components.FieldInput
 import com.sohva.tv.ui.design.components.PickerChoice
 import com.sohva.tv.ui.design.components.SettingsGroup
 import com.sohva.tv.ui.design.components.SettingsOverline
-import com.sohva.tv.ui.design.components.SettingsRow
-import com.sohva.tv.ui.design.components.SettingsSwitch
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.SettingsValueRow
 import com.sohva.tv.ui.design.components.SinglePickerDialog
 import com.sohva.tv.ui.design.components.TvActionButton
@@ -95,9 +94,11 @@ private fun MetadataGroup(library: LibrarySettings, state: LibrarySettingsState,
             SettingsOverline(stringResource(R.string.metadata_title), Modifier.weight(1f))
             Image(painterResource(R.drawable.tmdb_attribution), "TMDB", Modifier.padding(end = 14.dp).size(137.dp, 18.dp))
         }
-        SettingsRow(stringResource(R.string.metadata_tmdb_switch), icon = TvIcons.Star, subtitle = stringResource(R.string.metadata_description)) {
-            SettingsSwitch(stored.tmdbSwitch, library::toggleTmdb, Modifier.focusRequester(start).testTag("settings-metadata-tmdb-enabled"), enabled = !state.busy, keepsFocus = true)
-        }
+        SettingsSwitchRow(
+            stringResource(R.string.metadata_tmdb_switch), stored.tmdbSwitch, library::toggleTmdb,
+            Modifier.focusRequester(start).testTag("settings-metadata-tmdb-enabled"), TvIcons.Star, stringResource(R.string.metadata_description),
+            enabled = !state.busy, keepsFocus = true,
+        )
         Row(Modifier.padding(horizontal = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             TvUrlField(
                 state.typed,
@@ -117,9 +118,10 @@ private fun MetadataGroup(library: LibrarySettings, state: LibrarySettingsState,
                 compact = true,
             )
         }
-        SettingsRow(stringResource(R.string.metadata_tvmaze_switch), icon = TvIcons.Guide) {
-            SettingsSwitch(stored.tvmaze, library::toggleTvmaze, Modifier.testTag("settings-metadata-tvmaze-enabled"), enabled = !state.busy, keepsFocus = true)
-        }
+        SettingsSwitchRow(
+            stringResource(R.string.metadata_tvmaze_switch), stored.tvmaze, library::toggleTvmaze,
+            Modifier.testTag("settings-metadata-tvmaze-enabled"), TvIcons.Guide, enabled = !state.busy, keepsFocus = true,
+        )
         // A refused key is the standing status until a key is saved (spec 41 Q8); errors in `danger` (META-FR-08).
         val refused = stored.keyRefused && state.status == null
         val status = if (refused) stringResource(R.string.metadata_key_refused) else state.status?.resolve()

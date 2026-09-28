@@ -108,10 +108,10 @@ class CustomGroupsTest {
         assertTrue(!exists("custom-group-genre-action"))
         walkDownTo("custom-group-genre-crime")
         press(KeyEvent.KEYCODE_DPAD_CENTER)
-        // Down from the switches (right edge) reaches the rightmost field; Left walks the row.
-        walkDownTo("custom-group-min-rating")
-        press(KeyEvent.KEYCODE_DPAD_LEFT)
-        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        // Down from the genre rows reaches the fields (the one under the row's middle); Left walks the row.
+        val fields = listOf("custom-group-from-year", "custom-group-to-year", "custom-group-min-rating")
+        repeat(40) { if (fields.none(::focused)) press(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(2) { if (!focused("custom-group-from-year")) press(KeyEvent.KEYCODE_DPAD_LEFT) }
         awaitFocus("custom-group-from-year")
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         type("1990")

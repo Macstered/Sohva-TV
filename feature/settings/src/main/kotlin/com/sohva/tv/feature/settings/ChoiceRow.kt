@@ -12,8 +12,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import com.sohva.tv.ui.design.components.PickerChoice
-import com.sohva.tv.ui.design.components.SettingsSwitch
-import com.sohva.tv.ui.design.components.SettingsRow
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.SettingsValueRow
 import com.sohva.tv.ui.design.components.SinglePickerDialog
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
@@ -83,9 +82,7 @@ internal fun SwitchRow(
     @DrawableRes icon: Int? = null,
     subtitle: String? = null,
 ) {
-    SettingsRow(title, icon = icon, subtitle = subtitle) {
-        SettingsSwitch(checked, onToggle, Modifier.testTag(tag))
-    }
+    SettingsSwitchRow(title, checked, onToggle, Modifier.testTag(tag), icon, subtitle)
 }
 
 private const val RETURN_ATTEMPTS = 6

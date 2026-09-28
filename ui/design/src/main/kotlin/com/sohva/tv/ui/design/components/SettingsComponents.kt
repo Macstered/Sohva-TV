@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.sohva.tv.ui.design.focus.SurfaceState
 import com.sohva.tv.ui.design.focus.SurfaceStyle
 import com.sohva.tv.ui.design.focus.TvSurface
+import com.sohva.tv.ui.design.focus.tvSurfaceColors
 import com.sohva.tv.ui.design.motion.Motion
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
@@ -144,6 +145,53 @@ private fun RowText(
  */
 @Composable
 fun SettingsSwitch(checked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, keepsFocus: Boolean = false) {
+    TvSurface(onToggle, modifier, SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus), SWITCH_STYLE) {
+        SwitchTrack(checked, enabled)
+    }
+}
+
+/**
+ * A settings row whose switch is its control. The whole row is the focus target, so D-pad focus
+ * search sees a full-width row like the rows above and below it; the switch alone draws the focus
+ * look, as [SettingsSwitch] does. A focus target only at the row's far end lost to the next
+ * full-width row whenever the pane was wide in dp (a smaller interface size or a lower screen
+ * density): Down from the theme skipped Channel numbers for a tester. OK anywhere on the row flips
+ * it. [modifier] goes on the focus target (tags and focus requesters of the switch belong there);
+ * [containerModifier] on the row around it.
+ */
+@Composable
+fun SettingsSwitchRow(
+    title: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    @DrawableRes icon: Int? = null,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+    keepsFocus: Boolean = false,
+    containerModifier: Modifier = Modifier,
+) {
+    val state = SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus)
+    Box(containerModifier) {
+        TvSurface(onToggle, modifier.fillMaxWidth(), state, ROW_STYLE) { colors ->
+            SettingsRow(title, icon = icon, subtitle = subtitle) {
+                // The switch's own look for the row's focus: the same colours a focused SettingsSwitch has.
+                val look = tvSurfaceColors(colors.focused, state, SWITCH_STYLE)
+                Box(Modifier.drawBehind { drawRoundRect(look.background, cornerRadius = CornerRadius(SWITCH_STYLE.corner.toPx())) }.padding(SWITCH_PADDING)) {
+                    SwitchTrack(checked, enabled)
+                }
+            }
+        }
+    }
+}
+
+private val SWITCH_PADDING = 5.dp
+private val SWITCH_STYLE = SurfaceStyle(corner = 15.dp, focusScale = 1f, padding = PaddingValues(SWITCH_PADDING))
+private val ROW_STYLE = SurfaceStyle(corner = 0.dp, focusScale = 1f, animateFill = false, quiet = true)
+
+/** The 52 × 30 track and its knob. */
+@Composable
+private fun SwitchTrack(checked: Boolean, enabled: Boolean) {
     val p = Sohva.palette
     val track by animateColorAsState(
         when {
@@ -156,17 +204,14 @@ fun SettingsSwitch(checked: Boolean, onToggle: () -> Unit, modifier: Modifier = 
     )
     val knobColor = if (checked) p.background else p.textMuted
     val offset by animateDpAsState(if (checked) 22.dp else 0.dp, Motion.focus(), label = "switch-knob")
-    val style = SurfaceStyle(corner = 15.dp, focusScale = 1f, padding = PaddingValues(5.dp))
-    TvSurface(onToggle, modifier, SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus), style) {
-        Box(
-            Modifier.size(52.dp, 30.dp).drawBehind {
-                drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
-                val knob = 24.dp.toPx()
-                val gap = (size.height - knob) / 2
-                drawCircle(knobColor, knob / 2, Offset(gap + offset.toPx() + knob / 2, size.height / 2))
-            },
-        )
-    }
+    Box(
+        Modifier.size(52.dp, 30.dp).drawBehind {
+            drawRoundRect(track, cornerRadius = CornerRadius(size.height / 2))
+            val knob = 24.dp.toPx()
+            val gap = (size.height - knob) / 2
+            drawCircle(knobColor, knob / 2, Offset(gap + offset.toPx() + knob / 2, size.height / 2))
+        },
+    )
 }
 
 /** A choice in a picker dialog: min 48 dp; the selected one is filled and ticked. */
