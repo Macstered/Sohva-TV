@@ -1,6 +1,6 @@
 # Install and update Sohva TV
 
-For Sohva TV `0.2.0-beta.1`, Android build 100.
+For Sohva TV `0.2.0-beta.1`, Android build 101.
 
 ## Before you start
 

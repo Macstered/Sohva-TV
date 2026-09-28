@@ -11,7 +11,7 @@ allowed to use.
 
 ## This release: 0.2.0-beta.1
 
-This tester build is version `0.2.0-beta.1`, Android build 100. It is a beta,
+This tester build is version `0.2.0-beta.1`, Android build 101. It is a beta,
 not a stable release.
 
 It is the rebuilt Sohva TV. The app was written again from the start. It has
