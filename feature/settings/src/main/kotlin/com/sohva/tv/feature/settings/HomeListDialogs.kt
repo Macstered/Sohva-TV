@@ -64,7 +64,7 @@ internal fun ColumnScope.ListsSection(home: HomeLayoutSettings, view: HomeLayout
     val add = remember { FocusRequester() }
     val phone = remember { FocusRequester() }
     SettingsOverline(stringResource(R.string.home_layout_lists))
-    val lists = view.layout.added.filter { HomeLayout.traktListId(it) != null }
+    val lists = view.layout.added.filter(HomeLayout::isTraktList)
     lists.forEach { id ->
         val name = view.names[id] ?: stringResource(R.string.trakt_row_list)
         SettingsSwitchRow(name, true, { home.toggleAdded(id) }, Modifier.testTag("settings-home-list-$id"))
@@ -189,7 +189,11 @@ private fun ListResults(dialog: ListDialogUi, full: Boolean, choose: (ListChoice
         items(found, key = { it.id }) { list ->
             TvListRow(
                 list.name, { if (!full) choose(list) }, Modifier.testTag("settings-list-result-${list.id}"),
-                supporting = stringResource(R.string.home_layout_list_meta, list.owner ?: "Trakt", list.items, list.likes),
+                supporting = if (list.smart) {
+                    stringResource(R.string.home_layout_list_smart)
+                } else {
+                    stringResource(R.string.home_layout_list_meta, list.owner ?: "Trakt", list.items, list.likes)
+                },
             )
         }
     }

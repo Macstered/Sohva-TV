@@ -23,6 +23,8 @@ class TraktRowSource private constructor(
     val name: String,
     /** A public list by number (HOME-FR-99): its row is titled with the list's own name. */
     val listId: Long? = null,
+    /** A smart list (HOME-FR-101): [listId] is a smart list's number. */
+    val smart: Boolean = false,
 ) {
     /**
      * The store's record name: a chart or public list is the same for everyone, so profiles share
@@ -53,7 +55,13 @@ class TraktRowSource private constructor(
         fun list(id: Long): TraktRowSource =
             TraktRowSource(HomeLayout.traktList(id), "lists/$id/items/movie,show", TraktKind.MOVIE, false, CHART_AGE, "list_$id", listId = id)
 
-        fun of(id: String): TraktRowSource? = entries.firstOrNull { it.id == id } ?: HomeLayout.traktListId(id)?.let(::list)
+        /** A public smart list's row (HOME-FR-101): what its filters resolve to now, in Trakt's order. */
+        fun smart(id: Long): TraktRowSource =
+            TraktRowSource(HomeLayout.traktSmartList(id), "smart-lists/$id/items", TraktKind.MOVIE, false, CHART_AGE, "smart_$id", listId = id, smart = true)
+
+        fun of(id: String): TraktRowSource? = entries.firstOrNull { it.id == id }
+            ?: HomeLayout.traktListId(id)?.let(::list)
+            ?: HomeLayout.traktSmartListId(id)?.let(::smart)
 
         /** Titles per row: a row is a glance, not a catalogue (rule 4.2). */
         const val TITLES: Int = 30

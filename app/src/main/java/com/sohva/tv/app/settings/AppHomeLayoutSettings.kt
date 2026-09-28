@@ -60,12 +60,12 @@ class AppHomeLayoutSettings(private val graph: AppGraph) : HomeLayoutServices {
             // A public list's name: read from the store once, then served from memory with its titles.
             val names = HashMap<String, String>()
             for (id in layout.added) {
-                val source = HomeLayout.traktListId(id)?.let(TraktRowSource::list) ?: continue
+                val source = TraktRowSource.of(id)?.takeIf { it.listId != null } ?: continue
                 val title = if (source.key(active.id) in lists) lists[source.key(active.id)]?.title else host?.rowLists?.read(active.id, source)?.title
                 title?.let { names[id] = it }
             }
             val listsOk = host != null
-            val gone = layout.added.filter { it !in addable && !(listsOk && HomeLayout.traktListId(it) != null) }
+            val gone = layout.added.filter { it !in addable && !(listsOk && HomeLayout.isTraktList(it)) }
             HomeLayoutView(active.name.takeIf { household.several }, layout, unavailable + gone, addable, names, lists = listsOk)
         }
     }.flowOn(io)

@@ -244,4 +244,5 @@
     <string name="home_layout_list_meta">%1$s · %2$d títulos · %3$d gostos</string>
     <string name="home_layout_list_phone_help">Leia o código, cole no telemóvel o endereço trakt.tv da lista e envie-o. Pode enviar várias listas.</string>
     <string name="home_layout_list_added">Adicionada ao Início: %1$s</string>
+    <string name="home_layout_list_smart">Lista inteligente do Trakt</string>
 </resources>

@@ -903,4 +903,5 @@
     <string name="phone_list_added">Adicionada ao Início da TV: %1$s.</string>
     <string name="phone_list_not_found">Não foi possível adicionar a lista. Pode ser privada, ou o Início já tem 8 linhas adicionadas.</string>
     <string name="phone_list_invalid">Isso não é o endereço nem o número de uma lista do trakt.tv.</string>
+    <string name="home_layout_list_smart">Lista inteligente do Trakt</string>
 </resources>

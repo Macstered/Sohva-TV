@@ -45,9 +45,10 @@ internal object AppTraktLists {
         if (!available(graph, profile)) return@withContext false
         graph.traktListGate?.invoke()
         val layout = graph.data.preferences.homeLayout(profile).first()
-        val next = layout.withAdded(HomeLayout.traktList(list.id))
-        if (next == layout) return@withContext layout.added.contains(HomeLayout.traktList(list.id))
-        host.rowLists.saveTitle(profile, TraktRowSource.list(list.id), list.name)
+        val source = if (list.smart) TraktRowSource.smart(list.id) else TraktRowSource.list(list.id)
+        val next = layout.withAdded(source.id)
+        if (next == layout) return@withContext layout.added.contains(source.id)
+        host.rowLists.saveTitle(profile, source, list.name)
         graph.data.preferences.setHomeLayout(profile, next)
         // Fetched in a few seconds rather than at the next 15-minute cycle.
         host.requestSync(profile)
@@ -62,5 +63,5 @@ internal object AppTraktLists {
         return if (add(graph, choice(info))) info.name else null
     }
 
-    private fun choice(info: TraktListInfo) = ListChoice(info.id, info.name, info.owner, info.items, info.likes)
+    private fun choice(info: TraktListInfo) = ListChoice(info.id, info.name, info.owner, info.items, info.likes, info.smart)
 }

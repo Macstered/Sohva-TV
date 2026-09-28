@@ -493,6 +493,12 @@ the lookup returns (SHELL-FR-17).
   list address, or that the list could not be added (private, or eight added rows). The page takes
   `text/plain` with the exact Origin and the page's token (as the addon list, spec 50 ADDON-FR-45) and
   stays open for more lists until closed on the TV.
+- HOME-FR-101 **Rebuild (owner's report, 28 September 2026):** a public Trakt **smart list** (the Trakt app's
+  filtered lists) is added the same ways, by its address (`app.trakt.tv/lists/smart/view/<name>`, also
+  `/lists/smart/<name>` and `/smart-lists/<name>`) on the TV or the phone page. It is stored as
+  `trakt:smart:<number>`, read from Trakt's `smart-lists/<id>` and `smart-lists/<id>/items` without a
+  sign-in, titled with its own name, and shows "Trakt smart list" in the search result. Trakt's list-name
+  search does not find smart lists; their address does.
 - HOME-FR-97 **Rebuild (owner, 28 September 2026):** coming back to Home from any screen (Back,
   or a player's way home), focus returns to the card the viewer last focused on Home, wherever
   it now is in its row; when that card is gone, to the first card of its row; when the row is gone,

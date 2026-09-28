@@ -49,6 +49,8 @@ class TraktRowsDeviceTest {
     private val requests = ConcurrentLinkedQueue<Pair<String, String?>>()
     private val bodies = mapOf(
         "users/viewer-one/lists/best-films" to """{"name":"Best fictional films","privacy":"public","item_count":2,"likes":4,"ids":{"trakt":77},"user":{"username":"viewer-one"}}""",
+        "smart-lists/lasten-sarjat-2eadc6438118f342" to """{"name":"Lasten Sarjat","privacy":"public","ids":{"slug":"lasten-sarjat-2eadc6438118f342","trakt":48183},"media_type":"shows"}""",
+        "smart-lists/48183/items" to """[{"type":"show","show":{"title":"A fictional cartoon","ids":{"trakt":41}},"rank":1}]""",
         "lists/77/items/movie,show" to """[{"rank":1,"type":"movie","movie":{"title":"List film","ids":{"trakt":31}}},{"rank":2,"type":"show","show":{"title":"List show","ids":{"trakt":32}}}]""",
         "movies/trending" to """[{"watchers":12,"movie":{"title":"A fictional film","year":2026,"ids":{"trakt":1,"tmdb":5001}}},
             {"watchers":4,"movie":{"title":"Another fictional film","year":2025,"ids":{"trakt":2,"tmdb":5002}}}]""",
@@ -264,6 +266,10 @@ class TraktRowsDeviceTest {
         assertEquals(listOf("trakt:list:77"), runBlocking { prefs.homeLayout(profile).first() }.added)
         assertEquals("not a list address", null, runBlocking { com.sohva.tv.app.settings.AppTraktLists.addFromPhone(graph, "Best films") })
         compose.waitUntil(15_000) { exists("home-trakt-trakt:list:77/show:32::") }
+        // HOME-FR-101: the Trakt app's smart list address, as the owner sent it.
+        val smart = runBlocking { com.sohva.tv.app.settings.AppTraktLists.addFromPhone(graph, "https://app.trakt.tv/lists/smart/view/lasten-sarjat-2eadc6438118f342") }
+        assertEquals("Lasten Sarjat", smart)
+        compose.waitUntil(15_000) { exists("home-trakt-trakt:smart:48183/show:41::") }
     }
 
     private companion object {

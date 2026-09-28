@@ -201,6 +201,27 @@ class TraktRowsTest {
         assertEquals("Fictional favourites", h.rowLists.read("p", source)!!.title)
     }
 
+    /** HOME-FR-101: a public smart list is read by its address's name part, then by number, without a sign-in. */
+    @Test
+    fun aSmartListIsReadByNameAndByNumber() = runBlocking {
+        val summary = """{"name":"Lasten Sarjat","privacy":"public","ids":{"slug":"lasten-sarjat-2eadc6438118f342","trakt":48183},"media_type":"shows"}"""
+        bodies["smart-lists/lasten-sarjat-2eadc6438118f342"] = summary
+        bodies["smart-lists/48183"] = summary
+        bodies["smart-lists/48183/items"] = """[{"type":"show","show":{"title":"A fictional cartoon","ids":{"trakt":211950,"tmdb":237512}},"rank":1}]"""
+        val h = host()
+        val info = h.api.listSummary(com.sohva.tv.feature.trakt.protocol.TraktListRef.Smart("lasten-sarjat-2eadc6438118f342"))!!
+        assertEquals(com.sohva.tv.feature.trakt.protocol.TraktListInfo(48183, "Lasten Sarjat", null, 0, 0, smart = true), info)
+        val source = TraktRowSource.smart(48183)
+        assertEquals("trakt:smart:48183", source.id)
+        assertEquals(source.id, TraktRowSource.of("trakt:smart:48183")?.id)
+        TraktSync(h, FakeTable(), h.shelves).rows("p", listOf(source.id))
+        val shelf = h.rowLists.read("p", source)!!
+        assertEquals(listOf("A fictional cartoon"), shelf.cards.map { it.title })
+        assertEquals(TraktKind.SHOW, shelf.cards.single().kind)
+        assertEquals("the name comes from the smart list's own summary", "Lasten Sarjat", shelf.title)
+        assertTrue(seen.all { it.second == "-" })
+    }
+
     @Test
     fun listSummariesAndSearchReadPublicListsOnly() = runBlocking {
         bodies["users/viewer-one/lists/best-films"] = """{"name":"Best films","privacy":"public","item_count":40,"likes":3,"ids":{"trakt":77,"slug":"best-films"},"user":{"username":"viewer-one"}}"""

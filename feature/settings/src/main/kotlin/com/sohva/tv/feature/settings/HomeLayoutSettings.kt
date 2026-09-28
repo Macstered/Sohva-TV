@@ -31,7 +31,7 @@ interface HomeLayoutServices {
 }
 
 /** A public Trakt list the search found (HOME-FR-99). */
-data class ListChoice(val id: Long, val name: String, val owner: String?, val items: Int, val likes: Int)
+data class ListChoice(val id: Long, val name: String, val owner: String?, val items: Int, val likes: Int, val smart: Boolean = false)
 
 /** What "Add a Trakt list" found (HOME-FR-99). */
 sealed interface ListFinding {

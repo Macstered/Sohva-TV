@@ -913,4 +913,5 @@
     <string name="phone_list_added">Lisätty television etusivulle: %1$s.</string>
     <string name="phone_list_not_found">Listaa ei voitu lisätä. Se voi olla yksityinen, tai etusivulla on jo 8 lisättyä riviä.</string>
     <string name="phone_list_invalid">Tämä ei ole trakt.tv-listan osoite tai numero.</string>
+    <string name="home_layout_list_smart">Trakt-älylista</string>
 </resources>

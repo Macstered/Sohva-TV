@@ -90,6 +90,16 @@ class HomeLayoutTest {
         assertEquals(HomeLayout.MAX_ADDED, many.added.size)
     }
 
+    /** HOME-FR-101: a smart list is an added row by its own number, apart from ordinary lists. */
+    @Test
+    fun smartListsAreAddedRowsToo() {
+        val layout = HomeLayout.decode("trakt:smart:48183,trakt:list:48183,trakt:smart:x")
+        assertEquals(listOf("trakt:smart:48183", "trakt:list:48183"), layout.added)
+        assertEquals(48183L, HomeLayout.traktSmartListId("trakt:smart:48183"))
+        assertEquals(null, HomeLayout.traktListId("trakt:smart:48183"))
+        assertTrue(HomeLayout.isTraktList("trakt:smart:48183"))
+    }
+
     @Test
     fun textThatIsNoLayoutIsTheDefault() {
         assertEquals(HomeLayout.DEFAULT, HomeLayout.decode("x".repeat(5_000)))
