@@ -895,4 +895,22 @@
     <string name="series_seasons_missing_discover">Lähteissäsi on %1$d / %2$d tuotantokautta. Loput voivat löytyä Discoverista.</string>
     <string name="home_trakt_in_library">Kirjastossa</string>
     <string name="home_layout_library_only">Vain kirjastossani olevat</string>
+    <string name="trakt_row_list">Trakt-lista</string>
+    <string name="home_layout_lists">Trakt-listat</string>
+    <string name="home_layout_add_list">Lisää Trakt-lista</string>
+    <string name="home_layout_list_phone">Puhelimesta</string>
+    <string name="home_layout_list_help">Kirjoita listan trakt.tv-osoite, sen numero tai sanoja sen nimestä ja valitse Hae. Vain julkisia listoja voi lisätä.</string>
+    <string name="home_layout_list_query">Osoite, numero tai nimi</string>
+    <string name="home_layout_list_none">Yksikään julkinen lista ei vastannut hakua. Tarkista osoite tai kokeile muita sanoja.</string>
+    <string name="home_layout_list_private">Lista on yksityinen: vain sen omistaja näkee sen. Pyydä omistajaa tekemään siitä julkinen trakt.tv:ssä.</string>
+    <string name="home_layout_list_failed">Traktiin ei saatu yhteyttä. Tarkista television verkkoyhteys ja yritä uudelleen.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d nimikettä · %3$d tykkäystä</string>
+    <string name="home_layout_list_phone_help">Skannaa koodi, liitä listan trakt.tv-osoite puhelimeen ja lähetä se. Voit lähettää useita listoja.</string>
+    <string name="home_layout_list_added">Lisätty etusivulle: %1$s</string>
+    <string name="phone_list_page_title">Lähetä Trakt-lista televisioon</string>
+    <string name="phone_list_page_help">Liitä listan trakt.tv-osoite tai sen numero.</string>
+    <string name="phone_list_page_label">Listan osoite</string>
+    <string name="phone_list_added">Lisätty television etusivulle: %1$s.</string>
+    <string name="phone_list_not_found">Listaa ei voitu lisätä. Se voi olla yksityinen, tai etusivulla on jo 8 lisättyä riviä.</string>
+    <string name="phone_list_invalid">Tämä ei ole trakt.tv-listan osoite tai numero.</string>
 </resources>

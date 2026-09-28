@@ -885,4 +885,22 @@
     <string name="series_seasons_missing_discover">Dina källor har %1$d av %2$d säsonger. Resten kan finnas i Discover.</string>
     <string name="home_trakt_in_library">I biblioteket</string>
     <string name="home_layout_library_only">Bara titlar i mitt bibliotek</string>
+    <string name="trakt_row_list">Trakt-lista</string>
+    <string name="home_layout_lists">Trakt-listor</string>
+    <string name="home_layout_add_list">Lägg till en Trakt-lista</string>
+    <string name="home_layout_list_phone">Från telefonen</string>
+    <string name="home_layout_list_help">Skriv listans trakt.tv-adress, dess nummer eller ord ur namnet och välj Sök. Bara offentliga listor kan läggas till.</string>
+    <string name="home_layout_list_query">Adress, nummer eller namn</string>
+    <string name="home_layout_list_none">Ingen offentlig lista matchade. Kontrollera adressen eller prova andra ord.</string>
+    <string name="home_layout_list_private">Listan är privat: bara ägaren kan se den. Be ägaren göra den offentlig på trakt.tv.</string>
+    <string name="home_layout_list_failed">Det gick inte att nå Trakt. Kontrollera tv:ns anslutning och försök igen.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d titlar · %3$d gillningar</string>
+    <string name="home_layout_list_phone_help">Skanna koden, klistra in listans trakt.tv-adress på telefonen och skicka den. Du kan skicka flera listor.</string>
+    <string name="home_layout_list_added">Tillagd på startsidan: %1$s</string>
+    <string name="phone_list_page_title">Skicka en Trakt-lista till tv:n</string>
+    <string name="phone_list_page_help">Klistra in listans trakt.tv-adress eller dess nummer.</string>
+    <string name="phone_list_page_label">Listans adress</string>
+    <string name="phone_list_added">Tillagd på tv:ns startsida: %1$s.</string>
+    <string name="phone_list_not_found">Listan kunde inte läggas till. Den kan vara privat, eller så har startsidan redan 8 tillagda rader.</string>
+    <string name="phone_list_invalid">Det är inte en trakt.tv-listas adress eller nummer.</string>
 </resources>

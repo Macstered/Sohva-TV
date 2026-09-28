@@ -8,6 +8,7 @@ import com.sohva.tv.feature.trakt.protocol.PausedItem
 import com.sohva.tv.feature.trakt.protocol.TraktException
 import com.sohva.tv.feature.trakt.protocol.TraktFailure
 import com.sohva.tv.feature.trakt.protocol.TraktKind
+import com.sohva.tv.feature.trakt.protocol.TraktListRef
 import com.sohva.tv.feature.trakt.protocol.WatchedMovie
 import com.sohva.tv.feature.trakt.protocol.WatchedShow
 import com.sohva.tv.feature.trakt.shelf.TraktCard
@@ -244,10 +245,12 @@ class TraktSync(
                     host.api.list(null, source.path, source.kind, TraktRowSource.TITLES)
                 }
                 val cards = titles.map { TraktCard(it.kind, it.ids, it.title, it.year, it.overview, it.poster, it.fanart) }
-                host.rowLists.save(profile, source, TraktShelf(host.clock.wallMillis(), cards))
-                host.log.info("trakt", "row ${source.name.lowercase()}: ${cards.size} titles")
+                // A public list keeps its name; a layout restored from a backup asks for it once (HOME-FR-99).
+                val title = stored?.title ?: source.listId?.let { id -> host.api.listSummary(TraktListRef.ById(id))?.name }
+                host.rowLists.save(profile, source, TraktShelf(host.clock.wallMillis(), cards, title))
+                host.log.info("trakt", "row ${source.name}: ${cards.size} titles")
             } catch (e: TraktException) {
-                host.log.info("trakt", "row ${source.name.lowercase()} kept (${e.failure.name.lowercase()})")
+                host.log.info("trakt", "row ${source.name} kept (${e.failure.name.lowercase()})")
             }
         }
     }

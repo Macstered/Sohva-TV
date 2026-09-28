@@ -38,7 +38,7 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
 
     /** An added row at the end, shown; nothing when it is there already, unknown, or [MAX_ADDED] are there. */
     fun withAdded(id: String): HomeLayout {
-        if (id !in ADDABLE || rows.any { it.id == id } || added.size >= MAX_ADDED) return this
+        if (!isAddable(id) || rows.any { it.id == id } || added.size >= MAX_ADDED) return this
         return HomeLayout(rows + HomeRowEntry(id, shown = true))
     }
 
@@ -84,6 +84,22 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
         /** Rows that need the profile's own Trakt account. */
         val NEEDS_ACCOUNT: Set<String> = setOf(TRAKT_WATCHLIST_MOVIES, TRAKT_WATCHLIST_SHOWS)
 
+        /** A public Trakt list by its number (HOME-FR-99): `trakt:list:<id>`. */
+        const val TRAKT_LIST_PREFIX: String = "trakt:list:"
+
+        fun traktList(id: Long): String = TRAKT_LIST_PREFIX + id
+
+        /** The list number of a `trakt:list:<id>` row, else null: digits only, at most 12 of them. */
+        fun traktListId(rowId: String): Long? {
+            if (!rowId.startsWith(TRAKT_LIST_PREFIX)) return null
+            val digits = rowId.substring(TRAKT_LIST_PREFIX.length)
+            if (digits.isEmpty() || digits.length > 12 || digits.any { it !in '0'..'9' }) return null
+            return digits.toLong().takeIf { it > 0 }
+        }
+
+        /** A row the viewer can add: a listed one, or a Trakt list by number. */
+        fun isAddable(id: String): Boolean = id in ADDABLE || traktListId(id) != null
+
         /** The owner's limit (decision "M12"): at most 8 added rows per profile, so Home stays short and quick. */
         const val MAX_ADDED: Int = 8
 
@@ -112,7 +128,7 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
                 val libraryOnly = marked.endsWith(LIBRARY_ONLY)
                 val id = marked.removeSuffix(LIBRARY_ONLY.toString())
                 val builtIn = id in BUILT_IN
-                if (!builtIn && (id !in ADDABLE || added >= MAX_ADDED)) continue
+                if (!builtIn && (!isAddable(id) || added >= MAX_ADDED)) continue
                 if (!seen.add(id)) continue
                 if (!builtIn) added++
                 rows += HomeRowEntry(id, shown = !hidden, libraryOnly = libraryOnly && !builtIn)

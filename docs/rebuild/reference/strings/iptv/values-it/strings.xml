@@ -886,4 +886,22 @@
     <string name="series_seasons_missing_discover">Le tue fonti hanno %1$d stagioni su %2$d. Il resto potrebbe essere in Discover.</string>
     <string name="home_trakt_in_library">In libreria</string>
     <string name="home_layout_library_only">Solo titoli nella mia libreria</string>
+    <string name="trakt_row_list">Lista Trakt</string>
+    <string name="home_layout_lists">Liste Trakt</string>
+    <string name="home_layout_add_list">Aggiungi una lista Trakt</string>
+    <string name="home_layout_list_phone">Dal telefono</string>
+    <string name="home_layout_list_help">Scrivi l\'indirizzo trakt.tv di una lista, il suo numero o parole del nome, poi scegli Cerca. Si possono aggiungere solo liste pubbliche.</string>
+    <string name="home_layout_list_query">Indirizzo, numero o nome</string>
+    <string name="home_layout_list_none">Nessuna lista pubblica corrisponde. Controlla l\'indirizzo o prova altre parole.</string>
+    <string name="home_layout_list_private">Quella lista è privata: solo il proprietario può vederla. Chiedigli di renderla pubblica su trakt.tv.</string>
+    <string name="home_layout_list_failed">Impossibile raggiungere Trakt. Controlla la connessione del televisore e riprova.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d titoli · %3$d mi piace</string>
+    <string name="home_layout_list_phone_help">Scansiona il codice, incolla sul telefono l\'indirizzo trakt.tv della lista e invialo. Puoi inviare più liste.</string>
+    <string name="home_layout_list_added">Aggiunta alla Home: %1$s</string>
+    <string name="phone_list_page_title">Invia una lista Trakt alla TV</string>
+    <string name="phone_list_page_help">Incolla l\'indirizzo trakt.tv di una lista o il suo numero.</string>
+    <string name="phone_list_page_label">Indirizzo della lista</string>
+    <string name="phone_list_added">Aggiunta alla Home della TV: %1$s.</string>
+    <string name="phone_list_not_found">Impossibile aggiungere la lista. Potrebbe essere privata, oppure la Home ha già 8 righe aggiunte.</string>
+    <string name="phone_list_invalid">Non è l\'indirizzo o il numero di una lista trakt.tv.</string>
 </resources>

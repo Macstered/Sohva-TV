@@ -43,8 +43,8 @@ data class TraktCard(
         }
 }
 
-/** A stored row: when it was built and its cards. */
-data class TraktShelf(val at: Long, val cards: List<TraktCard>)
+/** A stored row: when it was built, its cards, and a public list's name (HOME-FR-99). */
+data class TraktShelf(val at: Long, val cards: List<TraktCard>, val title: String? = null)
 
 /**
  * The stored Watch next and Recommended lists (§6 `nextup:`, `recommendations:`), read from the
@@ -88,6 +88,7 @@ class TraktShelves(private val host: TraktHost) {
         fun encode(shelf: TraktShelf): String = TraktJson.write {
             beginObject()
             name("at").value(shelf.at)
+            shelf.title?.let { name("title").value(it) }
             name("items").beginArray()
             shelf.cards.forEach { write(it) }
             endArray()
@@ -96,17 +97,19 @@ class TraktShelves(private val host: TraktHost) {
 
         fun decode(text: String): TraktShelf? = runCatching {
             var at = 0L
+            var title: String? = null
             val cards = ArrayList<TraktCard>()
             TraktJson.parse(Buffer().writeUtf8(text)) { j ->
                 j.fields { f ->
                     when (f) {
                         "at" -> at = j.long() ?: 0L
+                        "title" -> title = j.text(200)
                         "items" -> j.items { read(j)?.let(cards::add) }
                         else -> j.skipValue()
                     }
                 }
             }
-            TraktShelf(at, cards)
+            TraktShelf(at, cards, title)
         }.getOrNull()
 
         private fun JsonWriter.write(c: TraktCard) {

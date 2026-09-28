@@ -49,6 +49,14 @@ sealed interface PhoneMode {
     class Addons(val accepts: (ByteArray) -> Boolean) : PhoneMode {
         override fun toString(): String = "Addons"
     }
+
+    /**
+     * A Trakt list's address or number for Home (spec 02 HOME-FR-100): a short plain-text body that
+     * [accepts] must pass. The page stays open, so several lists can be sent one after another.
+     */
+    class TraktList(val accepts: (String) -> Boolean) : PhoneMode {
+        override fun toString(): String = "TraktList"
+    }
 }
 
 /** The sentences the page answers with, in the TV's interface language (PHONE-FR-32). */
@@ -71,6 +79,18 @@ interface PhoneAnswers {
     fun logoPage(channelName: String): LogoPageTexts
 
     fun logoSaved(channelName: String): String
+
+    /** The Trakt list page's texts (HOME-FR-100). */
+    fun traktListPage(): TraktListPageTexts = TraktListPageTexts(
+        "en", "Send a Trakt list to your TV", "Paste a list's trakt.tv address, or its number.", "List address",
+        "Send to the TV", "Nothing you type leaves your home network.",
+    )
+
+    fun traktListAdded(name: String): String = "Added to your TV's Home: $name."
+
+    fun traktListNotFound(): String = "That list could not be added. It may be private, or Home already has 8 added rows."
+
+    fun traktListInvalid(): String = "That is not a trakt.tv list address or number."
 }
 
 /** Saves what the phone sent; called on the server thread, blocking until done (PHONE-FR-31). */
@@ -167,6 +187,7 @@ class PhoneServer(
                 val max = when (mode) {
                     is PhoneMode.Logo -> MAX_LOGO_BODY
                     is PhoneMode.Addons -> MAX_ADDON_BODY
+                    is PhoneMode.TraktList -> MAX_LIST_BODY
                     PhoneMode.Sources -> MAX_BODY
                 }
                 PhoneRequest.read(client.getInputStream(), max, System.nanoTime() + REQUEST_BUDGET_NANOS)
@@ -184,6 +205,7 @@ class PhoneServer(
 
         private fun submit(out: OutputStream, request: PhoneRequest) {
             if (mode is PhoneMode.Addons) return addons(out, request, mode)
+            if (mode is PhoneMode.TraktList) return traktList(out, request, mode)
             val authorization = request.headers["authorization"].orEmpty().toByteArray(Charsets.US_ASCII)
             val originOk = request.headers["origin"]?.let { it == origin } ?: true
             if (!originOk || !MessageDigest.isEqual(authorization, bearer)) return respond(out, 403, answers.forbidden())
@@ -194,7 +216,7 @@ class PhoneServer(
             val fits = when (mode) {
                 PhoneMode.Sources -> submission !is PhoneSubmission.Logo
                 is PhoneMode.Logo -> submission is PhoneSubmission.Logo && submission.channelKey == mode.channelKey
-                is PhoneMode.Addons -> false
+                is PhoneMode.Addons, is PhoneMode.TraktList -> false
             }
             if (!fits) return respond(out, 403, answers.forbidden())
             // Sending the same thing twice in a session saves it once (PHONE-FR-31 rebuild rule).
@@ -209,7 +231,7 @@ class PhoneServer(
                             is PhoneSubmission.NewSource -> s.copy(received = s.received + 1, lastSource = submission.config.source.name, lastWasKeys = false)
                             is PhoneSubmission.Keys -> s.copy(received = s.received + 1, lastWasKeys = true)
                             is PhoneSubmission.Logo -> s.copy(received = s.received + 1, logoSaved = true)
-                            is PhoneSubmission.AddonList -> s
+                            is PhoneSubmission.AddonList, is PhoneSubmission.TraktList -> s
                         }
                     }
                 }
@@ -218,7 +240,7 @@ class PhoneServer(
                 is PhoneSubmission.NewSource -> answers.saved(submission.config.source.name)
                 is PhoneSubmission.Keys -> answers.keysSaved()
                 is PhoneSubmission.Logo -> answers.logoSaved((mode as PhoneMode.Logo).channelName)
-                is PhoneSubmission.AddonList -> answers.failed()
+                is PhoneSubmission.AddonList, is PhoneSubmission.TraktList -> answers.failed()
             }
             respond(out, 200, answer)
         }
@@ -237,10 +259,28 @@ class PhoneServer(
             synchronized(this@PhoneServer) { if (socket === server) stop() }
         }
 
+        /**
+         * HOME-FR-100: as the addon list's rules (exact `Origin`, the bearer token, `text/plain`), a body
+         * of 1–1,024 bytes that [PhoneMode.TraktList.accepts] passes. The receiver adds the list and the
+         * page says so, or says why not; the session stays open for another list.
+         */
+        private fun traktList(out: OutputStream, request: PhoneRequest, mode: PhoneMode.TraktList) {
+            val authorization = request.headers["authorization"].orEmpty().toByteArray(Charsets.US_ASCII)
+            if (request.headers["origin"] != origin || !MessageDigest.isEqual(authorization, bearer)) return respond(out, 403, answers.forbidden())
+            val type = request.headers["content-type"].orEmpty().substringBefore(';').trim().lowercase(Locale.ROOT)
+            val text = request.raw.toString(Charsets.UTF_8).trim()
+            if (type != TEXT || text.isEmpty() || !mode.accepts(text)) return respond(out, 400, answers.traktListInvalid())
+            val added = TraktListAdded()
+            if (!receiver.receive(PhoneSubmission.TraktList(text, added))) return respond(out, 400, answers.traktListNotFound())
+            stateFlow.update { s -> if (s is PhoneState.Running) s.copy(received = s.received + 1, lastSource = added.name) else s }
+            respond(out, 200, answers.traktListAdded(added.name.orEmpty()))
+        }
+
         private fun page(): String = when (val m = mode) {
             PhoneMode.Sources -> PhonePage.sources(answers.page())
             is PhoneMode.Logo -> PhonePage.logo(answers.logoPage(m.channelName), m.channelKey)
             is PhoneMode.Addons -> PhonePage.addons()
+            is PhoneMode.TraktList -> PhonePage.traktList(answers.traktListPage())
         }
 
         private fun respond(out: OutputStream, code: Int, body: String, html: Boolean = false) {
@@ -270,6 +310,10 @@ class PhoneServer(
 
         /** Spec 50 ADDON-FR-34, -45: a list of at most 256 KiB, and a session of at most 10 minutes. */
         const val MAX_ADDON_BODY: Int = 262_144
+
+        /** A Trakt list address is short (HOME-FR-100). */
+        const val MAX_LIST_BODY: Int = 1_024
+
         const val ADDON_LIFETIME_MILLIS: Long = 10 * 60 * 1_000L
         private const val TEXT = "text/plain"
         private const val BACKLOG = 4

@@ -885,4 +885,22 @@
     <string name="series_seasons_missing_discover">Deine Quellen haben %1$d von %2$d Staffeln. Den Rest findest du vielleicht in Discover.</string>
     <string name="home_trakt_in_library">In der Mediathek</string>
     <string name="home_layout_library_only">Nur Titel in meiner Mediathek</string>
+    <string name="trakt_row_list">Trakt-Liste</string>
+    <string name="home_layout_lists">Trakt-Listen</string>
+    <string name="home_layout_add_list">Trakt-Liste hinzufügen</string>
+    <string name="home_layout_list_phone">Vom Handy</string>
+    <string name="home_layout_list_help">Gib die trakt.tv-Adresse einer Liste, ihre Nummer oder Wörter aus ihrem Namen ein und wähle Suchen. Nur öffentliche Listen lassen sich hinzufügen.</string>
+    <string name="home_layout_list_query">Adresse, Nummer oder Name</string>
+    <string name="home_layout_list_none">Keine öffentliche Liste passt. Prüfe die Adresse oder versuche andere Wörter.</string>
+    <string name="home_layout_list_private">Diese Liste ist privat: Nur ihr Besitzer kann sie sehen. Bitte ihn, sie auf trakt.tv öffentlich zu machen.</string>
+    <string name="home_layout_list_failed">Trakt ist nicht erreichbar. Prüfe die Verbindung des Fernsehers und versuche es erneut.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d Titel · %3$d Likes</string>
+    <string name="home_layout_list_phone_help">Scanne den Code, füge die trakt.tv-Adresse der Liste auf dem Handy ein und sende sie. Du kannst mehrere Listen senden.</string>
+    <string name="home_layout_list_added">Zur Startseite hinzugefügt: %1$s</string>
+    <string name="phone_list_page_title">Trakt-Liste an den Fernseher senden</string>
+    <string name="phone_list_page_help">Füge die trakt.tv-Adresse einer Liste oder ihre Nummer ein.</string>
+    <string name="phone_list_page_label">Adresse der Liste</string>
+    <string name="phone_list_added">Zur Startseite des Fernsehers hinzugefügt: %1$s.</string>
+    <string name="phone_list_not_found">Die Liste konnte nicht hinzugefügt werden. Sie ist vielleicht privat, oder die Startseite hat schon 8 hinzugefügte Zeilen.</string>
+    <string name="phone_list_invalid">Das ist keine trakt.tv-Listenadresse oder -nummer.</string>
 </resources>

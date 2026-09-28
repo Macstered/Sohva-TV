@@ -23,5 +23,7 @@ fun homeRowTitle(id: String): Int = when (id) {
     "trakt:anticipated-movies" -> R.string.trakt_row_anticipated_movies
     "trakt:anticipated-shows" -> R.string.trakt_row_anticipated_shows
     "trakt:boxoffice" -> R.string.trakt_row_box_office
-    else -> R.string.home_recent_channels
+    "recent-channels" -> R.string.home_recent_channels
+    // A public list's row, before its name is known (HOME-FR-99).
+    else -> R.string.trakt_row_list
 }

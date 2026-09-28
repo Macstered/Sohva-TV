@@ -143,4 +143,10 @@
     <string name="phone_setup_page_logo_sending">Skickar till TV:n…</string>
     <string name="phone_setup_page_logo_saved">Logotypen för %1$s är sparad på TV:n. Du kan stänga den här sidan.</string>
     <string name="phone_setup_page_logo_invalid">Den filen är ingen bild som den här telefonen kan läsa.</string>
+    <string name="phone_list_page_title">Skicka en Trakt-lista till tv:n</string>
+    <string name="phone_list_page_help">Klistra in listans trakt.tv-adress eller dess nummer.</string>
+    <string name="phone_list_page_label">Listans adress</string>
+    <string name="phone_list_added">Tillagd på tv:ns startsida: %1$s.</string>
+    <string name="phone_list_not_found">Listan kunde inte läggas till. Den kan vara privat, eller så har startsidan redan 8 tillagda rader.</string>
+    <string name="phone_list_invalid">Det är inte en trakt.tv-listas adress eller nummer.</string>
 </resources>

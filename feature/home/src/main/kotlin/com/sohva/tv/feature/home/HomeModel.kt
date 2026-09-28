@@ -211,7 +211,7 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
                 else -> trakt.rows[id]
                     ?.let { cards -> if (layout.isLibraryOnly(id)) cards.filter { it.owned } else cards }
                     ?.takeIf { it.isNotEmpty() }
-                    ?.let { add(HomeRow.Trakt(it.distinctBy { c -> c.key }, next = false, id = id)) }
+                    ?.let { add(HomeRow.Trakt(it.distinctBy { c -> c.key }, next = false, id = id, name = trakt.names[id])) }
             }
         }
     }
@@ -251,7 +251,7 @@ internal object StructureLock {
             }
             is HomeRow.Trakt -> {
                 val fresh = (next as? HomeRow.Trakt)?.cards.orEmpty().associateBy { it.key }
-                HomeRow.Trakt(row.cards.map { fresh[it.key] ?: it }, row.next, row.id)
+                HomeRow.Trakt(row.cards.map { fresh[it.key] ?: it }, row.next, row.id, row.name)
             }
             is HomeRow.Sport -> {
                 val next2 = next as? HomeRow.Sport

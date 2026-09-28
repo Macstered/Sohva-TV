@@ -6,6 +6,13 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -41,6 +48,8 @@ class TraktRowsDeviceTest {
     private val trakt = MockWebServer()
     private val requests = ConcurrentLinkedQueue<Pair<String, String?>>()
     private val bodies = mapOf(
+        "users/viewer-one/lists/best-films" to """{"name":"Best fictional films","privacy":"public","item_count":2,"likes":4,"ids":{"trakt":77},"user":{"username":"viewer-one"}}""",
+        "lists/77/items/movie,show" to """[{"rank":1,"type":"movie","movie":{"title":"List film","ids":{"trakt":31}}},{"rank":2,"type":"show","show":{"title":"List show","ids":{"trakt":32}}}]""",
         "movies/trending" to """[{"watchers":12,"movie":{"title":"A fictional film","year":2026,"ids":{"trakt":1,"tmdb":5001}}},
             {"watchers":4,"movie":{"title":"Another fictional film","year":2025,"ids":{"trakt":2,"tmdb":5002}}}]""",
     )
@@ -64,7 +73,7 @@ class TraktRowsDeviceTest {
             graph.data.database.openHelper.writableDatabase.execSQL("UPDATE movie SET work_key = 'tmdb:5001' WHERE key = '${LibraryFixture.key(1)}'")
             runBlocking {
                 graph.data.progress.save(LibraryFixture.key(0), 10 * MINUTE, 90 * MINUTE)
-                if (name.methodName != "settingsAddsATraktRowWithTheRemote") {
+                if (name.methodName in TRENDING_FIRST) {
                     prefs.setHomeLayout(profile, HomeLayout.DEFAULT.withAdded(HomeLayout.TRAKT_TRENDING_MOVIES).withOrder(listOf(HomeLayout.TRAKT_TRENDING_MOVIES)))
                 }
             }
@@ -72,6 +81,7 @@ class TraktRowsDeviceTest {
         }
 
         override fun after() {
+            graph.traktListGate = null
             graph.traktLoop?.stop()
             graph.playbackActive.value = false
             trakt.close()
@@ -194,7 +204,70 @@ class TraktRowsDeviceTest {
         assertTrue(exists(card))
     }
 
+    private fun type(tag: String, value: String) {
+        compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.RequestFocus)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasSetTextAction()).performTextReplacement(value)
+        compose.onNode(hasSetTextAction()).performImeAction()
+        compose.waitForIdle()
+    }
+
+    /** HOME-FR-99: a list's address in Settings › Home, Search, OK on the result; Home shows it under its own name. */
+    @Test
+    fun aListIsAddedByItsAddressAndTitledWithItsName() {
+        // Adding waits a moment, so the list's rows arrive after the dialog has gone.
+        graph.traktListGate = { kotlinx.coroutines.delay(1_500) }
+        home()
+        compose.focusRail(RailItem.SETTINGS)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("settings-section-sources") && focusedTags().any { it != null && (it.startsWith("source-") || it.startsWith("settings-")) } }
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        awaitFocus("settings-section-sources")
+        walkTo("settings-section-home", KeyEvent.KEYCODE_DPAD_UP)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        awaitFocus("settings-home-order")
+        walkTo("settings-home-trakt", KeyEvent.KEYCODE_DPAD_RIGHT, limit = 3)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        walkTo("settings-home-add-list", KeyEvent.KEYCODE_DPAD_DOWN, limit = 30)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        awaitFocus("settings-list-search")
+        type("settings-list-query", "https://trakt.tv/users/viewer-one/lists/best-films")
+        // Back on the field after typing, as with a remote; Right reaches Search.
+        awaitFocus("settings-list-query")
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitFocus("settings-list-search")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("settings-list-result-77") }
+        walkTo("settings-list-result-77", KeyEvent.KEYCODE_DPAD_DOWN, limit = 5)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { !exists("settings-list-dialog") }
+        compose.waitUntil(5_000) { runBlocking { prefs.homeLayout(profile).first() }.added == listOf("trakt:list:77") }
+        compose.waitUntil(5_000) { exists("settings-home-list-trakt:list:77") }
+        // Still on the button once the new list's rows are drawn above it (AGENTS.md §5 rule 2).
+        android.os.SystemClock.sleep(500)
+        compose.waitForIdle()
+        awaitFocus("settings-home-add-list")
+        repeat(3) { if (!exists("home-rows")) press(KeyEvent.KEYCODE_BACK) }
+        compose.waitUntil(15_000) { exists("home-trakt-trakt:list:77/movie:31::") }
+        assertTrue(compose.onAllNodes(hasText("Best fictional films")).fetchSemanticsNodes().isNotEmpty())
+        // Public: no sign-in on any of these requests.
+        assertTrue(requests.toString(), requests.all { it.second == null })
+    }
+
+    /** HOME-FR-100: an address sent from the phone page adds the list and names it for the page's answer. */
+    @Test
+    fun anAddressFromThePhoneAddsTheList() {
+        home()
+        val name = runBlocking { com.sohva.tv.app.settings.AppTraktLists.addFromPhone(graph, "https://trakt.tv/users/viewer-one/lists/best-films") }
+        assertEquals("Best fictional films", name)
+        assertEquals(listOf("trakt:list:77"), runBlocking { prefs.homeLayout(profile).first() }.added)
+        assertEquals("not a list address", null, runBlocking { com.sohva.tv.app.settings.AppTraktLists.addFromPhone(graph, "Best films") })
+        compose.waitUntil(15_000) { exists("home-trakt-trakt:list:77/show:32::") }
+    }
+
     private companion object {
+        val TRENDING_FIRST = setOf("anAddedChartIsFetchedWithoutAnAccountAndDrawnInItsPlace", "leftFromAPosterRowsFirstCardOpensTheRail", "libraryTitlesAreMarkedAndALibraryOnlyRowKeepsThem")
         const val MINUTE = 60_000L
     }
 }

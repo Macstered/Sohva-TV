@@ -33,6 +33,14 @@ sealed interface PhoneSubmission {
         override fun toString(): String = "AddonList(${bytes.size} bytes)"
     }
 
+    /**
+     * A Trakt list's address or number (spec 02 HOME-FR-100), already checked by the mode; the
+     * receiver writes the added list's name into [added] for the page's answer.
+     */
+    class TraktList(val text: String, val added: TraktListAdded = TraktListAdded()) : PhoneSubmission {
+        override fun toString(): String = "TraktList"
+    }
+
     /** A picture for one channel's logo (spec 21 CHAN-FR-42): the PNG bytes, 1…2,000,000 of them. */
     class Logo(val channelKey: String, val png: ByteArray) : PhoneSubmission {
         override fun toString(): String = "Logo(${png.size} bytes)"
@@ -89,4 +97,9 @@ sealed interface PhoneSubmission {
             }
         }
     }
+}
+
+/** The name of the list a [PhoneSubmission.TraktList] added (HOME-FR-100). */
+class TraktListAdded {
+    @Volatile var name: String? = null
 }

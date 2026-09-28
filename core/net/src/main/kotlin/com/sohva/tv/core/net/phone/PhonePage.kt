@@ -24,6 +24,16 @@ data class PhonePageTexts(
     val privacy: String,
 )
 
+/** The Trakt list page's texts (spec 02 HOME-FR-100), in the TV's interface language. */
+data class TraktListPageTexts(
+    val languageTag: String,
+    val title: String,
+    val help: String,
+    val label: String,
+    val send: String,
+    val privacy: String,
+)
+
 /** The logo page's texts (spec 21 CHAN-FR-41), in the TV's interface language. */
 data class LogoPageTexts(
     val languageTag: String,
@@ -83,6 +93,15 @@ object PhonePage {
         .then(function(r){return r.text();}).then(function(s){n.textContent=s;n.hidden=false;}).catch(function(){n.textContent='…';n.hidden=false;});});
     """.trimIndent().replace("\n", "")
 
+    /** The Trakt list page's script (HOME-FR-100): the address goes as `text/plain`; the answer is shown. */
+    private val LIST_SCRIPT = """
+        var t=location.hash.slice(1);history.replaceState(null,'','/');
+        var n=document.getElementById('notice'),a=document.getElementById('list');
+        document.getElementById('send').addEventListener('click',function(){
+        fetch('/submit',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'text/plain; charset=utf-8'},body:a.value})
+        .then(function(r){return r.text();}).then(function(s){n.textContent=s;n.hidden=false;}).catch(function(){n.textContent='…';n.hidden=false;});});
+    """.trimIndent().replace("\n", "")
+
     const val ADDONS_SENT: String = "Sent. Review and confirm on your TV."
     const val ADDONS_INVALID: String = "Use a UTF-8 list of 1 to 32 configured addon URLs, up to 256 KiB, one per line."
 
@@ -97,7 +116,7 @@ object PhonePage {
     /** The Content-Security-Policy: only the pages' own two scripts and inline style (PHONE-FR-24). */
     val contentSecurityPolicy: String by lazy {
         fun hash(script: String) = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray(Charsets.UTF_8)))
-        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}' 'sha256-${hash(ADDON_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
+        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}' 'sha256-${hash(ADDON_SCRIPT)}' 'sha256-${hash(LIST_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
             "img-src 'self' blob: data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
     }
 
@@ -153,6 +172,19 @@ object PhonePage {
         append("<label for=\"list\">Addon URLs</label><textarea id=\"list\" autocapitalize=\"off\" autocomplete=\"off\" spellcheck=\"false\"></textarea>")
         append("<button type=\"button\" id=\"send\">Send to TV</button><button type=\"button\" id=\"clear\">Clear list</button></form>")
         append("<script>").append(ADDON_SCRIPT).append("</script></body></html>")
+    }
+
+    /** A Trakt list for Home (HOME-FR-100): one address field and Send. */
+    fun traktList(texts: TraktListPageTexts): String = buildString {
+        append("<!DOCTYPE html><html lang=\"").append(escape(texts.languageTag)).append("\"><head><meta charset=\"utf-8\">")
+        append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>").append(escape(texts.title))
+        append("</title><style>").append(STYLE).append("</style></head><body>")
+        append("<h1>").append(escape(texts.title)).append("</h1><p>").append(escape(texts.help)).append("</p>")
+        append("<p id=\"notice\" class=\"notice\" hidden></p><form>")
+        append("<label for=\"list\">").append(escape(texts.label)).append("</label>")
+        append("<input id=\"list\" type=\"url\" inputmode=\"url\" autocapitalize=\"off\" autocomplete=\"off\" maxlength=\"300\">")
+        append("<button type=\"button\" id=\"send\">").append(escape(texts.send)).append("</button></form>")
+        append("<p>").append(escape(texts.privacy)).append("</p><script>").append(LIST_SCRIPT).append("</script></body></html>")
     }
 
     private fun StringBuilder.form(type: String, heading: String, texts: PhonePageTexts, fields: StringBuilder.() -> Unit) {

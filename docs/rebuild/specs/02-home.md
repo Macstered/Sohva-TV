@@ -475,6 +475,24 @@ the lookup returns (SHELL-FR-17).
   Settings › Home › Trakt rows has, under each added list, "Only titles in my library"
   (`home_layout_library_only`); the row then keeps only those titles and is left out when none remain.
   Stored in the layout text as `!` after the row's id; built-in rows never filter.
+- HOME-FR-99 **Rebuild (owner, 28 September 2026, phase C):** any public Trakt list can be an added row,
+  `trakt:list:<number>` in the layout, counted in HOME-FR-94's eight. Settings › Home › Trakt rows
+  lists the added lists (a switch that removes, and "Only titles in my library") and offers "Add a
+  Trakt list": a field for a trakt.tv address (`/users/<user>/lists/<list>` or `/lists/<number>`, on
+  trakt.tv or app.trakt.tv), a list number, or words from a name, and Search. An address or number
+  reads that list's summary; words search Trakt's list names (10 at most); each result shows its
+  name, owner, number of titles and likes; OK on one adds it at the end of the layout, shown, and
+  focus returns to "Add a Trakt list". A private list says "That list is private…"; nothing found,
+  "No public list matched…"; no connection, "Trakt could not be reached…". Every request is public
+  (no Authorization header). The row takes the list's own name (kept with its titles; a layout
+  restored without it asks the summary once), its first 30 films and series in the list's order,
+  refreshed like a chart (6 h, shared by profiles).
+- HOME-FR-100 **Rebuild:** "From your phone" opens the phone page in Trakt list mode: one address field
+  and Send, in the TV's language. A trakt.tv list address or number adds that list as in HOME-FR-99
+  and the page answers "Added to your TV's Home: <name>." (the TV shows it too), or says it is not a
+  list address, or that the list could not be added (private, or eight added rows). The page takes
+  `text/plain` with the exact Origin and the page's token (as the addon list, spec 50 ADDON-FR-45) and
+  stays open for more lists until closed on the TV.
 - HOME-FR-97 **Rebuild (owner, 28 September 2026):** coming back to Home from any screen (Back,
   or a player's way home), focus returns to the card the viewer last focused on Home, wherever
   it now is in its row; when that card is gone, to the first card of its row; when the row is gone,

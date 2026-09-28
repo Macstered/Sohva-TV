@@ -178,6 +178,43 @@ class TraktRowsTest {
         assertEquals(listOf("Film A", "Film B"), titles(h, "p", TraktRowSource.TRENDING_MOVIES))
     }
 
+    /** HOME-FR-99: a public list mixes films and series; its name is read once when the row has none. */
+    @Test
+    fun aPublicListMixesKindsAndKeepsItsName() = runBlocking {
+        bodies["lists/26421/items/movie,show"] = """[{"rank":1,"type":"movie","movie":{"title":"Film L","ids":{"trakt":11}}},
+            {"rank":2,"type":"show","show":{"title":"Show L","ids":{"trakt":12}}}]"""
+        bodies["lists/26421"] = """{"name":"Fictional favourites","privacy":"public","item_count":2,"likes":5,"ids":{"trakt":26421},"user":{"username":"viewer-one"}}"""
+        val h = host()
+        val sync = TraktSync(h, FakeTable(), h.shelves)
+        val source = TraktRowSource.list(26421)
+        sync.rows("p", listOf(source.id))
+        val shelf = h.rowLists.read("p", source)!!
+        assertEquals(listOf(TraktKind.MOVIE, TraktKind.SHOW), shelf.cards.map { it.kind })
+        assertEquals("Fictional favourites", shelf.title)
+        assertEquals(listOf("lists/26421/items/movie,show", "lists/26421"), seen.map { it.first })
+        assertTrue(seen.all { it.second == "-" })
+        // Six hours later only the items are asked; the name is kept.
+        seen.clear()
+        clock.now += 7 * 60 * 60 * 1000L
+        sync.rows("p", listOf(source.id))
+        assertEquals(listOf("lists/26421/items/movie,show"), seen.map { it.first })
+        assertEquals("Fictional favourites", h.rowLists.read("p", source)!!.title)
+    }
+
+    @Test
+    fun listSummariesAndSearchReadPublicListsOnly() = runBlocking {
+        bodies["users/viewer-one/lists/best-films"] = """{"name":"Best films","privacy":"public","item_count":40,"likes":3,"ids":{"trakt":77,"slug":"best-films"},"user":{"username":"viewer-one"}}"""
+        bodies["lists/78"] = """{"name":"Secret","privacy":"private","ids":{"trakt":78}}"""
+        bodies["search/list"] = """[{"type":"list","score":10,"list":{"name":"Nordic noir","privacy":"public","item_count":25,"likes":9,"ids":{"trakt":90},"user":{"username":"someone"}}},
+            {"type":"list","list":{"name":"Hidden","privacy":"private","ids":{"trakt":91}}}]"""
+        val h = host()
+        val info = h.api.listSummary(com.sohva.tv.feature.trakt.protocol.TraktListRef.ByUser("viewer-one", "best-films"))!!
+        assertEquals(com.sohva.tv.feature.trakt.protocol.TraktListInfo(77, "Best films", "viewer-one", 40, 3), info)
+        assertNull("a private list is not offered", h.api.listSummary(com.sohva.tv.feature.trakt.protocol.TraktListRef.ById(78)))
+        assertEquals(listOf("Nordic noir"), h.api.searchLists("nordic").map { it.name })
+        assertTrue(seen.all { it.second == "-" })
+    }
+
     @Test
     fun aRestrictedProfileFetchesNothing() = runBlocking {
         charts()

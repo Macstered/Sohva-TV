@@ -232,4 +232,16 @@
     <string name="home_layout_trakt_full">Etusivulla on jo 8 lisättyä riviä. Poista yksi, jos haluat lisätä toisen.</string>
     <string name="home_trakt_in_library">Kirjastossa</string>
     <string name="home_layout_library_only">Vain kirjastossani olevat</string>
+    <string name="trakt_row_list">Trakt-lista</string>
+    <string name="home_layout_lists">Trakt-listat</string>
+    <string name="home_layout_add_list">Lisää Trakt-lista</string>
+    <string name="home_layout_list_phone">Puhelimesta</string>
+    <string name="home_layout_list_help">Kirjoita listan trakt.tv-osoite, sen numero tai sanoja sen nimestä ja valitse Hae. Vain julkisia listoja voi lisätä.</string>
+    <string name="home_layout_list_query">Osoite, numero tai nimi</string>
+    <string name="home_layout_list_none">Yksikään julkinen lista ei vastannut hakua. Tarkista osoite tai kokeile muita sanoja.</string>
+    <string name="home_layout_list_private">Lista on yksityinen: vain sen omistaja näkee sen. Pyydä omistajaa tekemään siitä julkinen trakt.tv:ssä.</string>
+    <string name="home_layout_list_failed">Traktiin ei saatu yhteyttä. Tarkista television verkkoyhteys ja yritä uudelleen.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d nimikettä · %3$d tykkäystä</string>
+    <string name="home_layout_list_phone_help">Skannaa koodi, liitä listan trakt.tv-osoite puhelimeen ja lähetä se. Voit lähettää useita listoja.</string>
+    <string name="home_layout_list_added">Lisätty etusivulle: %1$s</string>
 </resources>

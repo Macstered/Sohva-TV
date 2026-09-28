@@ -267,6 +267,59 @@ class TraktApiClient(
         }
     }
 
+    /**
+     * A public list's summary (spec 02 HOME-FR-99), read without a sign-in: by number or by its
+     * owner's address. Null when Trakt does not know it (404); a private list answers 401 and throws
+     * [TraktFailure.REAUTHORIZE], which the caller reads as "private".
+     */
+    suspend fun listSummary(ref: TraktListRef): TraktListInfo? {
+        val path = when (ref) {
+            is TraktListRef.ById -> "lists/${ref.id}"
+            is TraktListRef.ByUser -> "users/${ref.user}/lists/${ref.list}"
+            is TraktListRef.Search -> return null
+        }
+        val r = readOrNotFound(null, path, emptyMap()) ?: return null
+        return withContext(parse) { TraktJson.parse(r.body) { j -> listInfo(j) } }
+    }
+
+    /** Trakt's list search by name (HOME-FR-99): at most [limit] public lists, best first. */
+    suspend fun searchLists(query: String, limit: Int = 10): List<TraktListInfo> {
+        val r = read(null, "search/list", mapOf("query" to query, "limit" to limit.toString(), "page" to "1"))
+        return withContext(parse) {
+            val out = ArrayList<TraktListInfo>()
+            TraktJson.parse(r.body) { j ->
+                j.items {
+                    var info: TraktListInfo? = null
+                    j.fields { f -> if (f == "list") info = listInfo(j) else j.skipValue() }
+                    info?.let(out::add)
+                }
+            }
+            out.take(limit)
+        }
+    }
+
+    private fun listInfo(j: JsonReader): TraktListInfo? {
+        var id: Long? = null
+        var name: String? = null
+        var owner: String? = null
+        var items = 0
+        var likes = 0
+        var private = false
+        j.fields { f ->
+            when (f) {
+                "name" -> name = j.text(200)
+                "item_count" -> items = j.long()?.toInt() ?: 0
+                "likes" -> likes = j.long()?.toInt() ?: 0
+                "privacy" -> private = j.text(16) == "private"
+                "ids" -> j.fields { g -> if (g == "trakt") id = j.long() else j.skipValue() }
+                "user" -> j.fields { g -> if (g == "username") owner = j.text(100) else j.skipValue() }
+                else -> j.skipValue()
+            }
+        }
+        if (private) return null
+        return TraktListInfo(id?.takeIf { it > 0 } ?: return null, name?.takeIf { it.isNotBlank() } ?: return null, owner, items, likes)
+    }
+
     /** FR-27: the object itself or wrapped under `movie`/`show`; an id and a title are required. */
     private fun title(j: JsonReader, kind: TraktKind): TraktTitle? {
         var ids: TraktIds? = null
@@ -278,7 +331,8 @@ class TraktApiClient(
         var wrapped: TraktTitle? = null
         j.fields { f ->
             when (f) {
-                "movie", "show" -> wrapped = title(j, kind)
+                "movie" -> wrapped = title(j, TraktKind.MOVIE)
+                "show" -> wrapped = title(j, TraktKind.SHOW)
                 "ids" -> ids = j.ids()
                 "title" -> title = j.text(200)
                 "year" -> year = j.long()?.toInt()

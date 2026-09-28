@@ -143,4 +143,10 @@
     <string name="phone_setup_page_logo_sending">Sending to the TV…</string>
     <string name="phone_setup_page_logo_saved">Logo saved on the TV for %1$s. You can close this page.</string>
     <string name="phone_setup_page_logo_invalid">That file is not a picture this phone can read.</string>
+    <string name="phone_list_page_title">Send a Trakt list to your TV</string>
+    <string name="phone_list_page_help">Paste a list\'s trakt.tv address, or its number.</string>
+    <string name="phone_list_page_label">List address</string>
+    <string name="phone_list_added">Added to your TV\'s Home: %1$s.</string>
+    <string name="phone_list_not_found">That list could not be added. It may be private, or Home already has 8 added rows.</string>
+    <string name="phone_list_invalid">That is not a trakt.tv list address or number.</string>
 </resources>

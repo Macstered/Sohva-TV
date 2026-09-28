@@ -25,6 +25,15 @@ class HomeLayoutSettingsTest {
             stored.value = layout
             view.value = view.value.copy(layout = layout)
         }
+
+        val searches = mutableListOf<String>()
+
+        override suspend fun findLists(text: String): ListFinding {
+            searches += text
+            return if (text == "private") ListFinding.Private else ListFinding.Found(listOf(ListChoice(26421, "Fictional favourites", "viewer-one", 30, 5)))
+        }
+
+        override suspend fun addList(list: ListChoice) = save(stored.value.withAdded(HomeLayout.traktList(list.id)))
     }
 
     private fun TestScope.settings(fake: Fake) = HomeLayoutSettings(fake, backgroundScope)
@@ -74,6 +83,25 @@ class HomeLayoutSettingsTest {
     fun rowsTheProfileNeverHasAreNotListed() = runTest(UnconfinedTestDispatcher()) {
         val s = settings(Fake(unavailable = setOf(HomeLayout.WATCH_NEXT, HomeLayout.RECOMMENDED)))
         assertEquals(listOf("continue-watching", "todays-sport", "recent-channels"), s.state.value.order)
+    }
+
+    /** HOME-FR-99: the dialog searches what was typed and OK on a result adds that list, closing the dialog. */
+    @Test
+    fun aListIsFoundAndAdded() = runTest(UnconfinedTestDispatcher()) {
+        val fake = Fake()
+        val s = settings(fake)
+        s.openListDialog()
+        s.searchLists()
+        assertEquals("nothing typed, nothing asked", 0, fake.searches.size)
+        s.setListQuery("private")
+        s.searchLists()
+        assertEquals(ListFinding.Private, s.state.value.listDialog?.finding)
+        s.setListQuery("https://trakt.tv/lists/26421")
+        s.searchLists()
+        val found = (s.state.value.listDialog?.finding as ListFinding.Found).lists.single()
+        s.chooseList(found)
+        assertNull(s.state.value.listDialog)
+        assertEquals(listOf("trakt:list:26421"), fake.stored.value.added)
     }
 
     /** HOME-FR-94: Trakt rows are added at the end and removed again; at 8 nothing more is added. */

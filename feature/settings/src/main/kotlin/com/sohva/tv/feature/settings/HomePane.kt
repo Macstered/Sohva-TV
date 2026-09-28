@@ -68,7 +68,7 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
                 stringResource(R.string.addon_ui_show_hide), { home.mode(HomeLayoutMode.VISIBILITY) }, Modifier.testTag("settings-home-visibility"),
                 TvIcons.Channels, SurfaceState(selected = s.mode == HomeLayoutMode.VISIBILITY), compact = true,
             )
-            if (view.addable.isNotEmpty()) {
+            if (view.addable.isNotEmpty() || view.lists) {
                 TvActionButton(
                     stringResource(R.string.home_layout_trakt), { home.mode(HomeLayoutMode.ADD) }, Modifier.testTag("settings-home-trakt"),
                     TvIcons.StarOutline, SurfaceState(selected = s.mode == HomeLayoutMode.ADD), compact = true,
@@ -96,7 +96,7 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
             view.addable.forEach { id ->
                 val added = id in view.layout.added
                 SettingsSwitchRow(
-                    stringResource(homeRowTitle(id)), added, { home.toggleAdded(id) },
+                    view.names[id] ?: stringResource(homeRowTitle(id)), added, { home.toggleAdded(id) },
                     Modifier.focusRequester(row(id)).testTag("settings-home-add-$id"),
                     enabled = added || !full, keepsFocus = true,
                 )
@@ -105,21 +105,22 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
                     SettingsSwitchRow(
                         stringResource(R.string.home_layout_library_only), view.layout.isLibraryOnly(id), { home.toggleLibraryOnly(id) },
                         Modifier.testTag("settings-home-library-$id"),
-                        subtitle = stringResource(homeRowTitle(id)),
+                        subtitle = view.names[id] ?: stringResource(homeRowTitle(id)),
                     )
                 }
             }
+            ListsSection(home, view, s)
             return@SettingsGroup
         }
         s.order.forEachIndexed { index, id ->
             val shown = view.layout.isShown(id)
             if (s.mode == HomeLayoutMode.VISIBILITY) {
-                SettingsSwitchRow(stringResource(homeRowTitle(id)), shown, { home.toggle(id) }, Modifier.focusRequester(row(id)).testTag("settings-home-switch-$id"))
+                SettingsSwitchRow(view.names[id] ?: stringResource(homeRowTitle(id)), shown, { home.toggle(id) }, Modifier.focusRequester(row(id)).testTag("settings-home-switch-$id"))
             } else {
                 val moving = s.moving == id
                 val keys = if (!moving) Modifier else Modifier.moveKeys({ ROWS_PER_PAGE }, { delta, to -> home.move(delta, to) }, home::place)
                 TvListRow(
-                    stringResource(homeRowTitle(id)), { home.pickUp(id) },
+                    view.names[id] ?: stringResource(homeRowTitle(id)), { home.pickUp(id) },
                     keys.focusRequester(row(id)).testTag("settings-home-row-$id"),
                     supporting = when {
                         moving -> stringResource(R.string.addon_ui_moving_position, index + 1)

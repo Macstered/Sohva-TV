@@ -126,7 +126,7 @@ private fun HomeRowView(model: HomeModel, row: HomeRow, rowIndex: Int, focus: Ho
                 is HomeRow.Trakt -> homeRowTitle(row.id)
                 else -> R.string.home_continue_watching
             }
-            Text(stringResource(title), style = Sohva.typography.headline.copy(fontWeight = FontWeight.Bold), color = Sohva.palette.textPrimary, maxLines = 1)
+            Text((row as? HomeRow.Trakt)?.name ?: stringResource(title), style = Sohva.typography.headline.copy(fontWeight = FontWeight.Bold), color = Sohva.palette.textPrimary, maxLines = 1)
             if (row is HomeRow.Resume) {
                 Spacer(Modifier.width(12.dp))
                 Text(stringResource(R.string.home_rows_hint), style = Sohva.typography.label, color = Sohva.palette.textDim, maxLines = 1)

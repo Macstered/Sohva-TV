@@ -904,4 +904,22 @@
     <string name="series_seasons_missing_discover">Your sources have %1$d of %2$d seasons. Find in Discover may have the rest.</string>
     <string name="home_trakt_in_library">In library</string>
     <string name="home_layout_library_only">Only titles in my library</string>
+    <string name="trakt_row_list">Trakt list</string>
+    <string name="home_layout_lists">Trakt lists</string>
+    <string name="home_layout_add_list">Add a Trakt list</string>
+    <string name="home_layout_list_phone">From your phone</string>
+    <string name="home_layout_list_help">Type a list\'s trakt.tv address, its number, or words from its name, then choose Search. Only public lists can be added.</string>
+    <string name="home_layout_list_query">Address, number or name</string>
+    <string name="home_layout_list_none">No public list matched. Check the address, or try other words.</string>
+    <string name="home_layout_list_private">That list is private: only its owner can see it. Ask them to make it public on trakt.tv.</string>
+    <string name="home_layout_list_failed">Trakt could not be reached. Check the TV\'s connection and try again.</string>
+    <string name="home_layout_list_meta">%1$s · %2$d titles · %3$d likes</string>
+    <string name="home_layout_list_phone_help">Scan the code, paste the list\'s trakt.tv address on your phone and send it. You can send several lists.</string>
+    <string name="home_layout_list_added">Added to Home: %1$s</string>
+    <string name="phone_list_page_title">Send a Trakt list to your TV</string>
+    <string name="phone_list_page_help">Paste a list\'s trakt.tv address, or its number.</string>
+    <string name="phone_list_page_label">List address</string>
+    <string name="phone_list_added">Added to your TV\'s Home: %1$s.</string>
+    <string name="phone_list_not_found">That list could not be added. It may be private, or Home already has 8 added rows.</string>
+    <string name="phone_list_invalid">That is not a trakt.tv list address or number.</string>
 </resources>

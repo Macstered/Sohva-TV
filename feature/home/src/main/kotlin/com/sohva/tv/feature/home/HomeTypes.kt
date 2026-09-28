@@ -53,7 +53,13 @@ sealed interface HomeRow {
     }
 
     /** Watch next ([next]), Recommended for you (HOME-FR-30, -31), or an added Trakt row by its layout [id] (HOME-FR-94). */
-    data class Trakt(val cards: List<TraktCard>, val next: Boolean, val id: String = if (next) WATCH_NEXT else RECOMMENDED) : HomeRow {
+    data class Trakt(
+        val cards: List<TraktCard>,
+        val next: Boolean,
+        val id: String = if (next) WATCH_NEXT else RECOMMENDED,
+        /** A public list's own name, its row's title (HOME-FR-99). */
+        val name: String? = null,
+    ) : HomeRow {
         override val key: String = id
     }
 

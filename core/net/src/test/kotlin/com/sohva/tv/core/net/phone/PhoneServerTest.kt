@@ -121,6 +121,55 @@ class PhoneServerTest {
         runBlocking { withTimeout(3_000) { server.state.first { it == PhoneState.Stopped } } }
     }
 
+    /**
+     * Spec 02 HOME-FR-100: the Trakt list page takes an address as text/plain with Origin and the
+     * token; the receiver names the list it added; the page stays open for another.
+     */
+    @Test
+    fun traktListModeAddsListsAndStaysOpen() {
+        val names = listOf("Fictional favourites", null)
+        var n = 0
+        val lists = PhoneServer(answers, { s ->
+            val name = names[n++]
+            (s as PhoneSubmission.TraktList).added.name = name
+            received += s
+            name != null
+        })
+        try {
+            lists.start(InetAddress.getLoopbackAddress() as Inet4Address, PhoneMode.TraktList { it.startsWith("https://trakt.tv/") })
+            val state = lists.state.value as PhoneState.Running
+            val host = state.url.removePrefix("http://").substringBefore('/')
+            val token = state.url.substringAfter('#')
+            val page = send(state.url, "GET / HTTP/1.1\r\nHost: $host\r\n\r\n")
+            assertEquals(200, page.code)
+            assertTrue(page.body.contains("id=\"list\""))
+            val script = page.body.substringAfter("<script>").substringBefore("</script>")
+            val hash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray()))
+            assertTrue(page.headers["content-security-policy"].orEmpty().contains("'sha256-$hash'"))
+            fun list(text: String, origin: String?): Reply {
+                val body = text.toByteArray(Charsets.UTF_8)
+                return send(
+                    state.url,
+                    "POST /submit HTTP/1.1\r\nHost: $host\r\nAuthorization: Bearer $token\r\n" + (origin?.let { "Origin: $it\r\n" } ?: "") +
+                        "Content-Type: text/plain; charset=utf-8\r\nContent-Length: ${body.size}\r\n\r\n$text",
+                )
+            }
+            val address = "https://trakt.tv/users/viewer-one/lists/best-films"
+            assertEquals("no Origin", 403, list(address, null).code)
+            assertEquals("not an address", 400, list("hello", "http://$host").code)
+            val first = list(address, "http://$host")
+            assertEquals(200, first.code)
+            assertTrue(first.body, first.body.contains("Fictional favourites"))
+            assertEquals(address, (received.single() as PhoneSubmission.TraktList).text)
+            // The receiver could not add the second: the page says so and stays open.
+            assertEquals(400, list("https://trakt.tv/lists/5", "http://$host").code)
+            assertTrue(lists.state.value is PhoneState.Running)
+            assertEquals("Fictional favourites", (lists.state.value as PhoneState.Running).lastSource)
+        } finally {
+            lists.stop()
+        }
+    }
+
     /** Spec 21 CHAN-FR-41/42: one picture, only for the channel the page was opened for. */
     @Test
     fun logoModeTakesOnePictureForItsChannelOnly() {
