@@ -66,3 +66,9 @@ explicit wording for this release.
   favourite and its Favourites list, the recent channel in Home's hero and the Nord theme are all there.
 - Upgrade notice (28 Sept, the owner's wording): after the import, a one-time notice over the first
   screen says the app was rebuilt, what came across and that the guide and libraries are reloading.
+- Real upgrade on the owner's Shield (28 Sept): build 100 installed over beta 23 with the owner's go;
+  every part came across (the diagnostics import line and the owner's checks). The owner's findings
+  were fixed in builds 101-103 (Shield only): the wall's lost Down at a page and at the screen's edge,
+  a second refresh right after the first sync, a black picture after a buffer-profile rebuild, and
+  landscape pictures on Continue watching. Open: reminders on the Shield, SRC-42 (slow box), packaging
+  build 103 and the owner's go to publish.
