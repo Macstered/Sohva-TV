@@ -5,16 +5,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sohva.tv.ui.design.R
+import com.sohva.tv.ui.design.components.LibraryBadge
 import com.sohva.tv.ui.design.focus.SurfaceStyle
 import com.sohva.tv.ui.design.focus.TvSurface
 import com.sohva.tv.ui.design.text.Text
@@ -41,6 +45,8 @@ data class TraktCard(
     val imdb: String?,
     /** The added row's layout id (HOME-FR-94); null on Watch next and Recommended. */
     val source: String? = null,
+    /** The viewer's sources have this title (HOME-FR-98): the card shows "In library". */
+    val owned: Boolean = false,
 ) {
     /** Watch next is landscape (fanart, else poster); Recommended a poster (poster, else fanart). */
     val image: String? get() = if (next) fanart ?: poster else poster ?: fanart
@@ -76,6 +82,7 @@ internal fun TraktCardView(card: TraktCard, modifier: Modifier, onClick: () -> U
         Column {
             Box(Modifier.size(if (card.next) ART_W else POSTER_W, if (card.next) ART_H else POSTER_H)) {
                 CroppedArt(card.title, card.image, if (card.next) ART_W else POSTER_W, if (card.next) ART_H else POSTER_H)
+                if (card.owned) LibraryBadge(Modifier.align(Alignment.TopStart).padding(6.dp).testTag("home-trakt-owned-${card.key}"))
             }
             Spacer(Modifier.height(8.dp))
             Text(card.title, style = Sohva.typography.label.copy(fontWeight = FontWeight.SemiBold), color = Sohva.palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

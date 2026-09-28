@@ -230,4 +230,6 @@
     <string name="home_layout_trakt">Trakt-Zeilen</string>
     <string name="home_layout_trakt_help">Füge der Startseite bis zu 8 Trakt-Listen hinzu. Charts brauchen kein Konto, Merklisten das Trakt-Konto dieses Profils.</string>
     <string name="home_layout_trakt_full">Die Startseite hat schon 8 hinzugefügte Zeilen. Entferne eine, um eine andere hinzuzufügen.</string>
+    <string name="home_trakt_in_library">In der Mediathek</string>
+    <string name="home_layout_library_only">Nur Titel in meiner Mediathek</string>
 </resources>

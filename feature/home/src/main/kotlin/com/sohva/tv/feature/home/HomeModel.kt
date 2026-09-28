@@ -207,7 +207,11 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
                 HomeRow.RECOMMENDED -> if (trakt.recommended.isNotEmpty()) add(HomeRow.Trakt(trakt.recommended.distinctBy { it.key }, next = false))
                 HomeRow.RECENT -> if (recent.isNotEmpty()) add(HomeRow.Channels(recent.map { ChannelCard("channel:${it.id}", it) }.distinctBy { it.key }))
                 // An added Trakt row (HOME-FR-94): drawn once its list has titles, like the built-in Trakt rows.
-                else -> trakt.rows[id]?.takeIf { it.isNotEmpty() }?.let { add(HomeRow.Trakt(it.distinctBy { c -> c.key }, next = false, id = id)) }
+                // HOME-FR-98: a library-only row keeps the titles the viewer's sources have.
+                else -> trakt.rows[id]
+                    ?.let { cards -> if (layout.isLibraryOnly(id)) cards.filter { it.owned } else cards }
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { add(HomeRow.Trakt(it.distinctBy { c -> c.key }, next = false, id = id)) }
             }
         }
     }

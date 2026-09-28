@@ -61,6 +61,21 @@ class HomeLayoutTest {
         assertEquals(HomeLayout.MAX_ADDED, layout.added.size)
     }
 
+    /** HOME-FR-98: the library-only mark round-trips on added rows and is ignored on built-in ones. */
+    @Test
+    fun anAddedRowCanShowOnlyLibraryTitles() {
+        val layout = HomeLayout.DEFAULT.withAdded(HomeLayout.TRAKT_TRENDING_MOVIES).withLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES, true)
+        assertTrue(layout.isLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES))
+        assertEquals("continue-watching,watch-next,todays-sport,recommended,recent-channels,trakt:trending-movies!", layout.encode())
+        assertEquals(layout, HomeLayout.decode(layout.encode()))
+        val hidden = layout.withShown(HomeLayout.TRAKT_TRENDING_MOVIES, false)
+        assertEquals(hidden, HomeLayout.decode(hidden.encode()))
+        assertTrue(hidden.encode()!!.endsWith("-trakt:trending-movies!"))
+        assertEquals(layout, layout.withLibraryOnly(HomeLayout.CONTINUE, true))
+        assertFalse(HomeLayout.decode("continue-watching!").isLibraryOnly(HomeLayout.CONTINUE))
+        assertFalse(layout.withLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES, false).isLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES))
+    }
+
     @Test
     fun textThatIsNoLayoutIsTheDefault() {
         assertEquals(HomeLayout.DEFAULT, HomeLayout.decode("x".repeat(5_000)))

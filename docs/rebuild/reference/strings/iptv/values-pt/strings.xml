@@ -883,4 +883,6 @@
     <string name="details_find_in_discover">Procurar no Discover</string>
     <string name="series_seasons_missing">As suas fontes têm %1$d de %2$d temporadas.</string>
     <string name="series_seasons_missing_discover">As suas fontes têm %1$d de %2$d temporadas. O resto pode estar no Discover.</string>
+    <string name="home_trakt_in_library">Na biblioteca</string>
+    <string name="home_layout_library_only">Só títulos da minha biblioteca</string>
 </resources>

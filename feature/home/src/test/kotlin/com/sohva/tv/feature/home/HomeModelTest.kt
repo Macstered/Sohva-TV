@@ -185,6 +185,26 @@ class HomeModelTest {
         assertEquals(0, quiet.traktReads)
     }
 
+    /** HOME-FR-98: a library-only row keeps the owned titles; one with none owned is left out. */
+    @Test
+    fun aLibraryOnlyRowKeepsTheOwnedTitles() = runTest(main) {
+        val trending = com.sohva.tv.core.model.home.HomeLayout.TRAKT_TRENDING_MOVIES
+        val popular = com.sohva.tv.core.model.home.HomeLayout.TRAKT_POPULAR_MOVIES
+        fun card(key: String, source: String, owned: Boolean) = TraktCard("$source/$key", false, false, key, 2026, null, null, null, null, null, null, null, null, source, owned)
+        val env = Env(MutableStateFlow(ResumeState.Ready(listOf(item("a")))), listOf(live))
+        env.traktLists = TraktLists(
+            emptyList(), emptyList(), false,
+            mapOf(trending to listOf(card("x", trending, false), card("y", trending, true)), popular to listOf(card("z", popular, false))),
+        )
+        env.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.DEFAULT.withAdded(trending).withAdded(popular)
+            .withLibraryOnly(trending, true).withLibraryOnly(popular, true)
+        val model = model(env)
+        runCurrent()
+        val row = model.rows.value.filterIsInstance<HomeRow.Trakt>().single()
+        assertEquals(trending, row.key)
+        assertEquals(listOf("$trending/y"), row.cards.map { it.key })
+    }
+
     /** HOME-FR-89: with Continue watching hidden there is no row and no status card, and the idle hero is a recent channel. */
     @Test
     fun aHiddenContinueWatchingShowsNoStatusCard() = runTest(main) {

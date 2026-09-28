@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -40,8 +41,8 @@ class TraktRowsDeviceTest {
     private val trakt = MockWebServer()
     private val requests = ConcurrentLinkedQueue<Pair<String, String?>>()
     private val bodies = mapOf(
-        "movies/trending" to """[{"watchers":12,"movie":{"title":"A fictional film","year":2026,"ids":{"trakt":1}}},
-            {"watchers":4,"movie":{"title":"Another fictional film","year":2025,"ids":{"trakt":2}}}]""",
+        "movies/trending" to """[{"watchers":12,"movie":{"title":"A fictional film","year":2026,"ids":{"trakt":1,"tmdb":5001}}},
+            {"watchers":4,"movie":{"title":"Another fictional film","year":2025,"ids":{"trakt":2,"tmdb":5002}}}]""",
     )
     private val name = org.junit.rules.TestName()
 
@@ -59,6 +60,8 @@ class TraktRowsDeviceTest {
             graph.playbackActive.value = true
             graph.trakt!!.useTestServer(trakt.url("/"), TraktCredentials("fictional-client-id", "not-a-real-secret"))
             LibraryFixture.seed(graph, perGroup = 4)
+            // The first chart title is a film the library has (HOME-FR-98).
+            graph.data.database.openHelper.writableDatabase.execSQL("UPDATE movie SET work_key = 'tmdb:5001' WHERE key = '${LibraryFixture.key(1)}'")
             runBlocking {
                 graph.data.progress.save(LibraryFixture.key(0), 10 * MINUTE, 90 * MINUTE)
                 if (name.methodName != "settingsAddsATraktRowWithTheRemote") {
@@ -85,6 +88,9 @@ class TraktRowsDeviceTest {
     }
 
     private fun exists(tag: String) = compose.onAllNodesWithTagExists(tag)
+
+    /** A tag inside a card: cards merge their children, so it is only in the unmerged tree. */
+    private fun inside(tag: String) = compose.onAllNodesWithTag(tag, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     private fun focused(tag: String) = compose.onAllNodes(hasTestTag(tag) and isFocused()).fetchSemanticsNodes().isNotEmpty()
 
@@ -170,6 +176,22 @@ class TraktRowsDeviceTest {
         // The request the save sent brings the list in a few seconds, not at the next 15-minute cycle.
         repeat(3) { if (!exists("home-rows")) press(KeyEvent.KEYCODE_BACK) }
         compose.waitUntil(15_000) { exists(card) }
+    }
+
+    /** HOME-FR-98: the title the library has is marked; "only titles in my library" keeps just it. */
+    @Test
+    fun libraryTitlesAreMarkedAndALibraryOnlyRowKeepsThem() {
+        home()
+        val second = "home-trakt-${HomeLayout.TRAKT_TRENDING_MOVIES}/movie:2::"
+        compose.waitUntil(15_000) { exists(card) && exists(second) }
+        compose.waitUntil(5_000) { inside("home-trakt-owned-${card.removePrefix("home-trakt-")}") }
+        assertTrue("not in the library, not marked", !inside("home-trakt-owned-${second.removePrefix("home-trakt-")}"))
+        runBlocking {
+            val layout = prefs.homeLayout(profile).first()
+            prefs.setHomeLayout(profile, layout.withLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES, true))
+        }
+        compose.waitUntil(10_000) { !exists(second) }
+        assertTrue(exists(card))
     }
 
     private companion object {

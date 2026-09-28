@@ -100,6 +100,12 @@ class HomeLayoutSettings internal constructor(private val services: HomeLayoutSe
         if (next != layout) save(next)
     }
 
+    /** HOME-FR-98: an added row shows only the titles the library has, or every title again. */
+    fun toggleLibraryOnly(id: String) {
+        val layout = _state.value.view?.layout ?: return
+        save(layout.withLibraryOnly(id, !layout.isLibraryOnly(id)))
+    }
+
     fun reset() {
         if (_state.value.moving != null) return
         save(HomeLayout.DEFAULT)

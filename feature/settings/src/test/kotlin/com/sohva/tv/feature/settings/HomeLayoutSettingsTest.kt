@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Spec 02 HOME-FR-90: moves are drafts written once on OK, Back restores, switches and Reset write at once. */
@@ -88,6 +89,11 @@ class HomeLayoutSettingsTest {
         HomeLayout.ADDABLE.forEach(s::toggleAdded)
         assertEquals(HomeLayout.MAX_ADDED, fake.stored.value.added.size)
         assertEquals("the ninth changes nothing, so nothing is written", 2 + HomeLayout.MAX_ADDED, fake.writes.size)
+        // HOME-FR-98: library only, on and off again, written at once.
+        s.toggleLibraryOnly(HomeLayout.TRAKT_WATCHLIST_MOVIES)
+        assertTrue(fake.stored.value.isLibraryOnly(HomeLayout.TRAKT_WATCHLIST_MOVIES))
+        s.toggleLibraryOnly(HomeLayout.TRAKT_WATCHLIST_MOVIES)
+        assertFalse(fake.stored.value.isLibraryOnly(HomeLayout.TRAKT_WATCHLIST_MOVIES))
         // Every row id Settings and Home can list has a title of its own.
         val titles = (HomeLayout.BUILT_IN + HomeLayout.ADDABLE).map { com.sohva.tv.ui.design.components.homeRowTitle(it) }
         assertEquals(titles.size, titles.toSet().size)

@@ -230,4 +230,6 @@
     <string name="home_layout_trakt">Linhas do Trakt</string>
     <string name="home_layout_trakt_help">Adicione até 8 listas do Trakt ao Início. As tabelas não precisam de conta; as listas para ver precisam da conta Trakt deste perfil.</string>
     <string name="home_layout_trakt_full">O Início já tem 8 linhas adicionadas. Remova uma para adicionar outra.</string>
+    <string name="home_trakt_in_library">Na biblioteca</string>
+    <string name="home_layout_library_only">Só títulos da minha biblioteca</string>
 </resources>

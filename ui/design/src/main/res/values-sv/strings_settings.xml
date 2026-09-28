@@ -230,4 +230,6 @@
     <string name="home_layout_trakt">Trakt-rader</string>
     <string name="home_layout_trakt_help">Lägg till upp till 8 Trakt-listor på startsidan. Topplistor kräver inget konto, bevakningslistor kräver profilens Trakt-konto.</string>
     <string name="home_layout_trakt_full">Startsidan har redan 8 tillagda rader. Ta bort en för att lägga till en annan.</string>
+    <string name="home_trakt_in_library">I biblioteket</string>
+    <string name="home_layout_library_only">Bara titlar i mitt bibliotek</string>
 </resources>

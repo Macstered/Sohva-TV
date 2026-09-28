@@ -467,6 +467,14 @@ the lookup returns (SHELL-FR-17).
   end of the layout, shown, or removes it. At 8 added rows the other switches do nothing and the help
   line says so. A watchlist row whose account is gone is not listed and draws nothing.
 
+- HOME-FR-98 **Rebuild (owner, 28 September 2026):** every Trakt card (Watch next, Recommended and the
+  added rows) whose title the viewer's sources have shows "In library" (`home_trakt_in_library`) at the
+  art's top left: a film when a library copy has that TMDB film identity, a series when the library
+  matched it to that TMDB series (the same rules as HOME-FR-22's route). Checked for all of Home's
+  Trakt cards at once, two indexed reads off the main thread, asked again only when the titles change.
+  Settings › Home › Trakt rows has, under each added list, "Only titles in my library"
+  (`home_layout_library_only`); the row then keeps only those titles and is left out when none remain.
+  Stored in the layout text as `!` after the row's id; built-in rows never filter.
 - HOME-FR-97 **Rebuild (owner, 28 September 2026):** coming back to Home from any screen (Back,
   or a player's way home), focus returns to the card the viewer last focused on Home, wherever
   it now is in its row; when that card is gone, to the first card of its row; when the row is gone,

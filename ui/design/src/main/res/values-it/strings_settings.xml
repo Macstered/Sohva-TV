@@ -230,4 +230,6 @@
     <string name="home_layout_trakt">Righe Trakt</string>
     <string name="home_layout_trakt_help">Aggiungi fino a 8 liste Trakt alla Home. Le classifiche non richiedono un account; le watchlist richiedono l\'account Trakt di questo profilo.</string>
     <string name="home_layout_trakt_full">La Home ha già 8 righe aggiunte. Rimuovine una per aggiungerne un\'altra.</string>
+    <string name="home_trakt_in_library">In libreria</string>
+    <string name="home_layout_library_only">Solo titoli nella mia libreria</string>
 </resources>

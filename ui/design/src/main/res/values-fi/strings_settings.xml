@@ -230,4 +230,6 @@
     <string name="home_layout_trakt">Trakt-rivit</string>
     <string name="home_layout_trakt_help">Lisää etusivulle enintään 8 Trakt-listaa. Listaukset eivät vaadi tiliä, katselulistat vaativat tämän profiilin Trakt-tilin.</string>
     <string name="home_layout_trakt_full">Etusivulla on jo 8 lisättyä riviä. Poista yksi, jos haluat lisätä toisen.</string>
+    <string name="home_trakt_in_library">Kirjastossa</string>
+    <string name="home_layout_library_only">Vain kirjastossani olevat</string>
 </resources>

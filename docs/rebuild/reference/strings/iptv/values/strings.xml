@@ -902,4 +902,6 @@
     <string name="details_find_in_discover">Find in Discover</string>
     <string name="series_seasons_missing">Your sources have %1$d of %2$d seasons.</string>
     <string name="series_seasons_missing_discover">Your sources have %1$d of %2$d seasons. Find in Discover may have the rest.</string>
+    <string name="home_trakt_in_library">In library</string>
+    <string name="home_layout_library_only">Only titles in my library</string>
 </resources>

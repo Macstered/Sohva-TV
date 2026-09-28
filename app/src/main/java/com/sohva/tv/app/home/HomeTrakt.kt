@@ -2,6 +2,7 @@ package com.sohva.tv.app.home
 
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.navigation.AppRoute
+import com.sohva.tv.core.data.trakt.TraktLibraryReads
 import com.sohva.tv.feature.home.TraktCard
 import com.sohva.tv.feature.home.TraktLists
 import com.sohva.tv.feature.trakt.protocol.TraktKind
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -40,6 +42,7 @@ internal object HomeTrakt {
             val layout = graph.data.preferences.homeLayout(profile).first()
             val sources = layout.added.filter(layout::isShown).mapNotNull(TraktRowSource::of)
             sources.forEach { host.rowLists.read(profile, it) }
+            val owned = OwnedMarks(graph)
             emitAll(
                 combine(host.shelves.shelves, host.accounts, host.rowLists.lists) { shelves, accounts, lists ->
                     TraktLists(
@@ -52,9 +55,32 @@ internal object HomeTrakt {
                             s.id to cards.orEmpty().map { card(it, next = false, source = s.id) }
                         },
                     )
-                },
+                }.map(owned::mark),
             )
         }.distinctUntilChanged().flowOn(graph.dispatchers.io)
+    }
+
+    /**
+     * HOME-FR-98: which cards the library has, asked once per set of titles (two indexed reads for
+     * every Trakt card on Home) and asked again only when the titles change. Lives for one Home read.
+     */
+    private class OwnedMarks(private val graph: AppGraph) {
+        private var asked: Pair<Set<Long>, Set<Long>>? = null
+        private var owned = TraktLibraryReads.Owned(emptySet(), emptySet())
+
+        suspend fun mark(lists: TraktLists): TraktLists {
+            val all = lists.next + lists.recommended + lists.rows.values.flatten()
+            val films = all.mapNotNullTo(HashSet()) { c -> c.tmdb.takeIf { !c.show } }
+            val series = all.mapNotNullTo(HashSet()) { c -> c.tmdb.takeIf { c.show } }
+            if (films.isEmpty() && series.isEmpty()) return lists
+            if (asked != films to series) {
+                owned = graph.data.traktLibrary.owned(films, series)
+                asked = films to series
+            }
+            fun has(c: TraktCard) = c.tmdb != null && (if (c.show) c.tmdb in owned.series else c.tmdb in owned.films)
+            fun List<TraktCard>.marked() = map { if (has(it)) it.copy(owned = true) else it }
+            return lists.copy(next = lists.next.marked(), recommended = lists.recommended.marked(), rows = lists.rows.mapValues { it.value.marked() })
+        }
     }
 
     /** An added row's card key starts with its row, so a title in two rows keeps two focus places (HOME-FR-94). */
