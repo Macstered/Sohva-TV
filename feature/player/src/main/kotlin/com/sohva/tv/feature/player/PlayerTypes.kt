@@ -44,6 +44,9 @@ interface PlayerEnvironmentUi {
 
     /** Sohva Sport's score ticker (PLAY-31), or null where Sohva Sport is not offered. */
     val ticker: ScoreTickerSource? get() = null
+
+    /** The demo build's still picture for a channel or title (PLAY-FR-25), as a drawable id; null plays the stream. */
+    fun demoPicture(key: String): Int? = null
 }
 
 /** The score ticker's data and switch (spec 30 §4.20, spec 60 SPORT-FR-99), owned by Sohva Sport. */

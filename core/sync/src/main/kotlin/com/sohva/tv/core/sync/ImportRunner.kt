@@ -84,11 +84,24 @@ class ImportRunner(
         job
     }
 
-    /** Every enabled source, kind by kind: all playlists, then all guides, then all catalogues (SRC-FR-99). */
-    suspend fun syncAll(kinds: Set<RefreshKind> = ALL_KINDS, origin: WorkOrigin) {
+    /**
+     * Every enabled source, kind by kind: all playlists, then all guides, then all catalogues (SRC-FR-99).
+     * With [freshMs], a source whose kind succeeded that recently is left out: a scheduled run that
+     * waited while the viewer was in the app must not redo the first sync it just missed (decision
+     * "No second refresh right after a sync").
+     */
+    suspend fun syncAll(kinds: Set<RefreshKind> = ALL_KINDS, origin: WorkOrigin, freshMs: Long = 0) {
         val enabled = sources.all().filter { it.enabled }
         for (kind in ORDER.filter { it in kinds }) {
-            enabled.map { sync(it.id, setOf(kind), origin) }.forEach { it.join() }
+            val due = if (freshMs <= 0) {
+                enabled
+            } else {
+                withContext(env.dispatchers.bulkWrite) {
+                    val since = env.clock.wallMillis() - freshMs
+                    enabled.filter { (status.get(it.id, kind)?.lastSuccessAt ?: 0L) < since }
+                }
+            }
+            due.map { sync(it.id, setOf(kind), origin) }.forEach { it.join() }
         }
     }
 

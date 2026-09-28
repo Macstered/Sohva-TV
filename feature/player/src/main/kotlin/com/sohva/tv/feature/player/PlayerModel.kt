@@ -80,6 +80,11 @@ class PlayerModel(
     private val _playing = MutableStateFlow<Playing?>(null)
     val playing: StateFlow<Playing?> = _playing.asStateFlow()
 
+    private val _demo = MutableStateFlow<Int?>(null)
+
+    /** PLAY-FR-25: the demo build's still picture in place of a stream; null otherwise. */
+    val demo: StateFlow<Int?> = _demo.asStateFlow()
+
     private val _box = MutableStateFlow(false)
 
     /** The live information box (PLAY-FR-43): shown on interaction only. */
@@ -212,9 +217,13 @@ class PlayerModel(
             _banner.value = null
             c.stop()
             c.clearMediaItems()
-            c.setMediaItem(itemFor(key))
-            c.prepare()
-            c.play()
+            // The demo build shows its picture and sets no item (PLAY-FR-25).
+            _demo.value = env.demoPicture(key)
+            if (_demo.value == null) {
+                c.setMediaItem(itemFor(key))
+                c.prepare()
+                c.play()
+            }
             if (record) env.recordWatched(key)
             channels.onPlaying(channel)
             reveal()
@@ -227,6 +236,11 @@ class PlayerModel(
         finished = false
         c.stop()
         c.clearMediaItems()
+        _demo.value = env.demoPicture(request.contentKey)
+        if (_demo.value != null) {
+            reveal()
+            return
+        }
         val extras = Bundle().apply { putBoolean(PlaybackService.EXTRA_VOD, true) }
         val item = MediaItem.Builder().setMediaId(request.contentKey)
             .setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build()
@@ -510,7 +524,7 @@ class PlayerModel(
         attempt++
         val delayMs = policy.delayBefore(attempt)
         _banner.value = Banner(BannerReason.Cause(failure.cause, failure.detail), attempt, policy.attempts, stopped = delayMs == null)
-        env.logFailure("${_playing.value?.channel?.key}: ${failure.detail}, attempt $attempt")
+        env.logFailure("${_playing.value?.channel?.key ?: "title"}: ${failure.detail}, attempt $attempt")
         if (delayMs != null) {
             reconnectJob?.cancel()
             reconnectJob = viewModelScope.launch {

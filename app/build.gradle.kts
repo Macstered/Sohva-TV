@@ -32,8 +32,8 @@ android {
 
     defaultConfig {
         applicationId = "com.streammate.tv"
-        // Beta 23 is build 57; the rebuild starts at 100 / 0.2.0-beta.1 (decision A3).
-        versionCode = 100
+        // Beta 23 is build 57; the rebuild started at 100 / 0.2.0-beta.1 (decision A3); 100 to 103 went to the owner's devices only.
+        versionCode = 104
         versionName = "0.2.0-beta.1"
         // The emulator's update test (tools/update_e2e.py) builds two local releases above these;
         // they never leave the emulator (decision "Updater test").
@@ -138,6 +138,8 @@ dependencies {
 
     testImplementation(libs.junit)
 
+    // The beta 23 upgrade test writes beta 23's settings file as beta 23 did (decision A1).
+    androidTestImplementation(libs.androidx.datastore.preferences)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

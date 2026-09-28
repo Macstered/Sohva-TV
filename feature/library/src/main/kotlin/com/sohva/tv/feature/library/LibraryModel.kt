@@ -226,6 +226,17 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
     }
 
     /**
+     * A move went past the window's end ([forward]) or start while focus stayed put (§9.3): read
+     * that page now, as a focus near the edge would have. A read already on its way is enough.
+     */
+    fun wantPage(forward: Boolean) {
+        val window = _wall.value.window
+        if (!_wall.value.current || edgeJob?.isActive == true) return
+        if (if (forward) window.atEnd else window.first == 0) return
+        edge(forward)
+    }
+
+    /**
      * The titles around the focused card once focus has rested a second (spec 41 Q10): every
      * focus move cancels the wait and the lookups, so nothing runs while a key is held.
      */

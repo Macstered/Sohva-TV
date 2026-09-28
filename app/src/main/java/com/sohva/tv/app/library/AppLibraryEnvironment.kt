@@ -54,8 +54,10 @@ class AppLibraryEnvironment(
         graph.metadata.lookUpVisible(items.map { VisibleTitle(it.row.key, type, it.row.name, it.row.year) })
     }
 
-    override suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem> =
-        reads.page(room, destination, search, from, forward, limit)
+    override suspend fun page(destination: WallDestination, search: String, from: WallItem?, forward: Boolean, limit: Int): List<WallItem> {
+        if (from != null) graph.wallPageGate?.invoke()
+        return reads.page(room, destination, search, from, forward, limit)
+    }
 
     override suspend fun watched(films: List<Pair<String, String?>>): Set<String> = graph.data.progress.watched(films)
 

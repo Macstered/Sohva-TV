@@ -38,8 +38,26 @@ import java.util.concurrent.atomic.AtomicBoolean
 class AppGraph(val app: Application, val flags: FeatureFlags) {
     val clock: Clock = SystemClock
 
-    /** When the graph (so, near enough, the process) started: the start-up log lines count from it. */
-    private val startedAt: Long = android.os.SystemClock.elapsedRealtime()
+    /**
+     * What the start-up log lines count from (spec 02 HOME-FR-26): the process start for a cold launch.
+     * A process an update, a reminder or a refresh started earlier without a screen counts from the
+     * first activity instead; counting from the process once logged 54 s for a 7 s start on the
+     * owner's Shield (decision "Start-up timing base").
+     */
+    @Volatile
+    var launchedAt: Long = android.os.SystemClock.elapsedRealtime()
+        private set
+
+    @Volatile
+    private var launchMarked = false
+
+    /** Called by the activity when it is created; only the first one counts. */
+    fun markLaunch() {
+        if (launchMarked) return
+        launchMarked = true
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - launchedAt > WARM_PROCESS_MS) launchedAt = now
+    }
     val dispatchers: AppDispatchers by lazy { AndroidDispatchers() }
 
     val diagnostics: DiagnosticsLog by lazy {
@@ -78,6 +96,20 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             .distinctUntilChanged()
     }
 
+    /**
+     * Beta 23's viewer data has been imported, or there was none (decision A1): the start step
+     * completes it before the first screen, and the background importers wait for it so nothing
+     * else touches the organisation rules meanwhile.
+     */
+    val upgradeSettled: kotlinx.coroutines.CompletableDeferred<Unit> = kotlinx.coroutines.CompletableDeferred()
+
+    /**
+     * Beta 23's sources and service keys have been imported, or there were none. Sohva Sport waits
+     * for it: its first refresh once ran before the API-Sports key was copied and said the key was
+     * missing until the next refresh (the owner's Elisa box, 28 Sept).
+     */
+    private val keysSettled: kotlinx.coroutines.CompletableDeferred<Unit> = kotlinx.coroutines.CompletableDeferred()
+
     /** True while video plays; the player (M2) sets it. */
     val playbackActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
@@ -105,17 +137,23 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
                 data.walls.changes(),
                 data.traktState.revision.drop(1).map { },
                 discover?.progress?.changes?.map { } ?: kotlinx.coroutines.flow.emptyFlow(),
+                cardArt.stored,
             ),
             playing = playbackActive,
             onFirstSettled = {
-                diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
+                diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - launchedAt} ms")
                 // Today's games for Home, Search and reminders, after Home's first read (spec 60 SPORT-FR-29).
-                if (flags.sport) sport.feed.start()
+                if (flags.sport) appScope.launch { keysSettled.await(); sport.feed.start() }
                 // Trakt's sync loop follows the active profile from here on (spec 51 FR-21).
                 traktLoop?.let { loop -> appScope.launch { data.profiles.activeChanges.collect(loop::start) } }
+                // Landscape pictures for library cards matched before matches kept one.
+                if (flags.metadataWorker) appScope.launch { runCatching { cardArt.fill() } }
             },
         )
     }
+
+    /** Continue watching's landscape pictures for older matches (decision "Library card art"). */
+    val cardArt: com.sohva.tv.app.home.HomeCardArt by lazy { com.sohva.tv.app.home.HomeCardArt(this) }
 
     /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
     val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }
@@ -199,6 +237,10 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
     @Volatile
     var liveReadsOverride: com.sohva.tv.core.data.live.LiveReads? = null
 
+    /** Tests only: awaited before a wall reads a page next to its window, so a page can be made slow (AGENTS §8). */
+    @Volatile
+    var wallPageGate: (suspend () -> Unit)? = null
+
     val liveReads: com.sohva.tv.core.data.live.LiveReads get() = liveReadsOverride ?: data.live
 
     /** Picture in picture (spec 30 PLAY-FR-110): a player is the top destination. */
@@ -257,14 +299,21 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         appScope.launch { data.profiles.reconcilePin() }
         appScope.launch {
             // Beta 23's sources first, so an upgraded install syncs them at once (decision A1).
-            val imported = data.beta23Import.run()
+            val imported = try {
+                data.beta23Import.run()
+            } finally {
+                keysSettled.complete(Unit)
+            }
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
+            upgradeSettled.await()
             data.beta23Categories.run()
             // Beta 23's Discover data (decision A1); Discover itself is built only when old files exist.
             if (flags.discover) com.sohva.tv.app.discover.Beta23DiscoverImport(this@AppGraph).run()
             // Beta 23's Trakt accounts (decision A1); Trakt is built only when the old file exists.
             if (flags.trakt) com.sohva.tv.app.trakt.Beta23TraktImport(this@AppGraph).run()
+            // Beta 23's files go once every part above came across (plan/04 §17).
+            com.sohva.tv.app.migration.Beta23Cleanup(this@AppGraph).run()
             // The demo build's fictional Trakt account (spec 51 FR-37); Trakt itself stays offline there.
             if (flags.trakt && flags.demoContent) trakt?.let { com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(it, data.profiles.activeId) }
         }
@@ -285,6 +334,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     private companion object {
         const val LOG_TAG = "SohvaTV"
+
+        /** A process older than this when the first activity starts was started without a screen. */
+        private const val WARM_PROCESS_MS = 5_000L
         const val RELEASE_PACKAGE = "com.streammate.tv"
     }
 }

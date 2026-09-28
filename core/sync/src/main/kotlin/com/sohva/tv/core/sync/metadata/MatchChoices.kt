@@ -52,7 +52,7 @@ class MatchChoices(
                     genre = TmdbGenres.primary(type, full.genreIds)?.wire, genresVersion = Genre.VERSION,
                     replacementTitle = full.title.trim().take(160).ifEmpty { null }, replacementPoster = full.poster,
                     // A chosen record's poster always stands in for the provider's (META-FR-75).
-                    replaceProviderPoster = full.poster != null, updatedAt = now,
+                    replaceProviderPoster = full.poster != null, updatedAt = now, backdrop = full.backdrop,
                 )
                 dao.putMatch(match)
                 passes.apply(match)

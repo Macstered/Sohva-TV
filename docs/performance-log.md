@@ -78,3 +78,26 @@ per measurement; compare CPU time per phase on the emulator, frame times only on
 | 2026-09-27 | same | same | JIT | same | same | sync with nothing new on Trakt | wall time; rows written | 5–8 ms (one `last_activities` call); 0 | beta 23 the same check |
 | 2026-09-27 | same | same | JIT | same | same | sync after all 500 pauses moved | wall time, CPU; lists fetched | 1,058 ms / 1,215 ms CPU walking all rows → 923 ms / 980 ms CPU reading only paused rows and the new keys; playback list only | beta 23 fetched all three lists and rewrote the whole table |
 | 2026-09-27 | same | same | JIT | same | same | Continue watching read with 500 Trakt-paused rows | wall time | 23–31 ms | – |
+| 2026-09-27 | m11-release (59d0f74+) and M5 (249851d) side by side | benchmarkRelease (R8) | with baseline profile; without compilation | emulator sohva_rebuild_tv30, API 30 TV x86, 1080p; the host ran about twice as slow as on 26 Sept (same AVD) | none (fresh install) | `StartupBenchmark`, 10 cold starts each, the two builds one after the other | time to initial / full display, median | M11 1,062 / 2,198 ms with profile, 1,160 / 2,522 ms without; M5 on the same host 1,039 / 2,116 ms and 1,124 / 2,431 ms. The app's own growth since M5: +2–4 %. The absolute figures are not comparable with the 26 Sept rows | M5 26 Sept: 549 / 1,120 ms |
+| 2026-09-27 | m11-release | debug (instrumentation, `GuideOwnerScaleTest`, `-e ownerScale true`) | JIT | same emulator and host | owner-scale guide, a second profile | guide open, restricted guide, ten profile switches | wall time; Java heap | first group 386 ms, All channels 370 ms; restricted 605 / 446 ms; switch to Home median 276 ms (195–431); heap max 47 MB of 192 (budget 64) | M6 switch median 189 ms on the faster host |
+| 2026-09-27 | m11-release | debug (`ChannelsOwnerScaleTest`) | JIT | same | 56,000 channels, one source | open; 450 presses; A–Z; moves | wall time; heap | open 607 ms; 101 ms per press including the test's wait; A–Z 263 ms; next move 128 ms; heap max 42 MB | M3 67 ms per press on the faster host |
+| 2026-09-27 | m11-release | debug (`PairingOwnerScaleTest`) | JIT | same, with two agents reading files on the host at the time | 56,164 channels, 112,328 programmes with long descriptions | one paged pairing scan; cancel | wall time; heap | 74.8 s; peak +8.1 MB (budget 16 MB); main-thread longest gap 69 ms; cancel stops at once | M8 27.9 s on the faster host; heap unchanged. To be repeated on the quiet host and the slow box |
+
+## 28 September 2026: build 103 on the owner's Elisa Viihde box (upgrade over beta 23)
+
+ZTE B866V2F01, Android 12, 32-bit userland (armeabi-v7a), 3 GB, 1080p at 59.94 Hz (two vsyncs = 33 ms).
+Installed with `adb install -r` (no install profile: `verify`, the sideload case). No accessibility services.
+
+| Measure | Box | Budget (plan/07) |
+|---|---|---|
+| Tap → first frame (`Displayed`) | 414 ms | ≤ 1.2 s |
+| Tap → Home drawn (`Fully drawn`), including the 1.6 s beta 23 import | 1,946 ms | ≤ 4 s |
+| Home's Continue watching read (`home: cached resume ready`, from the launch) | 2,009 ms | – |
+| Beta 23 import (settings restore 298 ms) | ≈ 1.6 s | – |
+| First catalogue import, 12,199 rows (write transactions 22.8 s), while the viewer started playback | 34 s | – |
+| Frames over the whole session (first start uncompiled, imports, the owner's browsing and playback): 4,632 | janky 7.0 %; p50 19, p90 44, p95 69, p99 150 ms | press → frame ≤ 2 vsyncs |
+| Total PSS after browsing | 140 MB (Java 41, native 46, graphics 24) | – |
+
+The frame counters cover everything since the first start, so they cannot separate key presses from
+loading and the uncompiled first minutes; p90 44 ms is above two vsyncs overall. The owner reports
+browsing, playback and the import during playback as fine (SRC-42's observation).

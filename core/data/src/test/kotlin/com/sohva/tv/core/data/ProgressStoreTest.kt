@@ -3,6 +3,7 @@ package com.sohva.tv.core.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.sohva.tv.core.data.database.EpisodeEntity
+import com.sohva.tv.core.data.database.MetadataMatchEntity
 import com.sohva.tv.core.data.database.MovieEntity
 import com.sohva.tv.core.data.database.SeriesEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
@@ -182,5 +183,23 @@ class ProgressStoreTest {
         // Titles of a disabled source leave the row.
         db.sources().upsert(SourceEntity("s", "Fixture", "XTREAM", false, 0, 1, "VOD", 0, 0, 0))
         assertEquals(emptyList<String>(), store.continueWatching().map { it.contentKey })
+    }
+
+    /** Decision "Library card art": a card's landscape picture is the match's backdrop, else a series' provider backdrop. */
+    @Test
+    fun continueWatchingCarriesTheLandscapePicture() = runBlocking {
+        seed()
+        db.sources().upsert(SourceEntity("s", "Fixture", "XTREAM", true, 0, 1, "VOD", 0, 0, 0))
+        db.openHelper.writableDatabase.execSQL("UPDATE series SET backdrop_url = 'https://provider.example/series-wide.jpg' WHERE key = 'series:s:9'")
+        store.save("vod:movie:s:c", 10 * min, 90 * min)
+        store.save("vod:episode:s:e1", 5 * min, 20 * min)
+        fun art() = runBlocking { store.continueWatching().associate { it.groupKey to it.backdrop } }
+        assertEquals(mapOf("series:s:9" to "https://provider.example/series-wide.jpg", "vod:movie:s:c" to null), art())
+        db.metadata().putMatch(MetadataMatchEntity("vod:movie:s:c", "movie", "matched", "tmdb", "603", null, 1, null, null, false, 1, backdrop = "/film.jpg"))
+        db.metadata().putMatch(MetadataMatchEntity("series:s:9", "series", "matched", "tmdb", "1399", null, 1, null, null, false, 1, backdrop = "/series.jpg"))
+        assertEquals(
+            mapOf("series:s:9" to "https://image.tmdb.org/t/p/w780/series.jpg", "vod:movie:s:c" to "https://image.tmdb.org/t/p/w780/film.jpg"),
+            art(),
+        )
     }
 }

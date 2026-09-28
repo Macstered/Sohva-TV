@@ -1,5 +1,7 @@
 package com.sohva.tv.app
 
+import androidx.compose.ui.semantics.getOrNull
+import org.junit.Assert.assertTrue
 import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -63,6 +65,22 @@ class GuideScreenTest {
         press(KeyEvent.KEYCODE_DPAD_RIGHT)
         awaitFocus("guide-row-0")
         compose.waitUntil(3_000) { !compose.onAllNodesWithTagExists("guide-rail") }
+    }
+
+    private fun rowDescription(tag: String): String =
+        compose.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)?.joinToString().orEmpty()
+
+    /** GUIDE-15: channel numbers show by default and not at all when switched off in Settings › General. */
+    @Test
+    fun channelNumbersShowUnlessSwitchedOff() {
+        openGuide()
+        assertTrue(rowDescription("guide-row-0"), rowDescription("guide-row-0").startsWith("1 "))
+        kotlinx.coroutines.runBlocking {
+            (instrumentation.targetContext.applicationContext as SohvaApplication).graph.data.preferences.setShowChannelNumbers(false)
+        }
+        press(KeyEvent.KEYCODE_BACK)
+        openGuide()
+        compose.waitUntil(5_000) { !rowDescription("guide-row-0").first().isDigit() }
     }
 
     @Test

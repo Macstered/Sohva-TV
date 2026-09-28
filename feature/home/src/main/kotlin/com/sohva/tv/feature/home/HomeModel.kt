@@ -187,9 +187,11 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
             val fraction = if (item.durationMs > 0) (item.positionMs.toFloat() / item.durationMs).coerceIn(0f, 1f) else item.fraction ?: 0f
             val left = if (item.durationMs > 0) maxOf(1, ((item.durationMs - item.positionMs) / MINUTE_MS).toInt()) else null
             val image = item.replacementPoster?.takeIf { item.replacePoster } ?: item.posterUrl ?: item.replacementPoster
-            // A Discover card's key is its own (HOME-FR-23); its title is the addon's name as stored.
-            if (item.discover != null) return ResumeCard(item.contentKey, item, item.title, item.posterUrl, fraction, left)
-            return ResumeCard("vod:${item.contentKey}", item, VodText.breadcrumbGroup(item.title), image, fraction, left)
+            // A Discover card's key is its own (HOME-FR-23); its title is the addon's name as stored. The card
+            // is landscape, so it shows the addon's background, as beta 23 did (decision "Discover card art").
+            item.discover?.let { d -> return ResumeCard(item.contentKey, item, item.title, d.backdrop ?: item.posterUrl, fraction, left) }
+            // Library cards are landscape too: the title's backdrop when one is known, else its poster.
+            return ResumeCard("vod:${item.contentKey}", item, VodText.breadcrumbGroup(item.title), item.backdrop ?: image, fraction, left)
         }
     }
 }

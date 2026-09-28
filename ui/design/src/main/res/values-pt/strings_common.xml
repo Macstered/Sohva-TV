@@ -55,6 +55,11 @@
     <string name="error_backup_wrong_passphrase">Senha incorreta, ou o backup está danificado</string>
     <string name="error_backup_structure">A estrutura do backup é inválida</string>
     <string name="error_pin_format">O PIN precisa ter de 4 a 8 dígitos</string>
+    <string name="launch_updating">A atualizar o Sohva TV…</string>
+    <string name="upgrade_notice_title">O Sohva TV foi reconstruído</string>
+    <string name="upgrade_notice_kept">As suas listas, perfis, favoritos, posições, lembretes, extras e a ligação ao Trakt foram mantidos.</string>
+    <string name="upgrade_notice_reload">O guia, os filmes e as séries estão a ser recarregados a partir dos seus fornecedores. Pode demorar alguns minutos; nada se perdeu.</string>
+    <string name="upgrade_notice_ok">OK</string>
     <string name="action_back">Voltar</string>
     <string name="action_refresh">Atualizar</string>
     <string name="action_refreshing">Atualizando…</string>

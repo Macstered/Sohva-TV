@@ -113,6 +113,25 @@ class HomeModelTest {
         assertEquals(1, env.looked.size)
     }
 
+    /** A Discover card is landscape: the addon's background, else its poster (decision "Discover card art"). */
+    @Test
+    fun aDiscoverCardShowsTheAddonsBackground() {
+        fun paused(background: String?) = item("d").copy(
+            posterUrl = "https://provider.example/poster.jpg",
+            discover = com.sohva.tv.core.data.vod.DiscoverResume("i", "movie", "tt0000001", "tt0000001", null, background),
+        )
+        assertEquals("https://provider.example/wide.jpg", HomeModel.card(paused("https://provider.example/wide.jpg")).image)
+        assertEquals("https://provider.example/poster.jpg", HomeModel.card(paused(null)).image)
+    }
+
+    /** A library card is landscape too: the title's backdrop when one is known, else its poster (decision "Library card art"). */
+    @Test
+    fun aLibraryCardShowsTheTitlesBackdrop() {
+        val film = item("f").copy(posterUrl = "https://provider.example/poster.jpg")
+        assertEquals("https://provider.example/poster.jpg", HomeModel.card(film).image)
+        assertEquals("https://provider.example/wide.jpg", HomeModel.card(film.copy(backdrop = "https://provider.example/wide.jpg")).image)
+    }
+
     private companion object {
         const val NOW = 1_790_000_000_000L
     }

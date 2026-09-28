@@ -72,7 +72,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     // inside the migration: no released install holds version 7 data, so the one-time cost falls
     // only on test installs (decision "Search index"). 8 -> 9 (M6) adds the profiles' allowed groups.
     // 9 -> 10 (M8) adds Sohva Sport's tables: the day feeds, competitions, quota, stream decisions and
-    // team aliases; all start empty.
+    // team aliases; all start empty. 10 -> 11 (M10) adds Trakt's state. 11 -> 12 (M11) adds the
+    // matches' backdrop column, empty until a match is made or Home fills it for its cards.
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -84,6 +85,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
+        AutoMigration(from = 11, to = 12),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -143,6 +145,8 @@ abstract class SohvaDatabase : RoomDatabase() {
 
     abstract fun trakt(): TraktDao
 
+    abstract fun beta23Import(): com.sohva.tv.core.data.migration.Beta23ImportDao
+
     /**
      * v3 -> v4: before M3 the effective columns held the playlist's values, so they are copied, and
      * ranks move to M3's scheme (playlist order above every viewer position), or channels an import
@@ -164,7 +168,7 @@ abstract class SohvaDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION: Int = 11
+        const val VERSION: Int = 12
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

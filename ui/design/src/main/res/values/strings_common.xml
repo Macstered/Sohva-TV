@@ -57,6 +57,11 @@
     <string name="error_backup_wrong_passphrase">Wrong password, or the backup is damaged</string>
     <string name="error_backup_structure">The backup structure is invalid</string>
     <string name="error_pin_format">The PIN must be 4–8 digits</string>
+    <string name="launch_updating">Updating Sohva TV…</string>
+    <string name="upgrade_notice_title">Sohva TV has been rebuilt</string>
+    <string name="upgrade_notice_kept">Your playlists, profiles, favourites, positions, reminders, addons and Trakt connection came across.</string>
+    <string name="upgrade_notice_reload">The guide, movies and series are being reloaded from your providers. This can take a few minutes; nothing is lost.</string>
+    <string name="upgrade_notice_ok">OK</string>
     <string name="action_back">Back</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_refreshing">Refreshing…</string>

@@ -47,17 +47,17 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-04** The saved colour theme is used from the first app frame (no flash of the default theme) and no text flashes between the launch picture and the first screen.
 - [x] **SHELL-05** The whole interface is drawn at the chosen interface size (100, 90, 80 or 70 %); the launch picture stays at device density.
 - [x] **SHELL-06** The chosen interface language is applied before any text is resolved (below Android 13 by the app, from Android 13 by the platform's per-app language).
-- [ ] **SHELL-07** Start screen setting: Home (default), Programme guide, or Last channel.
+- [x] **SHELL-07** Start screen setting: Home (default), Programme guide, or Last channel.
 - [x] **SHELL-08** Last channel start opens the guide on that channel and plays it; a PIN-locked channel asks for the PIN first; a channel that no longer exists falls back to the guide.
-- [ ] **SHELL-09** Who is watching at start when the household has more than one profile and the question is switched on (details in [Profiles](../specs/04-profiles-parental.md)).
+- [x] **SHELL-09** Who is watching at start when the household has more than one profile and the question is switched on (details in [Profiles](../specs/04-profiles-parental.md)).
 - [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
-- [ ] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
+- [x] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
 - [x] **SHELL-12** Live playback started from a Sohva Sport match card or a reminder returns to where it started; catch-up playback always returns to the previous screen.
 - [x] **SHELL-13** Changing channel inside the player replaces the player, so Back never steps back through the channels zapped.
 - [x] **SHELL-14** Zap-back: the player offers the channel watched before the current one (session memory).
 - [x] **SHELL-15** Player shortcuts to Home, the guide, Sohva Sport and "guide at this channel" reset the stack to that screen.
-- [ ] **SHELL-16** Resuming a film or episode from Home puts its library page and its details page under the player, so Back walks Details, then Movies/Series, then Home.
-- [ ] **SHELL-17** A finished film returns to its details page; a finished episode starts the next one (when autoplay is on) or returns to the series page, also when playback began in Search.
+- [x] **SHELL-16** Resuming a film or episode from Home puts its library page and its details page under the player, so Back walks Details, then Movies/Series, then Home.
+- [x] **SHELL-17** A finished film returns to its details page; a finished episode starts the next one (when autoplay is on) or returns to the series page, also when playback began in Search.
 - [x] **SHELL-18** A Trakt card on Home opens the library's own details page when the title is in the library, otherwise the Trakt title page.
 - [x] **SHELL-19** Returning to Movies or Series restores the browse position; returning to Sohva Sport restores the open match card; returning to the guide focuses the channel.
 - [x] **SHELL-20** Home navigation rail down the left edge: icons only at rest, widening over the content with labels when it takes focus.
@@ -66,12 +66,12 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-23** A channel outside a restricted profile's groups is refused with a short toast "This profile cannot watch that channel".
 - [x] **SHELL-24** A PIN-locked channel asks for the PIN before live, catch-up and zapped playback.
 - [x] **SHELL-25** A reminder notification opens its channel or its match card, whether the app was closed or already running.
-- [ ] **SHELL-26** A fired reminder appears as a dialog over any screen; the first reminder ever set explains, once, how to let reminders open the app; Android 13+ asks for the notification permission when a reminder is first set (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
+- [x] **SHELL-26** A fired reminder appears as a dialog over any screen; the first reminder ever set explains, once, how to let reminders open the app; Android 13+ asks for the notification permission when a reminder is first set (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
 - [x] **SHELL-27** Picture in picture (off by default): pressing Home while a stream plays shrinks it to a 16:9 corner with its own Close button; opening the app again restores full screen.
-- [ ] **SHELL-28** Background maintenance (metadata matching) pauses while the app is in front and resumes 30 s after it leaves.
-- [ ] **SHELL-29** Playlist, guide and catalogue refreshes follow the refresh interval setting.
-- [ ] **SHELL-30** Update check once a day at start (release package only).
-- [ ] **SHELL-31** The phone setup page closes when the viewer leaves the screen that opened it.
+- [x] **SHELL-28** Background maintenance (metadata matching) pauses while the app is in front and resumes 30 s after it leaves.
+- [x] **SHELL-29** Playlist, guide and catalogue refreshes follow the refresh interval setting.
+- [x] **SHELL-30** Update check once a day at start (release package only).
+- [x] **SHELL-31** The phone setup page closes when the viewer leaves the screen that opened it.
 - [x] **SHELL-32** Sohva Sport is polled only while its screen or the score ticker is visible and the app is in front.
 - [x] **SHELL-33** One focus language across the app: the focused control fills with off-white and its content inverts; artwork gets a ring instead; nothing is outlined at rest.
 - [x] **SHELL-34** Landscape only; the picture-in-picture resize never restarts the activity.
@@ -256,7 +256,7 @@ Spec: [specs/10-sources-and-import.md](../specs/10-sources-and-import.md) · Mil
 
 - [x] **SRC-40** Every import, from any screen or worker, goes through one import runner and survives leaving the screen that started it; the screen shows its progress.
 - [x] **SRC-41** Xtream bulk lists that a provider truncates or refuses are fetched category by category instead.
-- [ ] **SRC-42** Importing never makes playback stutter or a D-pad press late on the low-end box.
+- [x] **SRC-42** Importing never makes playback stutter or a D-pad press late on the low-end box.
 
 ## Phone setup
 
@@ -271,7 +271,7 @@ Spec: [specs/11-phone-setup.md](../specs/11-phone-setup.md) · Milestone: M1 · 
 - [x] **PHONE-07** The phone page answers every post with a result sentence (saved, keys saved, something missing, could not save).
 - [x] **PHONE-08** The TV dialog shows "Received from the phone: <name>. Syncing it now."; the playlist list refreshes and its status line reports the receipt.
 - [x] **PHONE-09** Several sources and keys can be sent in one session.
-- [ ] **PHONE-10** "Logo from phone" in Channel management: a page with one picture chooser; the phone shrinks the picture to at most 512 px and sends it; the TV stores it as that channel's logo (at most 256 px) and closes the page.
+- [x] **PHONE-10** "Logo from phone" in Channel management: a page with one picture chooser; the phone shrinks the picture to at most 512 px and sends it; the TV stores it as that channel's logo (at most 256 px) and closes the page.
 - [x] **PHONE-11** Addon URLs from a phone (Discover › Import): a one-use, ten-minute session; paste URLs or choose a `.txt` file on the phone; nothing installs until confirmed on the TV.
 - [x] **PHONE-12** A request without the right token is refused with a page that says to scan the code again.
 - [x] **PHONE-13** The page closes when its dialog closes (button or Back), when the TV leaves the screen that opened it, and after 15 minutes (sources/logo) or 10 minutes (addons).
@@ -288,14 +288,14 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-05** Group rail opened with Left from the channel column: Favourites, All channels, Recently watched, custom channel lists, provider groups, each with a count where known.
 - [x] **GUIDE-06** The rail follows the viewer's manual group order when one is set (All channels always first).
 - [x] **GUIDE-07** The Favourites, Recently watched and custom-list entries disappear when switched off in the Library manager.
-- [ ] **GUIDE-08** Groups switched off by a rule, or outside a restricted profile's groups, are not on the rail and their channels are never shown.
+- [x] **GUIDE-08** Groups switched off by a rule, or outside a restricted profile's groups, are not on the rail and their channels are never shown.
 - [x] **GUIDE-09** All channels: every visible channel of the source in guide order.
 - [x] **GUIDE-10** Favourites: the active profile's favourite channels of the selected source, in guide order.
 - [x] **GUIDE-11** Recently watched: the active profile's last 20 channels of the selected source, most recent first.
 - [x] **GUIDE-12** Custom list: the list's channels of the selected source, in the list's own order.
 - [x] **GUIDE-13** Channel order within a list follows the organisation rules (provider order by default; manual or A–Z per group from the Library manager; positions set in Channel management).
 - [x] **GUIDE-14** Channel cell: number, logo (or two-letter initials), name (wraps to two lines when long), feed line (quality/language tags from the name, else group, else source).
-- [ ] **GUIDE-15** Channel numbers can be switched off (Settings > General > Channel numbers).
+- [x] **GUIDE-15** Channel numbers can be switched off (Settings > General > Channel numbers).
 - [x] **GUIDE-16** Programme blocks proportional to running time, clipped to the window and to the next programme's start; genre accent bar; airing block with progress strip; finished blocks dimmed.
 - [x] **GUIDE-17** A row without listings in the window shows "No EPG information / Watch channel"; before its programmes are read it shows a blank disabled bar.
 - [x] **GUIDE-18** Day label ("Thu 24.9.") with Now / Today / Tomorrow / Yesterday.
@@ -326,10 +326,10 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-43** Returning to the guide within 10 minutes shows the last rows without reading them again when nothing changed.
 - [x] **GUIDE-44** Up from the top row reaches the hero's buttons.
 - [x] **GUIDE-45** Programme data arriving never moves focus.
-- [ ] **GUIDE-46** Times in the chosen time zone (Settings > General > Time zone; the TV's zone until one is chosen).
+- [x] **GUIDE-46** Times in the chosen time zone (Settings > General > Time zone; the TV's zone until one is chosen).
 - [x] **GUIDE-47** A source's EPG offset (±12 h in 30-min steps) shifts all its programme times.
 - [x] **GUIDE-48** Duplicate and overlapping provider entries are reduced to one block per start time.
-- [ ] **GUIDE-49** A restricted profile sees only its allowed groups; a change applies while the guide is open.
+- [x] **GUIDE-49** A restricted profile sees only its allowed groups; a change applies while the guide is open.
 - [x] **GUIDE-50** An import finishing while the guide is open refreshes rows and programmes in place.
 - [x] **GUIDE-51** Named trace sections for the screen, grid, rows and hero.
 - [x] **GUIDE-52** One accessibility node per cell (per row in the rebuild) that states its text.
@@ -362,7 +362,7 @@ Spec: [specs/21-channel-management.md](../specs/21-channel-management.md) · Mil
 - [x] **CHAN-22** Reset removes the channel's customisation.
 - [x] **CHAN-23** A status line confirms every action.
 - [x] **CHAN-24** Favourite channels per profile, toggled from the guide's hero and programme actions; the guide rail's Favourites list.
-- [ ] **CHAN-25** Recently watched channels per profile (last 20, most recent first): the guide rail's Recently watched list and Home's recent channels row.
+- [x] **CHAN-25** Recently watched channels per profile (last 20, most recent first): the guide rail's Recently watched list and Home's recent channels row.
 - [x] **CHAN-26** A locked channel asks for the PIN before live, catch-up and zapped playback and at a Last-channel start.
 - [x] **CHAN-27** Customisations apply in the guide, the player's channel list and dial, Home, Search, Sohva Sport stream matching and the stored programme guide.
 - [x] **CHAN-28** Custom lists appear on the guide rail (each can be switched off in the Library manager).
@@ -386,7 +386,7 @@ Spec: [specs/22-catchup-and-reminders.md](../specs/22-catchup-and-reminders.md) 
 - [x] **CATCH-09** Unsafe or unusable templates are refused (non-http(s) result, `{catchup-id}`, unknown tokens, bad formats).
 - [x] **CATCH-10** Catch-up playback shows transport controls (pause, seek) and no channel up/down; its title reads "Arkisto · <channel>".
 - [x] **CATCH-11** Back from catch-up playback returns to the screen it was started from.
-- [ ] **CATCH-12** Catch-up respects the PIN lock, profile restrictions and the source's connection limit, and records the channel as recently watched.
+- [x] **CATCH-12** Catch-up respects the PIN lock, profile restrictions and the source's connection limit, and records the channel as recently watched.
 
 **Reminders**
 
@@ -397,7 +397,7 @@ Spec: [specs/22-catchup-and-reminders.md](../specs/22-catchup-and-reminders.md) 
 - [x] **REM-05** Several due reminders queue; one alert at a time.
 - [x] **REM-06** Watch plays the programme's channel (or opens the match card when the match has no known channel); Back returns to where the viewer was.
 - [x] **REM-07** A notification in the TV's panel ("<title> starts now", "Press to watch." / "Press to open the match card and choose a channel.") that opens the channel or the match card.
-- [ ] **REM-08** When another app is on screen, Sohva TV comes to the front with the alert if the viewer allowed "display over other apps".
+- [x] **REM-08** When another app is on screen, Sohva TV comes to the front with the alert if the viewer allowed "display over other apps".
 - [x] **REM-09** The first reminder ever set explains once how reminders can open the app and offers to open the TV's setting.
 - [x] **REM-10** Android 13+: the notification permission is asked when a reminder is set.
 - [x] **REM-11** Settings > General shows "Reminders can open Sohva TV: Allowed / Not allowed" and opens the TV's setting.
@@ -428,16 +428,16 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-16** Skip back / forward by the chosen step (10 s, 30 s, 1 min, 2 min); quick repeated presses climb to 2 min (held keys too in the Discover player); the size of each skip shows for a moment.
 - [x] **PLAY-17** Audio track picker; step to the next audio track.
 - [x] **PLAY-18** Subtitle picker with Off; subtitles on / off toggle.
-- [ ] **PLAY-19** VOD audio and subtitle language preferences (primary, secondary); subtitles stay off when the primary audio language is present.
+- [x] **PLAY-19** VOD audio and subtitle language preferences (primary, secondary); subtitles stay off when the primary audio language is present.
 - [x] **PLAY-20** Quick actions menu (hold OK, or Menu): audio, subtitles, picture shape, playback info, score ticker.
 - [x] **PLAY-21** Picture shape: Fit, Fill, Zoom.
 - [x] **PLAY-22** Playback info line (resolution and frame rate, codecs, bitrate, subtitle format, buffer, dropped frames) with a clock.
 - [x] **PLAY-23** Buffering indicator whenever the player buffers.
 - [x] **PLAY-24** Automatic reconnection (Standard: 3 tries; Persistent: 8 tries) with a banner naming the cause and the attempt, and a Reconnect button.
 - [x] **PLAY-25** Failure causes in plain words (rebuild improvement over beta 23's code-plus-exception text; see PLAY-FR-93).
-- [ ] **PLAY-26** Playback buffer profile: Media3 default, Low latency, Stability; applies to the next playback.
-- [ ] **PLAY-27** Subtitle size, colour and background, each "Follow the TV" by default.
-- [ ] **PLAY-28** Match the display refresh rate to the stream, and restore it afterwards.
+- [x] **PLAY-26** Playback buffer profile: Media3 default, Low latency, Stability; applies to the next playback.
+- [x] **PLAY-27** Subtitle size, colour and background, each "Follow the TV" by default.
+- [x] **PLAY-28** Match the display refresh rate to the stream, and restore it afterwards.
 - [x] **PLAY-29** Keep watching in a corner (picture in picture) on Home, with a Close button.
 - [x] **PLAY-30** Open the live stream in another player app on the TV.
 - [x] **PLAY-31** Sohva Sport score ticker over live and catch-up playback.
@@ -449,11 +449,11 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-37** Provider headers (User-Agent, Referer) sent with the stream; Sohva's own user agent otherwise.
 - [x] **PLAY-38** HLS, DASH and progressive (MPEG-TS, MP4) streams, container chosen from the address.
 - [x] **PLAY-39** Hardware decoding preferred, next decoder tried if one fails.
-- [ ] **PLAY-40** A locked channel asks for the parental PIN when zapped to; a channel outside the profile's groups is refused.
+- [x] **PLAY-40** A locked channel asks for the parental PIN when zapped to; a channel outside the profile's groups is refused.
 - [x] **PLAY-41** Back removes one layer at a time; from the bare picture it leaves to the guide on the channel just watched.
 - [x] **PLAY-42** Remote shortcuts out of the player: guide at this channel, Home, Guide, Sohva Sport.
 - [x] **PLAY-43** Playback published as a media session (system media controls, voice "pause").
-- [ ] **PLAY-44** Demo build shows a still picture instead of a stream.
+- [x] **PLAY-44** Demo build shows a still picture instead of a stream.
 - [x] **PLAY-45** Playback failures written to the diagnostics log without addresses or credentials.
 - [x] **PLAY-46** Trakt scrobbling of VOD playback ([Trakt](../specs/51-trakt.md)).
 - [x] **PLAY-47** Discover player shares the transport controls, track picker, skip ladder and subtitle look.
@@ -480,7 +480,7 @@ Spec: [specs/31-remote-button-mapping.md](../specs/31-remote-button-mapping.md) 
 - [x] **REMOTE-16** Reset to defaults with a confirmation step.
 - [x] **REMOTE-17** Focus returns to the edited cell after a choice or Back.
 - [x] **REMOTE-18** Mappings kept on the device for all profiles, tolerant of unknown entries, included in backups.
-- [ ] **REMOTE-19** One-time migration from the old "Remote channel browser" setting.
+- [x] **REMOTE-19** One-time migration from the old "Remote channel browser" setting.
 
 ## Movies and series
 
@@ -513,7 +513,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 - [x] **VOD-23** Coming back from a title focuses the same card (or its film's standing copy) with both scroll positions kept.
 - [x] **VOD-24** Each mode keeps its browse position (destination, view, scroll, focused card) while the app runs.
 - [x] **VOD-25** First entry focuses History (else the first group, else Options).
-- [ ] **VOD-26** A restricted profile sees only its allowed groups' titles.
+- [x] **VOD-26** A restricted profile sees only its allowed groups' titles.
 
 **Film page**
 
@@ -563,7 +563,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 
 - [x] **VOD-56** Genre vocabulary of 22 genres with localized names, plus Unsorted.
 - [x] **VOD-57** Title initials placeholder for missing artwork and cast photos.
-- [ ] **VOD-58** Catalogue lookups used elsewhere: search (films, series, episodes), playable stream, title by key, next episode.
+- [x] **VOD-58** Catalogue lookups used elsewhere: search (films, series, episodes), playable stream, title by key, next episode.
 
 ## Metadata enrichment
 
@@ -643,7 +643,7 @@ Spec: [specs/42-library-organization.md](../specs/42-library-organization.md) ·
 - [x] **ORG-14** Items of a disabled source are shown as unavailable and no rule can enable them.
 - [x] **ORG-15** Old "hidden categories" settings migrate into rules once.
 - [x] **ORG-16** Every surface applies the same rules (guide, player lists and zapping, walls, rail counts, History, Home, Search, sport channel matching).
-- [ ] **ORG-17** A restricted profile sees less than the rules allow, never more.
+- [x] **ORG-17** A restricted profile sees less than the rules allow, never more.
 
 **Library manager**
 
@@ -1039,9 +1039,9 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 - [x] **SEC-01** IPTV source lists (addresses, user names, passwords), every stored stream address, the parental PIN, the TMDB token, the API-Sports key, Trakt tokens and pending scrobbles, and Discover addon URLs and payloads are stored encrypted (AES-256-GCM).
 - [x] **SEC-02** One Android Keystore AES-256 key per store wraps a random 256-bit software data key (envelope encryption): the keystore is used once per process, values are encrypted in software.
 - [x] **SEC-03** Values written in the older direct-keystore format (`v1:`) still decrypt; nothing needs a migration pass.
-- [ ] **SEC-04** The single-source settings of StreamMate's first builds are migrated into the encrypted source list on first read and the old file is cleared.
-- [ ] **SEC-05** The parental PIN (4–8 digits) is stored encrypted and compared in constant time.
-- [ ] **SEC-06** A stream address is decrypted only when it is played, inside the playback data source; the media session and its notification see only a placeholder id.
+- [x] **SEC-04** The single-source settings of StreamMate's first builds are migrated into the encrypted source list on first read and the old file is cleared.
+- [x] **SEC-05** The parental PIN (4–8 digits) is stored encrypted and compared in constant time.
+- [x] **SEC-06** A stream address is decrypted only when it is played, inside the playback data source; the media session and its notification see only a placeholder id.
 
 **Redaction**
 
@@ -1061,23 +1061,23 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 **Platform**
 
 - [x] **SEC-16** Android cloud backup and device-to-device transfer are disabled for all app data.
-- [ ] **SEC-17** A minimal permission set, each with a stated reason (§4.8).
-- [ ] **SEC-18** Only the launcher activity and the media-session service are exported by the app; the session accepts only this app, trusted system controllers and its own notification.
-- [ ] **SEC-19** The release build is not debuggable; it is profileable by the shell only.
+- [x] **SEC-17** A minimal permission set, each with a stated reason (§4.8).
+- [x] **SEC-18** Only the launcher activity and the media-session service are exported by the app; the session accepts only this app, trusted system controllers and its own notification.
+- [x] **SEC-19** The release build is not debuggable; it is profileable by the shell only.
 
 **Privacy**
 
 - [x] **SEC-20** No developer account, analytics, advertising, telemetry, crash upload or first-party server.
-- [ ] **SEC-21** Each third party receives only what its feature needs and only when the viewer has turned that feature on (§4.9 table).
+- [x] **SEC-21** Each third party receives only what its feature needs and only when the viewer has turned that feature on (§4.9 table).
 - [x] **SEC-22** The update check sends GitHub nothing about the viewer beyond the request itself.
 - [x] **SEC-23** Stream, playlist and guide requests identify the app as `Sohva TV/<version> (Android TV <release>)` unless the playlist sets its own user agent.
-- [ ] **SEC-24** The in-app privacy summary, the "security note" under source settings, and the published privacy policy state these commitments; a security contact is published (SECURITY.md).
+- [x] **SEC-24** The in-app privacy summary, the "security note" under source settings, and the published privacy policy state these commitments; a security contact is published (SECURITY.md).
 
 **Release hygiene**
 
 - [x] **SEC-25** A public-source content audit runs before every source publication.
-- [ ] **SEC-26** A release-document audit runs over the tester package.
-- [ ] **SEC-27** An APK safety audit checks package, version, label, non-debuggable, the permission allowlist, the signing certificate and secret-shaped content in every APK entry.
+- [x] **SEC-26** A release-document audit runs over the tester package.
+- [x] **SEC-27** An APK safety audit checks package, version, label, non-debuggable, the permission allowlist, the signing certificate and secret-shaped content in every APK entry.
 - [x] **SEC-28** Gitleaks scans the full public history, the staged commit and the release package.
 - [x] **SEC-29** Build-time secrets (the Trakt client id and secret) are injected at build time and never appear in the public source.
 

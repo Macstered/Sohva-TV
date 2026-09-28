@@ -129,6 +129,29 @@ class ReminderTest {
         compose.waitUntil(10_000) { exists(RailItem.LIVE_TV.tag) }
     }
 
+    /**
+     * REM-08: with "display over other apps" allowed, a reminder that falls due while another app
+     * is in front brings Sohva TV forward with its alert. The emulator's own home screen stands in for
+     * the other app; the permission is granted through the test's shell and taken back after.
+     */
+    @Test
+    fun aDueReminderBringsTheAppForwardWhenAllowed() {
+        val pkg = instrumentation.targetContext.packageName
+        fun shell(command: String) = instrumentation.uiAutomation.executeShellCommand(command).close()
+        shell("appops set $pkg SYSTEM_ALERT_WINDOW allow")
+        try {
+            awaitHome()
+            // The TV's home screen in front, as another app would be (a HOME key from the test does not leave the app).
+            shell("am start -a android.intent.action.MAIN -c android.intent.category.HOME")
+            compose.waitUntil(10_000) { !graph.inForeground.value }
+            ring(reminder(2, 30_000))
+            compose.waitUntil(10_000) { graph.inForeground.value }
+            compose.waitUntil(5_000) { exists("reminder-alert") }
+        } finally {
+            shell("appops set $pkg SYSTEM_ALERT_WINDOW default")
+        }
+    }
+
     @Test
     fun queuedAlertsFollowOneAnotherAndBackDismisses() {
         awaitHome()

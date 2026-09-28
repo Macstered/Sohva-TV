@@ -34,6 +34,7 @@ class PlaybackService : MediaSessionService() {
     private lateinit var registry: StreamRegistry
     private lateinit var player: ExoPlayer
     private lateinit var session: MediaSession
+    private lateinit var keeper: SurfaceKeeper
     private val leases = ConnectionLeases()
     private var lease: ConnectionLeases.Lease? = null
     private var profile = BufferProfile.DEFAULT
@@ -57,7 +58,8 @@ class PlaybackService : MediaSessionService() {
         registry = StreamRegistry(env.userAgent)
         player = PlayerFactory.create(this, env, registry, profile)
         player.addListener(Watcher())
-        session = MediaSession.Builder(this, player)
+        keeper = SurfaceKeeper(player, output = null)
+        session = MediaSession.Builder(this, keeper)
             .setId(SESSION_ID)
             .setCallback(Callback())
             .build()
@@ -249,9 +251,15 @@ class PlaybackService : MediaSessionService() {
         profile = wanted
         val next = PlayerFactory.create(this, env, registry, profile)
         next.addListener(Watcher())
-        session.player = next
+        // The picture's surface goes with the player: freed by the old one before the new one takes it.
+        val output = keeper.output
+        player.clearVideoSurface()
+        keeper = SurfaceKeeper(next, output)
+        session.player = keeper
         player.release()
         player = next
+        // PLAY-26: the next playback runs on the chosen buffer profile.
+        env.log.info("player", "buffer profile ${wanted.name}")
     }
 
     companion object {

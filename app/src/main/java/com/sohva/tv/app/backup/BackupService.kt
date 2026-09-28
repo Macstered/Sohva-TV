@@ -114,15 +114,18 @@ class BackupService(private val graph: AppGraph) {
      * database rows in one transaction, logos, the PIN, the preferences; then what the rows mean is
      * applied to the surviving sources' channels and titles. Nothing syncs by itself (BACKUP-FR-19).
      */
-    suspend fun restore(payload: BackupPayload) = withContext(graph.dispatchers.io) {
+    suspend fun restore(payload: BackupPayload, withSources: Boolean = true) = withContext(graph.dispatchers.io) {
         val started = SystemClock.elapsedRealtime()
         rows.markRestoring(true)
         val before = data.profiles.household.value.shown.map { it.id }
-        val kept = payload.sources.associateBy { it.source.id }
-        for (source in data.sources.all()) {
-            if (kept[source.id]?.source?.type != source.type) graph.sync.runner.remove(source.id)
+        // The beta 23 importer brings the sources itself (decision A1) and passes [withSources] false.
+        if (withSources) {
+            val kept = payload.sources.associateBy { it.source.id }
+            for (source in data.sources.all()) {
+                if (kept[source.id]?.source?.type != source.type) graph.sync.runner.remove(source.id)
+            }
+            for (config in payload.sources) saveSource(config)
         }
-        for (config in payload.sources) saveSource(config)
         val restored = rows.replace(payload, graph.clock.wallMillis())
         for ((key, bytes) in restored.logos) rows.setLogo(key, logos.save(key, bytes))
         for ((key, url) in restored.logoAddresses) rows.setLogo(key, logos.kept(url))

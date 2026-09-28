@@ -71,6 +71,9 @@ internal fun LibraryWall(model: LibraryModel, grid: LazyGridState, rail: RailFoc
         ReturnFocus(model, grid, back)
         val scope = rememberCoroutineScope()
         val focus = remember(grid) { WallFocus(grid, scope) }
+        // A press waiting for a page belongs to the wall it was made on, and completes when the page lands.
+        LaunchedEffect(wall.destination, search) { focus.forgetWaiting() }
+        LaunchedEffect(window) { focus.pageLanded(window) }
         LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = grid,
@@ -97,7 +100,7 @@ internal fun LibraryWall(model: LibraryModel, grid: LazyGridState, rail: RailFoc
                             model.focused(i, item.row.key, columns)
                         },
                         onOpen = { model.open(item, i) },
-                        onMove = { direction -> focus.move(model.wall.value.window, i, columns, direction, rail) },
+                        onMove = { direction -> focus.move(model.wall.value.window, i, columns, direction, rail, model::wantPage) },
                         register = focus,
                         index = i,
                         modifier = if (item.row.key == model.focusedKey) Modifier.focusRequester(back) else Modifier,
@@ -111,9 +114,10 @@ internal fun LibraryWall(model: LibraryModel, grid: LazyGridState, rail: RailFoc
 /**
  * Moves focus between cards by absolute index (VOD-FR-50/51): ±1 along a row, ±columns between
  * rows, so a held key never drifts a column or skips a card while the grid scrolls. A move into a
- * slot whose page is not loaded yet stays put until the page lands (§9.3). Up from the top row is
- * left to the platform, as in beta 23. Only composed cards are registered, so the map is bounded
- * by what the grid composes.
+ * slot whose page is not loaded yet stays put until the page lands (§9.3), then completes: that
+ * one move is kept (never more, so a held key still never jumps) and done when its card is
+ * composed, as long as focus has not gone elsewhere. Up from the top row is left to the platform,
+ * as in beta 23. Only composed cards are registered, so the map is bounded by what the grid composes.
  */
 internal class WallFocus(private val grid: LazyGridState, private val scope: CoroutineScope) {
     private val cards = HashMap<Int, FocusRequester>()
@@ -122,23 +126,51 @@ internal class WallFocus(private val grid: LazyGridState, private val scope: Cor
     private var pending = NONE
     private var driver: Job? = null
 
+    /** A move into a page still being read, and the card it was made from: done when the page lands. */
+    private var waiting = NONE
+    private var waitingFrom = NONE
+    private var lastLanded = NONE
+    private var columns = 1
+
     fun register(index: Int, requester: FocusRequester) {
         cards[index] = requester
+    }
+
+    /** A new destination or search: a move made on the old wall is not carried over. */
+    fun forgetWaiting() {
+        waiting = NONE
+    }
+
+    /** The window changed: a move waiting for this page goes ahead, if focus is still where the press left it. */
+    fun pageLanded(window: WallWindow) {
+        if (waiting == NONE || window.itemAt(waiting) == null) return
+        val target = waiting
+        waiting = NONE
+        if (pending != NONE || lastLanded != waitingFrom) return
+        pending = target
+        if (driver?.isActive != true) driver = scope.launch { drive() }
     }
 
     fun unregister(index: Int, requester: FocusRequester) {
         if (cards[index] === requester) cards.remove(index)
     }
 
-    /** A card took focus: a pending move to it is done. */
+    /** A card took focus: a pending move to it is done; a move waiting for a page from elsewhere is dropped. */
     fun landed(index: Int) {
+        lastLanded = index
         if (index == pending) pending = NONE
+        if (waiting != NONE && index != waitingFrom) waiting = NONE
     }
 
-    /** True when the key was handled here. */
-    fun move(window: WallWindow, focused: Int, columns: Int, direction: Key, rail: RailFocus): Boolean {
+    /**
+     * True when the key was handled here. [wantPage] asks for the page next to the window (true:
+     * after it) when a move lands beyond it: focus does not move, so no card's focus asks for it.
+     */
+    fun move(window: WallWindow, focused: Int, columns: Int, direction: Key, rail: RailFocus, wantPage: (Boolean) -> Unit): Boolean {
         val from = if (pending != NONE) pending else focused
         val column = from % columns
+        this.columns = columns
+        waiting = NONE
         val target = when (direction) {
             Key.DirectionLeft -> if (column == 0) return true.also { pending = NONE; rail.focusRail() } else from - 1
             Key.DirectionRight -> if (column == columns - 1) return true else from + 1
@@ -150,25 +182,36 @@ internal class WallFocus(private val grid: LazyGridState, private val scope: Cor
             }
             else -> return false
         }
-        // Beyond the loaded pages: stay until the page lands (never skip).
-        if (window.itemAt(target) == null) return true
+        // Beyond the loaded pages: stay until the page lands (never skip), then move there.
+        if (window.itemAt(target) == null) {
+            if (pending == NONE && ((target >= window.end && !window.atEnd) || (target >= 0 && target < window.first))) {
+                waiting = target
+                waitingFrom = from
+                wantPage(target >= window.end)
+            }
+            return true
+        }
         pending = target
-        if (driver?.isActive != true) driver = scope.launch { drive(columns) }
+        if (driver?.isActive != true) driver = scope.launch { drive() }
         return true
     }
 
     /** Scrolls the pending card's row into view when it is not composed, then focuses it. */
-    private suspend fun drive(columns: Int) {
+    private suspend fun drive() {
         var frames = 0
         while (pending != NONE && frames < MAX_FRAMES) {
             val target = pending
             val card = cards[target]
-            if (card != null && runCatching { card.requestFocus() }.getOrDefault(false)) {
+            val info = grid.layoutInfo
+            val visible = info.visibleItemsInfo
+            // The grid composes the next row before it is placed; focus on such a card is invisible and
+            // scrolls nothing (seen on the owner's Shield). Only a placed card takes focus; a partly
+            // visible one is then brought into view by the focus itself.
+            val placed = visible.any { it.index == target }
+            if (card != null && placed && runCatching { card.requestFocus() }.getOrDefault(false)) {
                 if (pending == target) pending = NONE
                 continue
             }
-            val info = grid.layoutInfo
-            val visible = info.visibleItemsInfo
             if (visible.isNotEmpty()) {
                 val pitch = visible.first().size.height + info.mainAxisItemSpacing
                 val rows = maxOf(1, (info.viewportSize.height + info.mainAxisItemSpacing) / maxOf(1, pitch))

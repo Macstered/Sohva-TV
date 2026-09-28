@@ -56,6 +56,8 @@ data class ContinueItem(
     val fraction: Float? = null,
     /** The film's IMDb id as Trakt knows it: bridges a Discover copy to this one (spec 02 HOME-FR-20, TRAKT-23). */
     val imdbId: String? = null,
+    /** A landscape picture for the card: the match's backdrop, else a series' provider backdrop (decision "Library card art"). */
+    val backdrop: String? = null,
 ) {
     companion object {
         fun of(row: ContinueRow): ContinueItem = ContinueItem(
@@ -73,6 +75,7 @@ data class ContinueItem(
             positionMs = row.positionMs,
             durationMs = row.durationMs,
             updatedAt = row.updatedAt,
+            backdrop = com.sohva.tv.core.model.metadata.TmdbImages.url(row.backdrop, com.sohva.tv.core.model.metadata.TmdbImages.CARD_BACKDROP),
         )
     }
 }

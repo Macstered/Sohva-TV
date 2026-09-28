@@ -34,6 +34,8 @@ STEPS: list[tuple[str, list[str]]] = [
         "verifyRoborazziDebug", "lintDebug", ":app:lintRelease", ":app:lintLab", "assembleDebugAndroidTest",
         ":app:assembleRelease", ":app:assembleLab", ":benchmark:assemble", ":app:checkReleaseGates",
     ]),
+    # The APK safety and release-document audits on the release just built (plan/06 §6 gates 2 and 7).
+    ("release audits", [sys.executable, "tools/package_release.py", "--audit-only"]),
 ]
 
 
