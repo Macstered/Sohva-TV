@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.3
 
-Android build **108**. Prepared 28 September 2026. Prerelease for testers.
+Android build **109**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.3
 
@@ -21,6 +21,8 @@ Android build **108**. Prepared 28 September 2026. Prerelease for testers.
 - Movies and series: "Find in Discover" on a title's page looks the title up
   in your Discover addons, for example when your sources lack some seasons.
   A series page says when your sources have fewer seasons than have aired.
+- Home: coming back from another screen, focus returns to the card you
+  left from, not the first row.
 
 ## Muutokset versiossa 0.2.0-beta.3
 
@@ -44,6 +46,8 @@ Android build **108**. Prepared 28 September 2026. Prerelease for testers.
   Discover-lisäosistasi, esimerkiksi kun lähteistäsi puuttuu tuotantokausia.
   Sarjan sivu kertoo, jos lähteissäsi on vähemmän tuotantokausia kuin on
   julkaistu.
+- Etusivu: kun palaat toiselta näytöltä, kohdistus palaa korttiin, jolta
+  lähdit, eikä ensimmäiselle riville.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
