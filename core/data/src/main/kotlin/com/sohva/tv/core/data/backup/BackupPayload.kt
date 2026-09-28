@@ -33,6 +33,8 @@ data class ProfileKept(
     val allowedLive: List<String> = emptyList(),
     val allowedMovies: List<String> = emptyList(),
     val allowedSeries: List<String> = emptyList(),
+    /** The Home layout's stored text (spec 02 HOME-FR-91); null = the default. Beta 23 ignores it. */
+    val homeLayout: String? = null,
 )
 
 /** One profile of `preferences.profiles`. */

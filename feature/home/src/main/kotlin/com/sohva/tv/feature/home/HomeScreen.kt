@@ -66,7 +66,10 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
         modifier
             .fillMaxSize()
             .onPreviewKeyEvent { e ->
-                if (e.type == KeyEventType.KeyDown) focus.viaLeft = e.key == Key.DirectionLeft
+                if (e.type == KeyEventType.KeyDown) {
+                    focus.viaLeft = e.key == Key.DirectionLeft
+                    focus.touched = true
+                }
                 false
             }
             .testTag("screen-home"),
@@ -108,7 +111,7 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
         )
     }
     BackHandler(enabled = focus.place == HomePlace.RAIL, onBack = backToRows)
-    HandOffs(rows, empty, focus)
+    HandOffs(rows, empty, focus, list)
     LaunchedEffect(list) {
         snapshotFlow { list.firstVisibleItemIndex > 0 || focus.focusedRow > 0 }.collect(model::setLocked)
     }
@@ -124,7 +127,7 @@ private fun backdrop(subject: HeroSubject, details: HeroDetails?): String? =
  * (its successor in the row, else the first card, else Welcome). Nothing while the rail has focus.
  */
 @Composable
-private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus) {
+private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus, list: androidx.compose.foundation.lazy.LazyListState) {
     LaunchedEffect(rows, empty, focus.placed, focus.retarget) {
         if (focus.place == HomePlace.RAIL) return@LaunchedEffect
         val first = rows.firstOrNull()
@@ -146,13 +149,20 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus) {
                 is HomeRow.Status -> emptyList()
             }
         }
+        // HOME-FR-93: a row that arrives above the first focus before any key press takes it (the layout
+        // can put a later-loading row first); after a key press nothing here follows arriving rows.
+        val firstKey = keys.firstOrNull().takeIf { first !is HomeRow.Status }
         val target = when {
             !focus.placed -> entry
+            !focus.touched && focus.place == HomePlace.CARD && firstKey != null && focus.lastCard != firstKey && focus.focusedRow == 0 -> entry
             focus.place == HomePlace.STATUS && rows.none { it is HomeRow.Status } -> entry
             focus.place == HomePlace.WELCOME && !empty -> entry
             focus.place == HomePlace.CARD && focus.lastCard !in keys -> successor(rows, focus) ?: entry
             else -> null
         } ?: return@LaunchedEffect
+        // The first row's card is only composed with the list at its top: a row that arrived above the
+        // first focus left the list anchored on the row below (HOME-FR-93).
+        if (target == entry && list.firstVisibleItemIndex > 0) list.scrollToItem(0)
         if (target.requestFocusWhenAttached()) {
             focus.placed = true
             if (target == focus.welcome) focus.place = HomePlace.WELCOME

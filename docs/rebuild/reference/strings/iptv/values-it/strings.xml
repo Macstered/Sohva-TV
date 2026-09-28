@@ -864,4 +864,9 @@
     <string name="link_open_elsewhere">Questa TV non può aprire il link. Scansiona il codice o digita l\'indirizzo su un altro dispositivo.</string>
     <string name="about_palettes_title">Licenze delle palette di colori</string>
     <string name="error_api_sports_quota">La quota di oggi di API-Sports è esaurita. Si azzera ogni giorno; le partite salvate restano sullo schermo.</string>
+    <string name="home_layout_intro">Scegli l\'ordine delle righe della Home e quali mostrare.</string>
+    <string name="home_layout_for_profile">Righe della Home per %1$s. Ogni profilo ha le sue.</string>
+    <string name="home_layout_reset">Ripristina predefiniti</string>
+    <string name="home_layout_order_help">Seleziona una riga per prenderla, spostala con Su e Giù, poi premi OK per posarla.</string>
+    <string name="home_layout_visibility_help">Una riga nascosta non viene caricata, così la Home resta veloce anche sui box TV più lenti.</string>
 </resources>

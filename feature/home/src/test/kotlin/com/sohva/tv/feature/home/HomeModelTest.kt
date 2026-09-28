@@ -38,9 +38,18 @@ class HomeModelTest {
 
     private class Env(val resumeState: MutableStateFlow<ResumeState>, val recent: List<RecentChannel>) : HomeEnvironment {
         val looked = mutableListOf<HeroSubject>()
+        val layoutState = MutableStateFlow(com.sohva.tv.core.model.home.HomeLayout.DEFAULT)
+        var recentReads = 0
+        var traktReads = 0
+        var traktLists = TraktLists.EMPTY
         override val resume: StateFlow<ResumeState> get() = resumeState
+        override val layout: Flow<com.sohva.tv.core.model.home.HomeLayout> get() = layoutState
+        override val trakt: Flow<TraktLists> get() = kotlinx.coroutines.flow.flow {
+            traktReads++
+            emit(traktLists)
+        }
         override fun retryResume() = Unit
-        override suspend fun recentChannels(now: Long): List<RecentChannel> = recent
+        override suspend fun recentChannels(now: Long): List<RecentChannel> = recent.also { recentReads++ }
         override val timeZone: Flow<String?> = flowOf(null)
         override fun now(): Long = NOW
         override suspend fun heroDetails(subject: HeroSubject): HeroDetails? {
@@ -130,6 +139,40 @@ class HomeModelTest {
         val film = item("f").copy(posterUrl = "https://provider.example/poster.jpg")
         assertEquals("https://provider.example/poster.jpg", HomeModel.card(film).image)
         assertEquals("https://provider.example/wide.jpg", HomeModel.card(film.copy(backdrop = "https://provider.example/wide.jpg")).image)
+    }
+
+    /** Spec 02 HOME-FR-87: the rows follow the profile's order; hidden ones are left out and never read. */
+    @Test
+    fun rowsFollowTheLayoutAndHiddenRowsAreNeverRead() = runTest(main) {
+        val env = Env(MutableStateFlow(ResumeState.Ready(listOf(item("a")))), listOf(live))
+        env.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.decode("recent-channels,continue-watching")
+        val model = model(env)
+        assertEquals(listOf(HomeRow.RECENT, HomeRow.CONTINUE), model.rows.value.map { it.key })
+
+        val hidden = Env(MutableStateFlow(ResumeState.Ready(listOf(item("a")))), listOf(live))
+        hidden.traktLists = TraktLists.EMPTY
+        hidden.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.decode("continue-watching,-recent-channels,-watch-next,-recommended")
+        val quiet = model(hidden)
+        runCurrent()
+        assertEquals(listOf(HomeRow.CONTINUE), quiet.rows.value.map { it.key })
+        assertEquals("hidden recent channels are not read", 0, hidden.recentReads)
+        assertEquals("hidden Trakt rows are not read", 0, hidden.traktReads)
+        // Shown again (back from Settings): the Trakt lists are read.
+        hidden.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.DEFAULT
+        runCurrent()
+        assertEquals(1, hidden.traktReads)
+    }
+
+    /** HOME-FR-89: with Continue watching hidden there is no row and no status card, and the idle hero is a recent channel. */
+    @Test
+    fun aHiddenContinueWatchingShowsNoStatusCard() = runTest(main) {
+        val env = Env(MutableStateFlow(ResumeState.Loading), listOf(live))
+        env.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.DEFAULT.withShown(HomeRow.CONTINUE, false)
+        val model = model(env)
+        assertEquals(listOf(HomeRow.RECENT), model.rows.value.map { it.key })
+        env.resumeState.value = ResumeState.Ready(listOf(item("a")))
+        runCurrent()
+        assertEquals(HeroSubject.Channel(ChannelCard("channel:7", live)), model.hero.value)
     }
 
     private companion object {

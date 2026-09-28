@@ -128,6 +128,8 @@ object BackupWriter {
         strings(w, "allowedLiveGroupKeys", k.allowedLive)
         strings(w, "allowedMovieGroupKeys", k.allowedMovies)
         strings(w, "allowedSeriesGroupKeys", k.allowedSeries)
+        // Only a changed layout is written; an optional key keeps format 2 (HOME-FR-91).
+        k.homeLayout?.let { w.name("homeLayout").value(it) }
         w.endObject()
     }
 

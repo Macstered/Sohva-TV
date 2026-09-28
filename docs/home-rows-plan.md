@@ -116,3 +116,10 @@ questions" Q2 (27 September) kept it out; the owner's go on this plan reverses t
 Phase A on its own branch through the emulator suites and the slow-box Home measurement, a Shield
 preview, then a beta. Phases B and C after it, each through a Shield preview. Every new text in
 seven languages; every capability an inventory ID; decisions recorded as they are made.
+
+## Status (28 September 2026)
+
+- Phase A done on branch `m12-home-rows`: spec 02 §4.14 (HOME-FR-86…93), inventory HOME-37…41 ticked, decisions
+  recorded; unit tests (layout, storage, backup, Home rows and reads, Settings holder, Trakt without Watch next) and
+  device tests (`HomeLayoutTest`: order, hidden rows, Reorder/Back/Show-hide/Reset with real keys, first focus with a
+  slow row); the affected suites and `check_all` green; Home measured before and after (docs/performance-log.md).

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.sohva.tv.core.data.home.RecentChannel
 import com.sohva.tv.core.data.home.ResumeState
 import com.sohva.tv.core.data.vod.ContinueItem
+import com.sohva.tv.core.model.home.HomeLayout
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.vod.VodText
 import kotlinx.coroutines.Job
@@ -16,8 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -27,7 +31,9 @@ import kotlinx.coroutines.launch
  * the structure is locked (the viewer below the first row) cards keep their places and only their
  * values follow the data (HOME-FR-50…52). The hero follows focus after it has rested 180 ms; focus
  * changes reach the model through callbacks, so Home recomposes only when the hero changes (§9.6).
+ * The rows follow the profile's layout; a hidden row's data is never read (HOME-FR-87).
  */
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HomeModel(private val env: HomeEnvironment) : ViewModel() {
     private val _rows = MutableStateFlow<List<HomeRow>>(emptyList())
     val rows: StateFlow<List<HomeRow>> = _rows.asStateFlow()
@@ -56,12 +62,22 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
 
     private val channels = MutableStateFlow<List<RecentChannel>?>(null)
 
-    /** HOME-FR-32: Trakt's lists only after Continue watching's first read has settled. */
+    /** Settings › Home's layout; a change (after coming back from Settings) rebuilds the rows. */
+    private val layout = env.layout.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** HOME-FR-32: Trakt's lists only after Continue watching's first read has settled, and only while a Trakt row is shown. */
     private val trakt = flow {
         emit(TraktLists.EMPTY)
         env.resume.filter { it.settled }.first()
-        emitAll(env.trakt)
+        emitAll(
+            layout.flatMapLatest { l ->
+                if (l != null && (l.isShown(HomeRow.WATCH_NEXT) || l.isShown(HomeRow.RECOMMENDED))) env.trakt else flowOf(TraktLists.EMPTY)
+            },
+        )
     }
+
+    /** Today's games only while the row is shown; the feed itself runs for Search and reminders (HOME-FR-87). */
+    private val games = layout.flatMapLatest { l -> if (l?.isShown(HomeRow.SPORT) == true) env.sportGames else flowOf(emptyList()) }
 
     private val _firstSync = MutableStateFlow(false)
 
@@ -79,11 +95,16 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
     private var detailsJob: Job? = null
 
     init {
-        viewModelScope.launch { channels.value = runCatching { env.recentChannels(env.now()) }.getOrDefault(emptyList()) }
         viewModelScope.launch {
-            combine(env.resume, channels, env.sportGames, trakt) { resume, recent, games, lists ->
+            // A hidden row reads nothing (HOME-FR-87): the channels are read only when their row is shown.
+            val shown = layout.first { it != null }!!.isShown(HomeRow.RECENT)
+            channels.value = if (shown) runCatching { env.recentChannels(env.now()) }.getOrDefault(emptyList()) else emptyList()
+        }
+        viewModelScope.launch {
+            // Never the default order first: the rows wait for the profile's layout (already in memory).
+            combine(env.resume, channels, games, trakt, layout.filterNotNull()) { resume, recent, games, lists, layout ->
                 _firstSync.value = lists.firstSync && resume.settled
-                Triple(build(resume, recent.orEmpty(), games, lists), resume, recent)
+                Triple(build(resume, recent.orEmpty(), games, lists, layout), resume, recent)
             }.collect { (rows, resume, recent) ->
                 latest = rows
                 publish()
@@ -162,18 +183,22 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
         viewModelScope.launch { env.remove(card) }
     }
 
-    private fun build(resume: ResumeState, recent: List<RecentChannel>, games: List<SportEvent>, trakt: TraktLists): List<HomeRow> = buildList {
-        when (resume) {
-            is ResumeState.Ready -> add(HomeRow.Resume(resume.items.take(RESUME_CARDS).map(::card).distinctBy { it.key }))
-            ResumeState.Loading -> add(HomeRow.Status(failed = false))
-            ResumeState.Failed -> add(HomeRow.Status(failed = true))
-            ResumeState.Empty -> Unit
+    /** The shown rows in the layout's order (HOME-FR-87); a row with no cards is still left out (HOME-FR-01). */
+    private fun build(resume: ResumeState, recent: List<RecentChannel>, games: List<SportEvent>, trakt: TraktLists, layout: HomeLayout): List<HomeRow> = buildList {
+        for (id in layout.shownIds) {
+            when (id) {
+                HomeRow.CONTINUE -> when (resume) {
+                    is ResumeState.Ready -> add(HomeRow.Resume(resume.items.take(RESUME_CARDS).map(::card).distinctBy { it.key }))
+                    ResumeState.Loading -> add(HomeRow.Status(failed = false))
+                    ResumeState.Failed -> add(HomeRow.Status(failed = true))
+                    ResumeState.Empty -> Unit
+                }
+                HomeRow.WATCH_NEXT -> if (trakt.next.isNotEmpty()) add(HomeRow.Trakt(trakt.next.distinctBy { it.key }, next = true))
+                HomeRow.SPORT -> if (games.isNotEmpty()) add(HomeRow.Sport(games.take(SPORT_CARDS).map { SportCard("sport:${it.id}", it) }, games.size))
+                HomeRow.RECOMMENDED -> if (trakt.recommended.isNotEmpty()) add(HomeRow.Trakt(trakt.recommended.distinctBy { it.key }, next = false))
+                HomeRow.RECENT -> if (recent.isNotEmpty()) add(HomeRow.Channels(recent.map { ChannelCard("channel:${it.id}", it) }.distinctBy { it.key }))
+            }
         }
-        // HOME-FR-01's order: Continue watching, Watch next, Today's sport, Recommended, Recent channels.
-        if (trakt.next.isNotEmpty()) add(HomeRow.Trakt(trakt.next.distinctBy { it.key }, next = true))
-        if (games.isNotEmpty()) add(HomeRow.Sport(games.take(SPORT_CARDS).map { SportCard("sport:${it.id}", it) }, games.size))
-        if (trakt.recommended.isNotEmpty()) add(HomeRow.Trakt(trakt.recommended.distinctBy { it.key }, next = false))
-        if (recent.isNotEmpty()) add(HomeRow.Channels(recent.map { ChannelCard("channel:${it.id}", it) }.distinctBy { it.key }))
     }
 
     companion object {

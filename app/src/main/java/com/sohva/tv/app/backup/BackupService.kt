@@ -66,6 +66,7 @@ class BackupService(private val graph: AppGraph) {
             profileData[profile.id] = rows.profileRows(profile.id).copy(
                 favouriteEventIds = data.preferences.favouriteEvents(profile.id),
                 lastChannelId = data.preferences.lastChannelOf(profile.id),
+                homeLayout = data.preferences.homeLayoutText(profile.id),
             )
         }
         val (rules, aliases) = rows.organisation()

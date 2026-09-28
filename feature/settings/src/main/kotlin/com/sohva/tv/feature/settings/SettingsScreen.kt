@@ -157,6 +157,7 @@ private fun SettingsPane(
         when (state.section) {
             SettingsSection.SOURCES -> if (state.page == null) PlaylistsList(state, model, start) else SourcePage(state, model, start)
             SettingsSection.GENERAL -> GeneralPane(state, model, start)
+            SettingsSection.HOME -> HomePane(model.home, start)
             SettingsSection.PLAYBACK -> PlaybackPane(model.playback, start)
             SettingsSection.REMOTE -> RemotePane(state, model, start)
             SettingsSection.METADATA -> LibraryPane(model.library, start)

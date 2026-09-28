@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.sohva.tv.core.data.home.RecentChannel
 import com.sohva.tv.core.data.home.ResumeState
 import com.sohva.tv.core.data.vod.ContinueItem
+import com.sohva.tv.core.model.home.HomeLayout
 import com.sohva.tv.core.model.sport.SportEvent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -34,7 +35,7 @@ data class ChannelCard(val key: String, val channel: RecentChannel)
 @Immutable
 data class SportCard(val key: String, val event: SportEvent)
 
-/** A row of Home (HOME-FR-01), in the fixed order; Trakt rows join with Trakt (M10). */
+/** A row of Home (HOME-FR-01), drawn in the profile's layout order (HOME-FR-87). */
 sealed interface HomeRow {
     val key: String
 
@@ -62,11 +63,11 @@ sealed interface HomeRow {
     }
 
     companion object {
-        const val CONTINUE: String = "continue-watching"
-        const val SPORT: String = "todays-sport"
-        const val RECENT: String = "recent-channels"
-        const val WATCH_NEXT: String = "watch-next"
-        const val RECOMMENDED: String = "recommended"
+        const val CONTINUE: String = HomeLayout.CONTINUE
+        const val SPORT: String = HomeLayout.SPORT
+        const val RECENT: String = HomeLayout.RECENT
+        const val WATCH_NEXT: String = HomeLayout.WATCH_NEXT
+        const val RECOMMENDED: String = HomeLayout.RECOMMENDED
     }
 }
 
@@ -130,6 +131,9 @@ interface HomeEnvironment {
 
     /** HOME-FR-22: the library copy's details, else the Trakt title page. */
     fun openTrakt(card: TraktCard) = Unit
+
+    /** The active profile's Home layout (spec 02 §4.14): row order and hidden rows. */
+    val layout: Flow<HomeLayout> get() = flowOf(HomeLayout.DEFAULT)
 
     /** The low memory class of plan/07 §2.2: the hero decodes at half size and does not crossfade. */
     val lowMemory: Boolean

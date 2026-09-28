@@ -50,13 +50,20 @@ class AppHomeEnvironment(private val graph: AppGraph, private val stack: BackSta
 
     override fun retryResume() = graph.continueFeed.retry()
 
-    override suspend fun recentChannels(now: Long): List<RecentChannel> = graph.data.home.recentChannels(now)
+    override suspend fun recentChannels(now: Long): List<RecentChannel> {
+        graph.homeRecentGate?.invoke()
+        return graph.data.home.recentChannels(now)
+    }
 
     override val timeZone: Flow<String?> get() = graph.appZone.flowOn(io)
 
     override fun now(): Long = System.currentTimeMillis()
 
     override val lowMemory: Boolean get() = graph.player.lowMemory
+
+    // Home's model is per profile (its key names the profile), so the layout is that profile's.
+    override val layout: Flow<com.sohva.tv.core.model.home.HomeLayout> =
+        graph.data.preferences.homeLayout(graph.data.profiles.activeId).flowOn(io)
 
     /** Today's games as Sohva Sport holds them; Home asks for nothing itself (HOME-FR-33). */
     override val sportGames: Flow<List<com.sohva.tv.core.model.sport.SportEvent>>

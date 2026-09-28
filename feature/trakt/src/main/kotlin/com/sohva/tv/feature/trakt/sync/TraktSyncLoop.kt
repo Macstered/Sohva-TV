@@ -59,9 +59,13 @@ class TraktSyncLoop(
 
     private suspend fun cycle(profile: String) {
         host.scrobbles.deliver(profile)
+        // Only the shelves the profile's Home shows (spec 02 HOME-FR-87); the watched state always syncs.
+        val shown = host.shelvesShown(profile)
+        val next = TraktShelfKind.WATCH_NEXT in shown
+        if (!next) shelves.drop(profile, TraktShelfKind.WATCH_NEXT)
         coroutineScope {
-            launch { sync.recommendations(profile) }
-            launch { sync.sync(profile, force = shelves.read(profile, TraktShelfKind.WATCH_NEXT) == null) }
+            if (TraktShelfKind.RECOMMENDED in shown) launch { sync.recommendations(profile) }
+            launch { sync.sync(profile, force = next && shelves.read(profile, TraktShelfKind.WATCH_NEXT) == null, watchNext = next) }
         }
     }
 

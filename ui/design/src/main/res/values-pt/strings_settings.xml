@@ -213,4 +213,9 @@
     <string name="link_open_elsewhere">Esta TV não consegue abrir a ligação. Leia o código ou escreva o endereço noutro dispositivo.</string>
     <string name="about_palettes_title">Licenças das paletas de cores</string>
     <string name="error_api_sports_quota">A quota de hoje da API-Sports esgotou-se. É reposta diariamente; os jogos guardados continuam no ecrã.</string>
+    <string name="home_layout_intro">Escolha a ordem das linhas do Início e quais são mostradas.</string>
+    <string name="home_layout_for_profile">Linhas do Início para %1$s. Cada perfil tem as suas.</string>
+    <string name="home_layout_reset">Repor predefinição</string>
+    <string name="home_layout_order_help">Selecione uma linha para a pegar, mova-a com Cima e Baixo e prima OK para a colocar.</string>
+    <string name="home_layout_visibility_help">Uma linha oculta não é carregada, o que também mantém o Início rápido nas boxes de TV mais lentas.</string>
 </resources>

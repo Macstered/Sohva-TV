@@ -108,6 +108,27 @@ class BackupCodecTest {
         assertEquals(BackupProblem.STRUCTURE, problem("{\"formatVersion\":").first)
     }
 
+    /**
+     * Spec 02 HOME-FR-91: a profile's Home layout travels as an optional text in its profile data;
+     * a file without it (beta 23's, or a profile left at the default) reads as no layout, and the
+     * writer adds nothing for the default, so format 2 stays what beta 23 reads.
+     */
+    @Test
+    fun theHomeLayoutIsAnOptionalProfileField() {
+        val original = read(fixture("beta23-format2.json"))
+        assertTrue(original.profileData.values.all { it.homeLayout == null })
+        val layout = "recent-channels,-watch-next,continue-watching,todays-sport,recommended"
+        val kids = original.profileData.keys.first { it != "default" }
+        val changed = original.copy(profileData = original.profileData.mapValues { (id, kept) -> if (id == kids) kept.copy(homeLayout = layout) else kept })
+        val out = Buffer()
+        BackupWriter.write(changed, deviceZone = "Europe/Oslo", exportedAt = 1L, sink = out)
+        val json = out.readUtf8()
+        assertEquals(1, Regex("\"homeLayout\"").findAll(json).count())
+        val again = read(json)
+        assertEquals(layout, again.profileData.getValue(kids).homeLayout)
+        assertEquals(null, again.profileData.getValue("default").homeLayout)
+    }
+
     @Test
     fun whatTheWriterWritesReadsBack() {
         val original = read(fixture("beta23-format2.json"))

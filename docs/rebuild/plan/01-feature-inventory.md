@@ -137,6 +137,14 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-35** Every row is the active profile's own; switching profile resets Home to that profile's rows, focus and hero.
 - [x] **HOME-36** A restricted profile sees no Trakt rows, no Discover cards and no first-sync note; its recent channels are limited to its allowed groups. *(done in M6; Trakt rows and Discover cards do not exist yet, their checks join in M9 and M10.)*
 
+**Home layout (M12, rebuild; not in beta 23)**
+
+- [x] **HOME-37** Each profile has its own Home row order and shown/hidden rows; the default is today's order with every row shown.
+- [x] **HOME-38** Home draws the rows in the profile's order and leaves hidden rows out, without reading or fetching their data (recent channels, Watch next, Recommended).
+- [x] **HOME-39** Settings › Home: Order mode (OK picks up, Up/Down/Page/Home/End move, OK places, Back cancels), Show or hide mode with one switch per row, and Reset to default, for the active profile.
+- [x] **HOME-40** The layout is in the backup and restores; the file still restores in beta 23; removing a profile removes its layout.
+- [x] **HOME-41** The layout adds no measurable cost to Home's start-up or key presses on the low-end stand-in.
+
 ## Search
 
 Spec: [specs/03-search.md](../specs/03-search.md) · Milestone: M5 · 19 items

@@ -873,4 +873,9 @@
     <string name="link_open_elsewhere">Tämä televisio ei voi avata linkkiä. Skannaa koodi tai kirjoita osoite toisella laitteella.</string>
     <string name="about_palettes_title">Väripalettien lisenssit</string>
     <string name="error_api_sports_quota">API-Sportsin tämän päivän kiintiö on käytetty. Se nollautuu päivittäin; tallennetut ottelut näkyvät edelleen.</string>
+    <string name="home_layout_intro">Valitse etusivun rivien järjestys ja se, mitkä rivit näytetään.</string>
+    <string name="home_layout_for_profile">Etusivun rivit profiilille %1$s. Jokaisella profiililla on omansa.</string>
+    <string name="home_layout_reset">Palauta oletukset</string>
+    <string name="home_layout_order_help">Valitse rivi, siirrä sitä ylös- ja alas-painikkeilla ja aseta se paikalleen OK-painikkeella.</string>
+    <string name="home_layout_visibility_help">Piilotettua riviä ei ladata lainkaan, mikä pitää etusivun nopeana myös hitaammissa TV-bokseissa.</string>
 </resources>

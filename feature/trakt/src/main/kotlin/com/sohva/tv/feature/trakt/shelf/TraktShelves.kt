@@ -74,6 +74,13 @@ class TraktShelves(private val host: TraktHost) {
 
     fun forget(profile: String) = _shelves.update { map -> map.filterKeys { it.first != profile } }
 
+    /** A hidden Home row's list (spec 02 HOME-FR-87): gone from store and memory, so showing it again fetches it afresh. */
+    suspend fun drop(profile: String, kind: TraktShelfKind) {
+        if (_shelves.value[profile to kind] == null && profile to kind in _shelves.value) return
+        withContext(host.dispatchers.io) { host.store.putSecret("${kind.key}:$profile", null) }
+        _shelves.update { it + ((profile to kind) to null) }
+    }
+
     /** Device tests. */
     fun clear() = _shelves.update { emptyMap() }
 

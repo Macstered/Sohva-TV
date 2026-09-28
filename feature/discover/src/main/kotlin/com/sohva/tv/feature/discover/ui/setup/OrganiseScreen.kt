@@ -22,11 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +35,7 @@ import com.sohva.tv.feature.discover.store.CatalogEntry
 import com.sohva.tv.feature.discover.ui.typeLabel
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.ListRowLayout
+import com.sohva.tv.ui.design.components.moveKeys
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.TvActionButton
@@ -236,23 +232,7 @@ private fun Entry(model: OrganiseModel, s: OrganiseState, e: CatalogEntry, index
         return
     }
     val moving = s.moving == e.key
-    val keys = if (!moving) modifier else modifier.onPreviewKeyEvent { k ->
-        if (k.type != KeyEventType.KeyDown) return@onPreviewKeyEvent k.key == Key.DirectionCenter || k.key == Key.Enter
-        val page = (visibleRows() - 1).coerceAtLeast(1)
-        when (k.key) {
-            Key.DirectionUp -> model.move(-1)
-            Key.DirectionDown -> model.move(1)
-            Key.PageUp -> model.move(-page)
-            Key.PageDown -> model.move(page)
-            Key.MoveHome -> model.move(to = 0)
-            Key.MoveEnd -> model.move(to = Int.MAX_VALUE)
-            Key.DirectionLeft, Key.DirectionRight -> Unit
-            // OK places on its first press only, never on a repeat.
-            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> if (k.nativeKeyEvent.repeatCount == 0) model.place()
-            else -> return@onPreviewKeyEvent false
-        }
-        true
-    }
+    val keys = if (!moving) modifier else modifier.moveKeys({ (visibleRows() - 1).coerceAtLeast(1) }, { delta, to -> model.move(delta, to) }, model::place)
     TvListRow(
         e.catalog.name, { if (s.moving == null) model.pickUp(e.key) },
         keys.testTag("discover-organise-row-${e.catalog.id}"),
