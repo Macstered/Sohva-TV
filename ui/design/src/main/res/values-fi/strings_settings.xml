@@ -244,4 +244,5 @@
     <string name="home_layout_list_meta">%1$s · %2$d nimikettä · %3$d tykkäystä</string>
     <string name="home_layout_list_phone_help">Skannaa koodi, liitä listan trakt.tv-osoite puhelimeen ja lähetä se. Voit lähettää useita listoja.</string>
     <string name="home_layout_list_added">Lisätty etusivulle: %1$s</string>
+    <string name="home_layout_list_smart">Trakt-älylista</string>
 </resources>

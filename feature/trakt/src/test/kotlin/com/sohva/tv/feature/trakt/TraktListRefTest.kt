@@ -16,6 +16,17 @@ class TraktListRefTest {
         assertEquals(TraktListRef.ByUser("a.b", "123"), TraktListRef.parse("http://www.trakt.tv/users/a.b/lists/123#top"))
     }
 
+    /** HOME-FR-101: the Trakt app's smart list addresses, as the owner pasted one on 28 September 2026. */
+    @Test
+    fun smartListAddressesAreRecognised() {
+        val smart = TraktListRef.Smart("lasten-sarjat-2eadc6438118f342")
+        assertEquals(smart, TraktListRef.parse("https://app.trakt.tv/lists/smart/view/lasten-sarjat-2eadc6438118f342"))
+        assertEquals(smart, TraktListRef.parseAddress("app.trakt.tv/lists/smart/view/lasten-sarjat-2eadc6438118f342/"))
+        assertEquals(smart, TraktListRef.parse("https://trakt.tv/lists/smart/lasten-sarjat-2eadc6438118f342"))
+        assertEquals(TraktListRef.Smart("48183"), TraktListRef.parse("https://app.trakt.tv/smart-lists/48183"))
+        assertNull(TraktListRef.parse("https://app.trakt.tv/lists/smart/view/../x"))
+    }
+
     @Test
     fun anythingElseIsANameUnlessItLooksLikeAnAddress() {
         assertEquals(TraktListRef.Search("Nordic noir"), TraktListRef.parse("Nordic noir"))

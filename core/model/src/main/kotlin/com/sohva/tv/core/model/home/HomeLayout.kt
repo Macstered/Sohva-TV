@@ -89,16 +89,29 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
 
         fun traktList(id: Long): String = TRAKT_LIST_PREFIX + id
 
+        /** A public Trakt smart list by its number (HOME-FR-101): `trakt:smart:<id>`. */
+        const val TRAKT_SMART_PREFIX: String = "trakt:smart:"
+
+        fun traktSmartList(id: Long): String = TRAKT_SMART_PREFIX + id
+
         /** The list number of a `trakt:list:<id>` row, else null: digits only, at most 12 of them. */
-        fun traktListId(rowId: String): Long? {
-            if (!rowId.startsWith(TRAKT_LIST_PREFIX)) return null
-            val digits = rowId.substring(TRAKT_LIST_PREFIX.length)
+        fun traktListId(rowId: String): Long? = number(rowId, TRAKT_LIST_PREFIX)
+
+        /** The smart list number of a `trakt:smart:<id>` row, else null. */
+        fun traktSmartListId(rowId: String): Long? = number(rowId, TRAKT_SMART_PREFIX)
+
+        /** A public list or smart list row (HOME-FR-99, -101). */
+        fun isTraktList(rowId: String): Boolean = traktListId(rowId) != null || traktSmartListId(rowId) != null
+
+        private fun number(rowId: String, prefix: String): Long? {
+            if (!rowId.startsWith(prefix)) return null
+            val digits = rowId.substring(prefix.length)
             if (digits.isEmpty() || digits.length > 12 || digits.any { it !in '0'..'9' }) return null
             return digits.toLong().takeIf { it > 0 }
         }
 
-        /** A row the viewer can add: a listed one, or a Trakt list by number. */
-        fun isAddable(id: String): Boolean = id in ADDABLE || traktListId(id) != null
+        /** A row the viewer can add: a listed one, or a Trakt list or smart list by number. */
+        fun isAddable(id: String): Boolean = id in ADDABLE || isTraktList(id)
 
         /** The owner's limit (decision "M12"): at most 8 added rows per profile, so Home stays short and quick. */
         const val MAX_ADDED: Int = 8

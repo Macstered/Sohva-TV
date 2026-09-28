@@ -246,7 +246,9 @@ class TraktSync(
                 }
                 val cards = titles.map { TraktCard(it.kind, it.ids, it.title, it.year, it.overview, it.poster, it.fanart) }
                 // A public list keeps its name; a layout restored from a backup asks for it once (HOME-FR-99).
-                val title = stored?.title ?: source.listId?.let { id -> host.api.listSummary(TraktListRef.ById(id))?.name }
+                val title = stored?.title ?: source.listId?.let { id ->
+                    host.api.listSummary(if (source.smart) TraktListRef.Smart(id.toString()) else TraktListRef.ById(id))?.name
+                }
                 host.rowLists.save(profile, source, TraktShelf(host.clock.wallMillis(), cards, title))
                 host.log.info("trakt", "row ${source.name}: ${cards.size} titles")
             } catch (e: TraktException) {

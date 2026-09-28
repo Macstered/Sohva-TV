@@ -252,4 +252,5 @@
     <string name="home_layout_list_meta">%1$s · %2$d titles · %3$d likes</string>
     <string name="home_layout_list_phone_help">Scan the code, paste the list\'s trakt.tv address on your phone and send it. You can send several lists.</string>
     <string name="home_layout_list_added">Added to Home: %1$s</string>
+    <string name="home_layout_list_smart">Trakt smart list</string>
 </resources>

@@ -276,10 +276,11 @@ class TraktApiClient(
         val path = when (ref) {
             is TraktListRef.ById -> "lists/${ref.id}"
             is TraktListRef.ByUser -> "users/${ref.user}/lists/${ref.list}"
+            is TraktListRef.Smart -> "smart-lists/${ref.id}"
             is TraktListRef.Search -> return null
         }
         val r = readOrNotFound(null, path, emptyMap()) ?: return null
-        return withContext(parse) { TraktJson.parse(r.body) { j -> listInfo(j) } }
+        return withContext(parse) { TraktJson.parse(r.body) { j -> listInfo(j) }?.copy(smart = ref is TraktListRef.Smart) }
     }
 
     /** Trakt's list search by name (HOME-FR-99): at most [limit] public lists, best first. */

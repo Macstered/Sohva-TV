@@ -244,4 +244,5 @@
     <string name="home_layout_list_meta">%1$s · %2$d Titel · %3$d Likes</string>
     <string name="home_layout_list_phone_help">Scanne den Code, füge die trakt.tv-Adresse der Liste auf dem Handy ein und sende sie. Du kannst mehrere Listen senden.</string>
     <string name="home_layout_list_added">Zur Startseite hinzugefügt: %1$s</string>
+    <string name="home_layout_list_smart">Intelligente Trakt-Liste</string>
 </resources>
