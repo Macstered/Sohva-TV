@@ -1,6 +1,6 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.3` (Android build 109). Use only sources you are allowed to
+Build: `0.2.0-beta.3` (Android build 110). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
 
@@ -190,7 +190,7 @@ and look almost the same. The most useful reports are:
 Email [hello@luontra.fi](mailto:hello@luontra.fi). Use this template:
 
 ```text
-Version: 0.2.0-beta.3 (109)
+Version: 0.2.0-beta.3 (110)
 Device model:
 Android / Google TV version:
 Updated from beta 23 (in-app or sideload) or fresh install:

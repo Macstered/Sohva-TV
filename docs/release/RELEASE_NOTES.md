@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.3
 
-Android build **109**. Prepared 28 September 2026. Prerelease for testers.
+Android build **110**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.3
 
@@ -23,6 +23,8 @@ Android build **109**. Prepared 28 September 2026. Prerelease for testers.
   A series page says when your sources have fewer seasons than have aired.
 - Home: coming back from another screen, focus returns to the card you
   left from, not the first row.
+- Trakt cards on Home show "In library" when your sources have the title. In
+  Settings > Home > Trakt rows, each added list can show only those titles.
 
 ## Muutokset versiossa 0.2.0-beta.3
 
@@ -48,6 +50,9 @@ Android build **109**. Prepared 28 September 2026. Prerelease for testers.
   julkaistu.
 - Etusivu: kun palaat toiselta näytöltä, kohdistus palaa korttiin, jolta
   lähdit, eikä ensimmäiselle riville.
+- Etusivun Trakt-korteissa lukee "Kirjastossa", kun nimike löytyy lähteistäsi.
+  Kohdassa Asetukset > Etusivu > Trakt-rivit jokaisen lisätyn listan voi rajata
+  näyttämään vain ne.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
