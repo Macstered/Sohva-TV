@@ -118,3 +118,19 @@ owner-scale fixture plus `HomeFixture` (`HomeBenchmark`, 5 iterations each). Bef
 
 Within the stand-in's noise: HOME-FR-92 holds. A hidden row does no work (unit tests count the reads; device tests with a
 gated recent-channel read check the first focus both before and after a key press).
+
+## 28 September 2026: M12 phase B, Trakt rows (before and after, same session)
+
+Same harness as phase A (`HomeBenchmark`, 5 iterations each, `benchmarkRelease`, emulator sohva_rebuild_tv30 cold-booted).
+Before = `main` at 9aaf4fc; after = branch `m12b-trakt-rows` at bf2fd26, default layout (no added rows: the benchmark
+fixture has no Trakt data, and an added row costs a stored-list read after Continue watching settles, off the main thread).
+
+| Measure | Before | After | Budget |
+|---|---|---|---|
+| Cold start → first frame, median | 393 ms (372–415) | 389 ms (361–408) | – |
+| Cold start → Home drawn, first card focused, median | 848 ms (811–860) | 848 ms (813–868) | ≤ 4 s low-end |
+| Main-thread CPU per press along Continue watching, median | 2.02 ms (1.94–2.17) | 2.01 ms (1.95–2.22) | ≤ 8 ms |
+| `Home:Screen` compositions during the 30 presses | 0 | 0 | 0 |
+
+No change. Checked by hand on the emulator against the real Trakt: "Trending movies" added in Settings › Home filled
+Home's row with 30 titles a few seconds later, read with the app's key and no account.
