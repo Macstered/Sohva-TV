@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
 import androidx.core.graphics.createBitmap
+import com.sohva.tv.ui.design.components.homeRowTitle
 import com.sohva.tv.ui.design.ground.LocalRenderDispatcher
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -228,7 +229,7 @@ private fun heroText(subject: HeroSubject, details: HeroDetails?, now: Long, zon
     is HeroSubject.Sport -> sportText(subject.card.event, zoneId)
     // HOME-FR-63, -69: the synopsis waits for TMDB's answer; Trakt's own overview is its fallback there.
     is HeroSubject.Trakt -> HeroText(
-        stringResource(if (subject.card.next) R.string.home_watch_next else R.string.home_recommended), false,
+        stringResource(subject.card.source?.let(::homeRowTitle) ?: if (subject.card.next) R.string.home_watch_next else R.string.home_recommended), false,
         subject.card.title, traktFacts(subject.card), null, details?.synopsis,
     )
     HeroSubject.Welcome -> HeroText(

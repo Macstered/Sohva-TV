@@ -23,6 +23,18 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
         return HomeLayout(ordered + rows.filter { r -> ordered.none { it.id == r.id } })
     }
 
+    /** The rows the viewer added (HOME-FR-94): every row that is not built in. */
+    val added: List<String> get() = rows.map { it.id }.filter { it !in BUILT_IN }
+
+    /** An added row at the end, shown; nothing when it is there already, unknown, or [MAX_ADDED] are there. */
+    fun withAdded(id: String): HomeLayout {
+        if (id !in ADDABLE || rows.any { it.id == id } || added.size >= MAX_ADDED) return this
+        return HomeLayout(rows + HomeRowEntry(id, shown = true))
+    }
+
+    /** An added row gone; built-in rows are only ever hidden. */
+    fun withRemoved(id: String): HomeLayout = if (id in BUILT_IN) this else HomeLayout(rows.filter { it.id != id })
+
     /** The stored text; null for the default, which is stored as no value at all. */
     fun encode(): String? = if (this == DEFAULT) null else rows.joinToString(",") { if (it.shown) it.id else "-${it.id}" }
 
@@ -36,6 +48,31 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
         /** HOME-FR-01's rows in the default order. */
         val BUILT_IN: List<String> = listOf(CONTINUE, WATCH_NEXT, SPORT, RECOMMENDED, RECENT)
 
+        /** Trakt's public charts (HOME-FR-94): no account needed. */
+        const val TRAKT_TRENDING_MOVIES: String = "trakt:trending-movies"
+        const val TRAKT_TRENDING_SHOWS: String = "trakt:trending-shows"
+        const val TRAKT_POPULAR_MOVIES: String = "trakt:popular-movies"
+        const val TRAKT_POPULAR_SHOWS: String = "trakt:popular-shows"
+        const val TRAKT_ANTICIPATED_MOVIES: String = "trakt:anticipated-movies"
+        const val TRAKT_ANTICIPATED_SHOWS: String = "trakt:anticipated-shows"
+        const val TRAKT_BOX_OFFICE: String = "trakt:boxoffice"
+
+        /** The profile's own Trakt watchlist (HOME-FR-94): needs its account. */
+        const val TRAKT_WATCHLIST_MOVIES: String = "trakt:watchlist-movies"
+        const val TRAKT_WATCHLIST_SHOWS: String = "trakt:watchlist-shows"
+
+        /** Rows the viewer can add, in the order Settings › Home lists them. */
+        val ADDABLE: List<String> = listOf(
+            TRAKT_WATCHLIST_MOVIES, TRAKT_WATCHLIST_SHOWS, TRAKT_TRENDING_MOVIES, TRAKT_TRENDING_SHOWS, TRAKT_POPULAR_MOVIES,
+            TRAKT_POPULAR_SHOWS, TRAKT_ANTICIPATED_MOVIES, TRAKT_ANTICIPATED_SHOWS, TRAKT_BOX_OFFICE,
+        )
+
+        /** Rows that need the profile's own Trakt account. */
+        val NEEDS_ACCOUNT: Set<String> = setOf(TRAKT_WATCHLIST_MOVIES, TRAKT_WATCHLIST_SHOWS)
+
+        /** The owner's limit (decision "M12"): at most 8 added rows per profile, so Home stays short and quick. */
+        const val MAX_ADDED: Int = 8
+
         val DEFAULT: HomeLayout = HomeLayout(BUILT_IN.map { HomeRowEntry(it, shown = true) })
 
         /** Longest stored text read; anything longer is not a layout this app wrote. */
@@ -43,17 +80,22 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
 
         /**
          * HOME-FR-86: unknown and repeated ids are dropped, the stored order is kept, and a built-in
-         * row the text lacks is added at the end, shown. Null, blank or unreadable text is the default.
+         * row the text lacks is added at the end, shown. Added rows past [MAX_ADDED] are dropped
+         * (HOME-FR-94). Null, blank or unreadable text is the default.
          */
         fun decode(text: String?): HomeLayout {
             if (text.isNullOrBlank() || text.length > MAX_TEXT) return DEFAULT
             val seen = HashSet<String>()
             val rows = ArrayList<HomeRowEntry>()
+            var added = 0
             for (part in text.split(',')) {
                 val raw = part.trim()
                 val hidden = raw.startsWith('-')
                 val id = if (hidden) raw.substring(1) else raw
-                if (id !in BUILT_IN || !seen.add(id)) continue
+                val builtIn = id in BUILT_IN
+                if (!builtIn && (id !in ADDABLE || added >= MAX_ADDED)) continue
+                if (!seen.add(id)) continue
+                if (!builtIn) added++
                 rows += HomeRowEntry(id, shown = !hidden)
             }
             for (id in BUILT_IN) if (id !in seen) rows += HomeRowEntry(id, shown = true)

@@ -144,6 +144,11 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-39** Settings › Home: Order mode (OK picks up, Up/Down/Page/Home/End move, OK places, Back cancels), Show or hide mode with one switch per row, and Reset to default, for the active profile.
 - [x] **HOME-40** The layout is in the backup and restores; the file still restores in beta 23; removing a profile removes its layout.
 - [x] **HOME-41** The layout adds no measurable cost to Home's start-up or key presses on the low-end stand-in.
+- [x] **HOME-42** Up to 8 added Trakt rows per profile: public charts (trending, popular, anticipated movies and series; box office) without an account, and the profile's movie and series watchlists with one; 30 titles each (HOME-FR-94).
+- [x] **HOME-43** Added rows refresh in Trakt's loop only while shown and never during playback; charts 6 h and shared, watchlists 1 h and gone with the account (HOME-FR-95).
+- [x] **HOME-44** Settings › Home › Trakt rows adds and removes lists with the remote; added rows reorder and hide like the others (HOME-FR-96).
+- [ ] **HOME-45** Added rows mark titles already in the library and offer "only titles in my library" (phase B, second round).
+- [ ] **HOME-46** Any public Trakt list by address, number or name, on the TV and from the phone page (phase C).
 
 ## Search
 

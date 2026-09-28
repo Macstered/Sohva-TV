@@ -121,6 +121,8 @@ class TraktAccountStore(private val prefs: TraktPrefs, private val cipher: Trakt
     companion object {
         val STATE_KEYS: List<String> = listOf(
             "pending", "active", "activity", "activity-mw", "activity-mp", "activity-ew", "activity-ep", "format", "recommendations", "nextup",
+            // Home's added watchlist rows (spec 02 HOME-FR-94, TraktRowSource.key); charts are not the profile's.
+            "watchlist_movies", "watchlist_shows",
         )
         val PROFILE_KEYS: List<String> = STATE_KEYS + "account"
 

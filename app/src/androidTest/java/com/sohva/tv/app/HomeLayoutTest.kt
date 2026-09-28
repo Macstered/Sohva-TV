@@ -204,9 +204,9 @@ class HomeLayoutTest {
         compose.waitUntil(5_000) { !stored().isShown(HomeLayout.RECENT) }
         awaitFocus("settings-home-switch-recent-channels")
         // Reset to default, on the button row above (Up lands on the button nearest the row's middle).
-        val buttons = listOf("settings-home-order", "settings-home-visibility", "settings-home-reset")
+        val buttons = listOf("settings-home-order", "settings-home-visibility", "settings-home-trakt", "settings-home-reset")
         repeat(10) { if (buttons.none(::focused)) press(KeyEvent.KEYCODE_DPAD_UP) }
-        walkTo("settings-home-reset", KeyEvent.KEYCODE_DPAD_RIGHT, limit = 3)
+        walkTo("settings-home-reset", KeyEvent.KEYCODE_DPAD_RIGHT, limit = 4)
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(5_000) { stored() == HomeLayout.DEFAULT }
         assertEquals(null, runBlocking { prefs.homeLayoutText(profile) })

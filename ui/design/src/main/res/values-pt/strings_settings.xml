@@ -218,4 +218,16 @@
     <string name="home_layout_reset">Repor predefinição</string>
     <string name="home_layout_order_help">Selecione uma linha para a pegar, mova-a com Cima e Baixo e prima OK para a colocar.</string>
     <string name="home_layout_visibility_help">Uma linha oculta não é carregada, o que também mantém o Início rápido nas boxes de TV mais lentas.</string>
+    <string name="trakt_row_watchlist_movies">Lista para ver: filmes</string>
+    <string name="trakt_row_watchlist_shows">Lista para ver: séries</string>
+    <string name="trakt_row_trending_movies">Filmes em alta</string>
+    <string name="trakt_row_trending_shows">Séries em alta</string>
+    <string name="trakt_row_popular_movies">Filmes populares</string>
+    <string name="trakt_row_popular_shows">Séries populares</string>
+    <string name="trakt_row_anticipated_movies">Filmes mais aguardados</string>
+    <string name="trakt_row_anticipated_shows">Séries mais aguardadas</string>
+    <string name="trakt_row_box_office">Bilheteira</string>
+    <string name="home_layout_trakt">Linhas do Trakt</string>
+    <string name="home_layout_trakt_help">Adicione até 8 listas do Trakt ao Início. As tabelas não precisam de conta; as listas para ver precisam da conta Trakt deste perfil.</string>
+    <string name="home_layout_trakt_full">O Início já tem 8 linhas adicionadas. Remova uma para adicionar outra.</string>
 </resources>

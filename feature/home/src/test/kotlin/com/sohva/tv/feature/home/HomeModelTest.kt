@@ -163,6 +163,28 @@ class HomeModelTest {
         assertEquals(1, hidden.traktReads)
     }
 
+    /** HOME-FR-94: an added Trakt row takes its layout place once its list has titles; only a shown one is read. */
+    @Test
+    fun addedTraktRowsFollowTheLayout() = runTest(main) {
+        fun card(key: String, source: String) = TraktCard("$source/$key", false, false, key, 2026, null, null, null, null, null, null, null, null, source)
+        val trending = com.sohva.tv.core.model.home.HomeLayout.TRAKT_TRENDING_MOVIES
+        val watchlist = com.sohva.tv.core.model.home.HomeLayout.TRAKT_WATCHLIST_SHOWS
+        val env = Env(MutableStateFlow(ResumeState.Ready(listOf(item("a")))), listOf(live))
+        env.traktLists = TraktLists(emptyList(), emptyList(), false, mapOf(trending to listOf(card("x", trending), card("y", trending)), watchlist to emptyList()))
+        env.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.decode("$trending,continue-watching,-watch-next,-recommended,$watchlist,recent-channels")
+        val model = model(env)
+        runCurrent()
+        // The empty watchlist is left out, as any row without cards (HOME-FR-01).
+        assertEquals(listOf(trending, HomeRow.CONTINUE, HomeRow.RECENT), model.rows.value.map { it.key })
+        assertEquals(listOf("$trending/x", "$trending/y"), (model.rows.value.first() as HomeRow.Trakt).cards.map { it.key })
+        // Nothing Trakt shown: nothing Trakt read.
+        val quiet = Env(MutableStateFlow(ResumeState.Ready(listOf(item("a")))), listOf(live))
+        quiet.layoutState.value = com.sohva.tv.core.model.home.HomeLayout.decode("continue-watching,-watch-next,-recommended,-$trending")
+        model(quiet)
+        runCurrent()
+        assertEquals(0, quiet.traktReads)
+    }
+
     /** HOME-FR-89: with Continue watching hidden there is no row and no status card, and the idle hero is a recent channel. */
     @Test
     fun aHiddenContinueWatchingShowsNoStatusCard() = runTest(main) {

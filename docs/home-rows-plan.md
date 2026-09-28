@@ -123,3 +123,10 @@ seven languages; every capability an inventory ID; decisions recorded as they ar
   recorded; unit tests (layout, storage, backup, Home rows and reads, Settings holder, Trakt without Watch next) and
   device tests (`HomeLayoutTest`: order, hidden rows, Reorder/Back/Show-hide/Reset with real keys, first focus with a
   slow row); the affected suites and `check_all` green; Home measured before and after (docs/performance-log.md).
+- Phase B, first round, on branch `m12b-trakt-rows`: spec 02 HOME-FR-94…96, inventory HOME-42…44 ticked (HOME-45 library
+  badge and filter, HOME-46 phase C open). Nine lists (movie and series watchlists; trending, popular and anticipated
+  movies and series; box office) as added rows, at most 8 per profile, 30 titles each; Settings › Home › Trakt rows adds
+  and removes them. Unit tests (public reads without a token, wrapped titles, 30-title cap, lifetimes, shared charts,
+  watchlists gone with the account, restricted profiles, the loop without an account, Home rows, Settings holder) and
+  device tests (`TraktRowsDeviceTest`: a chart fetched and drawn first with focus; adding one with the remote).
+  Still to check on a real box: that the build's Trakt client id is accepted for the public charts.

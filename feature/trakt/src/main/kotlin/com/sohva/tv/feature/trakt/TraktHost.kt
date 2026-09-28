@@ -15,6 +15,7 @@ import com.sohva.tv.feature.trakt.protocol.TraktIdentityClient
 import com.sohva.tv.feature.trakt.protocol.TraktTokens
 import com.sohva.tv.feature.trakt.scrobble.TraktScrobbler
 import com.sohva.tv.feature.trakt.scrobble.TraktScrobbles
+import com.sohva.tv.feature.trakt.shelf.TraktRowLists
 import com.sohva.tv.feature.trakt.shelf.TraktShelves
 import com.sohva.tv.feature.trakt.store.TraktAccount
 import com.sohva.tv.feature.trakt.store.TraktAccountStore
@@ -62,6 +63,8 @@ class TraktHost(
     private val forgetCache: suspend (String) -> Unit,
     /** The Home shelves [String]'s layout shows; a hidden one is not fetched (spec 02 HOME-FR-87). */
     val shelvesShown: suspend (String) -> Set<com.sohva.tv.feature.trakt.shelf.TraktShelfKind> = { com.sohva.tv.feature.trakt.shelf.TraktShelfKind.entries.toSet() },
+    /** The added Trakt rows [String]'s layout shows, by layout id (spec 02 HOME-FR-94). */
+    val rowsShown: suspend (String) -> List<String> = { emptyList() },
     /** Trakt's two origins; a test points them at its own server. */
     authOrigin: HttpUrl = TraktAuthClient.ORIGIN,
     apiOrigin: HttpUrl = TraktApiClient.ORIGIN,
@@ -100,6 +103,7 @@ class TraktHost(
     suspend fun resetForTests() {
         withContext(dispatchers.io) { store.clearAll() }
         shelves.clear()
+        rowLists.clear()
         gate = TraktGate()
         credentials = original.first
         origins = original.second
@@ -129,6 +133,9 @@ class TraktHost(
 
     /** Home's stored Watch next and Recommended lists (FR-25, -28). */
     val shelves: TraktShelves by lazy { TraktShelves(this) }
+
+    /** The lists of Home's added Trakt rows (spec 02 HOME-FR-94). */
+    val rowLists: TraktRowLists by lazy { TraktRowLists(this) }
 
     /** The persisted scrobble queue (FR-19, -20). */
     val scrobbles: TraktScrobbles by lazy { TraktScrobbles(this) }
@@ -174,6 +181,7 @@ class TraktHost(
             store.forgetState(profile)
             forgetCache(profile)
             shelves.forget(profile)
+            rowLists.forget(profile)
         }
         val account = TraktAccount(result.identity.username, result.identity.uuid, result.tokens, reauthorize = false)
         store.saveAccount(profile, account)
@@ -226,6 +234,7 @@ class TraktHost(
         store.forget(profile)
         forgetCache(profile)
         shelves.forget(profile)
+        rowLists.forget(profile)
         publish(profile, null)
         log.info("trakt", "disconnected")
     }

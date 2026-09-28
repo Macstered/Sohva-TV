@@ -868,4 +868,16 @@
     <string name="home_layout_reset">Restablecer</string>
     <string name="home_layout_order_help">Selecciona una fila para cogerla, muévela con Arriba y Abajo y pulsa OK para colocarla.</string>
     <string name="home_layout_visibility_help">Una fila oculta no se carga, lo que también mantiene Inicio rápido en los descodificadores más lentos.</string>
+    <string name="trakt_row_watchlist_movies">Lista de seguimiento: películas</string>
+    <string name="trakt_row_watchlist_shows">Lista de seguimiento: series</string>
+    <string name="trakt_row_trending_movies">Películas en tendencia</string>
+    <string name="trakt_row_trending_shows">Series en tendencia</string>
+    <string name="trakt_row_popular_movies">Películas populares</string>
+    <string name="trakt_row_popular_shows">Series populares</string>
+    <string name="trakt_row_anticipated_movies">Películas más esperadas</string>
+    <string name="trakt_row_anticipated_shows">Series más esperadas</string>
+    <string name="trakt_row_box_office">Taquilla</string>
+    <string name="home_layout_trakt">Filas de Trakt</string>
+    <string name="home_layout_trakt_help">Añade hasta 8 listas de Trakt a Inicio. Las clasificaciones no necesitan cuenta; las listas de seguimiento necesitan la cuenta de Trakt de este perfil.</string>
+    <string name="home_layout_trakt_full">Inicio ya tiene 8 filas añadidas. Quita una para añadir otra.</string>
 </resources>

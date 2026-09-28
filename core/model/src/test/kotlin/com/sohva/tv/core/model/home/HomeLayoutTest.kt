@@ -37,6 +37,31 @@ class HomeLayoutTest {
     }
 
     @Test
+    fun addedTraktRowsAreKeptInOrderUpToEight() {
+        val layout = HomeLayout.decode("trakt:boxoffice,continue-watching,-trakt:watchlist-shows")
+        assertEquals(listOf("trakt:boxoffice", "continue-watching", "trakt:watchlist-shows"), layout.rows.take(3).map { it.id })
+        assertFalse(layout.isShown("trakt:watchlist-shows"))
+        assertEquals(listOf("trakt:boxoffice", "trakt:watchlist-shows"), layout.added)
+        assertEquals(layout, HomeLayout.decode(layout.encode()))
+        // Nine addable ids in the text: the ninth is dropped (HOME-FR-94).
+        val all = HomeLayout.decode(HomeLayout.ADDABLE.joinToString(","))
+        assertEquals(HomeLayout.ADDABLE.take(HomeLayout.MAX_ADDED), all.added)
+    }
+
+    @Test
+    fun addingAndRemovingRows() {
+        var layout = HomeLayout.DEFAULT.withAdded(HomeLayout.TRAKT_TRENDING_MOVIES)
+        assertEquals(HomeLayout.TRAKT_TRENDING_MOVIES, layout.rows.last().id)
+        assertTrue(layout.isShown(HomeLayout.TRAKT_TRENDING_MOVIES))
+        assertEquals("a repeat adds nothing", layout, layout.withAdded(HomeLayout.TRAKT_TRENDING_MOVIES))
+        assertEquals("an unknown id adds nothing", layout, layout.withAdded("trakt:list:42"))
+        assertEquals("built-in rows are never removed", layout, layout.withRemoved(HomeLayout.CONTINUE))
+        assertNull(layout.withRemoved(HomeLayout.TRAKT_TRENDING_MOVIES).encode())
+        HomeLayout.ADDABLE.forEach { layout = layout.withAdded(it) }
+        assertEquals(HomeLayout.MAX_ADDED, layout.added.size)
+    }
+
+    @Test
     fun textThatIsNoLayoutIsTheDefault() {
         assertEquals(HomeLayout.DEFAULT, HomeLayout.decode("x".repeat(5_000)))
         assertEquals(HomeLayout.DEFAULT, HomeLayout.decode("nothing,we,know"))

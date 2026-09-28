@@ -253,6 +253,20 @@ class TraktApiClient(
         }
     }
 
+    /**
+     * One list for a Home row (spec 02 HOME-FR-94): its first [limit] titles of one kind, as Trakt
+     * orders them. [access] is null for the public charts, which are read with the app's key alone.
+     * Each item is the title itself (popular) or wraps it (trending, anticipated, box office, watchlist).
+     */
+    suspend fun list(access: String?, path: String, kind: TraktKind, limit: Int): List<TraktTitle> {
+        val r = read(access, path, mapOf("limit" to limit.toString(), "page" to "1", "extended" to "full,images"))
+        return withContext(parse) {
+            val out = ArrayList<TraktTitle>()
+            TraktJson.parse(r.body) { j -> j.items { if (out.size < limit) title(j, kind)?.let(out::add) else j.skipValue() } }
+            out
+        }
+    }
+
     /** FR-27: the object itself or wrapped under `movie`/`show`; an id and a title are required. */
     private fun title(j: JsonReader, kind: TraktKind): TraktTitle? {
         var ids: TraktIds? = null
@@ -310,10 +324,10 @@ class TraktApiClient(
         return out
     }
 
-    private suspend fun read(access: String, path: String, query: Map<String, String> = emptyMap()): TraktResponse =
+    private suspend fun read(access: String?, path: String, query: Map<String, String> = emptyMap()): TraktResponse =
         readOrNotFound(access, path, query) ?: throw TraktException(TraktFailure.NOT_FOUND)
 
-    private suspend fun readOrNotFound(access: String, path: String, query: Map<String, String>): TraktResponse? = reads.withPermit {
+    private suspend fun readOrNotFound(access: String?, path: String, query: Map<String, String>): TraktResponse? = reads.withPermit {
         val url = origin.newBuilder().addPathSegments(path).apply { query.forEach { (k, v) -> addQueryParameter(k, v) } }.build()
         val r = http.call(request(access, url).get().build())
         when (r.code) {
@@ -325,14 +339,15 @@ class TraktApiClient(
 
     private fun request(access: String, path: String): Request.Builder = request(access, origin.newBuilder().addPathSegments(path).build())
 
-    private fun request(access: String, url: HttpUrl): Request.Builder {
+    /** A null [access] is a public read: no Authorization header at all (HOME-FR-94). */
+    private fun request(access: String?, url: HttpUrl): Request.Builder {
         if (!credentials.configured) throw TraktException(TraktFailure.CONFIGURATION)
         return Request.Builder().url(url)
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
             .header("trakt-api-version", TraktHttp.API_VERSION)
             .header("trakt-api-key", TraktHttp.safe(credentials.clientId))
-            .header("Authorization", "Bearer " + TraktHttp.safe(access))
+            .apply { if (access != null) header("Authorization", "Bearer " + TraktHttp.safe(access)) }
     }
 
     /** §4.12. */
