@@ -52,6 +52,24 @@ class BackStackTest {
         assertEquals(listOf("home"), routes(stack))
     }
 
+    /** Spec 02 HOME-FR-97: a reset keeps the bottom entry when it is the same route, so Home keeps its state. */
+    @Test
+    fun resetKeepsTheSameBottomEntryUnlessFresh() {
+        val stack = BackStack.of(listOf("home", "movies"))
+        val home = stack.entries.first().key
+        val movies = stack.top.key
+        stack.resetTo(listOf("home", "movies", "film", "player"))
+        assertEquals(listOf("home", "movies", "film", "player"), routes(stack))
+        assertEquals(home, stack.entries.first().key)
+        assertNotEquals("only the bottom entry is kept", movies, stack.entries[1].key)
+        stack.resetTo(listOf("home"))
+        assertEquals(home, stack.top.key)
+        stack.resetTo(listOf("home"), fresh = true)
+        assertNotEquals(home, stack.top.key)
+        stack.resetTo(listOf("guide"))
+        assertEquals(listOf("guide"), routes(stack))
+    }
+
     @Test
     fun savedStackRestoresRoutesAndKeysAndDropsUnknownRoutes() {
         val stack = BackStack.of(listOf("home", "gone", "settings"))

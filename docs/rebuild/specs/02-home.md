@@ -144,7 +144,8 @@ the lookup returns (SHELL-FR-17).
 
 - Home is disposed when another screen is on top, so every arrival is a fresh entry: the
   first card of the first row once that row exists (the loading card while Continue watching
-  loads), or the Welcome button on an empty Home. Home does not remember the card last used.
+  loads), or the Welcome button on an empty Home. Beta 23 did not remember the card last used;
+  **the rebuild does** (HOME-FR-97): coming back to Home, focus returns to it.
 - Initial focus is placed once per entry and per profile; later data never moves focus.
 
 ## 4. Behaviour
@@ -465,6 +466,13 @@ the lookup returns (SHELL-FR-17).
   profile may use it: one switch per list (watchlists only with an account) that adds the row at the
   end of the layout, shown, or removes it. At 8 added rows the other switches do nothing and the help
   line says so. A watchlist row whose account is gone is not listed and draws nothing.
+
+- HOME-FR-97 **Rebuild (owner, 28 September 2026):** coming back to Home from any screen (Back,
+  or a player's way home), focus returns to the card the viewer last focused on Home, wherever
+  it now is in its row; when that card is gone, to the first card of its row; when the row is gone,
+  as a first entry. Only the viewer's own moves count, not a focus the platform gives on return. The
+  profile's Home screen state stays alive while other screens are on top (a stack reset keeps a
+  Home at the bottom); a first entry, another profile or a backup restore starts afresh.
 
 ### 4.13 Focus and keys
 

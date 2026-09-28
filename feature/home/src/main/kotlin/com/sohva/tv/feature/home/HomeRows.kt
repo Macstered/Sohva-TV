@@ -224,6 +224,12 @@ private fun Modifier.card(model: HomeModel, focus: HomeFocus, req: FocusRequeste
                 focus.lastCard = key
                 focus.lastIndex = index
                 focus.focusedRow = row
+                // Only the viewer's own moves count: on a return the platform focuses the first card
+                // before Home places focus, which would overwrite the card to come back to (HOME-FR-97).
+                if (focus.placed) {
+                    model.returnCard = key
+                    model.returnRow = model.rows.value.getOrNull(row)?.key
+                }
                 model.focus(subject)
             }
         }

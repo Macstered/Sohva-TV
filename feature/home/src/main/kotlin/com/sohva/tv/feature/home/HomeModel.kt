@@ -89,6 +89,14 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
 
     /** Home is empty (HOME-FR-46): both reads answered, no status card, no rows. Welcome then takes focus. */
     val empty: StateFlow<Boolean> = _empty.asStateFlow()
+    /**
+     * The card focus was last on and its row (HOME-FR-97). The model outlives the screen while
+     * another screen is on top, so Home comes back to them instead of the first row. Plain fields:
+     * written on focus, read once per entry, never drawn.
+     */
+    internal var returnCard: String? = null
+    internal var returnRow: String? = null
+
     private var latest: List<HomeRow> = emptyList()
     private var locked = false
     private var focused: HeroSubject? = null
