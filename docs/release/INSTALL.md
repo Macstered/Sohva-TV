@@ -1,6 +1,6 @@
 # Install and update Sohva TV
 
-For Sohva TV `0.2.0-beta.2`, Android build 105.
+For Sohva TV `0.2.0-beta.3`, Android build 106.
 
 ## Before you start
 
@@ -28,7 +28,7 @@ saved in this build can also be restored in beta 23.
 ### With the in-app updater (recommended)
 
 1. In beta 23, open **Settings > About** and choose **Check for updates**.
-2. When `0.2.0-beta.2` is offered, choose **Download**. The app checks the
+2. When `0.2.0-beta.3` is offered, choose **Download**. The app checks the
    file against the published checksum.
 3. Choose **Install**. If Android asks, allow Sohva TV to install unknown apps.
    That permission covers Sohva TV only, and you can turn it off afterwards.
@@ -39,7 +39,7 @@ installs.
 
 ### By sideloading the APK
 
-1. Download `sohva-tv-0.2.0-beta.2.apk` from the numbered release on
+1. Download `sohva-tv-0.2.0-beta.3.apk` from the numbered release on
    [GitHub](https://github.com/Macstered/Sohva-TV/releases) or from the tester
    pack you were given. Do not use a copy from any other site.
 2. Check its checksum (see below).
@@ -91,7 +91,7 @@ If a part could not be read, the old files are kept so that a later build can
 try again.
 
 After the update, check **Settings > About**: the installed version must be
-`0.2.0-beta.2`. Then check your sources, favourites, profiles and resume points.
+`0.2.0-beta.3`. Then check your sources, favourites, profiles and resume points.
 This is a beta: a matching-key update is designed to keep your data, but it is
 not a guarantee against data loss.
 
@@ -116,13 +116,13 @@ the exact message and contact the developer. Do not root or modify the device.
 the documents. On a Windows computer, in PowerShell, from the download folder:
 
 ```powershell
-Get-FileHash .\sohva-tv-0.2.0-beta.2.apk -Algorithm SHA256
+Get-FileHash .\sohva-tv-0.2.0-beta.3.apk -Algorithm SHA256
 ```
 
 On macOS or Linux:
 
 ```sh
-shasum -a 256 sohva-tv-0.2.0-beta.2.apk
+shasum -a 256 sohva-tv-0.2.0-beta.3.apk
 ```
 
 The value must match the APK's line in `SHA256SUMS.txt` from the same release.
@@ -131,8 +131,8 @@ an unknown site safe.
 
 ## The install profiles
 
-`sohva-tv-0.2.0-beta.2.api31.dm` (Android 12 and newer) and
-`sohva-tv-0.2.0-beta.2.api28.dm` (Android 9 to 11) are optional. They let
+`sohva-tv-0.2.0-beta.3.api31.dm` (Android 12 and newer) and
+`sohva-tv-0.2.0-beta.3.api28.dm` (Android 9 to 11) are optional. They let
 Android compile the app while it installs, so the first starts are quicker.
 
 The in-app updater picks the right one and uses it automatically. When you
@@ -148,7 +148,7 @@ PowerShell, from the APK's folder:
 
 ```powershell
 adb devices -l
-adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.2.0-beta.2.apk
+adb -s YOUR_DEVICE_SERIAL install -r .\sohva-tv-0.2.0-beta.3.apk
 ```
 
 Replace `YOUR_DEVICE_SERIAL` with the serial that `adb devices` shows. Always

@@ -1,3 +1,37 @@
+# Sohva TV 0.2.0-beta.3
+
+Android build **106**. Prepared 28 September 2026. Prerelease for testers.
+
+## Changed in 0.2.0-beta.3
+
+- Settings > Home: choose the order of Home's rows and which rows it shows.
+  Each profile has its own. Reorder: select a row, move it with Up and Down,
+  press OK to place it; Back cancels. Show / hide: one switch per row. A
+  hidden row is not loaded at all, which keeps Home quick on slower boxes.
+  Reset to default brings back the usual rows. The layout is in backups.
+- Trakt rows on Home: in Settings > Home > Trakt rows, add up to 8 Trakt
+  lists. Trending, popular and most anticipated movies and series, and the box
+  office, need no Trakt account. Your movie and series watchlists need the
+  profile's Trakt account. Each row shows 30 titles; OK opens the title as
+  Recommended does. Lists refresh in the background, never while video plays.
+
+## Muutokset versiossa 0.2.0-beta.3
+
+- Asetukset > Etusivu: valitse etusivun rivien järjestys ja se, mitkä rivit
+  näytetään. Jokaisella profiililla on omansa. Järjestä: valitse rivi, siirrä
+  sitä ylös- ja alas-painikkeilla ja aseta se paikalleen OK-painikkeella;
+  Takaisin peruu. Näytä / piilota: yksi kytkin riviä kohden. Piilotettua riviä
+  ei ladata lainkaan, mikä pitää etusivun nopeana hitaammissakin bokseissa.
+  Palauta oletukset tuo tavalliset rivit takaisin. Asettelu on varmuuskopiossa.
+- Trakt-rivit etusivulla: kohdassa Asetukset > Etusivu > Trakt-rivit voit
+  lisätä enintään 8 Trakt-listaa. Trendaavat, suositut ja odotetuimmat
+  elokuvat ja sarjat sekä elokuvateatterien kärki eivät vaadi Trakt-tiliä.
+  Elokuvien ja sarjojen katselulistat vaativat profiilin Trakt-tilin. Jokaisella
+  rivillä on 30 nimikettä; OK avaa nimikkeen kuten Suosituksia sinulle -rivillä.
+  Listat päivittyvät taustalla, eivät koskaan videon toiston aikana.
+
+Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
+
 # Sohva TV 0.2.0-beta.2
 
 Android build **105**. Prepared 28 September 2026. Prerelease for testers.
@@ -20,8 +54,6 @@ Android build **105**. Prepared 28 September 2026. Prerelease for testers.
 - Sama koskee kaikkia Asetusten ja Tutustu-osion kytkinrivejä (TMDB, TVmaze,
   Lähde käytössä, Kysy käynnistyksessä, kuka katsoo, oman ryhmän lajityypit sekä
   lisäosien ja luetteloiden kytkimet). OK missä tahansa rivillä vaihtaa kytkimen.
-
-Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
 # Sohva TV 0.2.0-beta.1
 
@@ -104,7 +136,7 @@ Install over your existing Sohva TV app. **Do not uninstall and do not clear
 storage**: that deletes the data this build moves across. You can use
 **Settings > About > Check for updates** in beta 23. The package name
 `com.streammate.tv` and the signing key are the same as in beta 23. The APK
-checksum is in `SHA256SUMS.txt`. The release tag `v0.2.0-beta.2` names the
+checksum is in `SHA256SUMS.txt`. The release tag `v0.2.0-beta.3` names the
 matching source, licensed under `GPL-3.0-only`.
 
 The encrypted `.smbak` backup still does not include Discover data, Trakt,
