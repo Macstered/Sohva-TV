@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
@@ -71,6 +72,12 @@ internal class HomeFocus {
 
     /** Left was pressed: the rail is the viewer's choice, not a platform focus re-entry (HOME-FR-47). */
     var viaLeft = false
+
+    /**
+     * The rail entry Left goes to from a row's first card. Named, not searched: the rail is laid out
+     * at its open width, so a card narrower than that (a poster) has no rail item wholly to its left.
+     */
+    var rail: FocusRequester? = null
 
     /** Bumped when focus must be placed again (a platform entry before any card could take it). */
     var retarget by mutableIntStateOf(0)
@@ -220,4 +227,5 @@ private fun Modifier.card(model: HomeModel, focus: HomeFocus, req: FocusRequeste
                 model.focus(subject)
             }
         }
+        .focusProperties { if (index == 0) focus.rail?.let { left = it } }
         .onPreviewKeyEvent { e -> e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp && row == 0 }
