@@ -524,7 +524,7 @@ class PlayerModel(
         attempt++
         val delayMs = policy.delayBefore(attempt)
         _banner.value = Banner(BannerReason.Cause(failure.cause, failure.detail), attempt, policy.attempts, stopped = delayMs == null)
-        env.logFailure("${_playing.value?.channel?.key}: ${failure.detail}, attempt $attempt")
+        env.logFailure("${_playing.value?.channel?.key ?: "title"}: ${failure.detail}, attempt $attempt")
         if (delayMs != null) {
             reconnectJob?.cancel()
             reconnectJob = viewModelScope.launch {

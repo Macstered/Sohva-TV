@@ -103,6 +103,13 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
      */
     val upgradeSettled: kotlinx.coroutines.CompletableDeferred<Unit> = kotlinx.coroutines.CompletableDeferred()
 
+    /**
+     * Beta 23's sources and service keys have been imported, or there were none. Sohva Sport waits
+     * for it: its first refresh once ran before the API-Sports key was copied and said the key was
+     * missing until the next refresh (the owner's Elisa box, 28 Sept).
+     */
+    private val keysSettled: kotlinx.coroutines.CompletableDeferred<Unit> = kotlinx.coroutines.CompletableDeferred()
+
     /** True while video plays; the player (M2) sets it. */
     val playbackActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
@@ -136,7 +143,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             onFirstSettled = {
                 diagnostics.info("home", "cached resume ready: ${android.os.SystemClock.elapsedRealtime() - launchedAt} ms")
                 // Today's games for Home, Search and reminders, after Home's first read (spec 60 SPORT-FR-29).
-                if (flags.sport) sport.feed.start()
+                if (flags.sport) appScope.launch { keysSettled.await(); sport.feed.start() }
                 // Trakt's sync loop follows the active profile from here on (spec 51 FR-21).
                 traktLoop?.let { loop -> appScope.launch { data.profiles.activeChanges.collect(loop::start) } }
                 // Landscape pictures for library cards matched before matches kept one.
@@ -292,7 +299,11 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         appScope.launch { data.profiles.reconcilePin() }
         appScope.launch {
             // Beta 23's sources first, so an upgraded install syncs them at once (decision A1).
-            val imported = data.beta23Import.run()
+            val imported = try {
+                data.beta23Import.run()
+            } finally {
+                keysSettled.complete(Unit)
+            }
             if (imported is Beta23SourceImport.Result.Imported) imported.sourceIds.forEach(sync.scheduler::syncNow)
             sync.runner.recoverAfterRestart()
             upgradeSettled.await()
