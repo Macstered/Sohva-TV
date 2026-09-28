@@ -1,6 +1,6 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.1` (Android build 104). Use only sources you are allowed to
+Build: `0.2.0-beta.2` (Android build 105). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
 
@@ -18,7 +18,7 @@ and look almost the same. The most useful reports are:
       uninstalling. Note whether you used the in-app updater or sideloaded.
 - [ ] On the first start, note whether **Updating Sohva TV…** appeared and
       roughly how long it stayed.
-- [ ] **Settings > About** shows `0.2.0-beta.1`.
+- [ ] **Settings > About** shows `0.2.0-beta.2`.
 - [ ] Your colour theme, interface size, language, time zone and start screen
       are as before.
 - [ ] Profiles are all there. For each: favourites, recent channels, locked
@@ -190,7 +190,7 @@ and look almost the same. The most useful reports are:
 Email [hello@luontra.fi](mailto:hello@luontra.fi). Use this template:
 
 ```text
-Version: 0.2.0-beta.1 (100)
+Version: 0.2.0-beta.2 (105)
 Device model:
 Android / Google TV version:
 Updated from beta 23 (in-app or sideload) or fresh install:

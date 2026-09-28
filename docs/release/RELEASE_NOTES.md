@@ -1,6 +1,30 @@
+# Sohva TV 0.2.0-beta.2
+
+Android build **105**. Prepared 28 September 2026. Prerelease for testers.
+
+## Changed in 0.2.0-beta.2
+
+- Settings: switches such as Channel numbers can be reached with the remote at
+  every Interface size. With Small or Smaller, or on some TV boxes, Down
+  skipped them, for example from Color theme straight to Time zone.
+- The same applies to every switch row in Settings and Discover (TMDB, TVmaze,
+  Source in use, Ask who is watching at start, custom group genres, addon and
+  catalogue switches). OK anywhere on the row flips the switch.
+
+## Muutokset versiossa 0.2.0-beta.2
+
+- Asetukset: kytkimet, kuten Kanavanumerot, voi nyt valita kaukosäätimellä
+  kaikilla Käyttöliittymän koko -asetuksilla. Koolla Pieni tai Pienempi sekä
+  joissakin TV-bokseissa alas-painike ohitti ne, esimerkiksi Väriteemasta
+  suoraan Aikavyöhykkeeseen.
+- Sama koskee kaikkia Asetusten ja Tutustu-osion kytkinrivejä (TMDB, TVmaze,
+  Lähde käytössä, Kysy käynnistyksessä, kuka katsoo, oman ryhmän lajityypit sekä
+  lisäosien ja luetteloiden kytkimet). OK missä tahansa rivillä vaihtaa kytkimen.
+
+Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
+
 # Sohva TV 0.2.0-beta.1
 
-Android build **104**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.1
 
@@ -80,7 +104,7 @@ Install over your existing Sohva TV app. **Do not uninstall and do not clear
 storage**: that deletes the data this build moves across. You can use
 **Settings > About > Check for updates** in beta 23. The package name
 `com.streammate.tv` and the signing key are the same as in beta 23. The APK
-checksum is in `SHA256SUMS.txt`. The release tag `v0.2.0-beta.1` names the
+checksum is in `SHA256SUMS.txt`. The release tag `v0.2.0-beta.2` names the
 matching source, licensed under `GPL-3.0-only`.
 
 The encrypted `.smbak` backup still does not include Discover data, Trakt,

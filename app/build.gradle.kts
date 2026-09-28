@@ -32,9 +32,9 @@ android {
 
     defaultConfig {
         applicationId = "com.streammate.tv"
-        // Beta 23 is build 57; the rebuild started at 100 / 0.2.0-beta.1 (decision A3); 100 to 103 went to the owner's devices only.
-        versionCode = 104
-        versionName = "0.2.0-beta.1"
+        // Beta 23 is build 57; the rebuild started at 100 / 0.2.0-beta.1 (decision A3); 100 to 103 went to the owner's devices only; 104 was 0.2.0-beta.1.
+        versionCode = 105
+        versionName = "0.2.0-beta.2"
         // The emulator's update test (tools/update_e2e.py) builds two local releases above these;
         // they never leave the emulator (decision "Updater test").
         providers.gradleProperty("sohva.versionCode").orNull?.let { versionCode = it.toInt() }
