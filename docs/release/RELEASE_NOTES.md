@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.3
 
-Android build **107**. Prepared 28 September 2026. Prerelease for testers.
+Android build **108**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.3
 
@@ -16,6 +16,11 @@ Android build **107**. Prepared 28 September 2026. Prerelease for testers.
   Recommended does. Lists refresh in the background, never while video plays.
 - Home: Left from the first card of a poster row (Recommended for you and the
   Trakt rows) opens the side menu again.
+- Channel logos: the channel name's letters no longer show around logos
+  that do not fill their tile, in the player's channel list and on Home.
+- Movies and series: "Find in Discover" on a title's page looks the title up
+  in your Discover addons, for example when your sources lack some seasons.
+  A series page says when your sources have fewer seasons than have aired.
 
 ## Muutokset versiossa 0.2.0-beta.3
 
@@ -33,6 +38,12 @@ Android build **107**. Prepared 28 September 2026. Prerelease for testers.
   Listat päivittyvät taustalla, eivät koskaan videon toiston aikana.
 - Etusivu: vasen-painike julistekorttirivin ensimmäisestä kortista
   (Suosituksia sinulle ja Trakt-rivit) avaa taas sivuvalikon.
+- Kanavalogot: kanavan nimen kirjaimet eivät enää näy logon ympärillä,
+  kun logo ei täytä ruutuaan, soittimen kanavalistassa ja etusivulla.
+- Elokuvat ja sarjat: nimikkeen sivun "Etsi Discoverista" hakee nimikettä
+  Discover-lisäosistasi, esimerkiksi kun lähteistäsi puuttuu tuotantokausia.
+  Sarjan sivu kertoo, jos lähteissäsi on vähemmän tuotantokausia kuin on
+  julkaistu.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
