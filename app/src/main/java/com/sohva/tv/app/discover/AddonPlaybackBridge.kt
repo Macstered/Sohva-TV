@@ -124,7 +124,8 @@ class AddonPlaybackBridge(private val graph: AppGraph, private val host: Discove
         val lock = Mutex()
         suspend fun publish() = lock.withLock {
             val done = providers.indices.count { answers[it] != null || errors[it] != null }
-            send(SubtitleResults(inline + answers.filterNotNull().flatten(), providers.size - done, errors.filterNotNull()))
+            // A file offered twice (the stream and an addon, or one addon twice) is offered once.
+            send(SubtitleResults((inline + answers.filterNotNull().flatten()).distinctBy { it.key }, providers.size - done, errors.filterNotNull()))
         }
         publish()
         val texts = AppLocales.texts(graph.app)

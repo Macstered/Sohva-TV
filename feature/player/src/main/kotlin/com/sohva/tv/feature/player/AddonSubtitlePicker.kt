@@ -60,7 +60,9 @@ internal object SubtitleOptions {
         val addons = results.candidates.sortedBy { if (it.provider == null) 0 else 1 }.map {
             SubtitleOption("a${it.key}", AddonLanguages.normalise(it.language), null, it, it.number)
         }
-        return (embedded + addons).filter { showAll || it.language in preferred }
+        // One row per file: the same file from the stream and an addon, or twice from one addon, has one
+        // key, and a repeated key crashes the picker's list (the owner's Shield). The first copy stays.
+        return (embedded + addons).distinctBy { it.id }.filter { showAll || it.language in preferred }
     }
 
     /** Languages with options: the preferred ones in their order, then the rest by [name]. */
