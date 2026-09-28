@@ -147,6 +147,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-42** Up to 8 added Trakt rows per profile: public charts (trending, popular, anticipated movies and series; box office) without an account, and the profile's movie and series watchlists with one; 30 titles each (HOME-FR-94).
 - [x] **HOME-43** Added rows refresh in Trakt's loop only while shown and never during playback; charts 6 h and shared, watchlists 1 h and gone with the account (HOME-FR-95).
 - [x] **HOME-44** Settings › Home › Trakt rows adds and removes lists with the remote; added rows reorder and hide like the others (HOME-FR-96).
+- [x] **HOME-47** Back to Home returns focus to the card last used, else its row's first card (HOME-FR-97).
 - [ ] **HOME-45** Added rows mark titles already in the library and offer "only titles in my library" (phase B, second round).
 - [ ] **HOME-46** Any public Trakt list by address, number or name, on the TV and from the phone page (phase C).
 

@@ -51,11 +51,17 @@ class BackStack<R : Any> internal constructor(entries: List<NavEntry<R>>, privat
         stack[stack.lastIndex] = NavEntry(nextKey++, route)
     }
 
-    /** Resets to [routes], for example a player shortcut to Home. */
-    fun resetTo(routes: List<R>) {
+    /**
+     * Resets to [routes], for example a player shortcut to Home. The bottom entry stays itself when
+     * its route is the same, so Home keeps its state and screen model and comes back to the card
+     * last used (spec 02 HOME-FR-97); everything above starts afresh. [fresh] replaces every entry
+     * (after a backup restore).
+     */
+    fun resetTo(routes: List<R>, fresh: Boolean = false) {
         require(routes.isNotEmpty()) { "a stack is never empty" }
-        stack.clear()
-        routes.forEach { stack.add(NavEntry(nextKey++, it)) }
+        val keep = !fresh && stack.first().route == routes.first()
+        while (stack.size > (if (keep) 1 else 0)) stack.removeAt(stack.lastIndex)
+        routes.drop(if (keep) 1 else 0).forEach { stack.add(NavEntry(nextKey++, it)) }
     }
 
     companion object {

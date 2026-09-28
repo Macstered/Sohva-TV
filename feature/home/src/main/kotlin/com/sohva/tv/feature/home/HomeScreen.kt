@@ -112,7 +112,7 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
         )
     }
     BackHandler(enabled = focus.place == HomePlace.RAIL, onBack = backToRows)
-    HandOffs(rows, empty, focus, list)
+    HandOffs(model, rows, empty, focus, list)
     LaunchedEffect(list) {
         snapshotFlow { list.firstVisibleItemIndex > 0 || focus.focusedRow > 0 }.collect(model::setLocked)
     }
@@ -128,7 +128,7 @@ private fun backdrop(subject: HeroSubject, details: HeroDetails?): String? =
  * (its successor in the row, else the first card, else Welcome). Nothing while the rail has focus.
  */
 @Composable
-private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus, list: androidx.compose.foundation.lazy.LazyListState) {
+private fun HandOffs(model: HomeModel, rows: List<HomeRow>, empty: Boolean, focus: HomeFocus, list: androidx.compose.foundation.lazy.LazyListState) {
     LaunchedEffect(rows, empty, focus.placed, focus.retarget) {
         if (focus.place == HomePlace.RAIL) return@LaunchedEffect
         val first = rows.firstOrNull()
@@ -141,18 +141,22 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus, list
             empty -> focus.welcome
             else -> null
         }
-        val keys = rows.flatMap { row ->
-            when (row) {
-                is HomeRow.Resume -> row.cards.map { it.key }
-                is HomeRow.Channels -> row.cards.map { it.key }
-                is HomeRow.Sport -> row.cards.map { it.key }
-                is HomeRow.Trakt -> row.cards.map { it.key }
-                is HomeRow.Status -> emptyList()
-            }
-        }
+        val keys = rows.flatMap(::cardKeys)
         // HOME-FR-93: a row that arrives above the first focus before any key press takes it (the layout
         // can put a later-loading row first); after a key press nothing here follows arriving rows.
         val firstKey = keys.firstOrNull().takeIf { first !is HomeRow.Status }
+        // HOME-FR-97: back from another screen, the card last used, else the first card of its row.
+        val back = if (focus.placed) null else returnPoint(model, rows)
+        if (back != null) {
+            val (row, key) = back
+            if (list.layoutInfo.visibleItemsInfo.none { it.index == row }) list.scrollToItem(row)
+            if (focus.card(key).requestFocusWhenAttached()) {
+                focus.placed = true
+                // The viewer chose this card on an earlier visit: arriving rows must not take it (HOME-FR-93).
+                focus.touched = true
+                return@LaunchedEffect
+            }
+        }
         val target = when {
             !focus.placed -> entry
             !focus.touched && focus.place == HomePlace.CARD && firstKey != null && focus.lastCard != firstKey && focus.focusedRow == 0 -> entry
@@ -169,6 +173,23 @@ private fun HandOffs(rows: List<HomeRow>, empty: Boolean, focus: HomeFocus, list
             if (target == focus.welcome) focus.place = HomePlace.WELCOME
         }
     }
+}
+
+/** The row index and card key Home returns to (HOME-FR-97), or null on a first entry or when that row is gone. */
+private fun returnPoint(model: HomeModel, rows: List<HomeRow>): Pair<Int, String>? {
+    val rowKey = model.returnRow ?: return null
+    val index = rows.indexOfFirst { it.key == rowKey }.takeIf { it >= 0 } ?: return null
+    val keys = cardKeys(rows[index])
+    val key = model.returnCard?.takeIf { it in keys } ?: keys.firstOrNull() ?: return null
+    return index to key
+}
+
+private fun cardKeys(row: HomeRow): List<String> = when (row) {
+    is HomeRow.Resume -> row.cards.map { it.key }
+    is HomeRow.Channels -> row.cards.map { it.key }
+    is HomeRow.Sport -> row.cards.map { it.key }
+    is HomeRow.Trakt -> row.cards.map { it.key }
+    is HomeRow.Status -> emptyList()
 }
 
 /** The card now at the removed card's place in its row, else the one before it. */

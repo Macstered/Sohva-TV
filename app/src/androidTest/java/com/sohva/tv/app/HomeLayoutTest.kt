@@ -167,6 +167,43 @@ class HomeLayoutTest {
         assertEquals("home-resume-vod:${LibraryFixture.key(0)}", focusedCard())
     }
 
+    /** HOME-FR-97 (owner, 28 September 2026): back from another screen, focus is on the card last used, not on the first row. */
+    @Test
+    fun backFromTheLibraryReturnsToTheRowLeft() {
+        awaitHome("films first") { focusedCard()?.startsWith("home-resume-") == true }
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        awaitHome("a channel card") { focusedCard()?.startsWith("home-channel-") == true }
+        val left = focusedCard()!!
+        compose.focusRail(RailItem.MOVIES)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { !exists("home-rows") }
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("home-rows") }
+        awaitFocus(left)
+        // Up still reaches the first row from there.
+        press(KeyEvent.KEYCODE_DPAD_UP)
+        awaitHome("films again") { focusedCard()?.startsWith("home-resume-") == true }
+        // A film opened from the second card: Back comes to that card, not the first.
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        val second = focusedCard()!!
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { !exists("home-rows") }
+        // OK resumes: the player over the film's page over the Movies wall (spec 01 SHELL-FR-28); Back walks them all.
+        repeat(5) {
+            if (!exists("home-rows")) press(KeyEvent.KEYCODE_BACK)
+            compose.waitForIdle()
+            android.os.SystemClock.sleep(500)
+        }
+        try {
+            compose.waitUntil(10_000) { exists("home-rows") }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            val screens = compose.onAllNodes(androidx.compose.ui.test.SemanticsMatcher("any") { true }, useUnmergedTree = true).fetchSemanticsNodes()
+                .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.filter { it.startsWith("screen-") || it.startsWith("player") }
+            throw AssertionError("not back on Home; on $screens", e)
+        }
+        awaitFocus(second)
+    }
+
     /** HOME-FR-90: Reorder with OK, Up and OK writes once; Home then draws that order. Back cancels a move. */
     @Test
     fun reorderWithTheRemoteAndBackCancels() {
