@@ -137,6 +137,14 @@ interface TraktDao {
     @Query(TraktSql.SERIES_ROUTE)
     fun seriesRoute(tmdb: String): String?
 
+    /** Which of these film identities the library has (spec 02 HOME-FR-98): from the work_key index. */
+    @Query(TraktSql.FILMS_OWNED)
+    fun filmsOwned(workKeys: List<String>): List<String>
+
+    /** Which of these TMDB series the library matched (HOME-FR-98): from the external_id index. */
+    @Query(TraktSql.SERIES_OWNED)
+    fun seriesOwned(tmdb: List<String>): List<String>
+
     @Query("SELECT COUNT(*) FROM trakt_state WHERE profile_id = :profile")
     fun count(profile: String): Int
 }
@@ -156,6 +164,9 @@ object TraktSql {
         "AND mm.status = 'matched' AND mm.provider = 'tmdb' AND s.visible = 1 AND ${AllowedSql.SERIES_S}"
     const val FILM_ROUTE = "SELECT MIN(key) FROM movie WHERE work_key = :workKey"
     const val SERIES_ROUTE = "SELECT MIN(content_key) FROM metadata_match WHERE external_id = :tmdb AND provider = 'tmdb' " +
+        "AND status = 'matched' AND media_type = 'series'"
+    const val FILMS_OWNED = "SELECT work_key FROM movie WHERE work_key IN (:workKeys)"
+    const val SERIES_OWNED = "SELECT external_id FROM metadata_match WHERE external_id IN (:tmdb) AND provider = 'tmdb' " +
         "AND status = 'matched' AND media_type = 'series'"
     const val EPISODE_AT = "SELECT e.key, e.season, e.number, e.name, e.duration_s FROM episode e CROSS JOIN source src ON src.id = e.source_id " +
         "WHERE e.series_id = :seriesId AND e.season = :season AND e.number = :number AND src.enabled = 1"

@@ -883,4 +883,6 @@
     <string name="details_find_in_discover">Sök i Discover</string>
     <string name="series_seasons_missing">Dina källor har %1$d av %2$d säsonger.</string>
     <string name="series_seasons_missing_discover">Dina källor har %1$d av %2$d säsonger. Resten kan finnas i Discover.</string>
+    <string name="home_trakt_in_library">I biblioteket</string>
+    <string name="home_layout_library_only">Bara titlar i mitt bibliotek</string>
 </resources>

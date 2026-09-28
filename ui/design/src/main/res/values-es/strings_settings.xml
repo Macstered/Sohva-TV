@@ -230,4 +230,6 @@
     <string name="home_layout_trakt">Filas de Trakt</string>
     <string name="home_layout_trakt_help">Añade hasta 8 listas de Trakt a Inicio. Las clasificaciones no necesitan cuenta; las listas de seguimiento necesitan la cuenta de Trakt de este perfil.</string>
     <string name="home_layout_trakt_full">Inicio ya tiene 8 filas añadidas. Quita una para añadir otra.</string>
+    <string name="home_trakt_in_library">En la biblioteca</string>
+    <string name="home_layout_library_only">Solo títulos de mi biblioteca</string>
 </resources>

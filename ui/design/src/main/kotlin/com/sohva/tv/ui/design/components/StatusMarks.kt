@@ -76,6 +76,28 @@ fun WatchedBadge(modifier: Modifier = Modifier, size: Dp = 26.dp) {
 }
 
 /**
+ * "In library" on a Trakt card whose title the viewer's sources have (spec 02 HOME-FR-98): a play
+ * mark in `focus` and the words on `background` α0.82, so it reads over any poster. Static.
+ */
+@Composable
+fun LibraryBadge(modifier: Modifier = Modifier) {
+    val p = Sohva.palette
+    Row(
+        modifier.roundFill(p.background.copy(alpha = 0.82f), 6.dp).padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(TvIcons.Play, size = 11.dp, tint = p.focus)
+        Spacer(Modifier.width(4.dp))
+        Text(
+            stringResource(R.string.home_trakt_in_library),
+            style = Sohva.typography.caption.copy(fontWeight = FontWeight.Bold),
+            color = p.textPrimary,
+            maxLines = 1,
+        )
+    }
+}
+
+/**
  * Shown whenever the player is buffering: without it a stalled stream and a dead one look alike.
  * The arc is the only infinite animation; it steps every 150 ms in reduced motion (design/02 §14).
  */

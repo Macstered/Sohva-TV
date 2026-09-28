@@ -42,6 +42,8 @@ class TraktQueryPlanTest {
             "series episodes" to TraktSql.SERIES_EPISODES, "film copies" to TraktSql.FILM_COPIES,
             "series copies" to TraktSql.SERIES_COPIES, "episode at" to TraktSql.EPISODE_AT,
             "film route" to TraktSql.FILM_ROUTE, "series route" to TraktSql.SERIES_ROUTE,
+            "films owned" to TraktSql.FILMS_OWNED.replace(":workKeys", ":a, :b"),
+            "series owned" to TraktSql.SERIES_OWNED.replace(":tmdb", ":a, :b"),
         )
         for ((name, sql) in queries) assertKeyed(name, sql)
     }

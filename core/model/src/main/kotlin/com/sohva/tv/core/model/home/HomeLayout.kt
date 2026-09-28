@@ -1,11 +1,15 @@
 package com.sohva.tv.core.model.home
 
-/** A row of Home by its id, and whether the profile shows it (spec 02 HOME-FR-86). */
-data class HomeRowEntry(val id: String, val shown: Boolean)
+/**
+ * A row of Home by its id, and whether the profile shows it (spec 02 HOME-FR-86); an added row can
+ * show only the titles the library has (HOME-FR-98).
+ */
+data class HomeRowEntry(val id: String, val shown: Boolean, val libraryOnly: Boolean = false)
 
 /**
  * A profile's Home layout (spec 02 §4.14): its rows in order, each shown or hidden. Stored as one
- * text, the ids comma-separated with a hidden one preceded by `-`; the ids are text rather than a
+ * text, the ids comma-separated with a hidden one preceded by `-` and a library-only one followed by
+ * `!`; the ids are text rather than a
  * fixed set, so later row kinds need no new format and a backup reader never meets an unknown enum
  * value (decision "Home layout: per profile, in Settings, in the backup").
  */
@@ -23,6 +27,12 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
         return HomeLayout(ordered + rows.filter { r -> ordered.none { it.id == r.id } })
     }
 
+    fun isLibraryOnly(id: String): Boolean = rows.firstOrNull { it.id == id }?.libraryOnly ?: false
+
+    /** HOME-FR-98: an added row shows only the titles the library has; built-in rows never filter. */
+    fun withLibraryOnly(id: String, on: Boolean): HomeLayout =
+        if (id in BUILT_IN) this else HomeLayout(rows.map { if (it.id == id) it.copy(libraryOnly = on) else it })
+
     /** The rows the viewer added (HOME-FR-94): every row that is not built in. */
     val added: List<String> get() = rows.map { it.id }.filter { it !in BUILT_IN }
 
@@ -36,7 +46,11 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
     fun withRemoved(id: String): HomeLayout = if (id in BUILT_IN) this else HomeLayout(rows.filter { it.id != id })
 
     /** The stored text; null for the default, which is stored as no value at all. */
-    fun encode(): String? = if (this == DEFAULT) null else rows.joinToString(",") { if (it.shown) it.id else "-${it.id}" }
+    fun encode(): String? = if (this == DEFAULT) {
+        null
+    } else {
+        rows.joinToString(",") { (if (it.shown) "" else "-") + it.id + (if (it.libraryOnly) LIBRARY_ONLY else "") }
+    }
 
     companion object {
         const val CONTINUE: String = "continue-watching"
@@ -75,6 +89,9 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
 
         val DEFAULT: HomeLayout = HomeLayout(BUILT_IN.map { HomeRowEntry(it, shown = true) })
 
+        /** The mark after an added row's id that shows only titles the library has (HOME-FR-98). */
+        private const val LIBRARY_ONLY = '!'
+
         /** Longest stored text read; anything longer is not a layout this app wrote. */
         private const val MAX_TEXT = 4_096
 
@@ -91,12 +108,14 @@ data class HomeLayout(val rows: List<HomeRowEntry>) {
             for (part in text.split(',')) {
                 val raw = part.trim()
                 val hidden = raw.startsWith('-')
-                val id = if (hidden) raw.substring(1) else raw
+                val marked = raw.removePrefix("-")
+                val libraryOnly = marked.endsWith(LIBRARY_ONLY)
+                val id = marked.removeSuffix(LIBRARY_ONLY.toString())
                 val builtIn = id in BUILT_IN
                 if (!builtIn && (id !in ADDABLE || added >= MAX_ADDED)) continue
                 if (!seen.add(id)) continue
                 if (!builtIn) added++
-                rows += HomeRowEntry(id, shown = !hidden)
+                rows += HomeRowEntry(id, shown = !hidden, libraryOnly = libraryOnly && !builtIn)
             }
             for (id in BUILT_IN) if (id !in seen) rows += HomeRowEntry(id, shown = true)
             return HomeLayout(rows)

@@ -100,6 +100,14 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
                     Modifier.focusRequester(row(id)).testTag("settings-home-add-$id"),
                     enabled = added || !full, keepsFocus = true,
                 )
+                // HOME-FR-98: under an added list, whether it shows only what the viewer's sources have.
+                if (added) {
+                    SettingsSwitchRow(
+                        stringResource(R.string.home_layout_library_only), view.layout.isLibraryOnly(id), { home.toggleLibraryOnly(id) },
+                        Modifier.testTag("settings-home-library-$id"),
+                        subtitle = stringResource(homeRowTitle(id)),
+                    )
+                }
             }
             return@SettingsGroup
         }

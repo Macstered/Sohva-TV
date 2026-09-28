@@ -21,4 +21,23 @@ class TraktLibraryReads(private val db: SohvaDatabase, private val io: Coroutine
     suspend fun filmFor(tmdb: Long): String? = withContext(io) { dao.filmRoute("tmdb:$tmdb") }
 
     suspend fun seriesFor(tmdb: Long): String? = withContext(io) { dao.seriesRoute(tmdb.toString()) }
+
+    /**
+     * Spec 02 HOME-FR-98: which of Home's Trakt titles the library has, by TMDB id, films and series
+     * apart; two indexed reads for all of Home's rows (at most a few hundred ids, under SQLite's
+     * 999-parameter limit, chunked anyway).
+     */
+    suspend fun owned(films: Collection<Long>, series: Collection<Long>): Owned = withContext(io) {
+        val f = films.distinct().chunked(CHUNK).flatMap { ids -> dao.filmsOwned(ids.map { "tmdb:$it" }) }
+            .mapNotNullTo(HashSet()) { it.removePrefix("tmdb:").toLongOrNull() }
+        val s = series.distinct().chunked(CHUNK).flatMap { ids -> dao.seriesOwned(ids.map(Long::toString)) }
+            .mapNotNullTo(HashSet()) { it.toLongOrNull() }
+        Owned(f, s)
+    }
+
+    class Owned(val films: Set<Long>, val series: Set<Long>)
+
+    private companion object {
+        const val CHUNK = 400
+    }
 }
