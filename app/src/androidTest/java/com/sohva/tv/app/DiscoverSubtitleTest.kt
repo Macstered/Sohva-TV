@@ -71,7 +71,8 @@ class DiscoverSubtitleTest {
                         path.contains("/catalog/movie/films") -> """{"metas":[{"type":"movie","id":"film1","name":"Fictional Film"}]}"""
                         path.contains("/meta/movie/") -> """{"meta":{"type":"movie","id":"film1","name":"Fictional Film"}}"""
                         path.contains("/stream/") -> """{"streams":[{"name":"Synthetic 720p","url":"$base/media/film1.mp4"}]}"""
-                        path.contains("/subtitles/") -> """{"subtitles":[{"id":"s-fi","lang":"fin","url":"$base/subs/fi.srt"},{"id":"s-en","lang":"eng","url":"$base/subs/en.srt"}]}"""
+                        // The Finnish file twice, as a real addon sent it: the picker lists it once (it crashed on the repeat).
+                        path.contains("/subtitles/") -> """{"subtitles":[{"id":"s-fi","lang":"fin","url":"$base/subs/fi.srt"},{"id":"s-fi-2","lang":"fin","url":"$base/subs/fi.srt"},{"id":"s-en","lang":"eng","url":"$base/subs/en.srt"}]}"""
                         path == "/subs/fi.srt" -> srt("Hei")
                         path == "/subs/en.srt" -> srt("Hello")
                         else -> return MockResponse.Builder().code(404).build()
