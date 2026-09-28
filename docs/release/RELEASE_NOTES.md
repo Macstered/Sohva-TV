@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.3
 
-Android build **110**. Prepared 28 September 2026. Prerelease for testers.
+Android build **111**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.3
 
@@ -25,6 +25,10 @@ Android build **110**. Prepared 28 September 2026. Prerelease for testers.
   left from, not the first row.
 - Trakt cards on Home show "In library" when your sources have the title. In
   Settings > Home > Trakt rows, each added list can show only those titles.
+- Any public Trakt list on Home: in Settings > Home > Trakt rows, choose
+  "Add a Trakt list" and type its trakt.tv address, its number or words from
+  its name, or send the address from your phone. The row takes the list's
+  own name.
 
 ## Muutokset versiossa 0.2.0-beta.3
 
@@ -53,6 +57,10 @@ Android build **110**. Prepared 28 September 2026. Prerelease for testers.
 - Etusivun Trakt-korteissa lukee "Kirjastossa", kun nimike löytyy lähteistäsi.
   Kohdassa Asetukset > Etusivu > Trakt-rivit jokaisen lisätyn listan voi rajata
   näyttämään vain ne.
+- Mikä tahansa julkinen Trakt-lista etusivulle: valitse Asetukset > Etusivu >
+  Trakt-rivit > "Lisää Trakt-lista" ja kirjoita listan trakt.tv-osoite,
+  numero tai sanoja sen nimestä, tai lähetä osoite puhelimesta. Rivi saa
+  listan oman nimen.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
