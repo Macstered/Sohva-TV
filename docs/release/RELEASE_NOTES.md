@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.3
 
-Android build **106**. Prepared 28 September 2026. Prerelease for testers.
+Android build **107**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.3
 
@@ -14,6 +14,8 @@ Android build **106**. Prepared 28 September 2026. Prerelease for testers.
   office, need no Trakt account. Your movie and series watchlists need the
   profile's Trakt account. Each row shows 30 titles; OK opens the title as
   Recommended does. Lists refresh in the background, never while video plays.
+- Home: Left from the first card of a poster row (Recommended for you and the
+  Trakt rows) opens the side menu again.
 
 ## Muutokset versiossa 0.2.0-beta.3
 
@@ -29,6 +31,8 @@ Android build **106**. Prepared 28 September 2026. Prerelease for testers.
   Elokuvien ja sarjojen katselulistat vaativat profiilin Trakt-tilin. Jokaisella
   rivillä on 30 nimikettä; OK avaa nimikkeen kuten Suosituksia sinulle -rivillä.
   Listat päivittyvät taustalla, eivät koskaan videon toiston aikana.
+- Etusivu: vasen-painike julistekorttirivin ensimmäisestä kortista
+  (Suosituksia sinulle ja Trakt-rivit) avaa taas sivuvalikon.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
