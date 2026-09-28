@@ -256,7 +256,7 @@ Spec: [specs/10-sources-and-import.md](../specs/10-sources-and-import.md) · Mil
 
 - [x] **SRC-40** Every import, from any screen or worker, goes through one import runner and survives leaving the screen that started it; the screen shows its progress.
 - [x] **SRC-41** Xtream bulk lists that a provider truncates or refuses are fetched category by category instead.
-- [ ] **SRC-42** Importing never makes playback stutter or a D-pad press late on the low-end box.
+- [x] **SRC-42** Importing never makes playback stutter or a D-pad press late on the low-end box.
 
 ## Phone setup
 

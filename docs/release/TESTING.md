@@ -1,6 +1,6 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.1` (Android build 103). Use only sources you are allowed to
+Build: `0.2.0-beta.1` (Android build 104). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
 

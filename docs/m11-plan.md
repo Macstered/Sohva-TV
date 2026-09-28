@@ -72,3 +72,9 @@ explicit wording for this release.
   a second refresh right after the first sync, a black picture after a buffer-profile rebuild, and
   landscape pictures on Continue watching. Open: reminders on the Shield, SRC-42 (slow box), packaging
   build 103 and the owner's go to publish.
+- Elisa box (28 Sept): build 103 installed over beta 23 with the owner's go; the upgrade and the
+  owner's checks passed (docs/performance-log.md). SRC-42 ticked on the owner's observation: the first
+  catalogue import ran while a channel played, with no stutter. Build 104 (Sohva Sport waits for
+  beta 23's keys) packaged locally as 0.2.0-beta.1 in `release/0.2.0-beta.1/`; build 100's unpublished
+  package moved to `release/0.2.0-beta.1-build100/`. Inventory: every ID ticked. Waiting for the
+  owner's go to publish.
