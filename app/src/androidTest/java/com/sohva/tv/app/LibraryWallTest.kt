@@ -167,6 +167,37 @@ class LibraryWallTest {
     }
 
     /**
+     * Seen on the owner's Shield: a single Down from the last row on screen left no card visibly
+     * focused and did not scroll; the second press did. The grid composes the next row ahead of
+     * time, and focus went to that card before it was placed. After every single press one card
+     * holds focus, and it is on screen, inside the wall.
+     */
+    @Test
+    fun everySingleDownFocusesACardThatIsOnScreen() {
+        openMovies()
+        openDrama()
+        intoWall()
+        val wall = compose.onNodeWithTag("library-wall").fetchSemanticsNode().boundsInRoot
+        repeat(30) { i ->
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN)
+            Thread.sleep(400)
+            compose.waitForIdle()
+            val want = card((i + 1) * 6)
+            try {
+                compose.waitUntil(3_000) {
+                    compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes().any { node ->
+                        node.config.getOrNull(SemanticsProperties.TestTag) == want &&
+                            node.boundsInRoot.top >= wall.top - 1f && node.boundsInRoot.bottom <= wall.bottom + 1f
+                    }
+                }
+            } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+                val nodes = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+                throw AssertionError("press ${i + 1}: $want not focused on screen; focused ${nodes.map { it.config.getOrNull(SemanticsProperties.TestTag) to it.boundsInRoot }}, wall $wall", e)
+            }
+        }
+    }
+
+    /**
      * Seen on the owner's Shield: at the last loaded row, a Down pressed while the next page was still
      * being read did nothing, and a second press was needed. The press now waits and completes once
      * the page lands: one row, no second press, and a card keeps focus throughout (§9.3).

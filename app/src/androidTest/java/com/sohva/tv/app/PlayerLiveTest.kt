@@ -106,6 +106,47 @@ class PlayerLiveTest {
         compose.waitUntil(10_000) { graph.diagnostics.snapshot().any { it.contains("buffer profile STABILITY") } }
     }
 
+    /**
+     * Seen on the owner's Shield: with the buffer profile changed, the first playback had sound and a
+     * black picture. The service rebuilt its idle player for the profile, and the picture's surface
+     * stayed with the old one. The rebuilt player must draw frames: the session reports each first
+     * frame to every controller, so a controller of the test's own counts them.
+     */
+    @Test
+    fun theRebuiltPlayerForAChangedBufferProfileShowsThePicture() {
+        val context = instrumentation.targetContext
+        val graph = (context.applicationContext as SohvaApplication).graph
+        val frames = AtomicInteger()
+        var future: com.google.common.util.concurrent.ListenableFuture<androidx.media3.session.MediaController>? = null
+        instrumentation.runOnMainSync {
+            val token = androidx.media3.session.SessionToken(context, android.content.ComponentName(context, com.sohva.tv.core.player.PlaybackService::class.java))
+            future = androidx.media3.session.MediaController.Builder(context, token).buildAsync()
+        }
+        val watcher = future!!.get(10, java.util.concurrent.TimeUnit.SECONDS)
+        instrumentation.runOnMainSync {
+            watcher.addListener(object : androidx.media3.common.Player.Listener {
+                override fun onRenderedFirstFrame() {
+                    frames.incrementAndGet()
+                }
+            })
+        }
+        try {
+            openPlayerOnFirstChannel()
+            compose.waitUntil(15_000) { frames.get() >= 1 }
+            kotlinx.coroutines.runBlocking { graph.data.preferences.setBuffer(com.sohva.tv.core.model.player.BufferProfile.STABILITY) }
+            press(KeyEvent.KEYCODE_CHANNEL_UP)
+            compose.waitUntil(10_000) { graph.diagnostics.snapshot().any { it.contains("buffer profile STABILITY") } }
+            val before = frames.get()
+            try {
+                compose.waitUntil(15_000) { frames.get() > before }
+            } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+                throw AssertionError("no picture after the player was rebuilt for the profile", e)
+            }
+        } finally {
+            instrumentation.runOnMainSync { watcher.release() }
+        }
+    }
+
     private fun openPlayerOnFirstChannel() {
         compose.waitUntil(10_000) { compose.onAllNodesWithTagExists(RailItem.LIVE_TV.tag) }
         compose.focusRail(RailItem.LIVE_TV)

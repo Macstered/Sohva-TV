@@ -202,12 +202,16 @@ internal class WallFocus(private val grid: LazyGridState, private val scope: Cor
         while (pending != NONE && frames < MAX_FRAMES) {
             val target = pending
             val card = cards[target]
-            if (card != null && runCatching { card.requestFocus() }.getOrDefault(false)) {
+            val info = grid.layoutInfo
+            val visible = info.visibleItemsInfo
+            // The grid composes the next row before it is placed; focus on such a card is invisible and
+            // scrolls nothing (seen on the owner's Shield). Only a placed card takes focus; a partly
+            // visible one is then brought into view by the focus itself.
+            val placed = visible.any { it.index == target }
+            if (card != null && placed && runCatching { card.requestFocus() }.getOrDefault(false)) {
                 if (pending == target) pending = NONE
                 continue
             }
-            val info = grid.layoutInfo
-            val visible = info.visibleItemsInfo
             if (visible.isNotEmpty()) {
                 val pitch = visible.first().size.height + info.mainAxisItemSpacing
                 val rows = maxOf(1, (info.viewportSize.height + info.mainAxisItemSpacing) / maxOf(1, pitch))
