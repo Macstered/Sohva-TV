@@ -244,6 +244,7 @@ class Enrichment(
             contentKey = row.contentKey, mediaType = row.mediaType, status = MATCHED, provider = record.provider.id,
             externalId = record.externalId, genre = genre, genresVersion = Genre.VERSION, replacementTitle = title,
             replacementPoster = record.poster, replaceProviderPoster = providerPoster.isNullOrBlank() && record.poster != null, updatedAt = now,
+            backdrop = record.backdrop,
         )
     }
 

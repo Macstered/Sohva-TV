@@ -124,6 +124,14 @@ class HomeModelTest {
         assertEquals("https://provider.example/poster.jpg", HomeModel.card(paused(null)).image)
     }
 
+    /** A library card is landscape too: the title's backdrop when one is known, else its poster (decision "Library card art"). */
+    @Test
+    fun aLibraryCardShowsTheTitlesBackdrop() {
+        val film = item("f").copy(posterUrl = "https://provider.example/poster.jpg")
+        assertEquals("https://provider.example/poster.jpg", HomeModel.card(film).image)
+        assertEquals("https://provider.example/wide.jpg", HomeModel.card(film.copy(backdrop = "https://provider.example/wide.jpg")).image)
+    }
+
     private companion object {
         const val NOW = 1_790_000_000_000L
     }

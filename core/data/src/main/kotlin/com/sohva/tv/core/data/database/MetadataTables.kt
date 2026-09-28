@@ -24,6 +24,8 @@ data class MetadataMatchEntity(
     @ColumnInfo(name = "replacement_poster") val replacementPoster: String?,
     @ColumnInfo(name = "replace_provider_poster") val replaceProviderPoster: Boolean,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    /** The record's backdrop, a TMDB image path or an https address: Continue watching's landscape card (decision "Library card art"). */
+    val backdrop: String? = null,
 )
 
 /**

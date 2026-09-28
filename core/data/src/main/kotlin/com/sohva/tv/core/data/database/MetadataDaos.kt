@@ -75,6 +75,9 @@ interface MetadataDao {
     @Upsert
     fun putMatch(row: MetadataMatchEntity)
 
+    @Query("UPDATE metadata_match SET backdrop = :backdrop WHERE content_key = :contentKey")
+    fun setBackdrop(contentKey: String, backdrop: String)
+
     @Query("SELECT * FROM metadata_match WHERE content_key = :contentKey")
     fun match(contentKey: String): MetadataMatchEntity?
 

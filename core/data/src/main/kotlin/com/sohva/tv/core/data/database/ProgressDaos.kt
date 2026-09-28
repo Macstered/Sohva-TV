@@ -38,6 +38,8 @@ data class ContinueRow(
     val season: Int?,
     val number: Int?,
     @ColumnInfo(name = "episode_name") val episodeName: String?,
+    /** The match's backdrop (TMDB path or https), else a series' provider backdrop. */
+    val backdrop: String?,
 )
 
 object ProgressSql {
@@ -51,14 +53,17 @@ object ProgressSql {
     // profile's paused rows only.
     const val CONTINUE_FILMS = "SELECT MAX(w.updated_at) AS updated_at, w.content_key, w.work_key, NULL AS series_key, w.position_ms, w.duration_ms, " +
         "m.name, m.replacement_title, m.year, m.poster_url, m.replacement_poster, m.replace_poster, m.external_id, " +
-        "NULL AS season, NULL AS number, NULL AS episode_name FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key " +
-        "CROSS JOIN source src ON src.id = m.source_id WHERE w.profile_id = :profile AND w.completed = 0 AND w.content_type = 'MOVIE' " +
+        "NULL AS season, NULL AS number, NULL AS episode_name, mm.backdrop AS backdrop " +
+        "FROM watch_progress w CROSS JOIN movie m ON m.key = w.content_key " +
+        "CROSS JOIN source src ON src.id = m.source_id LEFT JOIN metadata_match mm ON mm.content_key = m.key WHERE w.profile_id = :profile AND w.completed = 0 AND w.content_type = 'MOVIE' " +
         "AND w.position_ms > 0 AND m.visible = 1 AND src.enabled = 1 AND ${AllowedSql.MOVIES_M} GROUP BY COALESCE(w.work_key, w.content_key) " +
         "ORDER BY updated_at DESC LIMIT :limit"
     const val CONTINUE_EPISODES = "SELECT MAX(w.updated_at) AS updated_at, w.content_key, NULL AS work_key, s.key AS series_key, w.position_ms, w.duration_ms, " +
         "s.name, s.replacement_title, NULL AS year, s.poster_url, s.replacement_poster, s.replace_poster, s.external_id, " +
-        "e.season, e.number, e.name AS episode_name FROM watch_progress w CROSS JOIN episode e ON e.key = w.content_key " +
+        "e.season, e.number, e.name AS episode_name, COALESCE(mm.backdrop, s.backdrop_url) AS backdrop " +
+        "FROM watch_progress w CROSS JOIN episode e ON e.key = w.content_key " +
         "CROSS JOIN series s ON s.id = e.series_id CROSS JOIN source src ON src.id = e.source_id " +
+        "LEFT JOIN metadata_match mm ON mm.content_key = s.key " +
         "WHERE w.profile_id = :profile AND w.completed = 0 AND w.content_type = 'EPISODE' AND w.position_ms > 0 " +
         "AND s.visible = 1 AND src.enabled = 1 AND ${AllowedSql.SERIES_S} GROUP BY s.id ORDER BY updated_at DESC LIMIT :limit"
     const val GET = "SELECT * FROM watch_progress WHERE profile_id = :profile AND content_key = :key"

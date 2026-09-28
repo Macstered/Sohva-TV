@@ -233,6 +233,24 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom11To12KeepingMatchesAndAddingTheirBackdrop() {
+        helper.createDatabase(name, 11).use {
+            it.execSQL(
+                "INSERT INTO metadata_match (content_key, media_type, status, provider, external_id, genre, genres_version, replacement_title, " +
+                    "replacement_poster, replace_provider_poster, updated_at) VALUES ('vod:movie:s1:1', 'movie', 'matched', 'tmdb', '603', NULL, 1, NULL, NULL, 0, 1)",
+            )
+        }
+        helper.runMigrationsAndValidate(name, 12, true).use { db ->
+            db.query("SELECT backdrop FROM metadata_match WHERE content_key = 'vod:movie:s1:1'").use {
+                assertEquals(1, it.count)
+                it.moveToFirst()
+                assertEquals(true, it.isNull(0))
+            }
+            db.execSQL("UPDATE metadata_match SET backdrop = '/wide.jpg' WHERE content_key = 'vod:movie:s1:1'")
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

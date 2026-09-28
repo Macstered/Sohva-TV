@@ -107,6 +107,25 @@ class MetadataService(
         return shared("by-id:${type.name}:$id:${config.language.lowercase()}") { byId(MetadataProvider.TMDB, type, id, config) }
     }
 
+    /**
+     * Backdrops for matches made before matches kept one (decision "Library card art"): for each
+     * TMDB match of [wanted] (content key → type) without a backdrop, the record by id (its cache,
+     * else one request) and the backdrop stored with the match. True when one was stored.
+     */
+    suspend fun fillBackdrops(wanted: Map<String, MediaType>): Boolean {
+        if (wanted.isEmpty()) return false
+        val matches = withContext(io) { dao.matchesOf(wanted.keys.toList()) }
+            .filter { it.status == "matched" && it.provider == MetadataProvider.TMDB.id && it.backdrop == null && !it.externalId.isNullOrBlank() }
+        var stored = false
+        for (match in matches) {
+            val type = wanted[match.contentKey] ?: continue
+            val backdrop = tmdbById(type, match.externalId ?: continue)?.backdrop ?: continue
+            withContext(io) { dao.setBackdrop(match.contentKey, backdrop) }
+            stored = true
+        }
+        return stored
+    }
+
     /** A series page's lookup with details (META-FR-34 does the details inside the search). */
     suspend fun seriesDetails(request: MetadataRequest): MetadataRecord? = enrich(request.copy(type = MediaType.SERIES))
 

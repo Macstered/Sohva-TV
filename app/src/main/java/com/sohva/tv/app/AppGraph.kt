@@ -130,6 +130,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
                 data.walls.changes(),
                 data.traktState.revision.drop(1).map { },
                 discover?.progress?.changes?.map { } ?: kotlinx.coroutines.flow.emptyFlow(),
+                cardArt.stored,
             ),
             playing = playbackActive,
             onFirstSettled = {
@@ -138,9 +139,14 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
                 if (flags.sport) sport.feed.start()
                 // Trakt's sync loop follows the active profile from here on (spec 51 FR-21).
                 traktLoop?.let { loop -> appScope.launch { data.profiles.activeChanges.collect(loop::start) } }
+                // Landscape pictures for library cards matched before matches kept one.
+                if (flags.metadataWorker) appScope.launch { runCatching { cardArt.fill() } }
             },
         )
     }
+
+    /** Continue watching's landscape pictures for older matches (decision "Library card art"). */
+    val cardArt: com.sohva.tv.app.home.HomeCardArt by lazy { com.sohva.tv.app.home.HomeCardArt(this) }
 
     /** TMDB and TVmaze lookups and the background enrichment (spec 41); built on first use. */
     val metadata: com.sohva.tv.app.metadata.MetadataGraph by lazy { com.sohva.tv.app.metadata.MetadataGraph(this) }

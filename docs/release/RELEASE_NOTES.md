@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.1
 
-Android build **102**. Prepared 27 September 2026. Prerelease for testers.
+Android build **103**. Prepared 27 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.1
 

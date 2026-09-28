@@ -190,7 +190,8 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
             // A Discover card's key is its own (HOME-FR-23); its title is the addon's name as stored. The card
             // is landscape, so it shows the addon's background, as beta 23 did (decision "Discover card art").
             item.discover?.let { d -> return ResumeCard(item.contentKey, item, item.title, d.backdrop ?: item.posterUrl, fraction, left) }
-            return ResumeCard("vod:${item.contentKey}", item, VodText.breadcrumbGroup(item.title), image, fraction, left)
+            // Library cards are landscape too: the title's backdrop when one is known, else its poster.
+            return ResumeCard("vod:${item.contentKey}", item, VodText.breadcrumbGroup(item.title), item.backdrop ?: image, fraction, left)
         }
     }
 }

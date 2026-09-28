@@ -1,6 +1,6 @@
 """Packages a release for testers (plan/06 §6 gates 7 and 9, §8): the five assets and nothing else.
 
-    python tools/package_release.py --version 0.2.0-beta.1 --code 102
+    python tools/package_release.py --version 0.2.0-beta.1 --code 103
 
 It checks, in order, and stops at the first failure:
 1. the version name and code match the release APK's badging; the folder does not exist yet

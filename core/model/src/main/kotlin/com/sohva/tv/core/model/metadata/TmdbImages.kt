@@ -9,6 +9,9 @@ object TmdbImages {
     const val POSTER_SMALL: String = "w185"
     const val POSTER_WALL: String = "w342"
 
+    /** The smallest TMDB backdrop at least 356 px wide: a Continue watching card at xhdpi (spec 02 §9). */
+    const val CARD_BACKDROP: String = "w780"
+
     fun url(image: String?, size: String): String? = when {
         image.isNullOrBlank() -> null
         image.startsWith("/") -> "https://image.tmdb.org/t/p/$size$image"
