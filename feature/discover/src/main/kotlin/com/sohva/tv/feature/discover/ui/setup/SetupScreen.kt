@@ -42,7 +42,7 @@ import com.sohva.tv.ui.design.components.FieldInput
 import com.sohva.tv.ui.design.components.ListRowLayout
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.SettingsRow
-import com.sohva.tv.ui.design.components.SettingsSwitch
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.SettingsValueRow
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
@@ -132,12 +132,11 @@ private fun InstalledSection(model: SetupModel) {
             val status = stringResource(if (inst.enabled) R.string.addon_enabled else R.string.addon_disabled)
             val catalogs = inst.manifest.catalogs.size
             // §5.7: the addon's row with its enable switch, then its actions indented below.
-            SettingsRow(
-                inst.name, Modifier.testTag("discover-addon-${inst.name}"), TvIcons.Channels,
-                subtitle = pluralStringResource(R.plurals.addon_ui_catalog_count_status, catalogs, catalogs, status),
-            ) {
-                SettingsSwitch(inst.enabled, { model.setEnabled(inst.id, !inst.enabled) }, Modifier.testTag("discover-addon-switch-${inst.name}"), enabled = !s.busy)
-            }
+            SettingsSwitchRow(
+                inst.name, inst.enabled, { model.setEnabled(inst.id, !inst.enabled) }, Modifier.testTag("discover-addon-switch-${inst.name}"),
+                TvIcons.Channels, pluralStringResource(R.plurals.addon_ui_catalog_count_status, catalogs, catalogs, status),
+                enabled = !s.busy, containerModifier = Modifier.testTag("discover-addon-${inst.name}"),
+            )
             Row(Modifier.padding(start = 16.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TvActionButton(stringResource(R.string.addon_ui_catalogs), { model.show(SetupPage.AddonCatalogs(inst.id)) }, compact = true, state = SurfaceState(enabled = inst.enabled && catalogs > 0))
                 TvActionButton(stringResource(R.string.action_refresh), { model.refresh(inst.id) }, Modifier.testTag("discover-addon-refresh-${inst.name}"), compact = true)
@@ -226,9 +225,10 @@ private fun SubtitlesSection(model: SetupModel) {
     LazyColumn(Modifier.fillMaxWidth().testTag("discover-setup-subtitles"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         item { SettingsOverline(stringResource(R.string.addon_subtitle_results)) }
         item {
-            SettingsRow(stringResource(R.string.addon_ui_show_all_languages), subtitle = stringResource(R.string.addon_ui_off_limits_results_to_your_primary_and_secondary_subtitle_language)) {
-                SettingsSwitch(all, { model.setAllLanguages(!all) }, Modifier.testTag("discover-setup-all-languages"))
-            }
+            SettingsSwitchRow(
+                stringResource(R.string.addon_ui_show_all_languages), all, { model.setAllLanguages(!all) }, Modifier.testTag("discover-setup-all-languages"),
+                subtitle = stringResource(R.string.addon_ui_off_limits_results_to_your_primary_and_secondary_subtitle_language),
+            )
         }
         item {
             SettingsRow(

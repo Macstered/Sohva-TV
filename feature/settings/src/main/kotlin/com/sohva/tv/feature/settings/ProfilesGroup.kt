@@ -27,8 +27,7 @@ import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.FieldInput
 import com.sohva.tv.ui.design.components.SettingsGroup
 import com.sohva.tv.ui.design.components.SettingsOverline
-import com.sohva.tv.ui.design.components.SettingsRow
-import com.sohva.tv.ui.design.components.SettingsSwitch
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.SettingsValueRow
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
@@ -66,9 +65,10 @@ internal fun ProfilesGroup(profiles: ProfileSettings) {
             subtitle = stringResource(R.string.profile_active_help),
         )
         if (household.several) {
-            SettingsRow(stringResource(R.string.profile_ask_at_start), subtitle = stringResource(R.string.profile_ask_at_start_help)) {
-                SettingsSwitch(household.askAtStart, { profiles.setAskAtStart(!household.askAtStart) }, Modifier.testTag("settings-profile-ask"))
-            }
+            SettingsSwitchRow(
+                stringResource(R.string.profile_ask_at_start), household.askAtStart, { profiles.setAskAtStart(!household.askAtStart) },
+                Modifier.testTag("settings-profile-ask"), subtitle = stringResource(R.string.profile_ask_at_start_help),
+            )
             SettingsValueRow(
                 title = stringResource(R.string.profile_content_title),
                 value = edited.displayName(defaultName),

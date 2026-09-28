@@ -41,8 +41,7 @@ import com.sohva.tv.feature.discover.ui.typeLabel
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.ListRowLayout
 import com.sohva.tv.ui.design.components.SettingsOverline
-import com.sohva.tv.ui.design.components.SettingsRow
-import com.sohva.tv.ui.design.components.SettingsSwitch
+import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvListRow
@@ -230,9 +229,10 @@ private fun Entry(model: OrganiseModel, s: OrganiseState, e: CatalogEntry, index
     }
     val supporting = "${e.installation.name} · ${typeLabel(e.catalog.type)} · $state"
     if (s.mode == OrganiseMode.VISIBILITY) {
-        SettingsRow(e.catalog.name, modifier.testTag("discover-organise-row-${e.catalog.id}"), subtitle = supporting) {
-            SettingsSwitch(!e.hidden, { model.toggle(e) }, Modifier.testTag("discover-organise-switch-${e.catalog.id}"), enabled = !s.saving)
-        }
+        SettingsSwitchRow(
+            e.catalog.name, !e.hidden, { model.toggle(e) }, Modifier.testTag("discover-organise-switch-${e.catalog.id}"),
+            subtitle = supporting, enabled = !s.saving, containerModifier = modifier.testTag("discover-organise-row-${e.catalog.id}"),
+        )
         return
     }
     val moving = s.moving == e.key

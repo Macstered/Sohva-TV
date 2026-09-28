@@ -74,6 +74,11 @@ data class SurfaceStyle(
     val animateFill: Boolean = true,
     val padding: PaddingValues = PaddingValues(0.dp),
     val contentAlignment: Alignment = Alignment.CenterStart,
+    /**
+     * Takes focus but draws no fill, ring or scale for it; the content shows focus through
+     * [TvSurfaceColors.focused] (a settings row whose switch is its control, [SettingsSwitchRow]).
+     */
+    val quiet: Boolean = false,
 )
 
 /** The focus rule as colours; first match wins (design/02 §5). */
@@ -82,7 +87,8 @@ fun tvSurfaceColors(focused: Boolean, state: SurfaceState, style: SurfaceStyle):
     val p = Sohva.palette
     val flip = focused && !style.focusRing
     return when {
-        !state.enabled -> TvSurfaceColors(style.resting ?: Color.Transparent, p.textDisabled, p.textDisabled)
+        !state.enabled -> TvSurfaceColors(style.resting ?: Color.Transparent, p.textDisabled, p.textDisabled, focused && style.quiet)
+        style.quiet -> TvSurfaceColors(style.resting ?: Color.Transparent, style.restingContent ?: p.textPrimary, p.textDim, focused)
         flip && state.danger -> TvSurfaceColors(p.danger, p.textPrimary, p.textPrimary.copy(alpha = 0.72f), focused = true)
         flip -> TvSurfaceColors(p.textPrimary, p.background, p.background.copy(alpha = 0.62f), focused = true)
         state.selected -> TvSurfaceColors(p.surfaceFocused, p.textPrimary, p.textMuted)
