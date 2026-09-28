@@ -61,7 +61,7 @@ class TraktRowsDeviceTest {
             LibraryFixture.seed(graph, perGroup = 4)
             runBlocking {
                 graph.data.progress.save(LibraryFixture.key(0), 10 * MINUTE, 90 * MINUTE)
-                if (name.methodName == "anAddedChartIsFetchedWithoutAnAccountAndDrawnInItsPlace") {
+                if (name.methodName != "settingsAddsATraktRowWithTheRemote") {
                     prefs.setHomeLayout(profile, HomeLayout.DEFAULT.withAdded(HomeLayout.TRAKT_TRENDING_MOVIES).withOrder(listOf(HomeLayout.TRAKT_TRENDING_MOVIES)))
                 }
             }
@@ -125,6 +125,24 @@ class TraktRowsDeviceTest {
         awaitFocus("home-trakt-${HomeLayout.TRAKT_TRENDING_MOVIES}/movie:2::")
         press(KeyEvent.KEYCODE_DPAD_DOWN)
         compose.waitUntil(5_000) { focusedTags().any { it?.startsWith("home-resume-") == true } }
+    }
+
+    /** HOME-FR-83: Left from a row's first card opens the rail, also from a narrow poster card (the owner's Shield). */
+    @Test
+    fun leftFromAPosterRowsFirstCardOpensTheRail() {
+        home()
+        compose.waitUntil(15_000) { exists(card) }
+        awaitFocus(card)
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        val rail = RailItem.entries.map { it.tag }.toSet()
+        try {
+            compose.waitUntil(5_000) { focusedTags().any { it in rail } }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("Left did not reach the rail; focused: ${focusedTags()}", e)
+        }
+        // Right goes back to the card it came from.
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitFocus(card)
     }
 
     @Test

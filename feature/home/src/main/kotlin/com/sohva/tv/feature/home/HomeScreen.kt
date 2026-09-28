@@ -51,6 +51,7 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
     val focus = remember { HomeFocus() }
     val list = rememberLazyListState()
     val railRequesters = remember(items) { items.associateWith { FocusRequester() } }
+    focus.rail = railRequesters.getValue(items.first())
     val empty by model.empty.collectAsStateWithLifecycle()
     val firstSync by model.firstSync.collectAsStateWithLifecycle()
     // Right or Back from the rail: the card last focused, else Welcome on an empty Home (HOME-FR-83).
