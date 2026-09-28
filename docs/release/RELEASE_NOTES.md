@@ -1,6 +1,6 @@
 # Sohva TV 0.2.0-beta.3
 
-Android build **111**. Prepared 28 September 2026. Prerelease for testers.
+Android build **112**. Prepared 28 September 2026. Prerelease for testers.
 
 ## Changed in 0.2.0-beta.3
 
@@ -29,6 +29,9 @@ Android build **111**. Prepared 28 September 2026. Prerelease for testers.
   "Add a Trakt list" and type its trakt.tv address, its number or words from
   its name, or send the address from your phone. The row takes the list's
   own name.
+- Trakt smart lists can be added by their address too (app.trakt.tv/lists/smart/...).
+- Discover: opening the subtitle list no longer crashes the app when a
+  subtitle is offered twice.
 
 ## Muutokset versiossa 0.2.0-beta.3
 
@@ -61,6 +64,9 @@ Android build **111**. Prepared 28 September 2026. Prerelease for testers.
   Trakt-rivit > "Lisää Trakt-lista" ja kirjoita listan trakt.tv-osoite,
   numero tai sanoja sen nimestä, tai lähetä osoite puhelimesta. Rivi saa
   listan oman nimen.
+- Myös Traktin älylistat voi lisätä osoitteella (app.trakt.tv/lists/smart/...).
+- Discover: tekstityslistan avaaminen ei enää kaada sovellusta, kun sama
+  tekstitys tarjotaan kahdesti.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
