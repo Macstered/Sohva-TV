@@ -77,12 +77,13 @@ class AddonSourcesResolver(
     /**
      * FR-100: subtitle results from every subtitle addon, with only the stream's hash, size and file
      * name as extras (never its headers). One call per provider; the caller shows them as they come.
+     * A library title (spec 30 PLAY-FR-141) has no addon stream: no extras at all.
      */
-    suspend fun subtitles(profile: String, inst: Installation, type: String, videoId: String, stream: AddonStream): List<AddonSubtitle> = withContext(io) {
+    suspend fun subtitles(profile: String, inst: Installation, type: String, videoId: String, stream: AddonStream?): List<AddonSubtitle> = withContext(io) {
         val extras = buildMap {
-            stream.videoHash?.let { put("videoHash", it) }
-            stream.videoSize?.let { put("videoSize", it.toString()) }
-            stream.filename?.let { put("filename", it) }
+            stream?.videoHash?.let { put("videoHash", it) }
+            stream?.videoSize?.let { put("videoSize", it.toString()) }
+            stream?.filename?.let { put("filename", it) }
         }
         val answer = client.get(inst.endpoint.resource("subtitles", type, videoId, extras))
         val subtitles = AddonSourceParser.subtitles(answer.body)

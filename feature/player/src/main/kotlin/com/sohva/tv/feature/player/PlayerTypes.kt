@@ -42,6 +42,15 @@ interface PlayerEnvironmentUi {
     /** Discover's side of addon playback, where the build has Discover. */
     val addon: AddonPlaybackEnv? get() = null
 
+    /**
+     * Discover's subtitle addons for the library's film or episode [contentKey] (spec 30 PLAY-FR-141);
+     * null in a build without Discover.
+     */
+    fun vodSubtitles(contentKey: String): SubtitleSource? = null
+
+    /** Whether the active profile may use Discover's addons (restricted profiles may not). */
+    suspend fun vodSubtitlesAllowed(): Boolean = false
+
     /** Sohva Sport's score ticker (PLAY-31), or null where Sohva Sport is not offered. */
     val ticker: ScoreTickerSource? get() = null
 

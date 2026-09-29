@@ -9,8 +9,6 @@ import com.sohva.tv.feature.player.AddonPlay
 import com.sohva.tv.feature.player.AddonPlaybackEnv
 import java.util.UUID
 import com.sohva.tv.app.AppLocales
-import com.sohva.tv.core.model.player.SubtitleText
-import com.sohva.tv.feature.discover.net.SubtitleDownloader
 import com.sohva.tv.feature.discover.protocol.Hashes
 import com.sohva.tv.feature.discover.ui.failureRes
 import com.sohva.tv.feature.player.SubtitleCandidate
@@ -151,22 +149,7 @@ class AddonPlaybackBridge(private val graph: AppGraph, private val host: Discove
         val failed = SubtitleDownload.Failed(texts.getString(R.string.addon_error_operation))
         val p = host.playback(token) ?: return failed
         val candidate = synchronized(candidates) { candidates[key].takeIf { candidatesOf == token } } ?: return failed
-        val url = SubtitleDownloader.parse(candidate.url) ?: return failed
-        return try {
-            val bytes = host.subtitleFiles.get(url)
-            // FR-101: the provider may have gone while the file came.
-            val provider = candidate.provider
-            if (provider != null) {
-                val still = withContext(io) { host.installations.find(p.profile, provider) }
-                if (still == null || !still.enabled || !host.access.allowed(p.profile)) return failed
-            }
-            val decoded = withContext(graph.dispatchers.ui) {
-                SubtitleText.decode(bytes)?.let { text -> SubtitleText.detect(text)?.let { SubtitleDownload.Ready(text, it) } }
-            }
-            decoded ?: SubtitleDownload.Failed(texts.getString(R.string.addon_error_manifest))
-        } catch (e: AddonException) {
-            SubtitleDownload.Failed(texts.getString(failureRes(e.failure)))
-        }
+        return AddonSubtitleFiles.download(graph, host, p.profile, candidate.url, candidate.provider)
     }
 
     override val showAllLanguages: StateFlow<Boolean> get() = host.settings.allLanguages

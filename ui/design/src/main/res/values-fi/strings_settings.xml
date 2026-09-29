@@ -245,4 +245,5 @@
     <string name="home_layout_list_phone_help">Skannaa koodi, liitä listan trakt.tv-osoite puhelimeen ja lähetä se. Voit lähettää useita listoja.</string>
     <string name="home_layout_list_added">Lisätty etusivulle: %1$s</string>
     <string name="home_layout_list_smart">Trakt-älylista</string>
+    <string name="vod_subtitles_no_id">Discoverin tekstityslisäosat tarvitsevat nimikkeen IMDb-tunnuksen, jonka se saa TMDB- tai TVmaze-tiedoista. Tarkista nimikkeen sivulla Väärät tiedot?</string>
 </resources>

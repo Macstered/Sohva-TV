@@ -215,14 +215,14 @@ class PlaybackService : MediaSessionService() {
                     .setUri(placeholder)
                     .setMimeType(StreamRegistry.mimeType(stream.address))
                     .setMediaMetadata(MediaMetadata.Builder().setTitle(stream.title).build())
-                    .setSubtitleConfigurations(if (addon) sideSubtitle(extras) else emptyList())
+                    .setSubtitleConfigurations(if (addon || vod) sideSubtitle(extras) else emptyList())
                     .build()
                 result.set(mutableListOf(item))
             }
             return result
         }
 
-        /** An addon playback's chosen subtitle, kept in memory (spec 50 ADDON-FR-101). */
+        /** An addon playback's or a library title's chosen subtitle, kept in memory (spec 50 ADDON-FR-101, spec 30 PLAY-FR-141). */
         private fun sideSubtitle(extras: Bundle?): List<MediaItem.SubtitleConfiguration> {
             val key = extras?.getString(EXTRA_SUBTITLE_KEY) ?: return emptyList()
             val mime = extras.getString(EXTRA_SUBTITLE_MIME) ?: return emptyList()

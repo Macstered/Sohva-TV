@@ -33,8 +33,7 @@ data class SyncState(val draftMs: Long = 0, val appliedMs: Long = 0, val applyin
  */
 @OptIn(UnstableApi::class)
 class AddonSubtitles internal constructor(
-    private val env: AddonPlaybackEnv,
-    private val token: () -> String,
+    private val source: SubtitleSource,
     private val controller: () -> MediaController?,
     private val tracks: () -> Tracks,
     private val languages: () -> VodLanguages,
@@ -67,7 +66,12 @@ class AddonSubtitles internal constructor(
     private val _syncOpen = MutableStateFlow(false)
     val syncOpen: StateFlow<Boolean> = _syncOpen.asStateFlow()
 
-    val showAll: StateFlow<Boolean> get() = env.showAllLanguages
+    val showAll: StateFlow<Boolean> get() = source.showAllLanguages
+
+    /** "Show all languages" (FR-97): global and persisted. */
+    fun setShowAll(on: Boolean) {
+        scope.launch { source.setShowAllLanguages(on) }
+    }
 
     private var requestJob: Job? = null
     private var manual = false
@@ -86,7 +90,7 @@ class AddonSubtitles internal constructor(
         _requested.value = true
         requestJob?.cancel()
         _results.value = SubtitleResults(pending = 1)
-        requestJob = scope.launch { env.subtitles(token()).collect { _results.value = it } }
+        requestJob = scope.launch { source.subtitles().collect { _results.value = it } }
     }
 
     // ---- Automatic choice (FR-98, -99) ----
@@ -112,6 +116,24 @@ class AddonSubtitles internal constructor(
             if (tryAddon(lang)) return true
         }
         if (!manual) _pick.value = SubtitlePick.Off
+        return false
+    }
+
+    /**
+     * A film or an episode (spec 30 PLAY-FR-141): only when the file has no subtitle in a preferred
+     * language (and the preferred audio does not make subtitles unneeded), asked while it already
+     * plays; nothing is chosen otherwise, the player's own language choice stands. True when an
+     * addon subtitle was loaded, so the item must be prepared again with it.
+     */
+    suspend fun autoAddonOnly(): Boolean {
+        val prefs = languages()
+        val wanted = listOfNotNull(prefs.subtitles, prefs.subtitlesSecond).mapNotNull(AddonLanguages::normalise).distinct()
+        if (manual || wanted.isEmpty() || audioSuppresses(prefs) || wanted.any(::embedded)) return false
+        request()
+        for (lang in wanted) {
+            if (manual) return false
+            if (tryAddon(lang)) return true
+        }
         return false
     }
 
@@ -192,7 +214,7 @@ class AddonSubtitles internal constructor(
     }
 
     private suspend fun load(candidate: SubtitleCandidate): Boolean {
-        return when (val result = env.downloadSubtitle(token(), candidate.key)) {
+        return when (val result = source.download(candidate.key)) {
             is SubtitleDownload.Failed -> {
                 _message.value = result.message
                 false

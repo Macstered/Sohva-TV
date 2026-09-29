@@ -412,6 +412,17 @@ player-side facts:
 - PLAY-FR-77 Live and catch-up get no language preference: the stream's own default tracks and
   Media3's defaults apply.
 
+- PLAY-FR-141 **Rebuild (owner, 29 September 2026):** a film or an episode from the library can take subtitles
+  from Discover's subtitle addons ([Discover](50-discover-addons.md) §4.13) when the build has Discover and the
+  profile may use it. The subtitle list is then Discover's picker (FR-97: embedded tracks first, then each
+  addon's results; languages; "Show all languages"; timing FR-102), and a chosen subtitle is side-loaded by
+  preparing the item again at the same place. The addons are asked by IMDb id only (a film's, or the series'
+  with `:season:episode`), taken from the title's TMDB or TVmaze details; never the provider's address, file
+  name, size or hash. A title without an IMDb id says so in the picker (`vod_subtitles_no_id`). Once the tracks
+  are known, and only when the file has no subtitle in a preferred language (and the preferred audio does not
+  make subtitles unneeded), the preferred languages are looked for while the film already plays, at most two
+  downloads per language; nothing else is chosen, the player's own language choice (PLAY-FR-75) stands.
+
 ### 4.10 Quick actions
 
 - PLAY-FR-80 Opened by the mapped Quick actions action (defaults: OK hold, Menu press) or the

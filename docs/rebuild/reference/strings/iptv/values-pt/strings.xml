@@ -904,4 +904,5 @@
     <string name="phone_list_not_found">Não foi possível adicionar a lista. Pode ser privada, ou o Início já tem 8 linhas adicionadas.</string>
     <string name="phone_list_invalid">Isso não é o endereço nem o número de uma lista do trakt.tv.</string>
     <string name="home_layout_list_smart">Lista inteligente do Trakt</string>
+    <string name="vod_subtitles_no_id">Os suplementos de legendas do Discover precisam do ID IMDb do título, que vem dos dados do TMDB ou TVmaze. Verifique Dados errados? na página do título.</string>
 </resources>
