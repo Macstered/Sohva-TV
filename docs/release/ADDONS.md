@@ -1,6 +1,6 @@
 # Discover: addons, search and Library
 
-For Sohva TV `0.2.0-beta.3`.
+For Sohva TV `0.2.0-beta.4`.
 
 Discover lets you browse and play movies and series from your own
 Stremio-compatible addons. It is optional and works without any IPTV source.

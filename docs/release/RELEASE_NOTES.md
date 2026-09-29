@@ -1,3 +1,20 @@
+# Sohva TV 0.2.0-beta.4
+
+Android build **113**. Prepared 29 September 2026. Prerelease for testers.
+
+## Changed in 0.2.0-beta.4
+
+- Home: titles your sources have are marked on Trakt cards with a small movie
+  or series icon in the top left corner, instead of the larger "In library" tag.
+
+## Muutokset versiossa 0.2.0-beta.4
+
+- Etusivu: lähteistäsi löytyvät nimikkeet merkitään Trakt-korteissa pienellä
+  elokuva- tai sarjakuvakkeella vasemmassa yläkulmassa isomman "Kirjastossa"-
+  merkinnän sijaan.
+
+Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
+
 # Sohva TV 0.2.0-beta.3
 
 Android build **112**. Prepared 29 September 2026. Prerelease for testers.
@@ -67,8 +84,6 @@ Android build **112**. Prepared 29 September 2026. Prerelease for testers.
 - Myös Traktin älylistat voi lisätä osoitteella (app.trakt.tv/lists/smart/...).
 - Discover: tekstityslistan avaaminen ei enää kaada sovellusta, kun sama
   tekstitys tarjotaan kahdesti.
-
-Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 
 # Sohva TV 0.2.0-beta.2
 
@@ -174,7 +189,7 @@ Install over your existing Sohva TV app. **Do not uninstall and do not clear
 storage**: that deletes the data this build moves across. You can use
 **Settings > About > Check for updates** in beta 23. The package name
 `com.streammate.tv` and the signing key are the same as in beta 23. The APK
-checksum is in `SHA256SUMS.txt`. The release tag `v0.2.0-beta.3` names the
+checksum is in `SHA256SUMS.txt`. The release tag `v0.2.0-beta.4` names the
 matching source, licensed under `GPL-3.0-only`.
 
 The encrypted `.smbak` backup still does not include Discover data, Trakt,
