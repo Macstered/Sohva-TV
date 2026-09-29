@@ -468,8 +468,8 @@ the lookup returns (SHELL-FR-17).
   line says so. A watchlist row whose account is gone is not listed and draws nothing.
 
 - HOME-FR-98 **Rebuild (owner, 28 September 2026):** every Trakt card (Watch next, Recommended and the
-  added rows) whose title the viewer's sources have shows "In library" (`home_trakt_in_library`) at the
-  art's top left: a film when a library copy has that TMDB film identity, a series when the library
+  added rows) whose title the viewer's sources have shows a small library mark at the art's top left
+  (the Movies or Series rail icon on a dark square; read aloud as "In library", `home_trakt_in_library`): a film when a library copy has that TMDB film identity, a series when the library
   matched it to that TMDB series (the same rules as HOME-FR-22's route). Checked for all of Home's
   Trakt cards at once, two indexed reads off the main thread, asked again only when the titles change.
   Settings › Home › Trakt rows has, under each added list, "Only titles in my library"
