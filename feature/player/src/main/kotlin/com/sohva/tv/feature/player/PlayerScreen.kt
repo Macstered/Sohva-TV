@@ -142,11 +142,14 @@ private fun addonStartUp(model: PlayerModel, session: AddonSession, picker: Pick
     return false
 }
 
-/** An addon playback has its own subtitle picker (spec 50 FR-97); everything else the shared one. */
+/**
+ * An addon playback, and a film or episode when Discover's subtitle addons may be used, have the
+ * addon subtitle picker (spec 50 FR-97, spec 30 PLAY-FR-141); everything else the shared one.
+ */
 @Composable
 private fun Pickers(model: PlayerModel, which: Picker) {
-    val addon = model.addon
-    if (addon != null && which == Picker.SUBTITLES) AddonSubtitleLayers(model, addon.subtitles) else TrackPicker(model, which)
+    val subs = model.addonSubtitles
+    if (subs != null && which == Picker.SUBTITLES) AddonSubtitleLayers(model, subs) else TrackPicker(model, which)
 }
 
 /** A SurfaceView in an aspect frame with a subtitle view (spec 30 §9 "Surface"): no TextureView, no layers. */

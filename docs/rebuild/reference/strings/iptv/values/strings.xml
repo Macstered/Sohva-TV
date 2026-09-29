@@ -923,4 +923,5 @@
     <string name="phone_list_not_found">That list could not be added. It may be private, or Home already has 8 added rows.</string>
     <string name="phone_list_invalid">That is not a trakt.tv list address or number.</string>
     <string name="home_layout_list_smart">Trakt smart list</string>
+    <string name="vod_subtitles_no_id">Discover\'s subtitle addons need this title\'s IMDb id, which it gets from TMDB or TVmaze details. Check Wrong details? on its page.</string>
 </resources>

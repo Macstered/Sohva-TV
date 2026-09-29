@@ -580,6 +580,7 @@ Spec: [specs/40-movies-and-series.md](../specs/40-movies-and-series.md) · Miles
 - [x] **VOD-58** Catalogue lookups used elsewhere: search (films, series, episodes), playable stream, title by key, next episode.
 - [x] **VOD-59** "Find in Discover" on film and series pages: the title looked up in the viewer's addons by IMDb/TMDB id; Back returns to the button (VOD-FR-112).
 - [x] **VOD-60** The series page says when the library has fewer seasons than have aired (VOD-FR-113).
+- [x] **VOD-61** Films and episodes take subtitles from Discover's subtitle addons: the same picker, and a preferred language looked for when the file has none (spec 30 PLAY-FR-141).
 
 ## Metadata enrichment
 

@@ -19,6 +19,20 @@ data class SubtitleResults(val candidates: List<SubtitleCandidate> = emptyList()
     val done: Boolean get() = pending == 0
 }
 
+/**
+ * Where a playback's addon subtitles come from (spec 50 §4.13; spec 30 PLAY-FR-141 for films and
+ * episodes): the results as they arrive, a candidate's download, and the global "Show all languages".
+ */
+interface SubtitleSource {
+    fun subtitles(): kotlinx.coroutines.flow.Flow<SubtitleResults>
+
+    suspend fun download(key: String): SubtitleDownload
+
+    val showAllLanguages: kotlinx.coroutines.flow.StateFlow<Boolean>
+
+    suspend fun setShowAllLanguages(on: Boolean)
+}
+
 /** A downloaded subtitle, decoded and recognised (FR-101), or the sentence that says why not. */
 sealed interface SubtitleDownload {
     data class Ready(val text: String, val format: SubtitleFormat) : SubtitleDownload

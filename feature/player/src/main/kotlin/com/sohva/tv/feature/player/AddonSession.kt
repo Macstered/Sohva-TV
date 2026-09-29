@@ -71,7 +71,16 @@ class AddonSession internal constructor(
     val key: String get() = "addon:$token"
 
     val subtitles: AddonSubtitles = AddonSubtitles(
-        env, { token }, { model.controller }, { model.tracks.value }, { model.settings.vodLanguages }, scope, work,
+        object : SubtitleSource {
+            override fun subtitles() = env.subtitles(token)
+
+            override suspend fun download(key: String) = env.downloadSubtitle(token, key)
+
+            override val showAllLanguages get() = env.showAllLanguages
+
+            override suspend fun setShowAllLanguages(on: Boolean) = env.setShowAllLanguages(on)
+        },
+        { model.controller }, { model.tracks.value }, { model.settings.vodLanguages }, scope, work,
         reload = ::reload, readyAgain = ::readyAgain,
     )
 

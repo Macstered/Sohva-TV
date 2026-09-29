@@ -132,6 +132,15 @@ class PlayerModel(
     val transport = PlayerTransport(this, viewModelScope)
     val addon: AddonSession? = addonPlay?.let { play -> env.addon?.let { AddonSession(this, it, play, viewModelScope, env.format) } }
 
+    /** A film's or an episode's Discover subtitle addons (spec 30 PLAY-FR-141); null without Discover. */
+    private val vodSubtitles: VodSubtitleSession? = vod?.let { v ->
+        env.vodSubtitles(v.contentKey)?.let { VodSubtitleSession(this, it, viewModelScope, env.format) { env.vodSubtitlesAllowed() } }
+    }
+
+    /** The addon subtitle picker's model: an addon playback's, or a library title's when Discover may be used. */
+    val addonSubtitles: AddonSubtitles?
+        get() = addon?.subtitles ?: vodSubtitles?.takeIf { it.available.value }?.subtitles
+
     /** The action row asks for focus when Up/Down step into the box (PLAY-FR-45); serial = a new request. */
     private val _boxFocus = MutableStateFlow(0)
     val boxFocusRequest: StateFlow<Int> = _boxFocus.asStateFlow()
@@ -234,20 +243,29 @@ class PlayerModel(
     private fun playVod(request: VodPlay) {
         val c = controller ?: return
         finished = false
-        c.stop()
-        c.clearMediaItems()
         _demo.value = env.demoPicture(request.contentKey)
         if (_demo.value != null) {
+            c.stop()
+            c.clearMediaItems()
             reveal()
             return
         }
-        val extras = Bundle().apply { putBoolean(PlaybackService.EXTRA_VOD, true) }
-        val item = MediaItem.Builder().setMediaId(request.contentKey)
-            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(extras).build()).build()
-        c.setMediaItem(item, request.startMs)
-        c.prepare()
-        c.play()
+        prepareVod(c, request.startMs, playWhenReady = true)
         reveal()
+    }
+
+    /** The film or episode from [from]; [extras] adds a side-loaded subtitle (PLAY-FR-141). */
+    internal fun prepareVod(c: MediaController, from: Long, playWhenReady: Boolean, extras: (Bundle) -> Unit = {}) {
+        val request = vod ?: return
+        c.stop()
+        c.clearMediaItems()
+        val bundle = Bundle().apply { putBoolean(PlaybackService.EXTRA_VOD, true) }
+        extras(bundle)
+        val item = MediaItem.Builder().setMediaId(request.contentKey)
+            .setRequestMetadata(MediaItem.RequestMetadata.Builder().setExtras(bundle).build()).build()
+        c.setMediaItem(item, from)
+        c.playWhenReady = playWhenReady
+        c.prepare()
     }
 
     /** FR-89: the controls hide even when focused, but stay while paused, buffering or stopped. */
@@ -396,9 +414,9 @@ class PlayerModel(
 
     fun openPicker(which: Picker) {
         // The addon subtitle picker pauses (spec 50 FR-97); closing it plays again if it paused a running stream.
-        if (addon != null && which == Picker.SUBTITLES && _picker.value == null) {
+        if (addonSubtitles != null && which == Picker.SUBTITLES && _picker.value == null) {
             val c = controller
-            resumeAfterPicker = addon.stage.value == null && c?.playWhenReady == true
+            resumeAfterPicker = (addon == null || addon.stage.value == null) && c?.playWhenReady == true
             c?.pause()
         }
         _quick.value = false
@@ -417,8 +435,7 @@ class PlayerModel(
 
     /** "Show all languages" in the addon subtitle picker (spec 50 FR-97): global, persisted. */
     fun setShowAllLanguages(on: Boolean) {
-        val addonEnv = env.addon ?: return
-        viewModelScope.launch { addonEnv.setShowAllLanguages(on) }
+        addonSubtitles?.setShowAll(on)
     }
 
     /** The addon player's Subtitles (FR-87, -97): pauses, then opens the picker; start-up continues underneath. */
@@ -586,6 +603,7 @@ class PlayerModel(
 
     override fun onCleared() {
         addon?.release()
+        vodSubtitles?.release()
         controller?.let {
             it.removeListener(listener)
             it.stop()
@@ -603,6 +621,7 @@ class PlayerModel(
                 _banner.value = null
             }
             addon?.onState(playbackState)
+            vodSubtitles?.onState(playbackState)
             val request = vod
             if (playbackState == Player.STATE_ENDED && request != null && !finished) {
                 finished = true
@@ -614,7 +633,10 @@ class PlayerModel(
             _title.value = mediaMetadata.title?.toString()
         }
 
-        override fun onPlayerError(error: PlaybackException) = onError(error)
+        override fun onPlayerError(error: PlaybackException) {
+            vodSubtitles?.onError()
+            onError(error)
+        }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY) pausedByNoisyAudio()
@@ -637,6 +659,7 @@ class PlayerModel(
             // An addon playback's text follows its subtitle pick (spec 50 §4.13).
             addon?.subtitles?.select()
             applyLanguages(_tracks.value)
+            vodSubtitles?.onTracks()
             _frameRate.value = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_VIDEO && it.isSelected }
                 ?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).frameRate } }
                 ?.takeIf { it > 0f }

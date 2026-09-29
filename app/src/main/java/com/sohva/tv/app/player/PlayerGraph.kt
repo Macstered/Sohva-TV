@@ -137,6 +137,15 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
         override val addon: com.sohva.tv.feature.player.AddonPlaybackEnv? get() = graph.addonPlayback
 
+        // Spec 30 PLAY-FR-141: Discover's subtitle addons for the library's films and episodes.
+        override fun vodSubtitles(contentKey: String): com.sohva.tv.feature.player.SubtitleSource? =
+            graph.discover?.let { com.sohva.tv.app.discover.VodSubtitleBridge(graph, it, contentKey) }
+
+        override suspend fun vodSubtitlesAllowed(): Boolean {
+            val host = graph.discover ?: return false
+            return withContext(io) { host.access.allowed(graph.data.profiles.activeId) }
+        }
+
         override val ticker: com.sohva.tv.feature.player.ScoreTickerSource? get() = if (graph.flags.sport) graph.sport.ticker else null
 
         /** The demo build's pictures live in its own source set, so they are found by name there only (PLAY-44). */

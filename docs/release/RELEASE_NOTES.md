@@ -6,12 +6,22 @@ Android build **113**. Prepared 29 September 2026. Prerelease for testers.
 
 - Home: titles your sources have are marked on Trakt cards with a small movie
   or series icon in the top left corner, instead of the larger "In library" tag.
+- Movies and series: subtitles from your Discover subtitle addons (for example
+  OpenSubtitles) for films and episodes from your playlists. The subtitle list
+  is the same one Discover uses. When the file has no subtitle in your
+  preferred language, one is looked for while the film already plays. The
+  title needs its details from TMDB or TVmaze.
 
 ## Muutokset versiossa 0.2.0-beta.4
 
 - Etusivu: lähteistäsi löytyvät nimikkeet merkitään Trakt-korteissa pienellä
   elokuva- tai sarjakuvakkeella vasemmassa yläkulmassa isomman "Kirjastossa"-
   merkinnän sijaan.
+- Elokuvat ja sarjat: tekstitykset Discoverin tekstityslisäosista (esimerkiksi
+  OpenSubtitles) myös soittolistojesi elokuville ja jaksoille. Tekstityslista on
+  sama kuin Discoverissa. Jos tiedostossa ei ole tekstitystä toivomallasi
+  kielellä, sitä haetaan elokuvan jo pyöriessä. Nimike tarvitsee tiedot TMDB:stä
+  tai TVmazesta.
 
 Updating from beta 23? Read the 0.2.0-beta.1 notes below too.
 

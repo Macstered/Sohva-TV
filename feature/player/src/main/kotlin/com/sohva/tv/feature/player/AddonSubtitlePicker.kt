@@ -118,7 +118,7 @@ internal fun AddonSubtitlePicker(model: PlayerModel, subs: AddonSubtitles) {
                 item {
                     TvListRow(
                         stringResource(R.string.addon_ui_subtitles_off), { subs.off(); model.closePicker() }, Modifier.testTag("addon-subtitles-off"),
-                        state = SurfaceState(selected = pick == SubtitlePick.Off || pick == null), layout = ListRowLayout(dense = true),
+                        state = SurfaceState(selected = pick == SubtitlePick.Off || (pick == null && tracks.text.none { it.selected })), layout = ListRowLayout(dense = true),
                     )
                 }
                 items(languages, key = { it ?: "" }) { lang ->
@@ -170,7 +170,9 @@ internal fun AddonSubtitlePicker(model: PlayerModel, subs: AddonSubtitles) {
 private fun selected(option: SubtitleOption, pick: SubtitlePick?): Boolean = when (pick) {
     is SubtitlePick.Addon -> option.candidate?.key == pick.candidate.key
     is SubtitlePick.Embedded -> option.track?.let { t -> if (pick.group != null) t.group == pick.group && t.index == pick.index else t.selected } == true
-    else -> false
+    // Nothing picked here: a library title's own choice of embedded track (PLAY-FR-141).
+    null -> option.track?.selected == true
+    SubtitlePick.Off -> false
 }
 
 @Composable

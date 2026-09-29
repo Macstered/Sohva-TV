@@ -245,4 +245,5 @@
     <string name="home_layout_list_phone_help">Scanne den Code, füge die trakt.tv-Adresse der Liste auf dem Handy ein und sende sie. Du kannst mehrere Listen senden.</string>
     <string name="home_layout_list_added">Zur Startseite hinzugefügt: %1$s</string>
     <string name="home_layout_list_smart">Intelligente Trakt-Liste</string>
+    <string name="vod_subtitles_no_id">Die Untertitel-Add-ons von Discover brauchen die IMDb-ID des Titels, die er aus den TMDB- oder TVmaze-Angaben bekommt. Prüfe Falsche Angaben? auf seiner Seite.</string>
 </resources>

@@ -245,4 +245,5 @@
     <string name="home_layout_list_phone_help">Scansiona il codice, incolla sul telefono l\'indirizzo trakt.tv della lista e invialo. Puoi inviare più liste.</string>
     <string name="home_layout_list_added">Aggiunta alla Home: %1$s</string>
     <string name="home_layout_list_smart">Lista intelligente Trakt</string>
+    <string name="vod_subtitles_no_id">I componenti aggiuntivi dei sottotitoli di Discover richiedono l\'ID IMDb del titolo, che si ottiene dai dati TMDB o TVmaze. Controlla Dettagli sbagliati? nella sua pagina.</string>
 </resources>

@@ -245,4 +245,5 @@
     <string name="home_layout_list_phone_help">Skanna koden, klistra in listans trakt.tv-adress på telefonen och skicka den. Du kan skicka flera listor.</string>
     <string name="home_layout_list_added">Tillagd på startsidan: %1$s</string>
     <string name="home_layout_list_smart">Smart lista på Trakt</string>
+    <string name="vod_subtitles_no_id">Discovers undertextningstillägg behöver titelns IMDb-id, som den får från TMDB- eller TVmaze-uppgifter. Kontrollera Fel uppgifter? på dess sida.</string>
 </resources>
