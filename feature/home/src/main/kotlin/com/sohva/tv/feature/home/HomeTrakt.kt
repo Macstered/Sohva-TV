@@ -86,7 +86,7 @@ internal fun TraktCardView(card: TraktCard, modifier: Modifier, onClick: () -> U
         Column {
             Box(Modifier.size(if (card.next) ART_W else POSTER_W, if (card.next) ART_H else POSTER_H)) {
                 CroppedArt(card.title, card.image, if (card.next) ART_W else POSTER_W, if (card.next) ART_H else POSTER_H)
-                if (card.owned) LibraryBadge(Modifier.align(Alignment.TopStart).padding(6.dp).testTag("home-trakt-owned-${card.key}"))
+                if (card.owned) LibraryBadge(card.show, Modifier.align(Alignment.TopStart).padding(6.dp).testTag("home-trakt-owned-${card.key}"))
             }
             Spacer(Modifier.height(8.dp))
             Text(card.title, style = Sohva.typography.label.copy(fontWeight = FontWeight.SemiBold), color = Sohva.palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

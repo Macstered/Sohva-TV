@@ -76,23 +76,19 @@ fun WatchedBadge(modifier: Modifier = Modifier, size: Dp = 26.dp) {
 }
 
 /**
- * "In library" on a Trakt card whose title the viewer's sources have (spec 02 HOME-FR-98): a play
- * mark in `focus` and the words on `background` α0.82, so it reads over any poster. Static.
+ * A Trakt card whose title the viewer's sources have (spec 02 HOME-FR-98): the rail's Movies or
+ * Series icon in `focus` on a small `background` α0.82 square, so it reads over any poster without
+ * covering it (the owner found the worded tag too large). Screen readers hear "In library". Static.
  */
 @Composable
-fun LibraryBadge(modifier: Modifier = Modifier) {
+fun LibraryBadge(series: Boolean, modifier: Modifier = Modifier) {
     val p = Sohva.palette
-    Row(
-        modifier.roundFill(p.background.copy(alpha = 0.82f), 6.dp).padding(horizontal = 6.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(TvIcons.Play, size = 11.dp, tint = p.focus)
-        Spacer(Modifier.width(4.dp))
-        Text(
-            stringResource(R.string.home_trakt_in_library),
-            style = Sohva.typography.caption.copy(fontWeight = FontWeight.Bold),
-            color = p.textPrimary,
-            maxLines = 1,
+    Box(modifier.size(24.dp).roundFill(p.background.copy(alpha = 0.82f), 6.dp), contentAlignment = Alignment.Center) {
+        Icon(
+            if (series) NavIcons.Series else NavIcons.Movies,
+            size = 16.dp,
+            tint = p.focus,
+            contentDescription = stringResource(R.string.home_trakt_in_library),
         )
     }
 }

@@ -129,6 +129,9 @@ class TraktRowsDeviceTest {
         graph.traktLoop!!.start(profile)
     }
 
+    private fun heroTitle(): String? = compose.onAllNodesWithTag("home-hero-title", useUnmergedTree = true).fetchSemanticsNodes()
+        .firstOrNull()?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString { it.text }
+
     private val card = "home-trakt-${HomeLayout.TRAKT_TRENDING_MOVIES}/movie:1::"
 
     @Test
@@ -139,6 +142,12 @@ class TraktRowsDeviceTest {
         assertEquals(listOf("movies/trending" to null), requests.toList())
         // HOME-FR-93: the row the layout puts first takes the first focus before any key press.
         awaitFocus(card)
+        // HOME-FR-62: the hero describes the focused card, not Continue watching's idle title.
+        try {
+            compose.waitUntil(5_000) { heroTitle() == "A fictional film" }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("hero shows ${heroTitle()}", e)
+        }
         press(KeyEvent.KEYCODE_DPAD_RIGHT)
         awaitFocus("home-trakt-${HomeLayout.TRAKT_TRENDING_MOVIES}/movie:2::")
         press(KeyEvent.KEYCODE_DPAD_DOWN)
@@ -198,6 +207,12 @@ class TraktRowsDeviceTest {
         compose.waitUntil(15_000) { exists(card) && exists(second) }
         compose.waitUntil(5_000) { inside("home-trakt-owned-${card.removePrefix("home-trakt-")}") }
         assertTrue("not in the library, not marked", !inside("home-trakt-owned-${second.removePrefix("home-trakt-")}"))
+        awaitFocus(card)
+        try {
+            compose.waitUntil(5_000) { heroTitle() == "A fictional film" }
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("hero shows ${heroTitle()}", e)
+        }
         runBlocking {
             val layout = prefs.homeLayout(profile).first()
             prefs.setHomeLayout(profile, layout.withLibraryOnly(HomeLayout.TRAKT_TRENDING_MOVIES, true))
