@@ -1,7 +1,8 @@
 package com.sohva.tv.core.model
 
 /** Which build is running; resolved by :app from its build type, never from the package name. */
-enum class BuildKind { RELEASE, DEBUG, LAB, DEMO }
+/** [PLAY]: the Google Play build, the release without the in-app updater (decision "Play build"). */
+enum class BuildKind { RELEASE, DEBUG, LAB, DEMO, PLAY }
 
 /**
  * Build-time availability of the optional features (plan/03 §4.10). A feature that is off has no

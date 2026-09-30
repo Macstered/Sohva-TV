@@ -50,8 +50,9 @@ own.
 
 ## Optional data providers
 
-- **TMDB:** This product uses the TMDB API but is not endorsed or certified by
-  TMDB. TMDB is optional and uses your own key. The unmodified TMDB
+- **TMDB:** This application uses TMDB and the TMDB APIs but is not
+  endorsed, certified, or otherwise approved by TMDB. TMDB is optional and
+  uses your own key. The unmodified TMDB
   attribution logo appears in the app and is not offered under Sohva TV's GPL
   licence. See [TMDB](https://www.themoviedb.org).
 - **TVmaze:** TVmaze data is used under CC BY-SA. Screens that show it name
@@ -63,6 +64,8 @@ own.
   [API-Sports terms](https://api-sports.io/terms).
 - **Trakt:** Optional. Sohva TV uses the Trakt API with your own Trakt account
   but is not endorsed or certified by Trakt. [Trakt](https://trakt.tv).
+- **Stremio addons:** Discover speaks the public Stremio addon protocol. Sohva
+  TV is not affiliated with or endorsed by Stremio, and ships no addons.
 
 No IPTV playlists, provider credentials, sports-data feed or channel
 subscription is included. Use only sources and data you are allowed to use.

@@ -89,8 +89,8 @@
     <string name="about_contact_body">Frågor, integritetsärenden och felrapporter: hello@luontra.fi</string>
     <string name="about_contact_email">Skicka e-post</string>
     <string name="about_providers_title">Datakällor och rättigheter</string>
-    <string name="about_tmdb_notice">Den här produkten använder TMDB:s API men är inte godkänd eller certifierad av TMDB. TMDB är valfritt och kräver användarens egna inloggning.</string>
-    <string name="about_tvmaze_notice">TVmaze-data används under CC BY-SA. Berikade informationskort anger TVmaze som källa och länkar till originalposten.</string>
+    <string name="about_tmdb_notice">Den här appen använder TMDB och TMDB:s API:er men är inte godkänd, certifierad eller på annat sätt stödd av TMDB. (This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.) TMDB är valfritt och kräver användarens egna inloggning.</string>
+    <string name="about_tvmaze_notice">TVmaze-data (tvmaze.com) används under CC BY-SA. Berikade informationskort anger TVmaze som källa och länkar till originalposten.</string>
     <string name="about_api_sports_notice">Sohva Sport använder användarens egen API-Sports-nyckel. Sportdata, logotyper och varumärken kan tillhöra ligor, klubbar eller andra rättighetsinnehavare.</string>
     <string name="about_provider_rights">Sohva TV gör inga anspråk på leverantörernas data eller bilder och är inte godkänd av deras ägare. Offentlig eller kommersiell användning kan kräva separat tillstånd; kommersiell utgivning är spärrad tills licensfrågorna är lösta.</string>
     <string name="about_open_source_title">Programvara med öppen källkod</string>

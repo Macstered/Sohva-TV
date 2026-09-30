@@ -18,6 +18,9 @@ interface AboutSettingsServices {
     /** The Lab build shows its safety notice in place of release notes (ABOUT-FR-03). */
     val labNotice: Boolean
 
+    /** The Google Play build: Play updates the app, so the section says so (decision "Play build"). */
+    val updatesFromStore: Boolean get() = false
+
     /** The updater's state; collected only while About is on screen (ABOUT-NFR-03). */
     val updates: StateFlow<UpdateState>
 
@@ -66,6 +69,7 @@ data class LinkShown(val url: String, val qr: QrMatrix?)
 class AboutSettings internal constructor(private val services: AboutSettingsServices, private val scope: CoroutineScope) {
     val installedVersion: String get() = services.installedVersion
     val labNotice: Boolean get() = services.labNotice
+    val updatesFromStore: Boolean get() = services.updatesFromStore
 
     val updates: StateFlow<UpdateState> get() = services.updates
 

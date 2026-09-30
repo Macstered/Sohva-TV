@@ -51,10 +51,11 @@ jobs:
           checkModuleDependencies
           testDebugUnitTest :core:model:test :lint-checks:test
           verifyRoborazziDebug
-          lintDebug :app:lintRelease :app:lintLab
+          lintDebug :app:lintRelease :app:lintLab :app:lintPlay
           assembleDebugAndroidTest
-          :app:assembleRelease :app:assembleLab :benchmark:assemble
-          :app:checkReleaseGates
+          :app:assembleRelease :app:assembleLab :app:assemblePlay :app:bundlePlay
+          :app:assembleBenchmarkRelease :benchmark:assemble
+          :app:checkReleaseGates :app:checkPlayGates
 
       - if: always()
         uses: actions/upload-artifact@v6

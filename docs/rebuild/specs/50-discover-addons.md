@@ -1012,7 +1012,7 @@ landing shelves and the six-item rail below).
   width: title (display, Black, ≤ 2 lines), facts, description (label, textMuted, ≤ 4 lines),
   cast names. Then loading/failure lines, then a row: Library toggle + season chips (compact
   buttons, selected state, 10 dp apart). Episode row (16 dp spacing, 8 dp padding): **230 dp**
-  cards with focus ring and no scale; 130 dp tall image (thumbnail, else series background,
+  cards with focus ring drawn above the artwork and no scale; 130 dp tall image (thumbnail, else series background,
   crop), vertical scrim transparent → scrim α .85, label bottom-start 10 dp (label size, ≤ 2
   lines), Trakt bar and tick as in 5.2.
 
@@ -1424,6 +1424,8 @@ tone, MKV with Finnish/English text tracks)
 - 40 catalogs × 1,000 titles: opening fetches 1–4 catalogs; 32 Downs fetch exactly rows 0–34
   once; returning over the 24-shelf bound adds zero requests; no meta/stream/subtitle requests.
 - Grid: automatic paging, failed page needs Retry, repeated page stops.
+- Series episode focus: the rendered ring stays visible over loaded thumbnails, follows Right
+  to the next episode, disappears from the previous one, and also appears without artwork.
 - Catalog order: held-key move across 32 catalogs with zero intermediate saves, Back cancels,
   failed save retry; visibility persists across process death and hides from landing, filter
   page and Search.

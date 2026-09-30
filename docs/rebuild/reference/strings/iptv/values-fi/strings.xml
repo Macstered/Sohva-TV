@@ -915,4 +915,5 @@
     <string name="phone_list_invalid">Tämä ei ole trakt.tv-listan osoite tai numero.</string>
     <string name="home_layout_list_smart">Trakt-älylista</string>
     <string name="vod_subtitles_no_id">Discoverin tekstityslisäosat tarvitsevat nimikkeen IMDb-tunnuksen, jonka se saa TMDB- tai TVmaze-tiedoista. Tarkista nimikkeen sivulla Väärät tiedot?</string>
+    <string name="update_from_play">Päivitykset tulevat Google Playsta.</string>
 </resources>

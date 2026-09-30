@@ -1,8 +1,52 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.4` (Android build 114). Use only sources you are allowed to
+Build: `0.2.0-beta.9` (Android build 119). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
+
+## Focused checks for build 119
+
+- [ ] In Discover, open a series and move through its episodes. The focused episode has a
+      clear outline over its thumbnail. The outline follows Left/Right and disappears from
+      the previous episode. Change seasons and check episodes without artwork too.
+
+- [ ] With **Primary audio** set to Finnish, play earlier and later seasons of the
+      same library series where one calls the audio "Suomi" and the other "Finnish".
+      Both should select Finnish automatically. Choose English manually: it stays.
+
+- [ ] In the series library, browse season 1 to episode 8. Press Up, move to season 5 and
+      press OK: season 5 episode 1 becomes visible and focused. Move Right to episode 2,
+      then Up and Down: episode 1 is reachable again. Repeat Up/Down after scrolling
+      well along a season without changing seasons.
+
+- [ ] Watch a live channel, change to another channel, then return to Home. The
+      Recently watched channels row shows the newest channel first. Leave Home
+      while focused on an older channel card, then return: the new card appears
+      and focus stays on the card you left.
+
+- [ ] Play a film or episode with several audio tracks. With **Primary audio**
+      set to Finnish, Finnish audio is selected, including when its track appears
+      a moment after playback starts. Choose another track by hand: it stays.
+- [ ] For a film or episode with foreign audio and Finnish text, set **Primary
+      subtitles** to Finnish. The Finnish subtitle should be selected even if
+      text tracks appear after audio. **Primary audio** controls audio; it does
+      not request subtitles. When preferred Finnish audio exists, automatic
+      subtitles are turned off.
+- [ ] If a title still picks the wrong language, note whether the Finnish row
+      is in **Audio** or **Subtitles**, its exact on-screen label, and the four
+      language preference values. Save diagnostics without sharing the source
+      address or account details.
+- [ ] Start a library film with automatic addon subtitles enabled. Quickly choose
+      Off or an embedded subtitle. Wait for the addon response: your choice stays.
+- [ ] Repeat in Discover. Change subtitles again while a download is pending;
+      the last choice wins and playback continues.
+- [ ] Fill Home with eight Trakt rows. Browse along a row and down through all
+      rows, then return from a title with Back. Focus stays where you chose.
+- [ ] Pause on several cards so their hero pictures appear. Note delays or rough
+      scrolling, especially on a box with 1–2 GB of RAM. Include the device name
+      and Save diagnostics with a report.
+- [ ] On the Shield and Elisa box, save diagnostics after the Home check so we can
+      confirm the memory tier and reduced-motion setting actually chosen by each device.
 
 This is the rebuilt app. Everything that worked in beta 23 should still work
 and look almost the same. The most useful reports are:
@@ -18,7 +62,7 @@ and look almost the same. The most useful reports are:
       uninstalling. Note whether you used the in-app updater or sideloaded.
 - [ ] On the first start, note whether **Updating Sohva TV…** appeared and
       roughly how long it stayed.
-- [ ] **Settings > About** shows `0.2.0-beta.4`.
+- [ ] **Settings > About** shows `0.2.0-beta.9`.
 - [ ] Your colour theme, interface size, language, time zone and start screen
       are as before.
 - [ ] Profiles are all there. For each: favourites, recent channels, locked
@@ -190,7 +234,7 @@ and look almost the same. The most useful reports are:
 Email [hello@luontra.fi](mailto:hello@luontra.fi). Use this template:
 
 ```text
-Version: 0.2.0-beta.4 (114)
+Version: 0.2.0-beta.9 (119)
 Device model:
 Android / Google TV version:
 Updated from beta 23 (in-app or sideload) or fresh install:

@@ -4,6 +4,8 @@ plugins {
 
 dependencies {
     implementation(libs.android.gradle.plugin)
+    implementation(libs.android.aapt2.proto)
+    implementation(libs.protobuf.java)
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.compose.compiler.gradle.plugin)
     implementation(libs.ksp.gradle.plugin)

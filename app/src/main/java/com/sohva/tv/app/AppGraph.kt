@@ -7,6 +7,7 @@ import android.app.Application
 import android.util.Log
 import com.sohva.tv.app.settings.PhoneSetup
 import com.sohva.tv.core.data.DataGraph
+import com.sohva.tv.core.data.device.DeviceTierReader
 import com.sohva.tv.core.data.diagnostics.RingDiagnosticsLog
 import com.sohva.tv.core.data.home.ContinueFeed
 import com.sohva.tv.core.data.migration.Beta23SourceImport
@@ -15,6 +16,7 @@ import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.concurrent.AppDispatchers
 import com.sohva.tv.core.model.concurrent.PauseGate
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
+import com.sohva.tv.core.model.device.DeviceTierCache
 import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.core.model.time.SystemClock
 import com.sohva.tv.feature.home.HomeModel
@@ -59,6 +61,16 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         if (now - launchedAt > WARM_PROCESS_MS) launchedAt = now
     }
     val dispatchers: AppDispatchers by lazy { AndroidDispatchers() }
+
+    val deviceTier: DeviceTierCache by lazy {
+        DeviceTierCache { withContext(dispatchers.io) { DeviceTierReader(app).read() } }
+    }
+
+    val motionScale: androidx.compose.ui.MotionDurationScale by lazy {
+        object : androidx.compose.ui.MotionDurationScale {
+            override val scaleFactor: Float get() = deviceTier.animationScale
+        }
+    }
 
     val diagnostics: DiagnosticsLog by lazy {
         RingDiagnosticsLog(clock) { level, line ->

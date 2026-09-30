@@ -1,6 +1,6 @@
 # Sohva TV privacy policy
 
-Updated 27 September 2026. Applies to Sohva TV `0.2.0-beta.1` and later
+Updated 29 September 2026. Applies to Sohva TV `0.2.0-beta.1` and later
 builds until it is replaced.
 
 Suomenkielinen versio on tämän asiakirjan lopussa:
@@ -59,10 +59,10 @@ them under its own privacy policy. The developer receives no copy.
 | [TMDB](https://www.themoviedb.org) | Only when you turn it on with your own key | Titles, years, type, season and episode numbers, language, and TMDB or IMDb ids |
 | [TVmaze](https://www.tvmaze.com) | Only when you turn it on | Series titles, show ids, season and episode numbers |
 | [API-Sports](https://api-sports.io) | Only with your own key, while Sohva Sport or the score ticker is on screen | The date, your chosen time zone, and competition and season ids |
-| [Trakt](https://trakt.tv) | Only after you connect a profile | See "Trakt" below |
-| Discover addons you installed, and their media and subtitle hosts | Browsing and playing in Discover | Catalog and search requests, filters, title ids and subtitle lookups |
+| [Trakt](https://trakt.tv) | After you connect a profile, or when you add Trakt charts or public lists to Home | See "Trakt" below |
+| Discover addons you installed, and their media and subtitle hosts | Browsing and playing in Discover; subtitles for films and episodes from your playlists | Catalog and search requests, filters, title ids and subtitle lookups |
 | [Stremio](https://www.stremio.com) | Only when you choose Copy from Stremio account | The sign-in link flow and one read of your addon list |
-| [GitHub](https://github.com/Macstered/Sohva-TV) | Update check once a day and when you press Check for updates; downloads only when you press Download | The request itself, nothing about you or your sources |
+| [GitHub](https://github.com/Macstered/Sohva-TV) | GitHub version only: update check once a day and when you press Check for updates; downloads only when you press Download. The Google Play version never contacts GitHub; Google Play updates it | The request itself, nothing about you or your sources |
 
 TMDB, TVmaze, API-Sports, Trakt, Stremio, GitHub and Discover addon manifests
 are used over HTTPS only. Plain HTTP is allowed only for your own IPTV
@@ -84,6 +84,11 @@ next episodes of shows you watch, and keeps a copy on the TV to draw progress
 bars and watched ticks. When TMDB is on, synopses for Trakt titles are asked
 from TMDB by id.
 
+Trakt rows on Home are separate from an account. Charts (trending, popular,
+most anticipated, box office) and public lists you add under **Settings > Home**
+are read from Trakt without signing in, so nothing about you is sent: only the
+list asked for. Your watchlist rows use the profile's connected account.
+
 **Disconnect** deletes the tokens and the local copy from this TV. It does not
 change your history on Trakt. Removing a Sohva profile also disconnects its
 Trakt account. Restricted profiles cannot use Trakt.
@@ -95,6 +100,12 @@ name. Addons may keep their own logs; some treat a subtitle request as
 watching. The app asks for subtitles only after a stream has started or when
 you open the subtitle picker, and sends only the file name, size and hash of
 the stream.
+
+Subtitle addons can also give subtitles to films and episodes from your own
+playlists. Then they receive only the title's IMDb id (with season and
+episode), when playback starts without a subtitle in your preferred language
+or when you open the subtitle list; never your provider's address, the file's
+name or your login.
 
 Addon addresses often carry an account token. They are stored encrypted and
 never appear in logs or diagnostics. Redirects are followed only to HTTPS
@@ -142,12 +153,13 @@ Questions, privacy requests and reports:
 receives your address and what you choose to include. Do not include
 passwords, playlist addresses, addon addresses or backups.
 
-Downloads from GitHub follow GitHub's own privacy practices. Changes to this
+Downloads from GitHub follow GitHub's own privacy practices, and installs and
+updates from Google Play follow Google's. Changes to this
 policy are published with the app's release documents.
 
 ## Tietosuoja suomeksi
 
-Päivitetty 27.9.2026. Koskee Sohva TV:n versiota `0.2.0-beta.1` ja sitä
+Päivitetty 29.9.2026. Koskee Sohva TV:n versiota `0.2.0-beta.1` ja sitä
 uudempia versioita, kunnes tämä seloste korvataan.
 
 Sohva TV toistaa mediaa lähteistä, jotka olet itse lisännyt. Sovelluksessa
@@ -208,10 +220,10 @@ kopiota.
 | [TMDB](https://www.themoviedb.org) | Vain kun otat sen käyttöön omalla avaimellasi | Nimet, vuodet, tyyppi, kausi- ja jaksonumerot, kieli sekä TMDB- tai IMDb-tunnisteet |
 | [TVmaze](https://www.tvmaze.com) | Vain kun otat sen käyttöön | Sarjojen nimet, sarjatunnisteet, kausi- ja jaksonumerot |
 | [API-Sports](https://api-sports.io) | Vain omalla avaimellasi, kun Sohva Sport tai tulosnauha on näytöllä | Päivämäärä, valitsemasi aikavyöhyke sekä sarja- ja kausitunnisteet |
-| [Trakt](https://trakt.tv) | Vain kun olet yhdistänyt profiilin | Katso kohta "Trakt" alla |
-| Asentamasi Discover-lisäosat sekä niiden media- ja tekstityspalvelimet | Selaus ja toisto Discoverissa | Luettelo- ja hakupyynnöt, suodattimet, nimiketunnisteet ja tekstityshaut |
+| [Trakt](https://trakt.tv) | Kun olet yhdistänyt profiilin, tai kun lisäät Traktin listauksia tai julkisia listoja etusivulle | Katso kohta "Trakt" alla |
+| Asentamasi Discover-lisäosat sekä niiden media- ja tekstityspalvelimet | Selaus ja toisto Discoverissa; tekstitykset soittolistojesi elokuviin ja jaksoihin | Luettelo- ja hakupyynnöt, suodattimet, nimiketunnisteet ja tekstityshaut |
 | [Stremio](https://www.stremio.com) | Vain kun valitset Kopioi Stremio-tililtä | Kirjautumislinkin vaiheet ja lisäosaluettelosi lukeminen kerran |
-| [GitHub](https://github.com/Macstered/Sohva-TV) | Päivitysten tarkistus kerran päivässä ja kun painat Tarkista päivitykset; lataus vain kun painat Lataa | Pelkkä pyyntö, ei mitään sinusta tai lähteistäsi |
+| [GitHub](https://github.com/Macstered/Sohva-TV) | Vain GitHub-versio: päivitysten tarkistus kerran päivässä ja kun painat Tarkista päivitykset; lataus vain kun painat Lataa. Google Play -versio ei ota yhteyttä GitHubiin; Google Play päivittää sen | Pelkkä pyyntö, ei mitään sinusta tai lähteistäsi |
 
 TMDB:tä, TVmazea, API-Sportsia, Traktia, Stremiota, GitHubia ja
 Discover-lisäosien manifesteja käytetään vain HTTPS-yhteydellä. Salaamaton
@@ -236,6 +248,12 @@ jaksot, ja pitää niistä kopion televisiossa edistymispalkkeja ja
 katsottu-merkkejä varten. Kun TMDB on käytössä, Trakt-nimikkeiden
 juonikuvaukset haetaan TMDB:stä tunnisteen perusteella.
 
+Etusivun Trakt-rivit eivät vaadi tiliä. Listaukset (trendaavat, suositut,
+odotetuimmat, elokuvateatterien kärki) ja julkiset listat, jotka lisäät kohdassa
+**Asetukset > Etusivu**, luetaan Traktista kirjautumatta, joten sinusta ei
+lähetetä mitään: vain pyydetty lista. Katselulistarivit käyttävät profiilin
+yhdistettyä tiliä.
+
 **Katkaise yhteys** poistaa tunnisteet ja paikallisen kopion tästä
 televisiosta. Se ei muuta historiaasi Traktissa. Sohva-profiilin poistaminen
 katkaisee myös sen Trakt-yhteyden. Rajoitetut profiilit eivät voi käyttää
@@ -248,6 +266,12 @@ ilmoittavat. Lisäosat voivat pitää omia lokejaan; jotkin tulkitsevat
 tekstityspyynnön katseluksi. Sovellus hakee tekstityksiä vasta, kun striimi on
 alkanut tai kun avaat tekstitysvalikon, ja lähettää vain striimin
 tiedostonimen, koon ja tarkistussumman.
+
+Tekstityslisäosat voivat antaa tekstityksiä myös omien soittolistojesi
+elokuviin ja jaksoihin. Silloin ne saavat vain nimikkeen IMDb-tunnisteen (sekä
+kauden ja jakson), kun toisto alkaa ilman tekstitystä toivomallasi kielellä tai
+kun avaat tekstityslistan; eivät koskaan palveluntarjoajasi osoitetta,
+tiedoston nimeä tai kirjautumistietojasi.
 
 Lisäosien osoitteissa on usein tilin tunniste. Ne tallennetaan salattuina,
 eivätkä ne näy lokeissa tai vianmääritystiedoissa. Uudelleenohjauksia
@@ -300,6 +324,7 @@ kehittäjä saa sähköpostiosoitteesi ja sen, mitä päätät kertoa. Älä lä
 salasanoja, soittolistojen osoitteita, lisäosien osoitteita tai
 varmuuskopioita.
 
-GitHubista ladattaessa noudatetaan GitHubin omia tietosuojakäytäntöjä.
+GitHubista ladattaessa noudatetaan GitHubin omia tietosuojakäytäntöjä ja
+Google Playsta asennettaessa ja päivitettäessä Googlen käytäntöjä.
 Tämän selosteen muutokset julkaistaan sovelluksen julkaisuasiakirjojen
 mukana.

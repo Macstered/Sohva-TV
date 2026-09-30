@@ -100,6 +100,8 @@ modifier → focusRequester → testTag → onFocusChanged → semantics(mergeDe
 - Ring mode: colours are resolved with `focused && !focusRing`, so the fill and content keep their
   resting values and only the ring shows focus ("flipping the fill as well would hide the artwork it
   frames and leave dark ink on a dark ground").
+- Rebuild: draw the ring after the content, so full-size artwork cannot cover it. Use the same
+  draw pass, with no extra layer or shadow.
 - Long press: OK / Enter / NumPadEnter; the first key-down with `repeatCount ≥ 1` fires once and
   the key-up after it is consumed.
 - Animations: background colour default spring; scale default spring; content colour is **not**

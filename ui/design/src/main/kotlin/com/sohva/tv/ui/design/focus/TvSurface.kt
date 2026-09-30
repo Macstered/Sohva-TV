@@ -16,7 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -144,9 +144,11 @@ fun TvSurface(
                 onClick = { if (state.enabled) onClick() },
             )
             .then(if (style.focusScale != 1f) Modifier.graphicsLayer { scaleX = scale; scaleY = scale } else Modifier)
-            .drawBehind {
+            .drawWithContent {
                 val radius = CornerRadius(style.corner.toPx())
                 if (fill.alpha > 0f) drawRoundRect(fill, cornerRadius = radius)
+                drawContent()
+                // Artwork can fill the surface: focus must be drawn over it, never underneath.
                 if (ring) {
                     val w = ringWidth.toPx()
                     drawRoundRect(

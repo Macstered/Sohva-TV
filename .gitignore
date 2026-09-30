@@ -18,6 +18,7 @@ captures/
 .idea/
 *.iml
 .vscode/
+/.codex-remote-attachments/
 .DS_Store
 Thumbs.db
 

@@ -32,8 +32,8 @@
     <string name="about_contact_body">Domande, richieste sulla privacy e segnalazioni di problemi: hello@luontra.fi</string>
     <string name="about_contact_email">Invia email</string>
     <string name="about_providers_title">Fonti dei dati e diritti</string>
-    <string name="about_tmdb_notice">Questo prodotto usa l\'API di TMDB ma non è approvato né certificato da TMDB. TMDB è facoltativo e richiede una credenziale propria dell\'utente.</string>
-    <string name="about_tvmaze_notice">I dati di TVmaze sono usati con licenza CC BY-SA. Le schede informative arricchite indicano TVmaze come fonte e rimandano al record originale.</string>
+    <string name="about_tmdb_notice">Questa applicazione usa TMDB e le API di TMDB, ma non è approvata, certificata o altrimenti autorizzata da TMDB. (This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.) TMDB è facoltativo e richiede una credenziale propria dell\'utente.</string>
+    <string name="about_tvmaze_notice">I dati di TVmaze (tvmaze.com) sono usati con licenza CC BY-SA. Le schede informative arricchite indicano TVmaze come fonte e rimandano al record originale.</string>
     <string name="about_api_sports_notice">Sohva Sport usa la chiave API-Sports dell\'utente. I dati sportivi, i loghi e i marchi possono appartenere a leghe, club o altri titolari di diritti.</string>
     <string name="about_provider_rights">Sohva TV non rivendica la proprietà dei dati o delle immagini dei provider e non è approvato dai rispettivi titolari. L\'uso pubblico o commerciale può richiedere un\'autorizzazione separata; la pubblicazione commerciale è bloccata finché la questione delle licenze non sarà risolta.</string>
     <string name="about_open_source_title">Software open source</string>
@@ -246,4 +246,5 @@
     <string name="home_layout_list_added">Aggiunta alla Home: %1$s</string>
     <string name="home_layout_list_smart">Lista intelligente Trakt</string>
     <string name="vod_subtitles_no_id">I componenti aggiuntivi dei sottotitoli di Discover richiedono l\'ID IMDb del titolo, che si ottiene dai dati TMDB o TVmaze. Controlla Dettagli sbagliati? nella sua pagina.</string>
+    <string name="update_from_play">Gli aggiornamenti arrivano da Google Play.</string>
 </resources>

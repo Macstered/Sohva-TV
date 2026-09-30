@@ -89,8 +89,8 @@
     <string name="about_contact_body">Kysymykset, tietosuojapyynnöt ja vikailmoitukset: hello@luontra.fi</string>
     <string name="about_contact_email">Lähetä sähköpostia</string>
     <string name="about_providers_title">Tietolähteet ja oikeudet</string>
-    <string name="about_tmdb_notice">Tämä tuote käyttää TMDB APIa, mutta TMDB ei tue, sertifioi tai hyväksy tuotetta. TMDB on valinnainen ja vaatii käyttäjän oman tunnisteen.</string>
-    <string name="about_tvmaze_notice">TVmaze-tietoja käytetään CC BY-SA -ehdoin. Rikastetut tietokortit nimeävät TVmazen lähteeksi ja linkittävät alkuperäiseen tietueeseen.</string>
+    <string name="about_tmdb_notice">Tämä sovellus käyttää TMDB:tä ja TMDB:n rajapintoja, mutta TMDB ei tue, sertifioi tai muuten hyväksy sitä. (This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.) TMDB on valinnainen ja vaatii käyttäjän oman tunnisteen.</string>
+    <string name="about_tvmaze_notice">TVmaze-tietoja (tvmaze.com) käytetään CC BY-SA -ehdoin. Rikastetut tietokortit nimeävät TVmazen lähteeksi ja linkittävät alkuperäiseen tietueeseen.</string>
     <string name="about_api_sports_notice">Sohva Sport käyttää käyttäjän omaa API-Sports-avainta. Urheilutiedot, logot ja tavaramerkit voivat kuulua liigoille, seuroille tai muille oikeudenhaltijoille.</string>
     <string name="about_provider_rights">Sohva TV ei väitä omistavansa palveluntarjoajien tietoja tai kuvia eikä ole niiden tukema. Julkinen tai kaupallinen käyttö voi vaatia erillisen luvan; kaupallinen julkaisu on estetty, kunnes lisenssit on ratkaistu.</string>
     <string name="about_open_source_title">Avoimen lähdekoodin ohjelmistot</string>

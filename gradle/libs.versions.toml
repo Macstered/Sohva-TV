@@ -2,6 +2,9 @@
 # (plan/05 §4.2 and §4.13: stable only in the release classpath; one family per change).
 [versions]
 agp = "9.4.1"
+# The manifest protobuf reader used only by build-logic's Play artifact gate; matches AGP.
+aapt2-proto = "9.4.1-15978811"
+protobuf = "3.25.5"
 kotlin = "2.4.20"
 ksp = "2.3.12"
 coroutines = "1.11.0"
@@ -35,6 +38,8 @@ media3 = "1.11.1"
 coil = "3.6.3"
 
 [libraries]
+android-aapt2-proto = { module = "com.android.tools.build:aapt2-proto", version.ref = "aapt2-proto" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }

@@ -2,12 +2,12 @@ package com.sohva.tv.app.player
 
 import com.sohva.tv.app.profile.admit
 import com.sohva.tv.core.model.profile.ChannelAdmission
-import android.app.ActivityManager
 import android.os.Build
 import com.sohva.tv.app.AppGraph
 import com.sohva.tv.app.BuildConfig
 import com.sohva.tv.core.data.live.LiveReads
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
+import com.sohva.tv.core.model.device.MemoryTier
 import com.sohva.tv.core.model.guide.CatchupRules
 import com.sohva.tv.core.model.player.PlaybackSettings
 import com.sohva.tv.core.model.player.RemoteMapping
@@ -48,10 +48,7 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         graph.sync.http.client.newBuilder().apply { interceptors().clear() }.build()
     }
 
-    override val lowMemory: Boolean by lazy {
-        val manager = graph.app.getSystemService(ActivityManager::class.java)
-        manager.isLowRamDevice || manager.memoryClass < LOW_MEMORY_CLASS
-    }
+    override val lowMemory: Boolean get() = graph.deviceTier.current.memory == MemoryTier.LOW
 
     override val log: DiagnosticsLog get() = graph.diagnostics
 
@@ -163,10 +160,5 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
             }
             return ExternalStream(stream.address, headers)
         }
-    }
-
-    private companion object {
-        /** Spec 30 §9: a memory class under 192 MB counts as low memory for the buffer. */
-        const val LOW_MEMORY_CLASS = 192
     }
 }

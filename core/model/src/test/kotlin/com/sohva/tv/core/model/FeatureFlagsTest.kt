@@ -4,6 +4,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class FeatureFlagsTest {
+    /** Decision "Play build": everything the release has, but no in-app updater. */
+    @Test
+    fun thePlayBuildIsTheReleaseWithoutTheUpdater() {
+        assertEquals(FeatureFlags.resolve(BuildKind.RELEASE).copy(publicUpdates = false), FeatureFlags.resolve(BuildKind.PLAY))
+    }
+
     @Test
     fun releaseHasEverythingButDemoContent() {
         assertEquals(

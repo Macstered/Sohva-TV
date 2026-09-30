@@ -15,6 +15,10 @@ val signingProps: Properties? = signingFile.takeIf { it.isFile }?.let { file ->
     Properties().apply { file.inputStream().use { load(it) } }
 }
 
+// Google Play's upload key (docs/play/README.md §2), when the owner has made one; also only in .local/.
+val playUploadFile: File = rootProject.file(".local/play-upload/keystore.properties")
+val playUploadProps: Properties? = playUploadFile.takeIf { it.isFile }?.let { file -> Properties().apply { file.inputStream().use { load(it) } } }
+
 // Trakt client credentials stay in the ignored .local/ folder; builds without them (CI, public
 // clones) compile an app whose Accounts panel says Trakt is not configured (spec 51 FR-01).
 val traktFile: File = rootProject.file(".local/trakt/trakt-credentials.properties")
@@ -33,8 +37,8 @@ android {
     defaultConfig {
         applicationId = "com.streammate.tv"
         // Beta 23 is build 57; the rebuild started at 100 / 0.2.0-beta.1 (decision A3); 100 to 103 went to the owner's devices only; 104 was 0.2.0-beta.1, 105 0.2.0-beta.2, 106 to 111 went to the owner's Shield only; 112 was 0.2.0-beta.3.
-        versionCode = 114
-        versionName = "0.2.0-beta.4"
+        versionCode = 119
+        versionName = "0.2.0-beta.9"
         // The emulator's update test (tools/update_e2e.py) builds two local releases above these;
         // they never leave the emulator (decision "Updater test").
         providers.gradleProperty("sohva.versionCode").orNull?.let { versionCode = it.toInt() }
@@ -48,6 +52,17 @@ android {
     }
 
     signingConfigs {
+        if (playUploadProps != null) {
+            create("playUpload") {
+                val keys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+                val missing = keys.filter { playUploadProps.getProperty(it).isNullOrBlank() }
+                check(missing.isEmpty()) { "play-upload/keystore.properties is missing $missing" }
+                storeFile = rootProject.file(playUploadProps.getProperty("storeFile"))
+                storePassword = playUploadProps.getProperty("storePassword")
+                keyAlias = playUploadProps.getProperty("keyAlias")
+                keyPassword = playUploadProps.getProperty("keyPassword")
+            }
+        }
         if (signingProps != null) {
             create("release") {
                 val keys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
@@ -74,6 +89,16 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("release")
         }
+        // Google Play: release code and profiles, without the in-app updater, which Play's policy
+        // forbids (an app on Play updates only through Play). Its own application ID, set below:
+        // com.streammate.tv was taken on Play (decision "Play application ID"). Signed with the Play
+        // upload key when .local/play-upload/keystore.properties exists, else the release key (local tests).
+        create("play") {
+            initWith(getByName("release"))
+            buildConfigField("String", "BUILD_KIND", "\"PLAY\"")
+            signingConfig = signingConfigs.findByName("playUpload") ?: signingConfigs.findByName("release")
+            matchingFallbacks += "release"
+        }
         // Release code as a separately installable package for measurements and the Lab suites.
         // Minified like release, so what is measured is what ships (plan/05 §4.5).
         create("lab") {
@@ -96,12 +121,26 @@ android {
     }
 }
 
+// Google Play's own application ID (decision "Play application ID"); the GitHub build keeps
+// com.streammate.tv, which its installs and in-app updater depend on.
+androidComponents {
+    // The profile plugin copies release's source-set manifest to its generated build type.
+    // Restore the benchmark-only fixture manifest after that copy; it never enters release/Play.
+    finalizeDsl { extension ->
+        extension.sourceSets.getByName("benchmarkRelease").manifest.srcFile("src/benchmarkRelease/AndroidManifest.xml")
+    }
+    onVariants(selector().withBuildType("play")) { variant ->
+        variant.applicationId.set("fi.luontra.sohvatv")
+    }
+}
+
 // The guide-grid spike (M0) and the owner-scale fixture live only in the measurement builds: Lab and benchmarkRelease.
 // The baseline-profile plugin creates benchmarkRelease after this script runs.
 configurations.configureEach {
     if (name == "benchmarkReleaseImplementation") {
         dependencies.add(project.dependencies.create(project(":spike:guidegrid")))
         dependencies.add(project.dependencies.create(project(":measure:fixture")))
+        dependencies.add(project.dependencies.create(libs.androidx.room.runtime.get()))
     }
 }
 

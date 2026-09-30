@@ -36,8 +36,8 @@ data class TrackChoice(val audio: Int?, val subtitles: SubtitleChoice)
 
 /**
  * VOD language preferences applied to a stream's tracks (PLAY-FR-75, -76). Pure, so the rule is
- * tested on the JVM; the player applies the answer once per item and never after the viewer chose
- * a track of that type.
+ * tested on the JVM; the player checks changed track snapshots and never replaces a viewer's
+ * manual choice of that type.
  */
 object TrackLanguages {
     private val threeLetter = mapOf(
@@ -46,11 +46,28 @@ object TrackLanguages {
         "nld" to "nl", "dut" to "nl",
     )
 
-    /** The lower-case base code before `-` or `_`, three-letter codes mapped (PLAY-FR-76). */
+    // Some providers write names in the language field, or supply only a track label. Keep this
+    // to exact English/native names for the offered preferences: no locale scan or fuzzy guesses.
+    private val names = mapOf(
+        "finnish" to "fi", "suomi" to "fi", "english" to "en",
+        "swedish" to "sv", "svenska" to "sv", "danish" to "da", "dansk" to "da",
+        "norwegian" to "no", "norsk" to "no", "estonian" to "et", "eesti" to "et",
+        "german" to "de", "deutsch" to "de", "french" to "fr", "français" to "fr",
+        "spanish" to "es", "español" to "es", "italian" to "it", "italiano" to "it",
+        "dutch" to "nl", "nederlands" to "nl",
+    )
+    private val unspecified = setOf("und", "unknown", "none", "off")
+
+    /** The base code, accepting ISO codes and exact language names supplied by providers. */
     fun normalise(code: String?): String? {
         val base = code?.trim()?.lowercase(Locale.ROOT)?.substringBefore('-')?.substringBefore('_')?.takeIf { it.isNotEmpty() } ?: return null
-        return threeLetter[base] ?: base
+        if (base in unspecified) return null
+        return threeLetter[base] ?: names[base] ?: base
     }
+
+    /** A language tag takes precedence; an unspecified tag can use an exact known track label. */
+    fun ofTrack(language: String?, label: String?): String? =
+        normalise(language) ?: label?.trim()?.lowercase(Locale.ROOT)?.let(names::get)
 
     /**
      * [audio] and [text] are the tracks' language codes in list order. [audioByHand] and
@@ -69,6 +86,31 @@ object TrackLanguages {
             else -> firstOf(textCodes, prefs.subtitles, prefs.subtitlesSecond)?.let { SubtitleChoice.Track(it) } ?: SubtitleChoice.Off
         }
         return TrackChoice(audioIndex, subtitles)
+    }
+
+    /**
+     * The track list may grow after its first callback (notably text after audio). Calculate only
+     * changes still needed for the current list, so each callback can safely check again without
+     * restarting a settled track or replacing a subtitle chosen through an addon.
+     */
+    fun changes(
+        prefs: VodLanguages,
+        audio: List<String?>,
+        text: List<String?>,
+        selectedAudio: Int?,
+        selectedText: Int?,
+        audioByHand: Boolean = false,
+        textByHand: Boolean = false,
+        addonSubtitleChosen: Boolean = false,
+    ): TrackChoice {
+        val wanted = choose(prefs, audio, text, audioByHand, textByHand || addonSubtitleChosen)
+        val audioChange = wanted.audio?.takeUnless { it == selectedAudio }
+        val subtitleChange = when (val subtitle = wanted.subtitles) {
+            SubtitleChoice.Keep -> SubtitleChoice.Keep
+            SubtitleChoice.Off -> if (selectedText == null) SubtitleChoice.Keep else SubtitleChoice.Off
+            is SubtitleChoice.Track -> if (subtitle.index == selectedText) SubtitleChoice.Keep else subtitle
+        }
+        return TrackChoice(audioChange, subtitleChange)
     }
 
     private fun firstOf(codes: List<String?>, first: String?, second: String?): Int? {

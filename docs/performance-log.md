@@ -134,3 +134,103 @@ fixture has no Trakt data, and an added row costs a stored-list read after Conti
 
 No change. Checked by hand on the emulator against the real Trakt: "Trending movies" added in Settings › Home filled
 Home's row with 30 titles a few seconds later, read with the app's key and no account.
+
+## 29 September 2026: populated Home on 1 GB, local build 115
+
+`0.2.0-beta.5`, source `0634cef`, local candidate only. Emulator `sohva_rebuild_tv30`, API 30 TV x86,
+1920×1080 at xhdpi, cold-booted with the harness's temporary 1,024 MiB RAM override. The guest reports
+997,544 KiB total RAM, a 192 MiB memory class, a 256 MiB maximum heap and `isLowRamDevice=false`.
+The old player/artwork predicate therefore chose standard limits while startup chose LOW. The shared
+cached tier now gives startup, artwork and playback the same conservative decision.
+
+The benchmark fixture contains eight encrypted cached Trakt lists of 30 unique films each, over a
+200,000-film library. Half of the 240 cards have indexed library matches. Its 480 fictional local JPEGs
+(500×750 posters and 1280×720 backdrops) exercise real decoding without network variance. They are
+benchmark-only data. The fixture activity and its Room dependency are absent from shipping variants.
+
+All runs use minified `benchmarkRelease` and `CompilationMode.Full`. There are ten cold process starts
+per startup case and five runs per browsing case: 30 horizontal presses, 14 vertical presses across all
+eight rows, or 12 horizontal presses with a 600 ms rest for each hero picture. Every press checks the
+exact focused card. Host builds were stopped during measurement. Browsing begins at the second card
+because accessibility clips the first narrow poster behind the expanded rail's bounds; the separate
+Compose tests cover returning from the first card to the rail.
+
+Three measured stages use the same fixture and harness: the old heap-only artwork/player predicate;
+the shared tier alone (`9e9f4a7`); and the shared tier plus the reduced-motion composition clock
+(`0634cef`). The first is a deliberate control build with the old predicate, not the untouched branch
+base. The intermediate result showed that reducing image memory alone did not meet the vertical
+navigation CPU target.
+
+| Measure, median of five runs | Old predicate | Shared tier | Final build 115 | Final range |
+|---|---|---|---|---|
+| Horizontal navigation, main-thread frame CPU per press | 3.21 ms | 3.83 ms | 1.85 ms | 1.60–2.25 ms |
+| Vertical navigation, main-thread frame CPU per press | 13.52 ms | 10.00 ms | 3.18 ms | 2.96–3.83 ms |
+| Hero journey, main-thread frame CPU per move including its rest | 24.94 ms | 14.07 ms | 4.27 ms | 4.00–4.81 ms |
+| Horizontal journey, rendered frames | 114 | 119 | 59 | 59–60 |
+| Vertical journey, rendered frames | 154 | 139 | 39 | 33–44 |
+| Hero journey, rendered frames | 377 | 191 | 48 | 48–50 |
+| Hero journey, peak anonymous RSS | 111.50 MiB | 58.73 MiB | 58.23 MiB | maximum 59.22 MiB |
+| Vertical journey, peak anonymous RSS | 101.04 MiB | 65.21 MiB | 56.03 MiB | maximum 56.11 MiB |
+| Whole-Home compositions during every browsing run | 0 | 0 | 0 | 0 |
+
+CPU here means scheduler Running time intersected with main-thread `Choreographer#doFrame` slices,
+extracted with Perfetto by `tools/home_benchmark_report.py`, consistent with the earlier Home CPU
+proxy. Each range is the range of five per-run averages, not a percentile of individual presses. All
+five final horizontal and vertical averages meet the 8 ms target. The hero figure includes artwork
+settling during the rest and is not immediate key latency. Total main-thread CPU, including input,
+prefetch and UIAutomator accessibility queries outside frames, is higher: final medians 10.61, 24.34
+and 15.76 ms per press for horizontal, vertical and hero journeys respectively. Software-GPU frame
+times on this emulator cannot establish the real boxes' press-to-frame latency.
+
+The final maximum managed Java heap across the five scenarios is 21,478 KiB (20.98 MiB), below the
+64 MiB steady-state budget. Anonymous RSS includes native allocations and decoded images; it is a
+different measure from managed heap and is not total PSS.
+
+| Cold start, median of ten (ms) | Old predicate | Shared tier | Final build 115 | Final range |
+|---|---|---|---|---|
+| Default Home, initial display | 949 | 408 | 371 | 354–873 |
+| Default Home, full display | 1,645 | 853 | 759 | 743–1,507 |
+| Populated Home, initial display | 990 | 435 | 366 | 346–897 |
+| Populated Home, full display | 1,738 | 925 | 769 | 685–1,534 |
+
+The default control shifted substantially between runs too, so the apparent twofold startup gain
+must not be attributed wholly to these changes. Host/emulator variation is a material part of it.
+Within the final run, populated Home adds about 10 ms to median full display relative to default Home;
+both cases remain below the 4 s low-end budget. Full compilation isolates UI work; this run does not
+measure an uncompiled sideload's first launch or the network cost of refreshing real Trakt lists.
+
+Reduced motion now reaches the actual lifecycle-owned Compose animation clock. A frame-by-frame
+Home regression observed 15 scroll positions before the change and at most three after it, while
+still proving that the row moved. The zero-scale buffering test also failed before the fix and now
+passes: the indicator takes a step every 150 ms without an infinite per-frame animation. The window
+factory uses an internal Compose API against the pinned BOM. Any Compose upgrade must rerun this
+regression and the populated benchmark on the real app clock; see `docs/decisions.md`.
+
+Validation for this candidate: 692 unit tests in 133 suites, 21 targeted emulator tests (Home, Trakt
+rows, shell Back/focus, device-tier wiring and both subtitle players), and all five macrobenchmark
+scenarios pass. `tools/check_all.py` passes, including golden screenshots, all configured lint/build
+checks, Play APK/AAB artifact gates, public-source and secret audits, and release audits. Both release
+and Play APKs passed ART verification and launch smoke checks on the emulator. Release APK size is
+6,167,468 bytes; its largest app method is 3,836 code units, below the 9,500 gate.
+
+Accepted local evidence (ignored harness outputs):
+
+- Old predicate: `harness-out/home-populated-before/results`, `report.json` in its parent, and
+  `harness-out/home-populated-before-v4.log`. Snapshot APK SHA-256:
+  `b6fdccb4177ca27676010eba308990710d836eb053bb71d7452284abe87c10ea`.
+- Shared tier: `harness-out/home-populated-after/results`, `report.json` in its parent, and
+  `harness-out/home-populated-after.log`. Snapshot APK SHA-256:
+  `971183de547a197ab8fb7294baf2341fb30a4e2b5effdd2cb3b9e085c1d094d3`.
+- Final: `harness-out/home-populated-clock-final/results`, `report.json` in its parent, and
+  `harness-out/home-populated-clock-final.log`. Snapshot APK SHA-256:
+  `647d7d7fdd25e7e4680df8f1e9ab0cd74986458fa57a25b425d87f9bd30d447f`.
+- Checks: `harness-out/check_all.log`, `harness-out/motion-clock-final-device-tests.log`,
+  `harness-out/motion-clock-release-verify.log`, `harness-out/motion-clock-play-verify.log`.
+- Shipping release APK SHA-256:
+  `76f3fda95b510897c1fdfaa0b901b11a2797c3b3af74f8b3ab966f9775d70104`.
+
+Shield and Elisa validation remains the next owner-approved step. No household device was used for
+this work. Check the actual selected tier and reduced-motion setting in diagnostics as well as focus,
+artwork and playback. The Elisa device recorded above has 3 GB, so RAM alone may not select LOW on
+that box; smoothness on the 1 GB stand-in does not establish its behaviour. The focused build-115
+checklist is in `docs/release/TESTING.md`.

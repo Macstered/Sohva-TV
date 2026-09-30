@@ -41,6 +41,7 @@ import com.sohva.tv.ui.design.ground.ScreenBackground
  */
 @Composable
 fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Unit, lowMemory: Boolean, modifier: Modifier = Modifier) = trace("Home:Screen") {
+    LaunchedEffect(model) { model.enter() }
     val rows by model.rows.collectAsStateWithLifecycle()
     val hero by model.hero.collectAsStateWithLifecycle()
     val details by model.details.collectAsStateWithLifecycle()

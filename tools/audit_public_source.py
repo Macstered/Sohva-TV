@@ -31,6 +31,10 @@ FORBIDDEN_EXTENSIONS = {
     ".aab", ".apk", ".apks", ".bak", ".db", ".jks", ".keystore", ".log", ".m3u", ".m3u8", ".smbak",
     ".sqlite", ".xmltv", ".zip", ".p12", ".pem", ".env",
 }
+# The one playlist allowed in the repository: Google Play's reviewer adds it from the public repository
+# over HTTPS (docs/play/README.md §6). It holds only public test streams (two Blender Foundation open
+# films, CC BY 3.0, and Apple's HLS test stream), no provider and no login (decision "Play review playlist").
+ALLOWED_PATHS = {"docs/play/review/sohva-review.m3u"}
 FORBIDDEN_NAMES = {"keystore.properties", "local.properties", "secrets.properties", "trakt-credentials.properties"}
 BINARY_EXTENSIONS = {".png", ".webp", ".jpg", ".jpeg", ".gif", ".jar", ".ico", ".ttf", ".otf", ".prof", ".dm"}
 
@@ -71,7 +75,7 @@ def audit(path: str) -> list[str]:
     findings: list[str] = []
     name = Path(path).name
     suffix = Path(path).suffix.lower()
-    if suffix in FORBIDDEN_EXTENSIONS:
+    if suffix in FORBIDDEN_EXTENSIONS and path.replace("\\", "/") not in ALLOWED_PATHS:
         findings.append(f"{path}: forbidden file type {suffix}")
     if name in FORBIDDEN_NAMES:
         findings.append(f"{path}: forbidden file name")

@@ -5,6 +5,11 @@ import android.os.StrictMode
 import android.util.Log
 import androidx.work.Configuration
 import androidx.work.DelegatingWorkerFactory
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.platform.WindowRecomposerFactory
+import androidx.compose.ui.platform.WindowRecomposerPolicy
+import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import com.sohva.tv.core.model.FeatureFlags
 import com.sohva.tv.core.model.source.RefreshKind
 import com.sohva.tv.core.player.PlayerEnvironment
@@ -25,6 +30,7 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
     lateinit var graph: AppGraph
         private set
 
+    @OptIn(ExperimentalComposeUiApi::class, InternalComposeUiApi::class)
     override fun onCreate() {
         super.onCreate()
         if (BuildConfig.DEBUG) {
@@ -33,6 +39,11 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
             StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectDiskReads().detectDiskWrites().detectNetwork().penaltyLog().build())
         }
         graph = AppGraph(this, FeatureFlags.resolve(BuildInfo.KIND))
+        // Register only a factory here. Each window creates its lifecycle-bound composition when
+        // needed, with the cached motion policy also covering Foundation's lazy-list scrolling.
+        WindowRecomposerPolicy.setFactory(WindowRecomposerFactory { view ->
+            view.createLifecycleAwareWindowRecomposer(graph.motionScale)
+        })
     }
 
     // WorkManager initialises on first use, after the first frame (the manifest removes its start-up initializer).

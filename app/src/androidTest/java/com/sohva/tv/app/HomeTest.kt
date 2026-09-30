@@ -150,6 +150,27 @@ class HomeTest {
         compose.waitUntil(10_000) { exists("screen-guide") }
     }
 
+    /** HOME-FR-34, -35, -97: a retained Home reads recents again when the viewer comes back. */
+    @Test
+    fun recentlyWatchedChannelsRefreshWhenReturningToHome() {
+        awaitFocus(card(2))
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        val left = compose.onAllNodes(isFocused()).fetchSemanticsNodes().first()
+            .config.getOrNull(SemanticsProperties.TestTag)!!
+        assertTrue(left, left.startsWith("home-channel-"))
+        compose.focusRail(RailItem.MOVIES)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("screen-movies") }
+        runBlocking { graph.data.live.recordWatched("fixture-0:c2") }
+        val newest = runBlocking { graph.data.home.recentChannels(System.currentTimeMillis()).first() }
+        val newTag = "home-channel-${newest.id}"
+        assertTrue("the fixture must add another channel", newTag != left)
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("screen-home") }
+        compose.waitUntil(10_000) { exists(newTag) }
+        awaitFocus(left)
+    }
+
     private companion object {
         const val MINUTE = 60_000L
     }

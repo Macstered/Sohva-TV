@@ -905,4 +905,5 @@
     <string name="phone_list_invalid">Das ist keine trakt.tv-Listenadresse oder -nummer.</string>
     <string name="home_layout_list_smart">Intelligente Trakt-Liste</string>
     <string name="vod_subtitles_no_id">Die Untertitel-Add-ons von Discover brauchen die IMDb-ID des Titels, die er aus den TMDB- oder TVmaze-Angaben bekommt. Prüfe Falsche Angaben? auf seiner Seite.</string>
+    <string name="update_from_play">Updates kommen über Google Play.</string>
 </resources>

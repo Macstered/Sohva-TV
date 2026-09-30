@@ -26,6 +26,7 @@ object LibraryFixture {
         stream: (id: Int) -> String = { "http://192.0.2.20/movie/$it.mp4" },
         series: Int = 0,
         episodes: Int = 3,
+        seasons: Int = 1,
     ) {
         val db = graph.data.database
         val now = System.currentTimeMillis()
@@ -51,15 +52,15 @@ object LibraryFixture {
             }
             films.chunked(2_000).forEach { db.movieImport().insert(it) }
         }
-        if (series > 0) seedSeries(graph, series, episodes, stream)
+        if (series > 0) seedSeries(graph, series, episodes, seasons, stream)
         db.sourceStatus().upsert(SourceStatusEntity(SOURCE, "catalogue", "success", now, now, null, null, null, index, 0, 1, null, null))
         runBlocking { db.sources().upsert(SourceEntity(SOURCE, "Fixture VOD", "M3U", true, 0, 1, "VOD", 0, now, now)) }
         // As a catalogue import ends: the new titles into Search's index.
         SearchIndex.catchUp(db, SearchTable.MOVIE, SearchTable.SERIES, SearchTable.EPISODE)
     }
 
-    /** [count] series "Northern Line n" in the group "Crime", each with [episodes] episodes of season 1. */
-    private fun seedSeries(graph: AppGraph, count: Int, episodes: Int, stream: (id: Int) -> String) {
+    /** [count] series "Northern Line n" in "Crime", each with [episodes] episodes per season. */
+    private fun seedSeries(graph: AppGraph, count: Int, episodes: Int, seasons: Int, stream: (id: Int) -> String) {
         val db = graph.data.database
         val groupId = db.groupImport().insert(
             ContentGroupEntity(sourceId = SOURCE, room = "SERIES", groupKey = "id:s", name = "Crime", providerOrder = 0, itemCount = count, shown = true, position = 0, sortMode = null),
@@ -76,12 +77,15 @@ object LibraryFixture {
                 ),
             ).single()
             db.episodeImport().insert(
-                (1..episodes).map { n ->
-                    EpisodeEntity(
-                        key = episodeKey(s, n), seriesId = seriesId, sourceId = SOURCE, providerId = "s$s-e$n", season = 1, number = n,
-                        name = "Chapter $n", streamUrlEnc = graph.data.cipher.encrypt(stream(10_000 + s * 100 + n)), plot = null,
-                        durationSeconds = 20, thumbnailUrl = null, contentHash = 1, generation = 1,
-                    )
+                (1..seasons).flatMap { season ->
+                    (1..episodes).map { n ->
+                        val key = episodeKey(s, n, season)
+                        EpisodeEntity(
+                            key = key, seriesId = seriesId, sourceId = SOURCE, providerId = key.substringAfterLast(':'), season = season, number = n,
+                            name = "Chapter $n", streamUrlEnc = graph.data.cipher.encrypt(stream(10_000 + s * 100 + n)), plot = null,
+                            durationSeconds = 20, thumbnailUrl = null, contentHash = 1, generation = 1,
+                        )
+                    }
                 },
             )
         }
@@ -93,5 +97,6 @@ object LibraryFixture {
 
     fun seriesKey(s: Int): String = "series:$SOURCE:s$s"
 
-    fun episodeKey(s: Int, n: Int): String = "vod:episode:$SOURCE:s$s-e$n"
+    fun episodeKey(s: Int, n: Int, season: Int = 1): String =
+        "vod:episode:$SOURCE:s$s${if (season == 1) "" else "-s$season"}-e$n"
 }

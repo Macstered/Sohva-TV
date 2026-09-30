@@ -9,7 +9,9 @@ import com.sohva.tv.core.data.vod.ContinueItem
 import com.sohva.tv.core.model.home.HomeLayout
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.vod.VodText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,11 +25,12 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 /**
- * Home for the life of one entry (spec 02 §3.4: every arrival is fresh). Rows are built off the
- * main thread from the Continue watching projection and the recent channels read at entry; while
+ * Home is retained across navigation so focus can return to its card (HOME-FR-97). Rows are built
+ * from the Continue watching projection and one recent-channel snapshot per Home entry; while
  * the structure is locked (the viewer below the first row) cards keep their places and only their
  * values follow the data (HOME-FR-50…52). The hero follows focus after it has rested 180 ms; focus
  * changes reach the model through callbacks, so Home recomposes only when the hero changes (§9.6).
@@ -60,7 +63,12 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
     /** The chosen time zone (HOME-FR-56); only it and the recent channels are read from the settings (§9.6). */
     val timeZone: StateFlow<String?> = env.timeZone.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    private val channels = MutableStateFlow<List<RecentChannel>?>(null)
+    private data class RecentSnapshot(val entry: Int, val cards: List<RecentChannel>)
+    private val channels = MutableStateFlow<RecentSnapshot?>(null)
+    private var recentJob: Job? = null
+    private var recentEntry = 0
+    private var appliedRecentEntry = 0
+    private var firstEntryReported = false
 
     /** Settings › Home's layout; a change (after coming back from Settings) rebuilds the rows. */
     private val layout = env.layout.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -104,22 +112,46 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
     private var detailsJob: Job? = null
 
     init {
-        viewModelScope.launch {
-            // A hidden row reads nothing (HOME-FR-87): the channels are read only when their row is shown.
-            val shown = layout.first { it != null }!!.isShown(HomeRow.RECENT)
-            channels.value = if (shown) runCatching { env.recentChannels(env.now()) }.getOrDefault(emptyList()) else emptyList()
-        }
+        readRecent()
         viewModelScope.launch {
             // Never the default order first: the rows wait for the profile's layout (already in memory).
             combine(env.resume, channels, games, trakt, layout.filterNotNull()) { resume, recent, games, lists, layout ->
                 _firstSync.value = lists.firstSync && resume.settled
-                Triple(build(resume, recent.orEmpty(), games, lists, layout), resume, recent)
+                Triple(build(resume, recent?.cards.orEmpty(), games, lists, layout), resume, recent)
             }.collect { (rows, resume, recent) ->
                 latest = rows
-                publish()
+                // A new Home entry starts a new snapshot even when focus returns below the first
+                // row. The structure lock applies to changes *during* that entry, not the old visit.
+                val newEntry = recent != null && recent.entry != appliedRecentEntry
+                if (newEntry) appliedRecentEntry = recent.entry
+                publish(force = newEntry)
                 _empty.value = rows.isEmpty() && resume.settled && recent != null
                 if (focused == null) apply(idle())
             }
+        }
+    }
+
+    /** Called by the visible screen once per composition lifetime; the initial read began in init. */
+    fun enter() {
+        if (firstEntryReported) readRecent() else firstEntryReported = true
+    }
+
+    private fun readRecent() {
+        recentJob?.cancel()
+        val entry = ++recentEntry
+        recentJob = viewModelScope.launch {
+            // HOME-FR-87: a hidden row does no channel read. HOME-FR-35: only one bounded read
+            // per entry, never a clock or database subscription competing with playback.
+            val shown = layout.first { it != null }!!.isShown(HomeRow.RECENT)
+            val cards = if (shown) try {
+                env.recentChannels(env.now())
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                emptyList()
+            } else emptyList()
+            currentCoroutineContext().ensureActive()
+            channels.value = RecentSnapshot(entry, cards)
         }
     }
 
@@ -130,9 +162,9 @@ class HomeModel(private val env: HomeEnvironment) : ViewModel() {
         publish()
     }
 
-    private fun publish() {
+    private fun publish(force: Boolean = false) {
         val shown = _rows.value
-        _rows.value = if (locked && shown.isNotEmpty()) StructureLock.merge(shown, latest) else latest
+        _rows.value = if (!force && locked && shown.isNotEmpty()) StructureLock.merge(shown, latest) else latest
     }
 
     /** A card took focus (its subject), or focus left the rows (null): the hero follows (HOME-FR-62). */

@@ -398,8 +398,9 @@ player-side facts:
   "Automatic"; subtitles = the selected track's label or "Off". Updated on every track change.
 - PLAY-FR-75 VOD language preferences (Settings, "VOD audio and subtitles": primary and
   secondary audio, primary and secondary subtitles, each "Automatic" or a language). Applied only
-  to VOD, once per item, only after audio tracks are known, never after the viewer chose a track
-  of that type:
+  to VOD, after audio tracks are known; a later track-list update is checked again so audio and
+  text tracks that arrive in stages can still match. Already selected tracks are left alone,
+  and a viewer's manual choice of that type is never replaced:
   1. Audio: the first track matching the primary, else the secondary language; if neither
      exists the stream default stays. Both "Automatic" → nothing is changed.
   2. Subtitles: if the **primary audio language exists among the audio tracks** (and audio was
@@ -409,6 +410,12 @@ player-side facts:
 - PLAY-FR-76 Language matching normalises to the lower-case base code before `-`/`_` and maps
   three-letter codes: `fin`→fi, `eng`→en, `swe`→sv, `dan`→da, `nor`/`nob`/`nno`→no, `est`→et,
   `deu`/`ger`→de, `fra`/`fre`→fr, `spa`→es, `ita`→it, `nld`/`dut`→nl; others keep their base.
+  **Rebuild (owner's report, 29 September 2026):** providers may supply the English or native
+  language name instead of a code: `Finnish` and `Suomi` both match `fi`. Accept exact names for
+  the languages offered in Settings. For audio with no language tag (blank, `und` or `unknown`),
+  use an exact known track label as a fallback; a supplied language tag takes precedence over
+  a conflicting label. The same match suppresses unneeded automatic addon subtitles. Matching
+  uses a fixed small table, not a locale scan or fuzzy search.
 - PLAY-FR-77 Live and catch-up get no language preference: the stream's own default tracks and
   Media3's defaults apply.
 

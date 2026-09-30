@@ -9,9 +9,9 @@ Sohva TV supplies no channels, subscriptions, playlists, provider credentials,
 addons or developer API keys. Use only media sources and services you are
 allowed to use.
 
-## This release: 0.2.0-beta.4
+## This release: 0.2.0-beta.9
 
-This tester build is version `0.2.0-beta.4`, Android build 114. It is a beta,
+This tester build is version `0.2.0-beta.9`, Android build 119. It is a beta,
 not a stable release.
 
 It is the rebuilt Sohva TV. The app was written again from the start. It has
@@ -24,8 +24,9 @@ the signing key have not changed. It installs over beta 23 as an ordinary
 update and keeps your data. On the first start it moves beta 23's data into
 its new storage. See [Installation and update](INSTALL.md).
 
-Download it only from the numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.4),
+This candidate is a local test pack. If the owner publishes it later, download
+it only from the numbered
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.9)
 or through **Settings > About > Check for updates** in beta 23, and check the
 SHA-256 value.
 
@@ -33,9 +34,9 @@ SHA-256 value.
 
 | File | What it is |
 | --- | --- |
-| `sohva-tv-0.2.0-beta.4.apk` | The signed app |
-| `sohva-tv-0.2.0-beta.4.api31.dm` | Install profile for Android 12 and newer (optional) |
-| `sohva-tv-0.2.0-beta.4.api28.dm` | Install profile for Android 9 to 11 (optional) |
+| `sohva-tv-0.2.0-beta.9.apk` | The signed app |
+| `sohva-tv-0.2.0-beta.9.api31.dm` | Install profile for Android 12 and newer (optional) |
+| `sohva-tv-0.2.0-beta.9.api28.dm` | Install profile for Android 9 to 11 (optional) |
 | `SHA256SUMS.txt` | SHA-256 checksums of the files above and of the documents |
 | The nine documents below | Instructions, notes, policy and licences |
 
@@ -58,7 +59,7 @@ the APK by hand.
 
 The source is in the public repository
 [Macstered/Sohva-TV](https://github.com/Macstered/Sohva-TV). The release tag
-`v0.2.0-beta.4` points to the source of this build. A public copy of the source
+If published, `v0.2.0-beta.9` will point to the source of this build. A public copy of the source
 contains no signing key and no service credentials.
 
 The application ID `com.streammate.tv` and a few internal names from the

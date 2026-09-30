@@ -1,7 +1,6 @@
 package com.sohva.tv.ui.design.motion
 
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -12,10 +11,14 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import com.sohva.tv.ui.design.theme.Sohva
-import kotlin.math.floor
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 /**
  * The closed list of motion in design/01 §15. Nothing outside this file may start an infinite
@@ -38,12 +41,23 @@ object Motion {
      */
     @Composable
     fun bufferingAngle(): State<Float> {
-        val steps = BUFFERING_PERIOD_MS / REDUCED_STEP_MS
-        val easing = if (Sohva.reducedMotion) Easing { floor(it * steps) / steps } else LinearEasing
+        if (Sohva.reducedMotion) {
+            val angle = remember { mutableFloatStateOf(0f) }
+            // Animation duration is zero in this mode. The indicator still advances six times
+            // a turn, without an infinite transition waking the renderer on every frame.
+            LaunchedEffect(Unit) {
+                val step = 360f * REDUCED_STEP_MS / BUFFERING_PERIOD_MS
+                while (isActive) {
+                    delay(REDUCED_STEP_MS.toLong())
+                    angle.floatValue = (angle.floatValue + step) % 360f
+                }
+            }
+            return angle
+        }
         return rememberInfiniteTransition(label = "buffering").animateFloat(
             initialValue = 0f,
             targetValue = 360f,
-            animationSpec = infiniteRepeatable(tween(BUFFERING_PERIOD_MS, easing = easing), RepeatMode.Restart),
+            animationSpec = infiniteRepeatable(tween(BUFFERING_PERIOD_MS, easing = LinearEasing), RepeatMode.Restart),
             label = "buffering-angle",
         )
     }

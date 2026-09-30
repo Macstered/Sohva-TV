@@ -54,7 +54,8 @@ class HomeLayoutTest {
             graph.continueFeed.retry()
         }
     }
-    private val compose = createAndroidComposeRule<MainActivity>()
+    // Compose tests replace the window factory; use the app's policy on their controllable clock.
+    private val compose = createAndroidComposeRule<MainActivity>(effectContext = graph.motionScale)
 
     @get:Rule
     val rules: RuleChain = RuleChain.outerRule(ClearStateRule()).around(name).around(seed).around(compose)
@@ -145,6 +146,30 @@ class HomeLayoutTest {
     }
 
     private fun focusedCard(): String? = focusedTags().firstOrNull { it?.startsWith("home-") == true }
+
+    /** The real lazy list must honor reduced motion, including Foundation's internal wrappers. */
+    @Test
+    fun reducedMotionScrollsToTheNextRowWithoutSpringFrames() {
+        awaitHome("films first") { focusedCard()?.startsWith("home-resume-") == true && rowHolds(1, "home-channel-") }
+        org.junit.Assume.assumeTrue(graph.deviceTier.current.reducedMotion)
+        val range = compose.onNodeWithTag("home-rows").fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+        val initialPosition = range.value()
+        val positions = mutableListOf<Float>()
+        compose.mainClock.autoAdvance = false
+        try {
+            instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN)
+            repeat(24) {
+                compose.mainClock.advanceTimeByFrame()
+                compose.waitForIdle()
+                positions.add(range.value())
+            }
+            assertTrue("Home must scroll to the next row", range.value() > initialPosition)
+            assertTrue("A reduced-motion row still animated through ${positions.toSet().size} positions: $positions", positions.toSet().size <= 3)
+        } finally {
+            compose.mainClock.autoAdvance = true
+        }
+        awaitHome("a channel card") { focusedCard()?.startsWith("home-channel-") == true }
+    }
 
     /** HOME-FR-93, with slow recent channels ordered first: before any key press they take the first focus when they arrive. */
     @Test

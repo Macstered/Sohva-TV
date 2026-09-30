@@ -228,6 +228,9 @@ class TraktRowsDeviceTest {
         compose.onNode(hasSetTextAction()).performTextReplacement(value)
         compose.onNode(hasSetTextAction()).performImeAction()
         compose.waitForIdle()
+        // Compose becomes idle before the native keyboard/dialog transition stops consuming keys.
+        // Wait for Android UI events to settle too, then assert the actual focus after each key.
+        instrumentation.uiAutomation.waitForIdle(500, 5_000)
     }
 
     /** HOME-FR-99: a list's address in Settings › Home, Search, OK on the result; Home shows it under its own name. */

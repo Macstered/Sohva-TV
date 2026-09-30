@@ -905,4 +905,5 @@
     <string name="phone_list_invalid">Det är inte en trakt.tv-listas adress eller nummer.</string>
     <string name="home_layout_list_smart">Smart lista på Trakt</string>
     <string name="vod_subtitles_no_id">Discovers undertextningstillägg behöver titelns IMDb-id, som den får från TMDB- eller TVmaze-uppgifter. Kontrollera Fel uppgifter? på dess sida.</string>
+    <string name="update_from_play">Uppdateringar kommer från Google Play.</string>
 </resources>

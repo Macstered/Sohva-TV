@@ -82,8 +82,8 @@ fun AppDestination(route: AppRoute, stack: BackStack<AppRoute>, graph: AppGraph)
             // Discover leaves the rail for a restricted profile (spec 04 PROF-FR-23); one small read per switch.
             val restricted by produceState(false, household) { value = active in graph.data.profiles.restrictedIds() }
             val items = remember(flags, household.several, restricted) { railItems(flags, household.several, restricted) }
-            // Scoped to this stack entry and the profile: every arrival on Home is fresh (spec 02 §3.4),
-            // and a switch gives the new profile its own rows, focus and hero (HOME-FR-27).
+            // Scoped to this stack entry and the profile: focus survives navigation (HOME-FR-97),
+            // while the visible Home screen asks for a fresh recent-channel snapshot each entry.
             val model = viewModel(key = "home:$active") { HomeModel(AppHomeEnvironment(graph, stack)) }
             HomeScreen(model, items, onOpen = { item ->
                 if (item == RailItem.SETTINGS) graph.openManaged(AppRoute.Settings, stack) else stack.push(item.route())

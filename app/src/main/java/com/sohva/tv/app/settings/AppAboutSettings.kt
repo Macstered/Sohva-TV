@@ -37,6 +37,8 @@ class AppAboutSettings(private val graph: AppGraph, activity: Context?, private 
 
     override val labNotice: Boolean = BuildInfo.KIND == BuildKind.LAB
 
+    override val updatesFromStore: Boolean = BuildInfo.KIND == BuildKind.PLAY
+
     override val updates: StateFlow<UpdateState> get() = graph.updater.state
 
     override fun check() = graph.updater.check()

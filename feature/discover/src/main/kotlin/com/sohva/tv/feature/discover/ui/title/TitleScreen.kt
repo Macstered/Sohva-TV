@@ -254,7 +254,7 @@ private fun SeriesPage(model: TitleModel, s: TitleState) {
 /** §5.3 episode card: 230 dp, a 130 dp image (the thumbnail, else the series background) under a scrim, "S1 · E2 · title". */
 @Composable
 private fun EpisodeCard(video: AddonVideo, fallback: String?, mark: TitleMark?, open: () -> Unit) {
-    val style = SurfaceStyle(corner = Sohva.shapes.medium, resting = Sohva.palette.surface, focusScale = 1f, padding = PaddingValues(0.dp))
+    val style = SurfaceStyle(corner = Sohva.shapes.medium, resting = Sohva.palette.surface, focusRing = true, focusScale = 1f, padding = PaddingValues(0.dp))
     val label = listOfNotNull(video.season?.let { "S$it" }, video.episode?.let { "E$it" }, video.title).joinToString(" · ")
     TvSurface(open, Modifier.width(230.dp).height(130.dp).testTag("discover-episode-${video.id}"), style = style) {
         Box(Modifier.fillMaxSize()) {

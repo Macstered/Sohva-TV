@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Only the benchmark APK contains this fixture writer. -->
+        <activity
+            android:name="com.sohva.tv.app.measure.PopulatedHomeFixtureActivity"
+            android:exported="true" />
+    </application>
+</manifest>

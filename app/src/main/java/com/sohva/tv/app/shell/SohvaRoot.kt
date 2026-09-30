@@ -25,7 +25,6 @@ import com.sohva.tv.app.navigation.AppRouteCodec
 import com.sohva.tv.app.navigation.startRoutes
 import com.sohva.tv.app.profile.StartQuestion
 import com.sohva.tv.app.reminder.ReminderLayer
-import com.sohva.tv.core.data.device.DeviceTierReader
 import com.sohva.tv.core.model.device.DeviceTier
 import com.sohva.tv.core.model.settings.StartSnapshot
 import com.sohva.tv.ui.design.components.LocalArtwork
@@ -83,7 +82,7 @@ fun SohvaRoot(graph: AppGraph, host: RootHost, screenSize: IntSize) {
             // Every per-profile read that follows uses the active profile (spec 04 PROF-FR-07).
             graph.data.profiles.seed(snapshot.household)
             val t1 = graph.clock.monotonicNanos()
-            val tier = trace("Startup:Tier") { DeviceTier.decide(DeviceTierReader(graph.app).read()) }
+            val tier = trace("Startup:Tier") { graph.deviceTier.load() }
             val t2 = graph.clock.monotonicNanos()
             // The saved theme's ground is ready before its first frame.
             GroundCache.prepare(Palettes.of(snapshot.theme), screenSize, graph.dispatchers.ui)

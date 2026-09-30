@@ -62,6 +62,18 @@ class VodSubtitleAutoTest {
     }
 
     @Test
+    fun finnishAudioNamesAlsoAvoidUnneededAddonSubtitleRequests() = runTest(UnconfinedTestDispatcher()) {
+        for ((language, label) in listOf("Finnish" to "Finnish", null to "Finnish", "und" to "Suomi")) {
+            val source = Source()
+            val tracks = Tracks(audio = listOf(TrackItem(0, 0, label, language, 2, false)))
+            val subs = subtitles(source, tracks, VodLanguages(audio = "fi", subtitles = "fi"))
+            assertFalse(subs.autoAddonOnly())
+            assertEquals(0, source.asked)
+            assertEquals(null, subs.pick.value)
+        }
+    }
+
+    @Test
     fun aFileWithoutOneGetsTheAddonsInThePreferredLanguage() = runTest(UnconfinedTestDispatcher()) {
         val source = Source()
         val subs = subtitles(source, Tracks(text = listOf(track("en"))), VodLanguages(subtitles = "fi"))

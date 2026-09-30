@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="open.bbb" group-title="Open films",Big Buck Bunny (Blender Foundation, CC BY 3.0)
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-id="open.tos" group-title="Open films",Tears of Steel (Blender Foundation, CC BY 3.0)
+https://test-streams.mux.dev/tos_ismc/main.m3u8
+#EXTINF:-1 tvg-id="test.bipbop" group-title="Test signals",Apple HLS test stream
+https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8

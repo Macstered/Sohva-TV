@@ -32,8 +32,8 @@
     <string name="about_contact_body">Preguntas, solicitudes de privacidad e informes de problemas: hello@luontra.fi</string>
     <string name="about_contact_email">Enviar correo</string>
     <string name="about_providers_title">Fuentes de datos y derechos</string>
-    <string name="about_tmdb_notice">Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB. TMDB es opcional y requiere la credencial propia del usuario.</string>
-    <string name="about_tvmaze_notice">Los datos de TVmaze se usan bajo CC BY-SA. Las fichas enriquecidas identifican TVmaze como fuente y enlazan al registro original.</string>
+    <string name="about_tmdb_notice">Esta aplicación usa TMDB y las API de TMDB, pero TMDB no la avala, certifica ni aprueba de ningún otro modo. (This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.) TMDB es opcional y requiere la credencial propia del usuario.</string>
+    <string name="about_tvmaze_notice">Los datos de TVmaze (tvmaze.com) se usan bajo CC BY-SA. Las fichas enriquecidas identifican TVmaze como fuente y enlazan al registro original.</string>
     <string name="about_api_sports_notice">Sohva Sport usa la clave API-Sports propia del usuario. Los datos deportivos, logotipos y marcas pueden pertenecer a ligas, clubes u otros titulares de derechos.</string>
     <string name="about_provider_rights">Sohva TV no reclama la propiedad de los datos ni de las imágenes de los proveedores y no está avalado por sus propietarios. El uso público o comercial puede requerir un permiso aparte; la publicación comercial queda bloqueada hasta resolver las licencias.</string>
     <string name="about_open_source_title">Software de código abierto</string>
@@ -246,4 +246,5 @@
     <string name="home_layout_list_added">Añadida a Inicio: %1$s</string>
     <string name="home_layout_list_smart">Lista inteligente de Trakt</string>
     <string name="vod_subtitles_no_id">Los complementos de subtítulos de Discover necesitan el ID de IMDb del título, que obtiene de los datos de TMDB o TVmaze. Revisa ¿Datos incorrectos? en su página.</string>
+    <string name="update_from_play">Las actualizaciones llegan desde Google Play.</string>
 </resources>

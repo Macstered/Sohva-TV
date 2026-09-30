@@ -116,6 +116,33 @@ class SettingsPlaylistsTest {
         awaitFocus("source-add-m3u")
     }
 
+    /**
+     * Seen while preparing the Play review: after the address editor closed, focus was nowhere and the
+     * next Down went to the section menu. Focus is back on the address field, and Down stays in the form.
+     */
+    @Test
+    fun afterTypingTheAddressFocusIsBackOnTheField() {
+        openSettings()
+        click("source-add-m3u")
+        await("settings-m3u")
+        compose.onNodeWithTag("settings-m3u").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("settings-m3u")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNode(hasSetTextAction()).performTextReplacement("http://192.0.2.10/list.m3u")
+        compose.onNode(hasSetTextAction()).performImeAction()
+        compose.waitForIdle()
+        try {
+            awaitFocus("settings-m3u")
+        } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+            val focused = compose.onAllNodes(isFocused(), useUnmergedTree = true).fetchSemanticsNodes().map { it.config.getOrNull(SemanticsProperties.TestTag) }
+            throw AssertionError("focus after the editor closed: $focused", e)
+        }
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        val focused = compose.onAllNodes(isFocused(), useUnmergedTree = true).fetchSemanticsNodes().mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
+        assertTrue("Down left the form: $focused", focused.none { it.startsWith("settings-section-") })
+    }
+
     @Test
     fun epgCorrectionStepsByThirtyMinutes() {
         openSettings()

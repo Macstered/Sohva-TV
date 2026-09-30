@@ -31,8 +31,10 @@ STEPS: list[tuple[str, list[str]]] = [
     ("gitleaks history", [gitleaks(), "git", ".", "--config", ".gitleaks.toml", "--no-banner", "--redact"]),
     ("gradle", [
         GRADLE, "checkModuleDependencies", "testDebugUnitTest", ":core:model:test", ":lint-checks:test",
-        "verifyRoborazziDebug", "lintDebug", ":app:lintRelease", ":app:lintLab", "assembleDebugAndroidTest",
-        ":app:assembleRelease", ":app:assembleLab", ":benchmark:assemble", ":app:checkReleaseGates",
+        "verifyRoborazziDebug", "lintDebug", ":app:lintRelease", ":app:lintLab", ":app:lintPlay", "assembleDebugAndroidTest",
+        ":app:assembleRelease", ":app:assembleLab", ":app:assemblePlay", ":app:bundlePlay",
+        ":app:assembleBenchmarkRelease", ":benchmark:assemble",
+        ":app:checkReleaseGates", ":app:checkPlayGates",
     ]),
     # The APK safety and release-document audits on the release just built (plan/06 §6 gates 2 and 7).
     ("release audits", [sys.executable, "tools/package_release.py", "--audit-only"]),

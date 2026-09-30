@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The player's state holder (spec 30 §9 "a plain state holder class plus small composables"):
@@ -67,8 +68,8 @@ class PlayerModel(
     /** The end of a film or an episode is handled once per item (PLAY-FR-132). */
     private var finished = false
 
-    /** VOD language preferences are applied once per item (PLAY-FR-75), never over the viewer's own choice. */
-    private var languagesApplied = false
+    /** Each new track snapshot can reveal a preferred language; stale calculations are cancelled. */
+    private var languageJob: Job? = null
     private var audioByHand = false
     private var textByHand = false
 
@@ -476,14 +477,27 @@ class PlayerModel(
         c.trackSelectionParameters = builder.build()
     }
 
-    /** Once the audio tracks of a film or episode are known (PLAY-FR-75); live and catch-up keep the stream's own. */
+    /** Audio can arrive before text, so check each new VOD track snapshot (PLAY-FR-75). */
     private fun applyLanguages(tracks: Tracks) {
-        if (vod == null || languagesApplied || tracks.audio.isEmpty()) return
-        languagesApplied = true
-        viewModelScope.launch {
-            val prefs = env.settings().vodLanguages
-            val choice = TrackLanguages.choose(prefs, tracks.audio.map { it.language }, tracks.text.map { it.language }, audioByHand, textByHand)
-            choice.audio?.let { select(tracks.audio[it], C.TRACK_TYPE_AUDIO) }
+        if (vod == null || tracks.audio.isEmpty()) return
+        languageJob?.cancel()
+        languageJob = viewModelScope.launch {
+            val prefs = settings.vodLanguages
+            val manualAudio = audioByHand
+            val manualText = textByHand
+            val addonChoice = vodSubtitles?.subtitles?.pick?.value != null
+            val choice = withContext(env.format) {
+                TrackLanguages.changes(
+                    prefs,
+                    tracks.audio.map { TrackLanguages.ofTrack(it.language, it.label) }, tracks.text.map { it.language },
+                    tracks.audio.indexOfFirst { it.selected }.takeIf { it >= 0 },
+                    tracks.text.indexOfFirst { it.selected }.takeIf { it >= 0 },
+                    manualAudio, manualText, addonChoice,
+                )
+            }
+            if (tracks != _tracks.value) return@launch
+            if (!audioByHand) choice.audio?.let { select(tracks.audio[it], C.TRACK_TYPE_AUDIO) }
+            if (textByHand || vodSubtitles?.subtitles?.pick?.value != null) return@launch
             when (val subtitles = choice.subtitles) {
                 SubtitleChoice.Keep -> Unit
                 SubtitleChoice.Off -> select(null, C.TRACK_TYPE_TEXT)

@@ -22,11 +22,14 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=5570)
     parser.add_argument("--window", action="store_true", help="show the emulator window")
     parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument("--memory-mb", type=int, choices=(1024, 1536, 2048), help="temporary RAM limit for low-end measurements; leaves the AVD unchanged")
     args = parser.parse_args()
     if not args.avd.startswith(REBUILD_AVD_PREFIX):
         sys.exit(f"Only {REBUILD_AVD_PREFIX}* AVDs are started by this tool.")
 
     serial = f"emulator-{args.port}"
+    if adb(serial, "get-state", check=False).strip() == "device":
+        sys.exit(f"{serial} is already running; stop it before cold-booting with this tool. No RAM change was applied.")
     command = [
         tool("emulator/emulator"), "-avd", args.avd, "-port", str(args.port),
         "-no-snapshot-load", "-no-snapshot-save", "-no-boot-anim", "-gpu", "swiftshader_indirect",
@@ -34,6 +37,8 @@ def main() -> None:
     ]
     if not args.window:
         command.append("-no-window")
+    if args.memory_mb is not None:
+        command += ["-memory", str(args.memory_mb)]
     subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
     deadline = time.monotonic() + args.timeout

@@ -10,12 +10,18 @@ import androidx.media3.session.MediaController
 import com.sohva.tv.core.model.player.AddonLanguages
 import com.sohva.tv.core.model.player.SubtitleFormat
 import com.sohva.tv.core.model.player.SubtitleText
+import com.sohva.tv.core.model.player.TrackLanguages
 import com.sohva.tv.core.model.player.VodLanguages
 import com.sohva.tv.core.player.PlaybackService
 import com.sohva.tv.core.player.SideSubtitles
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -75,6 +81,11 @@ class AddonSubtitles internal constructor(
 
     private var requestJob: Job? = null
     private var manual = false
+    private var automaticJob: Job? = null
+    private var selectionJob: Job? = null
+    // Selection state stays on the player's main scope. A late download or text conversion may
+    // publish only for the choice that started it, even if its source ignored cancellation.
+    private var choice = 0L
 
     /** The downloaded text before timing, its format and language; the side key once stored. */
     private var text: String? = null
@@ -99,24 +110,24 @@ class AddonSubtitles internal constructor(
      * One bounded attempt per playback (the caller times it out at 5 s). True when an addon
      * subtitle was loaded, so the stream must be prepared again with it.
      */
-    suspend fun auto(): Boolean {
+    suspend fun auto(): Boolean = automatically {
         val prefs = languages()
         val wanted = listOfNotNull(prefs.subtitles, prefs.subtitlesSecond).mapNotNull(AddonLanguages::normalise).distinct()
         if (wanted.isEmpty() || audioSuppresses(prefs)) {
             if (!manual) _pick.value = SubtitlePick.Off
-            return false
+            return@automatically false
         }
         request()
         for (lang in wanted) {
-            if (manual) return false
+            if (manual) return@automatically false
             if (embedded(lang)) {
                 _pick.value = SubtitlePick.Embedded(lang, null, null)
-                return false
+                return@automatically false
             }
-            if (tryAddon(lang)) return true
+            if (tryAddon(lang)) return@automatically true
         }
         if (!manual) _pick.value = SubtitlePick.Off
-        return false
+        false
     }
 
     /**
@@ -125,16 +136,32 @@ class AddonSubtitles internal constructor(
      * plays; nothing is chosen otherwise, the player's own language choice stands. True when an
      * addon subtitle was loaded, so the item must be prepared again with it.
      */
-    suspend fun autoAddonOnly(): Boolean {
+    suspend fun autoAddonOnly(): Boolean = automatically {
         val prefs = languages()
         val wanted = listOfNotNull(prefs.subtitles, prefs.subtitlesSecond).mapNotNull(AddonLanguages::normalise).distinct()
-        if (manual || wanted.isEmpty() || audioSuppresses(prefs) || wanted.any(::embedded)) return false
+        if (wanted.isEmpty() || audioSuppresses(prefs) || wanted.any(::embedded)) return@automatically false
         request()
         for (lang in wanted) {
-            if (manual) return false
-            if (tryAddon(lang)) return true
+            if (manual) return@automatically false
+            if (tryAddon(lang)) return@automatically true
         }
-        return false
+        false
+    }
+
+    /** Cancel just the automatic work; Discover's caller must still finish starting playback. */
+    private suspend fun automatically(select: suspend () -> Boolean): Boolean = coroutineScope {
+        if (manual) return@coroutineScope false
+        val attempt = async { select() }
+        automaticJob = attempt
+        try {
+            attempt.await()
+        } catch (cancelled: CancellationException) {
+            // A manual choice cancels this child. Cancellation of playback itself still propagates.
+            currentCoroutineContext().ensureActive()
+            false
+        } finally {
+            if (automaticJob === attempt) automaticJob = null
+        }
     }
 
     /** FR-99, after the 5 s budget or an error: an embedded preferred language, unless a choice already stands. */
@@ -148,7 +175,7 @@ class AddonSubtitles internal constructor(
 
     private fun audioSuppresses(prefs: VodLanguages): Boolean {
         val primary = AddonLanguages.normalise(prefs.audio) ?: return false
-        return tracks().audio.any { AddonLanguages.normalise(it.language) == primary }
+        return tracks().audio.any { AddonLanguages.normalise(TrackLanguages.ofTrack(it.language, it.label)) == primary }
     }
 
     private fun embedded(lang: String): Boolean = tracks().text.any { !it.sideLoaded && AddonLanguages.normalise(it.language) == lang }
@@ -159,8 +186,10 @@ class AddonSubtitles internal constructor(
         var attempts = 0
         while (!manual) {
             val now = _results.value
-            val next = now.candidates.sortedBy { if (it.provider == null) 0 else 1 }
-                .firstOrNull { it.key !in tried && AddonLanguages.normalise(it.language) == lang }
+            // Provider order is already stable. Two short scans avoid sorting on the player thread.
+            val eligible: (SubtitleCandidate) -> Boolean = { it.key !in tried && AddonLanguages.normalise(it.language) == lang }
+            val next = now.candidates.firstOrNull { it.provider == null && eligible(it) }
+                ?: now.candidates.firstOrNull(eligible)
             if (next == null) {
                 if (now.done) return false
                 _results.first { it !== now }
@@ -168,7 +197,7 @@ class AddonSubtitles internal constructor(
             }
             tried += next.key
             attempts++
-            if (load(next)) return true
+            if (load(next, choice)) return true
             if (attempts >= MAX_ATTEMPTS) return false
         }
         return false
@@ -178,31 +207,42 @@ class AddonSubtitles internal constructor(
 
     /** A subtitle chosen in the picker: downloaded, side-loaded at the current position, timing back at 0. */
     fun choose(candidate: SubtitleCandidate, done: () -> Unit) {
-        manual = true
-        scope.launch {
+        val revision = manualChoice()
+        selectionJob = scope.launch {
             _loading.value = true
             _message.value = null
-            val ok = load(candidate)
-            _loading.value = false
-            if (ok) {
-                reload()
-                done()
+            try {
+                if (load(candidate, revision)) {
+                    reload()
+                    done()
+                }
+            } finally {
+                if (choice == revision) _loading.value = false
             }
         }
     }
 
     fun chooseEmbedded(track: TrackItem) {
-        manual = true
+        manualChoice()
         forgetText()
         _pick.value = SubtitlePick.Embedded(AddonLanguages.normalise(track.language), track.group, track.index)
         select()
     }
 
     fun off() {
-        manual = true
+        manualChoice()
         forgetText()
         _pick.value = SubtitlePick.Off
         select()
+    }
+
+    private fun manualChoice(): Long {
+        manual = true
+        choice++
+        automaticJob?.cancel()
+        selectionJob?.cancel()
+        _loading.value = false
+        return choice
     }
 
     private fun forgetText() {
@@ -213,18 +253,22 @@ class AddonSubtitles internal constructor(
         SideSubtitles.clear()
     }
 
-    private suspend fun load(candidate: SubtitleCandidate): Boolean {
-        return when (val result = source.download(candidate.key)) {
+    private suspend fun load(candidate: SubtitleCandidate, revision: Long): Boolean {
+        val result = source.download(candidate.key)
+        if (choice != revision) return false
+        return when (result) {
             is SubtitleDownload.Failed -> {
                 _message.value = result.message
                 false
             }
             is SubtitleDownload.Ready -> {
+                val bytes = encode(result.text, result.format, 0)
+                if (choice != revision) return false
                 text = result.text
                 format = result.format
                 language = AddonLanguages.normalise(candidate.language)
                 _sync.value = SyncState()
-                store(0)
+                sideKey = SideSubtitles.put(bytes)
                 _pick.value = SubtitlePick.Addon(candidate, language)
                 true
             }
@@ -232,12 +276,18 @@ class AddonSubtitles internal constructor(
     }
 
     /** The text shifted by [offsetMs] (off the main thread: regex work), kept as the one side subtitle. */
-    private suspend fun store(offsetMs: Long) {
-        val source = text ?: return
-        val fmt = format ?: return
-        val bytes = withContext(work) { SubtitleText.shift(source, fmt, offsetMs).toByteArray(Charsets.UTF_8) }
+    private suspend fun store(offsetMs: Long): Boolean {
+        val revision = choice
+        val source = text ?: return false
+        val fmt = format ?: return false
+        val bytes = encode(source, fmt, offsetMs)
+        if (choice != revision) return false
         sideKey = SideSubtitles.put(bytes)
+        return true
     }
+
+    private suspend fun encode(source: String, fmt: SubtitleFormat, offsetMs: Long): ByteArray =
+        withContext(work) { SubtitleText.shift(source, fmt, offsetMs).toByteArray(Charsets.UTF_8) }
 
     /** The request extras that side-load the current subtitle, or none. */
     fun extras(into: Bundle) {
@@ -299,18 +349,21 @@ class AddonSubtitles internal constructor(
     fun applyDraft() {
         val s = _sync.value
         if (s.applying || !timingAvailable) return
+        val revision = choice
         _sync.value = s.copy(applying = true, failed = false)
         scope.launch {
-            store(s.draftMs)
+            if (!store(s.draftMs)) return@launch
             reload()
             val back = readyAgain(APPLY_TIMEOUT_MS)
+            if (choice != revision) return@launch
             _sync.value = _sync.value.copy(appliedMs = if (back) s.draftMs else _sync.value.appliedMs, applying = false, failed = !back)
         }
     }
 
     fun release() {
+        manualChoice()
         requestJob?.cancel()
-        SideSubtitles.clear()
+        forgetText()
     }
 
     private companion object {

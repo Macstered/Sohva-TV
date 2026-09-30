@@ -36,7 +36,7 @@ class HomeModelTest {
     private fun item(key: String, position: Long = 10, updated: Long = 1) =
         ContinueItem(key, key, key, 2001, null, null, false, null, null, null, null, position * 60_000, 100 * 60_000, updated)
 
-    private class Env(val resumeState: MutableStateFlow<ResumeState>, val recent: List<RecentChannel>) : HomeEnvironment {
+    private class Env(val resumeState: MutableStateFlow<ResumeState>, var recent: List<RecentChannel>) : HomeEnvironment {
         val looked = mutableListOf<HeroSubject>()
         val layoutState = MutableStateFlow(com.sohva.tv.core.model.home.HomeLayout.DEFAULT)
         var recentReads = 0
@@ -67,6 +67,25 @@ class HomeModelTest {
     private val live = RecentChannel(7, "s:c7", "Pulse", null, 7, NowProgramme(1, "News", null, NOW - 60_000, NOW + 60_000))
 
     private fun TestScope.model(env: Env): HomeModel = HomeModel(env).also { runCurrent() }
+
+    /** A retained model reads once per visible Home entry, including a return with the row locked. */
+    @Test
+    fun returningHomeReplacesTheRecentSnapshotEvenWhileTheRowIsLocked() = runTest(main) {
+        val env = Env(MutableStateFlow(ResumeState.Empty), listOf(live))
+        val model = model(env)
+        assertEquals(1, env.recentReads)
+        model.enter()
+        runCurrent()
+        assertEquals(1, env.recentReads)
+        model.setLocked(true)
+        val newer = live.copy(id = 8, key = "s:c8", name = "Next")
+        env.recent = listOf(newer, live)
+        model.enter()
+        runCurrent()
+        assertEquals(2, env.recentReads)
+        assertEquals(listOf("channel:8", "channel:7"),
+            (model.rows.value.single() as HomeRow.Channels).cards.map { it.key })
+    }
 
     @Test
     fun whileLockedCardsKeepTheirPlacesAndTakeNewValues() = runTest(main) {

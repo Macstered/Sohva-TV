@@ -1,3 +1,89 @@
+# Sohva TV 0.2.0-beta.9
+
+Android build **119**. Prepared 29 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.9
+
+- Discover: the focused episode has a clear outline that stays visible over its thumbnail.
+  The outline follows the remote without scaling or moving the cards.
+
+## Muutokset versiossa 0.2.0-beta.9
+
+- Discover: kohdistetun jakson ympärillä näkyy selkeä reunus myös pikkukuvan päällä.
+  Reunus seuraa kaukosäätimen kohdistusta. Korttien koko ja sijainti pysyvät samoina.
+
+# Sohva TV 0.2.0-beta.8
+
+Android build **118**. Prepared 29 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.8
+
+- Library audio: Finnish is selected automatically when the provider uses the name "Finnish"
+  or "Suomi" instead of a language code, or supplies only that track label. Manual choices stay.
+- Series library: changing seasons after scrolling through episodes no longer traps focus on
+  the season buttons. OK or Down brings the current season's first episode into view and focuses it.
+
+## Muutokset versiossa 0.2.0-beta.8
+
+- Kirjaston ääni: suomenkielinen raita valitaan automaattisesti myös silloin, kun palveluntarjoaja
+  käyttää kielikoodin sijasta nimeä "Finnish" tai "Suomi" tai antaa vain raidan nimen.
+  Itse tekemäsi valinta säilyy.
+- Sarjakirjasto: kauden vaihtaminen jaksojen selaamisen jälkeen ei enää jumita kohdistusta
+  kausiriville. OK tai alas tuo nykyisen kauden ensimmäisen jakson näkyviin ja kohdistaa siihen.
+
+# Sohva TV 0.2.0-beta.7
+
+Android build **117**. Prepared 29 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.7
+
+- Home: Recently watched channels refreshes when you return from Live TV or another screen. The
+  channel you last focused on Home remains focused.
+
+## Muutokset versiossa 0.2.0-beta.7
+
+- Koti: Viimeksi katsotut kanavat päivittyvät, kun palaat suorasta TV:stä tai toisesta näkymästä.
+  Kohdistus pysyy kanavassa, jonka viimeksi valitsit kotinäkymässä.
+
+# Sohva TV 0.2.0-beta.6
+
+Android build **116**. Prepared 29 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.6
+
+- Movies and series: preferred audio and subtitles are checked again when more
+  tracks appear after playback starts. A track that arrives late can now be
+  selected automatically. A choice you made by hand stays in place.
+
+## Muutokset versiossa 0.2.0-beta.6
+
+- Elokuvat ja sarjat: toivottua ääni- ja tekstityskieltä tarkistetaan uudelleen,
+  kun lisää raitoja ilmestyy toiston alettua. Myöhemmin löytyvä raita voidaan
+  nyt valita automaattisesti. Itse tekemäsi valinta säilyy.
+
+# Sohva TV 0.2.0-beta.5
+
+Android build **115**. Prepared 29 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.5
+
+- Subtitles: choosing Off, an embedded track or another addon subtitle cancels the
+  earlier download. A slow automatic result can no longer override your choice.
+- Home and playback now share the same memory tier. TVs with 1–2 GB of RAM use
+  smaller hero artwork without a crossfade, even when Android gives the app a large heap.
+- Home scrolling now honors reduced motion too, moving directly to the focused
+  card on low-memory devices.
+
+## Muutokset versiossa 0.2.0-beta.5
+
+- Tekstitykset: Pois, tiedoston oma tekstitys tai toinen lisäosatekstitys peruu
+  aiemman latauksen. Hitaasti valmistuva automaattinen haku ei enää ohita valintaasi.
+- Etusivu ja soitin käyttävät samaa muistiluokitusta. Laitteet, joissa on 1–2 Gt
+  muistia, käyttävät pienempää etusivun taustakuvaa ilman ristihäivytystä, vaikka
+  Android antaisi sovellukselle suuren muistirajan.
+- Etusivun vieritys noudattaa nyt myös vähennetyn liikkeen asetusta. Vähämuistisella
+  laitteella näkymä siirtyy suoraan valitun kortin kohdalle.
+
 # Sohva TV 0.2.0-beta.4
 
 Android build **114**. Prepared 29 September 2026. Prerelease for testers.

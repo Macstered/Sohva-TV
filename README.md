@@ -10,8 +10,10 @@ an almost identical look, and a much lighter footprint so it runs well on low-en
 - [docs/decisions.md](docs/decisions.md): every decision the kit did not settle.
 - [docs/performance-log.md](docs/performance-log.md): measurements per milestone.
 
-Status: milestone M0 (foundations) done: the shell, the design system and the harness build and
-run on an Android TV emulator; features arrive from M1 (sources and import). Build with
-`./gradlew :app:assembleDebug`; run every check with `python tools/check_all.py`.
+Status: the rebuild is in beta testing, including live TV, the guide, movies and series, profiles,
+Discover, Trakt and configurable Home rows. See the [feature inventory](docs/rebuild/plan/01-feature-inventory.md)
+for parity and the [performance log](docs/performance-log.md) for measured limits. Low-end device
+validation continues with each change. Build with `./gradlew :app:assembleDebug`; run every local
+check, including the Play APK and bundle, with `python tools/check_all.py`.
 
-Licence: GPL-3.0-only for original source (the licence file is added with the first code).
+Licence: GPL-3.0-only for original source; see [LICENSE](LICENSE).

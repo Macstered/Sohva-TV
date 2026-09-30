@@ -906,4 +906,5 @@
     <string name="phone_list_invalid">Non è l\'indirizzo o il numero di una lista trakt.tv.</string>
     <string name="home_layout_list_smart">Lista intelligente Trakt</string>
     <string name="vod_subtitles_no_id">I componenti aggiuntivi dei sottotitoli di Discover richiedono l\'ID IMDb del titolo, che si ottiene dai dati TMDB o TVmaze. Controlla Dettagli sbagliati? nella sua pagina.</string>
+    <string name="update_from_play">Gli aggiornamenti arrivano da Google Play.</string>
 </resources>

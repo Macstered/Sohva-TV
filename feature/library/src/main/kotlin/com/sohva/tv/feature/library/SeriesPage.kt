@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -30,7 +31,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.testTag
@@ -199,7 +202,7 @@ internal class SeriesFocus {
     /** True once the viewer pressed a key: arriving episodes then leave focus alone. */
     var touched = false
 
-    /** A season was chosen with OK: its first episode takes focus as soon as it exists. */
+    /** OK or Down on a season: scroll its first episode into view, then focus it. */
     var pendingEpisodes by mutableStateOf(false)
 }
 
@@ -294,8 +297,12 @@ private fun Seasons(model: SeriesModel, focus: SeriesFocus) {
                 },
                 Modifier
                     .then(if (isCurrent) Modifier.focusRequester(focus.season) else Modifier)
-                    // Down from any season goes to the current season's first episode.
-                    .focusProperties { down = focus.firstEpisode }
+                    // A later episode may have scrolled the first card out of the lazy row.
+                    .onPreviewKeyEvent {
+                        if (it.key != Key.DirectionDown) return@onPreviewKeyEvent false
+                        if (it.type == KeyEventType.KeyDown) focus.pendingEpisodes = true
+                        true
+                    }
                     .testTag("series-season-$season"),
                 icon = if (season in watched) TvIcons.Check else null,
                 state = SurfaceState(selected = isCurrent),
@@ -316,6 +323,7 @@ private fun Episodes(model: SeriesModel, focus: SeriesFocus) {
     val metadata by model.metadata.collectAsStateWithLifecycle()
     val episode by model.episodeMetadata.collectAsStateWithLifecycle()
     val shown = remember(cards, season) { cards.filter { it.record.season == season } }
+    val row = rememberLazyListState()
     // Without a thumbnail: the selected card takes its episode's still, the rest the series backdrop, else the poster (VOD-FR-84).
     val seriesImage = metadata?.backdropUrl ?: page?.record?.backdropUrl ?: metadata?.posterUrl ?: page?.record?.posterUrl
     SectionHeading(stringResource(R.string.series_episodes), top = 20, bottom = 12)
@@ -330,7 +338,7 @@ private fun Episodes(model: SeriesModel, focus: SeriesFocus) {
         }
         return
     }
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.testTag("series-episodes")) {
+    LazyRow(state = row, horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.testTag("series-episodes")) {
         items(shown, key = { it.record.key }) { card ->
             EpisodeCardView(
                 card = card,
@@ -347,8 +355,9 @@ private fun Episodes(model: SeriesModel, focus: SeriesFocus) {
     state.error?.let { Text(errorMessage(it), Modifier.padding(top = 8.dp), style = Sohva.typography.label, color = Sohva.palette.danger) }
     LaunchedEffect(focus.pendingEpisodes, shown.firstOrNull()?.record?.key) {
         if (focus.pendingEpisodes && shown.isNotEmpty()) {
-            focus.pendingEpisodes = false
-            focus.firstEpisode.requestFocusWhenAttached()
+            row.scrollToItem(0)
+            // Clearing the effect's key before this suspending request cancels the request itself.
+            if (focus.firstEpisode.requestFocusWhenAttached()) focus.pendingEpisodes = false
         }
     }
 }

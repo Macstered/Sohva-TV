@@ -83,7 +83,7 @@ private fun UpdatesGroup(about: AboutSettings, update: UpdateState, start: Focus
         SettingsOverline(stringResource(R.string.update_title))
         Text(stringResource(R.string.update_installed, about.installedVersion), Modifier.padding(horizontal = 14.dp), style = Sohva.typography.label, color = Sohva.palette.textMuted)
         Text(
-            statusText(update),
+            if (about.updatesFromStore) stringResource(R.string.update_from_play) else statusText(update),
             Modifier.padding(horizontal = 14.dp).testTag("settings-update-status"),
             style = Sohva.typography.body,
             color = if (update.phase == UpdatePhase.FAILED) Sohva.palette.danger else Sohva.palette.textPrimary,
@@ -98,7 +98,10 @@ private fun UpdatesGroup(about: AboutSettings, update: UpdateState, start: Focus
             ) { UpdateActions(about, update.phase, first) }
         }
         Notes(about, update)
-        Text(stringResource(R.string.update_help), Modifier.padding(horizontal = 14.dp), style = Sohva.typography.caption, color = Sohva.palette.textMuted)
+        // The checksum note describes the GitHub updater only.
+        if (!about.updatesFromStore) {
+            Text(stringResource(R.string.update_help), Modifier.padding(horizontal = 14.dp), style = Sohva.typography.caption, color = Sohva.palette.textMuted)
+        }
     }
     // A phase that swaps the buttons keeps focus on the row's first one, never on a vanished one (§4.6).
     LaunchedEffect(update.phase) { if (actionsFocused) first.requestFocusWhenAttached() }

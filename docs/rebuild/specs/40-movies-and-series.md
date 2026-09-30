@@ -509,7 +509,8 @@ Destinations (the shell's stack, [App shell](01-app-shell-navigation.md) §3):
   Check icon when every episode of the season is finished, `selected` on the current season. OK
   selects the season and then focuses its first episode as soon as that card exists (kept pending
   until a request succeeds). Down from any season button → the first episode of the **current**
-  season; Up from any episode card → the current season's button.
+  season; Up from any episode card → the current season's button. Both OK and Down scroll the
+  first episode into view before requesting focus, even when the previous episode row was scrolled.
 - VOD-FR-83 Episodes (`series_episodes` "Episodes"): a row of episode cards, or an 80 dp
   placeholder: `series_loading_episodes` "Loading episodes…" (`textPrimary`) while loading, the
   error (`danger`), else `series_no_episodes` "No episodes found" (`textDim`). An error with
@@ -1113,6 +1114,9 @@ Instrumentation (emulator, AGENTS §8 rules: slow gated reads for timing, Back v
   progress line; Similar states.
 - Series page: seventh season hands focus to its episodes and back (`SeriesSeasonFocusTest`); first
   open fetches episodes; error text; pill visible while scrolled.
+- Series episode focus: browse to episode 8, Up to the season buttons, then OK on season 5 → its
+  first episode is visible and focused. Down without changing seasons also returns to its first
+  episode. Subsequent Right and Up/Down navigation works (`SeriesEpisodeFocusTest`).
 - Match picker: query starts from the provider's name; choosing closes and updates; undo only when
   pinned; nothing found says so (`CatalogueMatchPickerTest`).
 - Progress repository: persistence, History keeps finished titles, per-profile positions, forget,

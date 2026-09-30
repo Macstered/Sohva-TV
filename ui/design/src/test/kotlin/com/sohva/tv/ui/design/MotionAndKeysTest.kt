@@ -46,6 +46,25 @@ class MotionAtZeroScaleTest {
         repeat(20) { compose.mainClock.advanceTimeByFrame() }
         compose.onNodeWithText("Buffering…").assertExists()
     }
+
+    @Test
+    fun reducedBufferingStillStepsWithZeroAnimationDuration() {
+        compose.mainClock.autoAdvance = false
+        lateinit var angle: androidx.compose.runtime.State<Float>
+        compose.setContent {
+            SohvaTheme(ColorThemeId.ORIGINAL, reducedMotion = true) {
+                angle = com.sohva.tv.ui.design.motion.Motion.bufferingAngle()
+            }
+        }
+        compose.mainClock.advanceTimeByFrame()
+        assertEquals(0f, angle.value, 0f)
+        compose.mainClock.advanceTimeBy(100)
+        assertEquals(0f, angle.value, 0f)
+        compose.mainClock.advanceTimeBy(100)
+        assertEquals(60f, angle.value, 0f)
+        compose.mainClock.advanceTimeBy(100)
+        assertEquals(120f, angle.value, 0f)
+    }
 }
 
 @RunWith(AndroidJUnit4::class)

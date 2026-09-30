@@ -91,9 +91,16 @@ class ShellNavigationTest {
             compose.onNodeWithTag(first).assertIsFocused()
             press(KeyEvent.KEYCODE_BACK)
             // Search's first Back may only close the keyboard (spec 03 §3).
+            if (item == RailItem.SEARCH) instrumentation.uiAutomation.waitForIdle(500, 5_000)
             if (compose.onAllNodesWithTagExists(screen)) press(KeyEvent.KEYCODE_BACK)
             // Home is rebuilt on return and focuses its content, here the Welcome button (spec 01 §3.4).
-            compose.waitUntil(5_000) { focused("home-hero-primary") }
+            try {
+                compose.waitUntil(5_000) { focused("home-hero-primary") }
+            } catch (error: androidx.compose.ui.test.ComposeTimeoutException) {
+                val tags = compose.onAllNodes(androidx.compose.ui.test.isFocused(), useUnmergedTree = true).fetchSemanticsNodes()
+                    .map { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag) }
+                throw AssertionError("Back from $item: still on $screen=${compose.onAllNodesWithTagExists(screen)}; focused=$tags", error)
+            }
         }
     }
 }
