@@ -1,6 +1,35 @@
+# Sohva TV 0.2.0-beta.11
+
+Android build **121**. Prepared 30 September 2026. Prerelease for testers.
+
+## Changed in 0.2.0-beta.11
+
+- Sohva Sport: a match checked during a playlist refresh is checked again after the
+  refresh finishes. Newly imported matching channels no longer stay missing from
+  the saved result. This addresses an incomplete cached result; channel names and
+  guide information still determine which sources can match.
+- Library: returning to a saved group with immediately available data keeps that
+  group and the previously focused card.
+- Discover: a late shelf response no longer pulls focus back after you move elsewhere.
+- Includes the earlier audio language, episode navigation, recent channels, guide,
+  library paging and low-memory Home improvements listed below.
+
+## Muutokset versiossa 0.2.0-beta.11
+
+- Sohva Sport: kanavalistan päivityksen aikana tarkistettu ottelu tarkistetaan
+  uudelleen päivityksen valmistuttua. Uudet sopivat kanavat eivät enää jää pois
+  tallennetusta tuloksesta. Korjaus koskee keskeneräistä välimuistitulosta.
+  Kanavien nimet ja ohjelmaopas ratkaisevat edelleen, mitkä lähteet löytyvät.
+- Kirjasto: palaaminen aiempaan ryhmään säilyttää ryhmän ja kohdistetun kortin myös
+  silloin, kun tiedot saadaan heti.
+- Discover: hitaasti valmistuva rivin lataus ei enää siirrä kohdistusta takaisin
+  riviin, josta olet jo siirtynyt pois.
+- Mukana ovat myös alla kuvatut äänen kielivalinnan, jaksojen selaamisen, viimeksi
+  katsottujen kanavien, oppaan, kirjaston sivutuksen ja etusivun muistinkäytön parannukset.
+
 # Sohva TV 0.2.0-beta.10
 
-Android build **120**. Prepared 30 September 2026. Prerelease for testers.
+Android build **120**. Prepared 30 September 2026. Local test candidate; not published.
 
 ## Changed in 0.2.0-beta.10
 

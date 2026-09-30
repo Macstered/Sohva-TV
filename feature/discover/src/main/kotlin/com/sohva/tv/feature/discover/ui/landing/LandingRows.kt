@@ -141,8 +141,11 @@ internal fun Shelf(
     // focus is in this row: data never takes focus from anywhere else (AGENTS.md §5 rule 2).
     LaunchedEffect(shelf.items) {
         if (!model.shelvesFocused || model.lastRow != row || model.lastItem == SHOW_ALL) return@LaunchedEffect
-        val keep = model.lastItem?.takeIf { id -> shelf.items.orEmpty().any { "${it.type}:${it.id}" == id } }
-        (if (keep != null) targets.item(row, keep) else targets.first(row)).requestFocusWhenAttached()
+        val item = model.lastItem
+        val keep = item?.takeIf { id -> shelf.items.orEmpty().any { "${it.type}:${it.id}" == id } }
+        (if (keep != null) targets.item(row, keep) else targets.first(row)).requestFocusWhenAttached(
+            stillWanted = { model.shelvesFocused && model.lastRow == row && model.lastItem == item },
+        )
     }
     Column(Modifier.fillMaxWidth().rowKeys(index, moves).testTag("discover-shelf-$index")) {
         Text(entry.catalog.name, style = Sohva.typography.body, color = Sohva.palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)

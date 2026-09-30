@@ -50,11 +50,16 @@ internal class LongPressGesture {
 /**
  * Requests focus once the target is attached, retrying once per frame for up to [attempts]
  * frames (≈ half a second). Fixed sleeps never landed in UI tests and lost races with lazy
- * layouts (design/02 §20). Use for every initial focus and every focus return.
+ * layouts (design/02 §20). Use for every initial focus and every focus return. [stillWanted]
+ * cancels a pending request when the viewer has chosen somewhere else in the meantime.
  */
-suspend fun FocusRequester.requestFocusWhenAttached(attempts: Int = 30): Boolean {
+suspend fun FocusRequester.requestFocusWhenAttached(
+    attempts: Int = 30,
+    stillWanted: () -> Boolean = { true },
+): Boolean {
     repeat(attempts) {
         withFrameNanos { }
+        if (!stillWanted()) return false
         if (runCatching { requestFocus() }.getOrDefault(false)) return true
     }
     return false

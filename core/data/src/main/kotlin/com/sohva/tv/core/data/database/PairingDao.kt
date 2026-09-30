@@ -65,7 +65,9 @@ interface PairingDao {
     suspend fun sourceLines(): List<String>
 
     @Query(
-        "SELECT source_id || '|' || kind || '|' || generation || '|' || IFNULL(epg_snapshot, '') FROM source_status " +
+        // Playlist generations are reserved at import start. Completion must invalidate a
+        // result scanned from the partial rows, even when no new EPG snapshot was imported.
+        "SELECT source_id || '|' || kind || '|' || generation || '|' || status || '|' || IFNULL(epg_snapshot, '') FROM source_status " +
             "WHERE kind IN ('playlist', 'epg') ORDER BY source_id, kind",
     )
     suspend fun snapshotLines(): List<String>

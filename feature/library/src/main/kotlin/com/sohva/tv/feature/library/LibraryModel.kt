@@ -98,11 +98,16 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
     /** Genre counts are read only once the Genres view has been used (VOD-FR-04). */
     private var genresUsed = false
 
+    private var lastRailRead = false
+    private var managerOpened = false
+
     /** Groups of your own, as last read; their rows need no counts (VOD-FR-04). */
     private var lastCustom: List<CustomGroup> = emptyList()
 
     init {
         restoring = session.selected
+        // An immediate rail read can consume restoring before construction finishes.
+        val restoresDestination = restoring != null
         if (restoring != null) {
             _view.value = session.view
             _search.value = session.search
@@ -120,7 +125,7 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
             }
         }
         viewModelScope.launch { _tvmazeCredit.value = runCatching { env.tvmazeCredit() }.getOrDefault(false) }
-        if (restoring == null) select(HISTORY_KEY)
+        if (!restoresDestination) select(HISTORY_KEY)
         watchChanges()
         if (env.room == WallRoom.MOVIES) viewModelScope.launch { _wall.collect { readTicks(it.window) } }
     }
@@ -281,8 +286,6 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
     }
 
     /** Set while the manager is open over the wall: Back returns to Options (spec 42 §3). */
-    private var managerOpened = false
-
     fun takeManagerReturn(): Boolean = managerOpened.also { managerOpened = false }
 
     fun openManager() {
@@ -411,8 +414,6 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
         if (genresUsed) lastCounts = runCatching { env.genreCounts() }.getOrDefault(lastCounts)
         applyRows()
     }
-
-    private var lastRailRead = false
 
     /**
      * New rows (a read of the rail, or groups of your own saved or deleted): a selection that is

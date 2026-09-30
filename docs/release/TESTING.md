@@ -1,10 +1,17 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.10` (Android build 120). Use only sources you are allowed to
+Build: `0.2.0-beta.11` (Android build 121). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
 
-## Focused checks for build 120
+## Focused checks for build 121
+
+- [ ] In Sohva Sport, check a match while its playlist is refreshing, then check it
+      again after completion. Newly imported matching channels become available.
+- [ ] Browse past the first page of Movies, leave to Home, then return. The same
+      group and card are focused. Repeat while the box is busy.
+- [ ] In Discover, move between shelves while titles load. A late response must not
+      move focus back to a shelf you already left.
 
 - [ ] Open Live TV, leave it, then open it again while its sources are cached.
       The guide opens normally and shortcuts you hid in its settings stay hidden.
@@ -67,7 +74,7 @@ and look almost the same. The most useful reports are:
       uninstalling. Note whether you used the in-app updater or sideloaded.
 - [ ] On the first start, note whether **Updating Sohva TV…** appeared and
       roughly how long it stayed.
-- [ ] **Settings > About** shows `0.2.0-beta.10`.
+- [ ] **Settings > About** shows `0.2.0-beta.11`.
 - [ ] Your colour theme, interface size, language, time zone and start screen
       are as before.
 - [ ] Profiles are all there. For each: favourites, recent channels, locked
@@ -239,7 +246,7 @@ and look almost the same. The most useful reports are:
 Email [hello@luontra.fi](mailto:hello@luontra.fi). Use this template:
 
 ```text
-Version: 0.2.0-beta.10 (120)
+Version: 0.2.0-beta.11 (121)
 Device model:
 Android / Google TV version:
 Updated from beta 23 (in-app or sideload) or fresh install:

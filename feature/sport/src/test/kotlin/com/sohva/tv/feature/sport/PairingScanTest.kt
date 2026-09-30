@@ -17,12 +17,26 @@ import com.sohva.tv.core.model.sport.pairing.Confidence
 import com.sohva.tv.core.model.sport.pairing.Decision
 import com.sohva.tv.core.model.sport.pairing.MatchSource
 import com.sohva.tv.core.model.sport.pairing.TeamVariants
+import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
+import com.sohva.tv.core.model.time.SystemClock
+import com.sohva.tv.feature.sport.pairing.PairingCache
 import com.sohva.tv.feature.sport.pairing.PairingScan
+import com.sohva.tv.feature.sport.pairing.StreamPairing
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Rule
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -35,6 +49,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class PairingScanTest {
+    @get:Rule
+    val cacheDir = TemporaryFolder()
     private val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), SohvaDatabase::class.java).allowMainThreadQueries().build()
     private val kickOff = 1_790_445_600_000L // a round hour on 2026-09-26
     private val minute = 60_000L
@@ -128,5 +144,37 @@ class PairingScanTest {
         db.profiles().allow(ProfileAllowedGroupEntity("kids", "LIVE", "news"))
         assertEquals(emptyList<String>(), db.pairing().allowed(listOf("s:c600", "s:c602"), "kids"))
         assertEquals(listOf("s:c600", "s:c602"), db.pairing().allowed(listOf("s:c600", "s:c602"), "adult").sorted())
+    }
+
+    @Test
+    fun aCompletedPlaylistImportReplacesPartialCachedMatches() = runBlocking {
+        db.sources().upsert(SourceEntity("s", "Fixture", "M3U", true, 0, 1, "BOTH", 0, 0, 0))
+        val importing = SourceStatusEntity("s", "playlist", "running", 1, null, null, null, null, 0, 0, 7, null, null)
+        db.sourceStatus().upsert(importing)
+        val firstPage = listOf(channel(1, "Northbridge v Harbor 1", null, null))
+        db.channelImport().insert(firstPage)
+        val event = game.copy(startMillis = System.currentTimeMillis())
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val log = object : DiagnosticsLog {
+            override fun info(event: String, message: String) = Unit
+            override fun error(event: String, message: String?, error: Throwable?) = Unit
+            override fun snapshot(): List<String> = emptyList()
+        }
+        val pairing = StreamPairing(
+            db.pairing(), db.sport(), db.invalidationTracker.createFlow("source_status").map { },
+            flowOf(listOf(event)), PairingCache(cacheDir.newFile()), SystemClock, scope, Dispatchers.Default, log,
+        )
+        try {
+            pairing.setActive(true)
+            withTimeout(5_000) { pairing.streams.first { it[event.id]?.size == 1 } }
+            // The generation was reserved before streaming the playlist. The final page and
+            // visibility rules are applied before this same generation is marked complete.
+            db.channelImport().insert((2..14).map { channel(it, "Northbridge v Harbor $it", null, null) })
+            db.sourceStatus().upsert(importing.copy(status = "success", lastSuccessAt = 2, itemCount = 14))
+            val completed = withTimeout(5_000) { pairing.streams.first { it[event.id]?.size == 14 } }
+            assertEquals(14, completed.getValue(event.id).size)
+        } finally {
+            scope.cancel()
+        }
     }
 }

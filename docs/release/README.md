@@ -9,9 +9,9 @@ Sohva TV supplies no channels, subscriptions, playlists, provider credentials,
 addons or developer API keys. Use only media sources and services you are
 allowed to use.
 
-## This release: 0.2.0-beta.10
+## This release: 0.2.0-beta.11
 
-This tester build is version `0.2.0-beta.10`, Android build 120. It is a beta,
+This tester build is version `0.2.0-beta.11`, Android build 121. It is a beta,
 not a stable release.
 
 It is the rebuilt Sohva TV. The app was written again from the start. It has
@@ -25,7 +25,7 @@ update and keeps your data. On the first start it moves beta 23's data into
 its new storage. See [Installation and update](INSTALL.md).
 
 Download this release only from the numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.10)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.11)
 or through **Settings > About > Check for updates** in beta 23, and check the
 SHA-256 value.
 
@@ -33,9 +33,9 @@ SHA-256 value.
 
 | File | What it is |
 | --- | --- |
-| `sohva-tv-0.2.0-beta.10.apk` | The signed app |
-| `sohva-tv-0.2.0-beta.10.api31.dm` | Install profile for Android 12 and newer (optional) |
-| `sohva-tv-0.2.0-beta.10.api28.dm` | Install profile for Android 9 to 11 (optional) |
+| `sohva-tv-0.2.0-beta.11.apk` | The signed app |
+| `sohva-tv-0.2.0-beta.11.api31.dm` | Install profile for Android 12 and newer (optional) |
+| `sohva-tv-0.2.0-beta.11.api28.dm` | Install profile for Android 9 to 11 (optional) |
 | `SHA256SUMS.txt` | SHA-256 checksums of the files above and of the documents |
 | The nine documents below | Instructions, notes, policy and licences |
 
@@ -57,8 +57,7 @@ the APK by hand.
 ## Source code
 
 The source is in the public repository
-[Macstered/Sohva-TV](https://github.com/Macstered/Sohva-TV). The release tag
-If published, `v0.2.0-beta.10` will point to the source of this build. A public copy of the source
+[Macstered/Sohva-TV](https://github.com/Macstered/Sohva-TV). If published, `v0.2.0-beta.11` will point to the source of this build. A public copy of the source
 contains no signing key and no service credentials.
 
 The application ID `com.streammate.tv` and a few internal names from the

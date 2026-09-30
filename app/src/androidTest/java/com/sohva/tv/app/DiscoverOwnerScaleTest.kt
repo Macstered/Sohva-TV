@@ -135,7 +135,11 @@ class DiscoverOwnerScaleTest {
         press(KeyEvent.KEYCODE_DPAD_DOWN, 31)
         awaitFocus("discover-card-32-c32-m0", 20_000)
         val downMs = (System.nanoTime() - downs) / 1_000_000
-        compose.waitUntil(10_000) { catalogs().distinct().size >= 34 }
+        try {
+            compose.waitUntil(10_000) { catalogs().distinct().size >= 34 }
+        } catch (e: Throwable) {
+            throw AssertionError("prefetch after row 32: ${catalogs()}, focused: ${focusedTag()}", e)
+        }
         Thread.sleep(1_000)
         val fetched = catalogs()
         // Every shelf of the window once: shelves 1–32 focused plus the next two.

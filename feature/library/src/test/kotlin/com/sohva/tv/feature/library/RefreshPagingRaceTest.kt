@@ -12,6 +12,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -48,8 +49,9 @@ class RefreshPagingRaceTest {
                 refreshEntered.complete(Unit)
                 releaseRefresh.await()
             }
-            val first = (from?.row?.id?.toInt()?.plus(1) ?: 0).coerceAtLeast(0)
-            return (first until minOf(400, first + limit)).map { n ->
+            val end = if (forward) 400 else from?.row?.id?.toInt() ?: 400
+            val first = if (forward) (from?.row?.id?.toInt()?.plus(1) ?: 0).coerceAtLeast(0) else maxOf(0, end - limit)
+            return (first until minOf(end, first + limit)).map { n ->
                 WallItem(WallRow(n.toLong(), "series:s:$n", "s", "T$n", "t$n", null, null, null, 0, null))
             }
         }
@@ -88,5 +90,24 @@ class RefreshPagingRaceTest {
         env.releaseRefresh.complete(Unit)
         runCurrent()
         assertEquals("the late refresh keeps the newly loaded page", 240, model.wall.value.window.end)
+    }
+
+    @Test
+    fun cachedRailRestoresTheGroupAndCardDuringConstruction() = runTest {
+        val immediate = UnconfinedTestDispatcher(testScheduler)
+        Dispatchers.setMain(immediate)
+        val env = Env()
+        val item = WallItem(WallRow(151L, "series:s:151", "s", "T151", "t151", null, null, null, 0, null))
+        val session = BrowseSession().apply {
+            selected = "group:drama"
+            focused = item
+            focusedIndex = 151
+            focusOnWall = true
+            entered = true
+        }
+        val model = LibraryModel(env, session)
+        assertEquals("group:drama", model.selected.value)
+        assertEquals(item.row.key, model.wall.value.window.itemAt(model.focusedIndex)?.row?.key)
+        assertTrue(model.focusOnWall)
     }
 }
