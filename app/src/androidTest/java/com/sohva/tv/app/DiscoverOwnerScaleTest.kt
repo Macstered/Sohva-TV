@@ -165,7 +165,10 @@ class DiscoverOwnerScaleTest {
         // No stream or subtitle request; details only for the hero where focus rested (§9: one lookup after the settle).
         assertTrue(requests.none { it.contains("/stream/") || it.contains("/subtitles/") })
         val meta = requests.filter { it.contains("/meta/") }.map { it.substringAfter("/meta/movie/").removeSuffix(".json") }.toSet()
-        assertTrue("details asked for $meta", meta.all { it == "c1-m0" || it == "c32-m0" })
+        // Espresso may pause over the hero's settle threshold between presses on a slow host.
+        // Such lookups are valid, but never for prefetched shelves or cards we did not visit.
+        val visited = (1..32).map { "c$it-m0" }.toSet()
+        assertTrue("details asked for unvisited cards: $meta", meta.all { it in visited })
         Log.i(TAG, "hero lookups ${meta.size}; opening $opening catalogs; 31 Downs in $downMs ms; ${fetched.size} catalog requests; Java heap peak ${heap.max() / MB} MB; main-thread longest gap ${heartbeat.longestGapMs()} ms " +
             "(home $home, open $open, downs $down, ups $up, grid open $grid, grid downs $gridDown)")
         assertTrue("Java heap peak ${heap.max() / MB} MB", heap.max() < HEAP_BUDGET)

@@ -123,6 +123,13 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
     private var viewport: IntRange = IntRange.EMPTY
     private var lastVisible = 0 to 0
 
+    /** Cached reads can emit inline on Main.immediate, so initialize their state before launching. */
+    private var railRules = LiveRailRules()
+
+    /** The rows of the list on screen; replaced together with [list]. */
+    var rowPages: RowPages = RowPages(0, ChannelList.PAGE)
+        private set
+
     init {
         viewModelScope.launch { env.timeZone.collect { _labels.value = TimeLabels(TimeLabels.zoneOf(it), env.timeStyle) } }
         viewModelScope.launch { tick() }
@@ -196,9 +203,6 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
 
     private fun firstGroup(): RailEntry =
         GuideRules.firstGroup(_rail.value.mapNotNull { it.entry as? RailEntry.Group }) { null } ?: RailEntry.All
-
-    /** The Live room's rail rules as last observed; the rail never waits for them. */
-    private var railRules = LiveRailRules()
 
     private suspend fun refreshRail() {
         val source = _source.value ?: return
@@ -291,10 +295,6 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
         }
         listJob = job
     }
-
-    /** The rows of the list on screen; replaced together with [list]. */
-    var rowPages: RowPages = RowPages(0, ChannelList.PAGE)
-        private set
 
     /** A write re-reads the current list; focus stays on the same channel (GUIDE-FR-37, -61). */
     private suspend fun reread() {

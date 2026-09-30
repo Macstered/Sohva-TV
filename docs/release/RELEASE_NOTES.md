@@ -1,3 +1,25 @@
+# Sohva TV 0.2.0-beta.10
+
+Android build **120**. Prepared 30 September 2026. Prerelease for testers.
+
+## Changed in 0.2.0-beta.10
+
+- Live TV: opening the guide with cached sources and group settings no longer races
+  during startup. Hidden shortcuts keep their saved setting.
+- Library: a refresh finishing while you browse into the next page no longer removes
+  the new cards or loses the title you were about to focus.
+- Includes the audio language, season navigation, Discover episode focus, recent
+  channels and low-memory Home improvements listed below.
+
+## Muutokset versiossa 0.2.0-beta.10
+
+- Suora TV: oppaan avaaminen ei enää aiheuta virhettä, kun lähteet ja ryhmäasetukset
+  löytyvät jo välimuistista. Piilotetut pikavalinnat pysyvät piilossa.
+- Kirjasto: selaamisen aikana valmistuva päivitys ei enää poista seuraavan sivun
+  kortteja tai kadota kohdistusta elokuvasta tai sarjasta, johon olit siirtymässä.
+- Mukana ovat myös alla kuvatut äänen kielivalinnan, kausien selaamisen, Discoverin
+  jaksokohdistuksen, viimeksi katsottujen kanavien ja vähämuististen laitteiden parannukset.
+
 # Sohva TV 0.2.0-beta.9
 
 Android build **119**. Prepared 29 September 2026. Local test candidate; not published.

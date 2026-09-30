@@ -157,6 +157,8 @@ class PlayerArchiveTest {
         compose.waitUntil(15_000) { requests.any { it.startsWith("/live/0.mp4?utc=") } }
         compose.waitUntil(5_000) { exists("player-transport") }
         // Up enters the controls on Play/Pause (PLAY-FR-49).
+        // A network request and composed controls do not yet guarantee the key host has focus.
+        awaitFocus("player-video")
         press(KeyEvent.KEYCODE_DPAD_UP)
         awaitFocus("player-transport-play")
         compose.waitUntil(10_000) { text("player-transport-play") == "Pause" }

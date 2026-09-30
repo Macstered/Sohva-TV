@@ -459,16 +459,19 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
         val wanted = maxOf(state.window.items.size, WallWindow.PAGE)
         while (reread.size < wanted) {
             val page = runCatching { env.page(destination, _search.value, from, true, WallWindow.PAGE) }.getOrNull() ?: return
+            // Paging may finish while this read is suspended. Its new window must not be
+            // replaced by this older snapshot, which would remove the viewer's next card.
+            if (mine != serial || _wall.value !== state) return
             reread += page
             if (page.size < WallWindow.PAGE) break
             from = page.last()
         }
-        if (mine != serial) return
+        if (mine != serial || _wall.value !== state) return
         if (reread.isEmpty() && state.window.items.isNotEmpty() && expectsTitles(destination)) {
             // A transient empty never replaces a wall with titles unless it is still empty 500 ms later (VOD-FR-16).
             delay(TRANSIENT_EMPTY_MS)
             val again = runCatching { env.page(destination, _search.value, null, true, WallWindow.PAGE) }.getOrNull() ?: return
-            if (mine != serial) return
+            if (mine != serial || _wall.value !== state) return
             if (again.isNotEmpty()) {
                 _wall.value = state.copy(window = WallWindow.of(again))
                 return
