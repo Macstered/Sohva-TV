@@ -1,6 +1,9 @@
 # Reference material from Sohva TV beta 23
 
-Copied unchanged from the public beta 23 tree (`efab52a`) on 24 September 2026.
+Originally copied from the public beta 23 tree (`efab52a`) on 24 September 2026.
+French resources and its picker label were added for the rebuild on 30 September 2026;
+French was not in beta 23. Existing languages retain their original text except for
+newly implemented features and the updated list of draft translations.
 
 ## strings/
 
@@ -11,6 +14,7 @@ About 9,900 `<string>` and `<plurals>` entries in total.
 | Language | Folder qualifier | Status in the app |
 |---|---|---|
 | English | `values` | Complete, the fallback |
+| French | `values-fr` | Complete coverage, draft wording; newly translated for the rebuild at the owner’s request on 30 September 2026 |
 | Finnish | `values-fi` | Complete (the owner's language; also has the Trakt strings) |
 | Spanish, Portuguese, German, Swedish, Italian | `values-es`, `-pt`, `-de`, `-sv`, `-it` | Drafts; the Trakt strings fall back to English |
 

@@ -5,6 +5,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.core.model.player.Gesture
@@ -116,6 +117,32 @@ class PlayerRemoteTest {
         // The first row stays as it was: the release did not choose it.
         assertTrue(exists("player-quick"))
         assertFalse(exists("player-picker"))
+    }
+
+    @Test
+    fun channelButtonsShowOnlyATemporaryBoxAfterItsActionsWereFocused() {
+        openPlayer()
+        awaitFocus("player-video")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { exists("player-live-box") }
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithContentDescription("Hide these controls").assertIsFocused() }.isSuccess
+        }
+        // An explicitly focused action stays up until Back; its request must not replay on a zap.
+        SystemClock.sleep(5_500)
+        assertTrue(exists("player-live-box"))
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(5_000) { !exists("player-live-box") }
+        awaitFocus("player-video")
+        for ((key, path) in listOf(KeyEvent.KEYCODE_CHANNEL_DOWN to "/live/1.mp4", KeyEvent.KEYCODE_CHANNEL_UP to "/live/0.mp4")) {
+            val before = count(path)
+            press(key)
+            compose.waitUntil(15_000) { count(path) > before && exists("player-live-box") }
+            // Check the timeout itself first: a stale focused action used to leave this up forever.
+            compose.waitUntil(8_000) { !exists("player-live-box") }
+            awaitFocus("player-video")
+        }
     }
 
     @Test

@@ -3,6 +3,16 @@
 > Current behaviour of Sohva TV 0.1.0-beta.23 (build 57). Rebuild target: same behaviour,
 > same look, cleaner implementation.
 
+## Owner-requested extension, 30 September 2026
+
+The rebuild also offers French (`fr`), after Italian, labelled **Français (brouillon)**
+until a native speaker has reviewed it. It covers every translatable interface resource,
+including Trakt and phone setup pages. French uses Android resources and `one`, `many`
+and `other` plural forms. The app picker, Android locale configuration and packaged locale
+filter all include it. The seven-language descriptions below record beta 23’s original
+behaviour; switching, fallback and separate content-language preferences still apply.
+See [the recorded decision](../../decisions.md).
+
 ## 1. Summary
 
 Sohva TV's interface is translated into seven languages: English (the fallback), Finnish (the

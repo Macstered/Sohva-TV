@@ -1,5 +1,6 @@
 package com.sohva.tv.app
 
+import android.os.Debug
 import android.os.SystemClock
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -130,7 +131,11 @@ class PairingOwnerScaleTest {
         val dao = Counting(graph.data.pairingDao)
         val scan = PairingScan(dao)
         val started = SystemClock.elapsedRealtime()
-        val results = runBlocking(graph.dispatchers.bulk) { scan.run(games, aliases, emptyMap()) }
+        var cpuMs = 0L
+        val results = runBlocking(graph.dispatchers.bulk) {
+            val cpuStart = Debug.threadCpuTimeNanos()
+            scan.run(games, aliases, emptyMap()).also { cpuMs = (Debug.threadCpuTimeNanos() - cpuStart) / 1_000_000 }
+        }
         val scanMs = SystemClock.elapsedRealtime() - started
         heap.finish()
         heartbeat.finish()
@@ -139,8 +144,12 @@ class PairingOwnerScaleTest {
             TAG,
             "scan ${scanMs} ms; ${dao.channelPages.get()} channel and ${dao.programmePages.get()} programme pages; " +
                 "${scan.lastStats.candidates} candidates; $available available; Java heap baseline ${baseline / KB} KB, " +
-                "peak ${heap.max() / KB} KB (+${(heap.max() - baseline) / KB} KB); main-thread longest gap ${heartbeat.longestGapMs()} ms",
+                "peak ${heap.max() / KB} KB (+${(heap.max() - baseline) / KB} KB); main-thread longest gap ${heartbeat.longestGapMs()} ms; bulk CPU $cpuMs ms",
         )
+        instrumentation.sendStatus(0, android.os.Bundle().apply {
+            putString("stream", "Owner-scale candidates=${scan.lastStats.candidates} available=$available wallMs=$scanMs bulkCpuMs=$cpuMs " +
+                "heapPeakKiB=${heap.max() / KB} mainGapMs=${heartbeat.longestGapMs()} channelPages=${dao.channelPages.get()} programmePages=${dao.programmePages.get()}\n")
+        })
         assertEquals(GAMES, results.size)
         // The channel names carry games 0–27 and both teams: each of those has an Available stream.
         assertTrue("name matches", (0 until 28).all { g -> results.getValue("api-sports:football:$g").any { it.confidence == Confidence.AVAILABLE } })

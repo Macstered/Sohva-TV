@@ -364,6 +364,7 @@
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
     <string name="interface_language_it">Italiano (bozza)</string>
+    <string name="interface_language_fr">Français (brouillon)</string>
     <string name="artwork_cache_title">Image cache</string>
     <string name="artwork_cache_help">Room for posters, logos and backdrops; a new limit applies at the next start.</string>
     <string name="artwork_cache_limit">%1$d MB</string>
@@ -525,7 +526,7 @@
     <string name="diagnostics_saved">Diagnostics saved. Share the file with the developer if asked.</string>
     <string name="translate_title">Translations</string>
     <string name="translate_help_title">Help translate Sohva TV</string>
-    <string name="translate_help">Spanish, Portuguese, German, Swedish and Italian are drafts. Corrections are welcome in the public repository.</string>
+    <string name="translate_help">Spanish, Portuguese, German, Swedish, Italian and French are drafts. Corrections are welcome in the public repository.</string>
     <string name="player_stats_video">Video</string>
     <string name="player_stats_video_codec">Video codec</string>
     <string name="player_stats_bitrate">Bitrate</string>

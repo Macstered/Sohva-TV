@@ -16,12 +16,12 @@ import java.util.Locale
  * activity's base context from a small synchronous preferences file.
  */
 object AppLocales {
-    /** The seven interface languages (spec 74 L10N-FR-01), in the picker's order. */
-    val SUPPORTED: List<String> = listOf("en", "fi", "es", "pt", "de", "sv", "it")
+    /** The interface languages (spec 74, plus the owner's French extension), in picker order. */
+    val SUPPORTED: List<String> = listOf("en", "fi", "es", "pt", "de", "sv", "it", "fr")
 
     /**
      * The chosen interface language, or null for System default (L10N-FR-02): the platform's per-app
-     * language from Android 13, the small file below. Only the seven count, by language: a platform
+     * language from Android 13, the small file below. Only supported languages count: a platform
      * choice of `pt-BR` reads as `pt`, anything else as none.
      */
     fun chosen(context: Context): String? {

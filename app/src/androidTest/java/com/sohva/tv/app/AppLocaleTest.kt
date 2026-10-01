@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Spec 74 §11 "Instrumentation": the stored choice below Android 13 (only the seven languages),
+ * Spec 74 §11 "Instrumentation": the stored choice below Android 13 (supported languages),
  * texts outside an activity in the chosen language (L10N-FR-05), the JVM default back to the TV's
  * language on System default (L10N-FR-06), and the time styles Android gives each language.
  */
@@ -38,15 +38,37 @@ class AppLocaleTest {
     }
 
     @Test
-    fun onlyTheSevenLanguagesAreAChoice() {
+    fun onlySupportedLanguagesAreAChoice() {
         store.setLanguageTag(null)
         assertNull(AppLocales.chosen(app))
         store.setLanguageTag("fi")
         assertEquals("fi", AppLocales.chosen(app))
         store.setLanguageTag("pt-BR")
         assertEquals("pt", AppLocales.chosen(app))
+        for (tag in listOf("fr", "fr-FR", "fr-CA")) {
+            store.setLanguageTag(tag)
+            assertEquals("fr", AppLocales.chosen(app))
+        }
         store.setLanguageTag("ja")
         assertNull(AppLocales.chosen(app))
+    }
+
+    @Test
+    fun frenchTextsAndCountsFollowTheChoiceAndSwitchBack() {
+        store.setLanguageTag("fr")
+        val texts = AppLocales.texts(app)
+        assertEquals("Erreur inconnue", texts.getString(R.string.error_unknown))
+        assertEquals("Configurer depuis un téléphone", texts.getString(R.string.phone_setup_title))
+        assertEquals("0 film", texts.resources.getQuantityString(R.plurals.catalogue_imported_movies, 0, 0))
+        assertEquals("1 film", texts.resources.getQuantityString(R.plurals.catalogue_imported_movies, 1, 1))
+        assertEquals("2 films", texts.resources.getQuantityString(R.plurals.catalogue_imported_movies, 2, 2))
+        assertEquals("1000000 films", texts.resources.getQuantityString(R.plurals.catalogue_imported_movies, 1_000_000, 1_000_000))
+        AppLocales.attach(app)
+        assertEquals("fr", Locale.getDefault().language)
+        store.setLanguageTag("fi")
+        assertEquals("Tuntematon virhe", AppLocales.texts(app).getString(R.string.error_unknown))
+        store.setLanguageTag(null)
+        assertEquals("Unknown error", AppLocales.texts(app).getString(R.string.error_unknown))
     }
 
     @Test

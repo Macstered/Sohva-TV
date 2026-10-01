@@ -98,6 +98,7 @@
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
     <string name="interface_language_it">Italiano (bozza)</string>
+    <string name="interface_language_fr">Français (brouillon)</string>
     <string name="preferred_languages_title">Áudio e legendas de VOD</string>
     <string name="preferred_languages_help">Primeiro o principal, depois o secundário; Automático mantém o padrão do provedor.</string>
     <string name="preferred_audio_primary">Áudio principal</string>

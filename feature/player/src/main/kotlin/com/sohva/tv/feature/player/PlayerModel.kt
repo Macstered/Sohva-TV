@@ -144,6 +144,7 @@ class PlayerModel(
 
     /** The action row asks for focus when Up/Down step into the box (PLAY-FR-45); serial = a new request. */
     private val _boxFocus = MutableStateFlow(0)
+    private var boxFocusSerial = 0
     val boxFocusRequest: StateFlow<Int> = _boxFocus.asStateFlow()
 
     var controller: MediaController? = null
@@ -323,12 +324,19 @@ class PlayerModel(
         boxTimer?.cancel()
         boxTicker?.cancel()
         _box.value = false
+        _boxFocus.value = 0
+        boxFocused = false
     }
 
     /** Up/Down pressed while the box was visible: focus its action row (PLAY-FR-45). */
     fun focusBox() {
         reveal()
-        _boxFocus.value++
+        _boxFocus.value = ++boxFocusSerial
+    }
+
+    /** Consume the one-off hand-off so a later channel's preview cannot focus itself. */
+    fun boxFocusHandled(request: Int) {
+        _boxFocus.compareAndSet(request, 0)
     }
 
     private fun restartBoxTimer() {

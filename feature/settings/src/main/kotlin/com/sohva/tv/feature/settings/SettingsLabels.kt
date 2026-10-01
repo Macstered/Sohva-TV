@@ -30,6 +30,7 @@ internal object SettingsLabels {
         "pt" -> R.string.interface_language_pt
         "de" -> R.string.interface_language_de
         "sv" -> R.string.interface_language_sv
+        "fr" -> R.string.interface_language_fr
         else -> R.string.interface_language_it
     }
 

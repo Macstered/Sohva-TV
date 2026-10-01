@@ -141,7 +141,14 @@ private fun ActionRow(model: PlayerModel) {
             onFocus = { onFocus(7, it) },
         )
     }
-    LaunchedEffect(request) { if (request > 0) first.requestFocusWhenAttached() }
+    LaunchedEffect(request) {
+        if (request > 0) {
+            first.requestFocusWhenAttached(stillWanted = {
+                model.boxVisible.value && model.boxFocusRequest.value == request
+            })
+            model.boxFocusHandled(request)
+        }
+    }
 }
 
 /** A 44 × 44 icon action (spec 30 §5.4); the description is its accessibility label. */

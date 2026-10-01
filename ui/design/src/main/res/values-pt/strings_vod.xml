@@ -78,7 +78,7 @@
     <string name="artwork_cache_cleared">Cache de imagens limpo</string>
     <string name="translate_title">Traduções</string>
     <string name="translate_help_title">Ajude a traduzir o Sohva TV</string>
-    <string name="translate_help">Espanhol, português, alemão, sueco e italiano são rascunhos. Correções são bem-vindas no repositório público.</string>
+    <string name="translate_help">Espanhol, português, alemão, sueco, italiano e francês são rascunhos. Correções são bem-vindas no repositório público.</string>
     <string name="catalogue_sort_alphabetical">A–Z</string>
     <string name="catalogue_sort_newest">Mais recentes</string>
     <string name="catalogue_sort_year">Ano</string>

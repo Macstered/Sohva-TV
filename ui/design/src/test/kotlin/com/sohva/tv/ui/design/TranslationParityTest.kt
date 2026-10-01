@@ -13,7 +13,7 @@ import org.w3c.dom.Element
  */
 class TranslationParityTest {
     private val res = File("src/main/res")
-    private val languages = listOf("fi", "es", "pt", "de", "sv", "it")
+    private val languages = listOf("fi", "es", "pt", "de", "sv", "it", "fr")
     private val drafts = setOf("es", "pt", "de", "sv", "it")
 
     private data class Entry(val kind: String, val placeholders: List<String>, val quantities: Set<String>)
@@ -66,6 +66,7 @@ class TranslationParityTest {
                     if (other.kind != entry.kind) problems += "$language $key: ${other.kind} instead of ${entry.kind}"
                     if (other.placeholders != entry.placeholders) problems += "$language $key: placeholders ${other.placeholders} instead of ${entry.placeholders}"
                     if (other.kind == "plurals" && !other.quantities.containsAll(setOf("one", "other"))) problems += "$language $key: plural without one/other"
+                    if (language == "fr" && other.kind == "plurals" && "many" !in other.quantities) problems += "$language $key: plural without many"
                 }
                 for (key in translated.keys - english.keys) problems += "$language/${file.name} $key: not in English"
             }
@@ -74,10 +75,10 @@ class TranslationParityTest {
     }
 
     @Test
-    fun theLocaleConfigListsExactlyTheSevenLanguages() {
+    fun theLocaleConfigListsExactlyTheSupportedLanguages() {
         val config = File("../../app/src/main/res/xml/locales_config.xml").readText()
         val tags = Regex("""android:name="([^"]+)"""").findAll(config).map { it.groupValues[1] }.toList()
-        assertTrue(tags.toString(), tags == listOf("en", "fi", "es", "pt", "de", "sv", "it"))
+        assertTrue(tags.toString(), tags == listOf("en") + languages)
         for (language in languages) assertTrue(language, res.resolve("values-$language").isDirectory)
     }
 

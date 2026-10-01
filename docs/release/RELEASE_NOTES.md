@@ -1,3 +1,118 @@
+# Sohva TV 0.2.0-beta.15
+
+Android build **125**. Prepared 30 September 2026. Published 1 October 2026.
+
+## Changed in 0.2.0-beta.15
+
+- Sohva Sport recognises TPS/TPS Turku, HIFK/IFK Helsinki, HPK/Hameenlinna,
+  Sport/Vaasan Sport and ManU/Manchester United in both channel names and guide titles.
+- Club aliases work in both directions and are scoped to the sport. Added selected
+  NHL, NBA/basketball and NFL aliases, and complete club names written without spaces.
+- A single club phrase or shared nickname no longer proves both opponents.
+  Both teams and a compatible date are still required for an Available name match.
+- Older automatic results are rescanned. Your Confirm/Reject choices stay saved.
+- Includes the previous local candidates' focus, channel-info and French updates.
+
+## Muutokset versiossa 0.2.0-beta.15
+
+- Sohva Sport tunnistaa nimet TPS/TPS Turku, HIFK/IFK Helsinki, HPK/Hameenlinna,
+  Sport/Vaasan Sport ja ManU/Manchester United kanavien nimistä ja ohjelmaoppaasta.
+- Nimivastineet toimivat molempiin suuntiin ja lajin mukaan. Mukana on myös valittuja
+  NHL-, NBA/koripallo- ja NFL-nimivastineita sekä yhteen kirjoitettuja seuranimiä.
+- Yksi seuranimi tai molemmille joukkueille yhteinen lempinimi ei enää todista molempia
+  vastustajia. Saatavilla-merkintä vaatii edelleen molemmat joukkueet ja sopivan päivämäärän.
+- Automaattiset osumat lasketaan uudelleen. Omat Vahvista/Hylkää-valinnat säilyvät.
+- Mukana ovat aiempien paikallisten testiversioiden kohdistus-, ohjelmatieto- ja ranskankielipäivitykset.
+
+# Sohva TV 0.2.0-beta.14
+
+Android build **124**. Prepared 30 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.14
+
+- Sohva Sport: scrolling back up brings the whole focused stream card into view,
+  including its name. The first card is fully reachable too.
+- Guide: switching playlists keeps focus in the open menu, including while the
+  new channels load. Closing it returns to the new playlist's first channel.
+- Live playback: the programme info box hides again after CH+/CH− channel changes.
+  Previously focused controls no longer keep later channel previews open indefinitely.
+- Includes the previous local candidates' sports matching fixes and French interface.
+
+## Muutokset versiossa 0.2.0-beta.14
+
+- Sohva Sport: ylöspäin selaaminen tuo koko kohdistetun lähetyskortin näkyviin,
+  myös kanavan nimen. Ensimmäinen kortti näkyy kokonaan.
+- Opas: kanavalistan vaihtaminen säilyttää kohdistuksen avoimessa valikossa myös
+  kanavien latautuessa. Valikon sulkeminen kohdistaa uuden listan ensimmäisen kanavan.
+- Suora TV: ohjelmatietolaatikko piiloutuu jälleen CH+/CH−-kanavanvaihdon jälkeen.
+  Aiemmin kohdistetut painikkeet eivät enää jätä myöhempiä tietolaatikoita pysyvästi näkyviin.
+- Mukana ovat myös aiempien paikallisten testiversioiden ottelutunnistuksen korjaukset
+  ja ranskankielinen käyttöliittymä.
+
+# Sohva TV 0.2.0-beta.13
+
+Android build **123**. Prepared 30 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.13
+
+- Sohva Sport now prioritises both team names and a compatible date in provider
+  channel names. Different advertised start times and country time zones no longer
+  downgrade those listings to Possible. Actual programme guide timestamps stay strict.
+- Fixed dates such as `30 Sep 19:15` being read as `Sep 19`.
+- A stronger Available match now wins over Possible evidence on the same channel.
+- Recalculates cached automatic matches after updating. Saved Confirm/Reject choices stay.
+- Includes the French interface from the previous local candidate.
+
+## Muutokset versiossa 0.2.0-beta.13
+
+- Sohva Sport tunnistaa kanavan nimestä molemmat joukkueet ja sopivan päivämäärän.
+  Eri maiden lähetysaikoja ei enää käytetä tällaisten osumien pudottamiseen
+  Mahdollinen-luokkaan. Ohjelmaoppaan oikeat aloitusajat tarkistetaan kuten ennenkin.
+- Korjattu päivämäärän `30 Sep 19:15` tulkitseminen syyskuun 19. päiväksi.
+- Automaattiset osumat lasketaan päivityksen jälkeen uudelleen. Omat vahvistukset
+  ja hylkäykset säilyvät. Mukana on myös edellisen paikallisen testiversion ranskankielinen käyttöliittymä.
+
+## Nouveautés de la version 0.2.0-beta.13
+
+- Sohva Sport privilégie les noms des deux équipes et une date compatible dans le
+  nom des chaînes. Les horaires annoncés par les diffuseurs de différents pays
+  ne réduisent plus la confiance de ces correspondances.
+- Correction de la date `30 Sep 19:15`, qui pouvait être lue comme le 19 septembre.
+- Les correspondances automatiques sont recalculées. Vos confirmations et rejets sont conservés.
+
+# Sohva TV 0.2.0-beta.12
+
+Android build **122**. Prepared 30 September 2026. Local test candidate; not published.
+
+## Changed in 0.2.0-beta.12
+
+- Added French to **Settings > General > Interface language**, labelled
+  **Français (brouillon)** pending native-speaker review. Android 13 and newer
+  also offer French in the system’s per-app language settings.
+- Translated the whole interface, including Live TV, the player, movie and series
+  libraries, Discover, Sohva Sport, Trakt, settings, errors and phone setup pages.
+- Uses Android’s normal local resources. No translation service, extra library
+  or background job is needed. Audio, subtitle and metadata preferences stay separate.
+
+## Muutokset versiossa 0.2.0-beta.12
+
+- Ranska lisätty kohtaan **Asetukset > Yleiset > Käyttöliittymän kieli**.
+  Valinta **Français (brouillon)** on luonnos, joka odottaa ranskaa äidinkielenään
+  puhuvan tarkistusta. Android 13 ja uudemmat tarjoavat ranskan myös sovelluskohtaisissa kieliasetuksissa.
+- Koko käyttöliittymä on käännetty: suora TV, soitin, elokuva- ja sarjakirjastot,
+  Discover, Sohva Sport, Trakt, asetukset, virheet ja puhelimen määrityssivut.
+- Käännös käyttää Androidin paikallisia tekstejä. Se ei tarvitse käännöspalvelua,
+  uutta kirjastoa tai taustatyötä. Äänen, tekstityksen ja metatietojen kielivalinnat säilyvät erillisinä.
+
+## Nouveautés de la version 0.2.0-beta.12
+
+- Le français est disponible dans **Réglages > Général > Langue de l’interface**,
+  sous le nom **Français (brouillon)**. La traduction complète attend une relecture
+  par une personne francophone. Vos corrections sont les bienvenues.
+- Les menus, le lecteur, les bibliothèques, Discover, Sohva Sport, Trakt,
+  les messages d’erreur et les pages de configuration sur téléphone sont traduits.
+- La traduction est intégrée à l’application et ne nécessite aucun service en ligne.
+
 # Sohva TV 0.2.0-beta.11
 
 Android build **121**. Prepared 30 September 2026. Prerelease for testers.

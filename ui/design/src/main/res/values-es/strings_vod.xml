@@ -78,7 +78,7 @@
     <string name="artwork_cache_cleared">Caché de imágenes borrada</string>
     <string name="translate_title">Traducciones</string>
     <string name="translate_help_title">Ayuda a traducir Sohva TV</string>
-    <string name="translate_help">El español, el portugués, el alemán, el sueco y el italiano son borradores. Las correcciones son bienvenidas en el repositorio público.</string>
+    <string name="translate_help">El español, el portugués, el alemán, el sueco, el italiano y el francés son borradores. Las correcciones son bienvenidas en el repositorio público.</string>
     <string name="catalogue_sort_alphabetical">A–Z</string>
     <string name="catalogue_sort_newest">Más recientes</string>
     <string name="catalogue_sort_year">Año</string>

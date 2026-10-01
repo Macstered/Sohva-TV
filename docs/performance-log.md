@@ -234,3 +234,211 @@ this work. Check the actual selected tier and reduced-motion setting in diagnost
 artwork and playback. The Elisa device recorded above has 3 GB, so RAM alone may not select LOW on
 that box; smoothness on the 1 GB stand-in does not establish its behaviour. The focused build-115
 checklist is in `docs/release/TESTING.md`.
+
+## French interface update — 30 September 2026
+
+Build 122 / 0.2.0-beta.12 adds 1,511 translated resources, including French plurals,
+Trakt and phone setup. It uses Android resource resolution and one extra entry in
+three fixed locale lists. No library, worker, catalogue read, cache or drawing layer
+was added. The two long Settings rail labels were shortened after visual review.
+
+- Release APK before the final source-revision record: 6,274,801 bytes, 90,958 bytes
+  above published beta.11. The resource table adds 90,948 bytes; compressed dex adds
+  107 bytes; install profiles are unchanged. The 8 MB budget and 200 KiB growth
+  allowance remain in place, with the baseline refreshed to published beta.11.
+- Local gates: 704 unit tests in 136 suites, zero failures or skips; screenshot
+  goldens, lint, public-source audit, gitleaks, release and Play gates pass.
+- Android TV API 30, 1 GB stand-in (997,544 KiB reported RAM): Room's 21 device
+  tests pass. The full app run covered 223 cases, with six assumption-disabled
+  optional checks and two failures: a wrong route assumption in the new language
+  test, and a sports navigation timeout. The corrected French test and the sports
+  retry pass. Final focused runs cover all 19 locale, General, phone and sports
+  navigation cases, with zero failures (`harness-out/french-api30-final.log`).
+- Android TV API 34, 1 GB: the French-to-system-language round trip through the
+  platform per-app locale passes (`harness-out/french-api34-final.log`).
+- Captures from instrumentation show Home, General and the language picker in
+  French on both APIs. Accents and focus are visible; the last picker option is
+  reachable with real D-pad events. Audio and subtitle preferences remain stored.
+
+This is a resource addition, not a measured scrolling or decoder performance
+change. Build 122 has not been tested on household devices. The signed release
+is checked with `tools/verify_release_dex.py` before packaging.
+
+## Sports provider-name matching — 30 September 2026
+
+Build 123 / 0.2.0-beta.13 corrects `30 Sep 19:15` being read as `Sep 19`.
+Both teams and a compatible date now determine name confidence; even explicitly
+zoned provider clocks only rank these matches. Available evidence wins over
+Possible on the same channel. Real guide timestamps keep their existing window.
+Cache version 2 discards old automatic confidence without changing Room decisions.
+No query, page size, worker, drawing layer or cache bound changed.
+
+The exact two Tappara–KooKoo names are JVM regressions for an 18:30 kick-off.
+The provider-clock/date regressions and the version-1 cache rejection fail before
+the fix. The Android country-stream regression also fails on the old app. A
+separate regression proves score-only winner selection hides stronger evidence;
+both candidate arrival orders pass with confidence first.
+
+Measurements on the cold-booted API 30 / 1 GB stand-in, using the unminified debug
+app and the same instrumentation fixtures before and after:
+
+| Phase | Before | After |
+| --- | --- | --- |
+| 12,000 name candidates, bulk-thread CPU median of five warm samples | 292 ms | 306 ms |
+| CPU sample range (first warm-up sample excluded) | 271–311 ms | 285–366 ms |
+| Owner-scale scan wall time | 18,034 ms | 17,895 ms |
+| Whole-app sampled managed heap peak during scan | 11,273 KiB | 11,512 KiB |
+| Main-thread heartbeat longest gap | 20 ms | 21 ms |
+| Channel / programme pages | 220 / 1,975 | 220 / 1,975 |
+| Candidates / Available results | 168,492 / 49 | 168,492 / 49 |
+
+The CPU stress fixture creates 12,000 names that all mention both teams and keeps
+only 120 channel winners, across four date forms. It deliberately stresses date
+parsing more than the full catalogue, where most names do not mention these teams.
+The median CPU increase is 4.8%. The quality plan's 15% gross-regression threshold
+uses a rolling nightly comparison; these two local runs do not establish that gate.
+This is a correctness change, not a speed-up claim. Wall time is recorded as context only;
+host variation and the debug JIT limit attribution. The full scan uses 56,164
+channels and 112,328 programmes with long descriptions; peak managed heap remains
+below 16 MiB. Cancellation adds no queries and the second read is a cache hit.
+
+All 714 unit tests in 137 suites pass, with zero failures or skips. The full local
+gate passes, including lint, screenshot goldens, secret/public-source audits, R8,
+release and Play checks. Six targeted Android checks pass: country-stream parsing,
+the CPU stress test, owner-scale memory/cancellation/cache, and three sports UI
+tests covering saved decisions, focus, playback return, the sports channel row
+and ticker. Neither Shield nor Elisa was used for this candidate.
+
+Local evidence: `harness-out/sport-name-before-tests.log`,
+`sport-name-before-android-regression.log`, `sport-name-winner-before.log`,
+`sport-name-before-measurements.log`, `sport-name-after-measurements.log`,
+`sport-name-after-native.log` and `sport-name-final-check-all-run.log`.
+The before app's SHA-256 was
+`dc3397a014784399cbd3d9f3b725ca5708fa7e479e6e6847363798d9ac4bee52`;
+production code was the French commit, with only measurement tests added.
+
+## 30 September 2026 — stream visibility, guide menu and live previews (build 124)
+
+Three real-key regressions fail before the changes on the cold-booted API 30,
+1920 × 1080, xhdpi stand-in with 1 GB RAM. With six matched streams, scrolling
+up leaves the focused card's top 59 dp above the viewport. With the next
+playlist's list read gated, releasing data steals focus from the guide menu's
+Sort button. After explicitly focusing and dismissing the live information box,
+CH− replays its old focus request and the next preview remains past eight seconds.
+
+All three pass after the changes. The guide case covers both Menu and the rail's
+Options button, navigation while the read is waiting, and return to the first
+new channel. The player case covers CH− and CH+, five-second preview timeouts,
+and deliberately focused controls staying visible. All 29 related Android tests
+pass, including stream decisions and playback return, hub boundaries and event
+scrolling, guide paging with delayed programmes, held keys, pickers and channel lists.
+
+The stream list stays lazy. Each attached row has one focus group and a
+cancelable full-card visibility request on focus entry. It uses the existing
+minimal-scroll policy. The guide adds one existing-state subscription and guards
+only pending focus retries. The player consumes one-off focus requests and reuses
+its existing timer. No query, cache, polling job or drawing layer is added.
+
+Main-thread CPU was sampled on the same stand-in with the unminified debug app,
+one warm-up navigation cycle, then five cycles of five Down and five Up presses.
+Each press waits for the resulting layout and scroll to settle. This measures
+the entire UI phase, not desktop frame times or key-to-focus latency.
+
+| Phase | Before | After |
+| --- | --- | --- |
+| Main-thread CPU per ten presses, five samples (ms) | 339, 304, 261, 234, 220 | 417, 326, 295, 300, 322 |
+| Median per ten presses | 261 ms | 322 ms |
+| Median phase CPU divided by ten presses | 26.1 ms | 32.2 ms |
+
+The initial paired median rises 23.4%: the corrected journey scrolls enough to
+show whole cards, whereas the old journey stops at their bottom buttons. A
+repeat of the corrected journey during the related test suite measures
+317, 261, 258, 271 and 267 ms, median 267 ms. The spread and debug JIT limit
+attribution. This is a correctness fix, not a speed-up claim or proof of the
+nightly rolling performance gate; it still needs the owner's real-device check.
+
+All 714 unit tests in 137 suites pass without failures or skips. Full local
+checks pass: screenshot goldens, lint, all eight languages including French,
+public-source and secret audits, R8, release and Play artifact gates. The signed
+candidate is beta.14/build 124. Neither Shield nor Elisa was used.
+
+Evidence: `harness-out/focus-before-guide.log`,
+`focus-before-stream-player.log`, `focus-regressions-after.log`,
+`focus-cpu-before.log`, `focus-cpu-after.log`, `focus-related-native.log`,
+`focus-check-all-run.log` and `focus-check-all-detail.log`.
+The before debug APK SHA-256 is
+`601dde665a5b51cea97981239cd60bec23795e2cff8666094897ba50f6fe17b3`;
+the corrected debug APK used for both CPU and related tests is
+`1791d0c9fec4c58b6d5703b0c20aea13de1c85facae4e2d60f8be33887a5b9ca`.
+Both are build 123 for a matched comparison; the final candidate changes only
+the version to 124, release documents and import order beyond those runtime fixes.
+
+## 30 September 2026 — club aliases in sports matching (beta.15/build 125)
+
+The owner's Kiekko-Espoo–TPS Turku screenshot names the provider's second team
+TPS. HIFK/IFK Helsinki, HPK/Hameenlinna, Sport/Vaasan Sport and ManU/Manchester
+United supplied further examples. Aliases now form explicit bidirectional,
+sport-scoped groups. Complete club names written without spaces are also indexed.
+The longest club phrase wins; a nickname shared by opponents is ambiguous.
+No extra app network calls, database queries or runtime dependencies are added.
+
+Before changing the broader matcher, seven of eight new JVM regressions failed:
+missing/reversed aliases, compact names, and false Available matches from an
+overlapping club phrase or a shared nickname. The TPS JVM and real Room regression
+also failed on the saved beta.14 runtime. A refined Room fixture separately
+reproduced HIFK as Possible instead of Available. After correction, the native
+fixtures find both guide and channel-name streams for all reported identities.
+Cache format 2 is rejected by format 3; stored viewer decisions are separate.
+
+Measurements use the same cold-booted API 30 Android TV stand-in, 1920×1080/xhdpi,
+1 GB RAM, the unminified debug app and dates anchored to the emulator clock.
+The fixed seed contains 56,164 channels, 112,328 programmes with 2,150-character
+descriptions and 30 games. CPU is sampled on the bulk thread around the scan;
+it excludes Room executor CPU. These are local paired samples, not proof of the
+nightly rolling gate or measured Shield/Elisa performance.
+
+| Measurement | Beta.14 runtime | Corrected runtime |
+|---|---:|---:|
+| 12,000 short-name candidates, five warm CPU samples (ms) | 185, 185, 184, 197, 192 | 234, 181, 202, 194, 183 |
+| Warm CPU median, 120 channel winners | 185 ms | 194 ms |
+| Owner-scale scan, bulk-thread CPU | 5,037 ms | 5,155 ms |
+| Owner-scale scan, elapsed time | 17,702 ms | 18,306 ms |
+| Managed heap peak | 11,197 KiB | 12,149 KiB |
+| Longest main-thread heartbeat gap | 21 ms | 21 ms |
+| Channel / programme page queries | 220 / 1,975 | 220 / 1,975 |
+| Candidates / Available results | 168,492 / 49 | 168,492 / 49 |
+
+The bulk CPU increase is 2.3%; the short-name stress median rises 4.9%. Both are
+below the 15% gross-regression guard and the heap stays under 16 MiB. The first
+implementation iterated an empty scratch map on every guide word: its scan CPU
+was 6,359 ms (+26.2%), so it was rejected. An unindexed word now takes one lookup
+and continues immediately. The new ambiguity checks run only at indexed words.
+First warm-up samples are excluded from stress medians. Cancellation and the
+second-run cache hit still pass; all six native pairing tests pass.
+
+Evidence: `harness-out/tps-alias-before-unit.log`,
+`team-alias-before-unit.log`, `team-alias-before-native.log`,
+`team-alias-room-before.log`, `team-alias-after-native.log` and
+`team-alias-optimized-native.log`. The saved beta.14 debug APK SHA-256 is
+`b98b55024bc957efe680b249c57b04ce0774b313f6e8e0f4bb9852695fc38673`;
+the measured corrected beta.15 debug APK is
+`a2df0a6498c434ad9b2b30731c2f3aba7b1024df8ce87ce691934c9407473ee6`.
+Version metadata changes from 124 to 125; fixtures, emulator and measurement
+method stay the same. Neither Shield nor Elisa was used for this change.
+
+All 729 unit tests in 139 suites pass with no failures or skips, along with
+nine targeted native checks: the six pairing/performance checks and three sports
+decision, playback/return and score-overlay checks. Full Gradle gates pass,
+including screenshot goldens, lint, R8 and release/Play artifacts. All eight
+languages, public-source and secret audits pass. The tester-pack version audit
+passes after correcting the remaining stale README version references.
+Logs: `team-alias-related-native.log`, `team-alias-check-all-run.log`,
+`team-alias-check-all-detail.log` and `team-alias-release-audit.log`.
+
+Final review found a compatibility regression in saved alias rows with a
+two-character canonical key. Its new test failed before correction. Retain
+nonempty identity keys, and apply the three-character minimum to match variants
+only. This changes no built-in group or measured fixture. Evidence:
+`team-alias-short-identity-before.log` and `team-alias-final-compatibility.log`.
+All unit tests were rerun after the compatibility correction. The final native
+repeat is in `team-alias-final-native.log`.

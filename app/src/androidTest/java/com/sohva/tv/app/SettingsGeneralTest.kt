@@ -75,10 +75,21 @@ class SettingsGeneralTest {
         compose.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
     }.getOrDefault("")
 
+    private fun screenshot(name: String) {
+        val image = instrumentation.uiAutomation.takeScreenshot()
+        val file = java.io.File(graph.app.filesDir, "french-$name.png")
+        file.outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        image.recycle()
+    }
+
     /** Settings opens on Playlists (SET-FR-05); Left to the rail, then OK on [section]. */
     private fun openSection(section: String, first: String) {
         compose.waitUntil(10_000) { exists(RailItem.SETTINGS.tag) }
         compose.onNodeWithTag(RailItem.SETTINGS.tag).performSemanticsAction(SemanticsActions.OnClick)
+        selectSectionFromPlaylists(section, first)
+    }
+
+    private fun selectSectionFromPlaylists(section: String, first: String) {
         awaitFocus("source-add-m3u")
         press(KeyEvent.KEYCODE_DPAD_LEFT)
         awaitFocus("settings-section-sources")
@@ -88,17 +99,56 @@ class SettingsGeneralTest {
         awaitFocus(first)
     }
 
-    /** SET-FR-50, -21: the language picker lists System default and the seven, opens on the current one, Back changes nothing. */
+    /** SET-FR-50, -21: System default and all languages, current choice focused, Back changes nothing. */
     @Test
-    fun theLanguagePickerListsTheEightChoicesAndBackChangesNothing() {
+    fun theLanguagePickerListsTheNineChoicesAndBackChangesNothing() {
         openSection("general", "settings-language")
         assertTrue(label("settings-language").contains("System default"))
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         awaitFocus("settings-language-0")
-        for (i in 1..7) assertTrue("choice $i", exists("settings-language-$i"))
+        for (i in 1..8) {
+            press(KeyEvent.KEYCODE_DPAD_DOWN)
+            awaitFocus("settings-language-$i")
+        }
         press(KeyEvent.KEYCODE_BACK)
         awaitFocus("settings-language")
         assertTrue(label("settings-language").contains("System default"))
+    }
+
+    @Test
+    fun frenchCanBeChosenWithTheRemoteAndClearedAgain() {
+        runBlocking {
+            prefs.setVodLanguage(com.sohva.tv.core.model.settings.VodLanguageSlot.AUDIO, "fi")
+            prefs.setVodLanguage(com.sohva.tv.core.model.settings.VodLanguageSlot.SUBTITLES, "en")
+        }
+        openSection("general", "settings-language")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        awaitFocus("settings-language-0")
+        press(KeyEvent.KEYCODE_DPAD_DOWN, 8)
+        awaitFocus("settings-language-8")
+        assertTrue(label("settings-language-8"), label("settings-language-8").contains("Français (brouillon)"))
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        // The Settings destination survives; its recreated model starts on Playlists.
+        compose.waitUntil(10_000) { AppLocales.chosen(graph.app) == "fr" && label("source-add-m3u").contains("Ajouter") }
+        selectSectionFromPlaylists("general", "settings-language")
+        compose.waitUntil(5_000) { label("settings-language").contains("Français (brouillon)") }
+        assertTrue(label("settings-language"), label("settings-language").contains("Français (brouillon)"))
+        assertTrue(label("settings-language"), label("settings-language").contains("Langue"))
+        screenshot("settings")
+        assertTrue(runBlocking { prefs.playback() }.vodLanguages.let { it.audio == "fi" && it.subtitles == "en" })
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("home-nav-home") }
+        screenshot("home")
+        openSection("general", "settings-language")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        awaitFocus("settings-language-8")
+        screenshot("language")
+        press(KeyEvent.KEYCODE_DPAD_UP, 8)
+        awaitFocus("settings-language-0")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { AppLocales.chosen(graph.app) == null && label("source-add-m3u").contains("Add M3U") }
+        selectSectionFromPlaylists("general", "settings-language")
+        assertTrue(label("settings-language"), label("settings-language").contains("System default"))
     }
 
     /**

@@ -1,6 +1,7 @@
 # Release APK size baseline (plan/05 §4.8). The gate fails above milestoneBudgetBytes, above
 # 10 MB, or more than 200 KB above apkBytes. Change apkBytes only with a docs/decisions.md entry
 # that names the cause.
-apkBytes=6056653
+# Published beta.11 (build 121); see the 30 September 2026 decision for the measured French delta.
+apkBytes=6183843
 # From M2 (the player): plan/07 §3.1's 8 MB target for the whole app (M0's skeleton budget was 4 MB).
 milestoneBudgetBytes=8000000

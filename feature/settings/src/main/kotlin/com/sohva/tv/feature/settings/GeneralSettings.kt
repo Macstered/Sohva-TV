@@ -100,6 +100,6 @@ class GeneralSettings internal constructor(private val services: GeneralSettings
 
     companion object {
         /** The picker's tags after System default (SET-FR-50). */
-        val LANGUAGES: List<String> = listOf("en", "fi", "es", "pt", "de", "sv", "it")
+        val LANGUAGES: List<String> = listOf("en", "fi", "es", "pt", "de", "sv", "it", "fr")
     }
 }

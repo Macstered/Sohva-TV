@@ -135,7 +135,7 @@ class StreamMatcherTest {
     }
 
     @Test
-    fun amPmClocksWithZonesKeepLeadInAndConflicts() {
+    fun amPmClocksWithZonesKeepLeadInButOnlyWrongDatesLowerNameConfidence() {
         val e = game.copy(startMillis = at("2026-09-18T18:45:00Z"))
         for (date in listOf("Sep 18", "September 18, 2026", "18 Sept 2026", "2026-09-18")) {
             val m = one(e, name("Manchester United v Liverpool @ $date 2:30 PM UTC-4")).single()
@@ -144,7 +144,8 @@ class StreamMatcherTest {
             assertEquals(true, m.explicitStart)
         }
         for (label in listOf("Sep 18 2:30 AM UTC-4", "Sep 17 2:30 PM UTC-4", "Sep 18 2:30 PM UTC")) {
-            assertEquals(label, Confidence.POSSIBLE, one(e, name("Manchester United v Liverpool @ $label")).single().confidence)
+            val expected = if (label.startsWith("Sep 17")) Confidence.POSSIBLE else Confidence.AVAILABLE
+            assertEquals(label, expected, one(e, name("Manchester United v Liverpool @ $label")).single().confidence)
         }
     }
 
@@ -219,13 +220,13 @@ class StreamMatcherTest {
     }
 
     @Test
-    fun numericDatesWithZonesStillCheckTheInstant() {
+    fun numericDatesWithZonesKeepOffsetsAndRejectStaleDates() {
         val e = game.copy(startMillis = at("2026-09-18T18:45:00Z"))
         for ((label, expected, offset) in listOf(
             Triple("(18/9) 18:30 UTC", Confidence.AVAILABLE, -15L),
             Triple("(9/18/2026) 20:45 CEST", Confidence.AVAILABLE, 0L),
             Triple("(17/9) 18:45 UTC", Confidence.POSSIBLE, -1440L),
-            Triple("(18/9) 18:45 CEST", Confidence.POSSIBLE, -120L),
+            Triple("(18/9) 18:45 CEST", Confidence.AVAILABLE, -120L),
         )) {
             val m = one(e, name("[danzDE] $label Football: Manchester United - Liverpool")).single()
             assertEquals(label, expected, m.confidence)

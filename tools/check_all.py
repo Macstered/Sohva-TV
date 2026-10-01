@@ -26,6 +26,7 @@ def gitleaks() -> str:
 
 STEPS: list[tuple[str, list[str]]] = [
     ("strings", [sys.executable, "tools/import_strings.py", "--check"]),
+    ("French coverage and formatting", [sys.executable, "tools/check_french_strings.py"]),
     ("public-source audit", [sys.executable, "tools/audit_public_source.py"]),
     ("gitleaks tree", ["publishable-tree"]),
     ("gitleaks history", [gitleaks(), "git", ".", "--config", ".gitleaks.toml", "--no-banner", "--redact"]),

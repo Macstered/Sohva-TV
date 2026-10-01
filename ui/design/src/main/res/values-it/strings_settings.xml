@@ -98,6 +98,7 @@
     <string name="interface_language_de">Tedesco (bozza)</string>
     <string name="interface_language_sv">Svedese (bozza)</string>
     <string name="interface_language_it">Italiano (bozza)</string>
+    <string name="interface_language_fr">Français (brouillon)</string>
     <string name="preferred_languages_title">Audio e sottotitoli VOD</string>
     <string name="preferred_languages_help">Prima la principale, poi la secondaria; Automatico mantiene l\'impostazione predefinita del provider.</string>
     <string name="preferred_audio_primary">Audio principale</string>

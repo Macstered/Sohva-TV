@@ -328,7 +328,7 @@ Spec: [specs/20-live-tv-guide.md](../specs/20-live-tv-guide.md) · Milestone: M2
 - [x] **GUIDE-31** Reminders for future programmes (details in [Catch-up and reminders](../specs/22-catchup-and-reminders.md)).
 - [x] **GUIDE-32** Number dialling: overlay "Channel 12", up to 4 digits, commits 2 s after the last digit, "No channel 12" for 1.5 s; own numbers first, then list positions; focus moves to the channel.
 - [x] **GUIDE-33** Find programme: a search field on the rail filters the rows by channel name or by a programme title in the three hours shown.
-- [x] **GUIDE-34** Options sheet (Menu, or Options on the rail): Source, Sort, Edit (groups), Edit (channels), Settings, Back, Close.
+- [x] **GUIDE-34** Options sheet (Menu, or Options on the rail): Source, Sort, Edit (groups), Edit (channels), Settings, Back, Close. Playlist changes keep focus in the foreground menu, including delayed reads (build 124 regression).
 - [x] **GUIDE-35** Sort and Edit (groups) open the Library manager at the current group and source; back from it the guide reopens with the options open on that group.
 - [x] **GUIDE-36** Edit (channels) opens [Channel management](../specs/21-channel-management.md).
 - [x] **GUIDE-37** Key-hint bar listing only working bindings.
@@ -430,7 +430,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-04** Black video ground and letterbox bars in every colour theme.
 - [x] **PLAY-05** "Connecting to playback service…" screen, and a full-screen message with Back when the service fails.
 - [x] **PLAY-06** Live information box: channel logo or initials, name, LIVE tag, stream tags, group, programme title, start time, "% watched", time left, stop time, progress bar, next programme, stream name when it differs.
-- [x] **PLAY-07** Live information box hides after 5 s idle, stays while its buttons have focus, and does not reappear by itself when the programme changes or the guide refreshes.
+- [x] **PLAY-07** Live information box hides after 5 s idle, stays while its buttons have focus, and does not reappear by itself when the programme changes or the guide refreshes. Earlier action-focus requests do not replay on CH+/CH− previews (build 124 regression).
 - [x] **PLAY-08** Live action row: hide controls, picture shape, audio, subtitles, channel list, stream details, quick actions, open in another player.
 - [x] **PLAY-09** Transport controls for catch-up and VOD: title, Back, picture, audio, subtitles, progress bar, position / duration, rewind, play/pause, forward (buttons name the skip step).
 - [x] **PLAY-10** Transport controls hide after 5 s idle unless focused or a track picker is open.
@@ -892,7 +892,7 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 - [x] **SPORT-31** Match events panel (football): timeline band (home above, away below, half-time tick), incident list, Refresh.
 - [x] **SPORT-32** Incident list scrolls with Up/Down and releases focus at either end.
 - [x] **SPORT-33** Match events states: not available for this sport, loading, none yet, error with Try again, cached data warning.
-- [x] **SPORT-34** Streams panel: rows with confidence, source (TV GUIDE / M3U NAME), channel name, programme or detail, stream tag chips, start-offset explanation.
+- [x] **SPORT-34** Streams panel: rows with confidence, source (TV GUIDE / M3U NAME), channel name, programme or detail, stream tag chips, start-offset explanation. Scrolling up shows the whole focused card, including the first (build 124 regression).
 - [x] **SPORT-35** Watch plays the channel; Back from the player returns to the open hub.
 - [x] **SPORT-36** Confirm a Possible stream, Reject any undecided stream, Restore a decided one; "Confirmed by you".
 - [x] **SPORT-37** Decisions survive refreshes, re-imports and restarts.
@@ -903,11 +903,11 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 
 - [x] **SPORT-40** Candidates from guide programmes within 120 minutes of kick-off.
 - [x] **SPORT-41** Candidates from M3U channel names that name both teams.
-- [x] **SPORT-42** Channel-name clock times with explicit zones (CET, CEST, EET, EEST, UTC/GMT and offsets), AM/PM, and dates (ISO, month names, `18/9`).
-- [x] **SPORT-43** Team aliases (built-in football aliases plus a stored alias table).
+- [x] **SPORT-42** Channel-name clock times with explicit zones (CET, CEST, EET, EEST, UTC/GMT and offsets), AM/PM, and dates (ISO, month names, `18/9`). Provider clocks rank name results without downgrading a compatible date and both teams (owner correction, 30 September 2026).
+- [x] **SPORT-43** Team aliases (sport-scoped, bidirectional club groups and a stored alias table). Build 125 covers the reported TPS, HIFK, HPK, Sport and ManU names, selected international aliases and ambiguous-opponent regressions.
 - [x] **SPORT-44** Confidence Available / Possible / Rejected, with the ordering rules.
 - [x] **SPORT-45** Country/language priority reorders streams within one confidence level.
-- [x] **SPORT-46** Pairing results cached across restarts, recomputed when channels, guide or rules change.
+- [x] **SPORT-46** Pairing results cached across restarts, recomputed when channels, guide or rules change. Build 125 invalidates older automatic results for the expanded aliases; saved confirm/reject choices stay intact.
 - [x] **SPORT-47** Hidden channels, disabled sources and hidden groups are never offered.
 
 **Favourites and reminders**
@@ -1102,8 +1102,8 @@ Spec: [specs/73-security-privacy.md](../specs/73-security-privacy.md) · Milesto
 
 Spec: [specs/74-localization.md](../specs/74-localization.md) · Milestone: M7 · 13 items
 
-- [x] **L10N-01** Seven interface languages: English (fallback), Finnish (complete), Spanish, Portuguese, German, Swedish, Italian (drafts).
-- [x] **L10N-02** Interface language picker: System default plus the seven, each named in its own language; drafts carry "(borrador)", "(rascunho)", "(Entwurf)", "(utkast)", "(bozza)".
+- [x] **L10N-01** Eight interface languages: English (fallback), Finnish (complete), Spanish, Portuguese, German, Swedish, Italian and French (drafts; French added at the owner’s request on 30 September 2026).
+- [x] **L10N-02** Interface language picker: System default plus the eight, each named in its own language; drafts carry "(borrador)", "(rascunho)", "(Entwurf)", "(utkast)", "(bozza)", "(brouillon)".
 - [x] **L10N-03** Choosing a language restarts the app's screen in that language; System default follows the TV and falls back to English for other languages.
 - [x] **L10N-04** From Android 13 the choice is the platform per-app language and also appears in Android's own per-app language screen.
 - [x] **L10N-05** Metadata language for TMDB titles, plots and artwork: 22 languages; Finnish by default with a Finnish interface, else English; changing it refreshes metadata in the background.

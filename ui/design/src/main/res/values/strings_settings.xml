@@ -105,6 +105,7 @@
     <string name="interface_language_de">Deutsch (Entwurf)</string>
     <string name="interface_language_sv">Svenska (utkast)</string>
     <string name="interface_language_it">Italiano (bozza)</string>
+    <string name="interface_language_fr">Français (brouillon)</string>
     <string name="preferred_languages_title">VOD audio and subtitles</string>
     <string name="preferred_languages_help">Primary first, then secondary; Automatic keeps the provider\'s default.</string>
     <string name="preferred_audio_primary">Primary audio</string>

@@ -17,8 +17,8 @@ object SohvaBuild {
     val JAVA_VERSION: JavaVersion = JavaVersion.VERSION_17
     val JVM_TARGET: JvmTarget = JvmTarget.JVM_17
 
-    /** The seven interface languages; everything else is filtered out of the APK (plan/05 §4.7). */
-    val LOCALES: List<String> = listOf("en", "fi", "es", "pt", "de", "sv", "it")
+    /** The interface languages; everything else is filtered out of the APK (plan/05 §4.7). */
+    val LOCALES: List<String> = listOf("en", "fi", "es", "pt", "de", "sv", "it", "fr")
 
     /**
      * Lint ids that only say a newer dependency exists. Versions move once a month and at each

@@ -22,10 +22,13 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class GuideScreenTest {
     private val clearState = ClearStateRule()
+    private lateinit var gated: GatedReads
     private val seed = object : ExternalResource() {
         override fun before() {
             val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as SohvaApplication
             GuideFixture.seed(app.graph, sources = 2)
+            gated = GatedReads(app.graph.data.live)
+            app.graph.liveReadsOverride = gated
         }
     }
     private val compose = createAndroidComposeRule<MainActivity>()
@@ -126,6 +129,44 @@ class GuideScreenTest {
         press(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
         compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("Now", unmerged = true) }
         awaitFocus("guide-row-0")
+    }
+
+    @Test
+    fun sourceSwitchKeepsFocusInOptionsWhileRowsArrive() {
+        openGuide()
+        // Both Menu and the rail's Options keep their foreground controls in charge.
+        for (fromRail in listOf(false, true)) {
+            if (fromRail) {
+                press(KeyEvent.KEYCODE_DPAD_LEFT)
+                awaitFocus("guide-rail-group:g0")
+                press(KeyEvent.KEYCODE_DPAD_UP, 4)
+                awaitFocus("guide-rail-options")
+                press(KeyEvent.KEYCODE_DPAD_CENTER)
+            } else {
+                press(KeyEvent.KEYCODE_MENU)
+            }
+            awaitFocus("guide-options-source")
+            gated.listsOpen.value = false
+            try {
+                press(KeyEvent.KEYCODE_DPAD_CENTER)
+                compose.waitUntil(5_000) { gated.listsWaiting.get() > 0 }
+                compose.onNodeWithTag("guide-options-source").assertIsFocused()
+                press(KeyEvent.KEYCODE_DPAD_DOWN)
+                awaitFocus("guide-options-sort")
+                gated.listsOpen.value = true
+                compose.waitUntil(10_000) { gated.listsWaiting.get() == 0 }
+                compose.waitUntil(10_000) { compose.onAllNodesWithTagExists("guide-row-0") }
+                android.os.SystemClock.sleep(500)
+                compose.waitForIdle()
+                compose.onNodeWithTag("guide-options-sort").assertIsFocused()
+                press(KeyEvent.KEYCODE_DPAD_UP)
+                awaitFocus("guide-options-source")
+                press(KeyEvent.KEYCODE_BACK)
+                awaitFocus("guide-row-0")
+            } finally {
+                gated.listsOpen.value = true
+            }
+        }
     }
 
     @Test

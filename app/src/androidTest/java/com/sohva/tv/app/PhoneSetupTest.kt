@@ -95,6 +95,36 @@ class PhoneSetupTest {
     }
 
     @Test
+    fun thePhonePageUsesFrenchAndFollowsLaterLanguageChanges() {
+        assumeTrue(android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU)
+        val url = openDialog()
+        val store = com.sohva.tv.core.data.prefs.LocaleStore(graph.app)
+        try {
+            store.setLanguageTag("fr")
+            val french = page(url)
+            assertTrue(french.contains("<html lang=\"fr\">"))
+            assertTrue(french.contains("Configuration de Sohva TV"))
+            assertTrue(french.contains("Envoyer au téléviseur"))
+            assertTrue(french.contains("Mot de passe"))
+            store.setLanguageTag(null)
+            val english = page(url)
+            assertTrue(english.contains("<html lang=\"en"))
+            assertTrue(english.contains("Send to the TV"))
+        } finally {
+            store.setLanguageTag(null)
+        }
+    }
+
+    private fun page(url: String): String {
+        val host = url.removePrefix("http://").substringBefore('/')
+        return Socket(host.substringBefore(':'), host.substringAfter(':').toInt()).use { socket ->
+            socket.soTimeout = 10_000
+            socket.getOutputStream().write("GET / HTTP/1.1\r\nHost: $host\r\nConnection: close\r\n\r\n".toByteArray(Charsets.UTF_8))
+            socket.getInputStream().readBytes().toString(Charsets.UTF_8)
+        }
+    }
+
+    @Test
     fun backClosesTheDialogStopsThePageAndReturnsFocus() {
         val url = openDialog()
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)

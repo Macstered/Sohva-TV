@@ -5,10 +5,12 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sohva.tv.core.data.database.ProgrammeEntity
@@ -104,12 +106,63 @@ class SportsPairingTest {
 
     private fun rowOrder(): List<String> = listOf(A, B).sortedBy { compose.onNodeWithTag("hub-stream-$it").fetchSemanticsNode().boundsInRoot.top }
 
-    private fun openToday() {
+    private fun openToday(channels: Int = 1) {
         compose.waitUntil(10_000) { exists(RailItem.SPORT.tag) }
         compose.onNodeWithTag(RailItem.SPORT.tag).performSemanticsAction(SemanticsActions.OnClick)
         awaitFocus("today-card-api-sports:football:1")
         // Pairing runs once Today is shown; the card then offers the channel.
-        compose.waitUntil(20_000) { compose.onAllNodesWithTextExists("WATCH · 1 CHANNEL") }
+        compose.waitUntil(20_000) { compose.onAllNodesWithTextExists(if (channels == 1) "WATCH · 1 CHANNEL" else "WATCH · $channels CHANNELS") }
+    }
+
+    @Test
+    fun scrollingBackUpShowsTheWholeFocusedStreamIncludingTheFirst() {
+        openOverflowHub()
+        val first = checkNotNull(focusedTag())
+        repeat(5) { press(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(5) {
+            press(KeyEvent.KEYCODE_DPAD_UP)
+            val key = checkNotNull(focusedTag()).removePrefix("hub-stream-watch-")
+            val viewport = compose.onNodeWithTag("hub-stream-list").getUnclippedBoundsInRoot()
+            val card = compose.onNodeWithTag("hub-stream-$key").getUnclippedBoundsInRoot()
+            assertTrue("$key top ${card.top} is above ${viewport.top}", card.top >= viewport.top - 1.dp)
+            assertTrue("$key bottom ${card.bottom} is below ${viewport.bottom}", card.bottom <= viewport.bottom + 1.dp)
+        }
+        awaitFocus(first)
+    }
+
+    /** Main-thread CPU per ten real presses, including their settled layouts; no desktop frame timings. */
+    @Test
+    fun streamScrollingCpuOnTheStandIn() {
+        openOverflowHub()
+        val first = checkNotNull(focusedTag())
+        fun cycle() {
+            repeat(5) { press(KeyEvent.KEYCODE_DPAD_DOWN) }
+            repeat(5) { press(KeyEvent.KEYCODE_DPAD_UP) }
+            awaitFocus(first)
+        }
+        fun mainCpu(): Long {
+            var nanos = 0L
+            instrumentation.runOnMainSync { nanos = android.os.Debug.threadCpuTimeNanos() }
+            return nanos
+        }
+        cycle()
+        val samples = List(5) {
+            val started = mainCpu()
+            cycle()
+            (mainCpu() - started) / 1_000_000L
+        }
+        instrumentation.sendStatus(0, android.os.Bundle().apply {
+            putString("stream", "stream scroll main CPU ms/10 presses: $samples; median ${samples.sorted()[2]}\n")
+        })
+    }
+
+    private fun openOverflowHub() {
+        graph.data.database.guideImport().insertProgrammes(
+            (1..5).map { i -> programme("e0-$i", kickOff - 5 * 60_000L, "Football: Northbridge v Harbor", "overflow-$i") },
+        )
+        openToday(channels = 6)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { focusedTag()?.startsWith("hub-stream-watch-") == true }
     }
 
     @Test

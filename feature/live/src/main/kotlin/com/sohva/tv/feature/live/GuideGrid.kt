@@ -105,7 +105,10 @@ private fun ViewportReporter(state: LazyListState, model: GuideModel) {
 @Composable
 private fun FocusApplier(state: LazyListState, handles: Map<Int, RowHandle>, model: GuideModel, memory: GridMemory) {
     val focus by model.focus.collectAsStateWithLifecycle()
-    LaunchedEffect(focus) {
+    val optionsOpen by model.overlays.optionsOpen.collectAsStateWithLifecycle()
+    LaunchedEffect(focus, optionsOpen) {
+        // Source changes prepare a new grid under the sheet; its pending focus waits for closing.
+        if (optionsOpen) return@LaunchedEffect
         val target = focus ?: return@LaunchedEffect
         val visible = state.layoutInfo.visibleItemsInfo
         if (visible.none { it.index == target.index && it.offset >= 0 }) state.scrollToItem(target.index)
@@ -118,7 +121,9 @@ private fun FocusApplier(state: LazyListState, handles: Map<Int, RowHandle>, mod
                     memory.channelMode = target.column == GuideModel.CHANNEL
                     handle.state.column = target.column
                 }
-                handle.requester.requestFocusWhenAttached()
+                handle.requester.requestFocusWhenAttached(stillWanted = {
+                    !model.overlays.optionsOpen.value && model.focus.value == target
+                })
                 return@LaunchedEffect
             }
             androidx.compose.runtime.withFrameNanos { }

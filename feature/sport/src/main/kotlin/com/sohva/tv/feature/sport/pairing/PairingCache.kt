@@ -135,7 +135,9 @@ class PairingCache(private val file: File) {
     companion object {
         const val FILE_NAME: String = "sports-channel-matches.bin"
         private const val MAGIC = 0x53535043 // "SSPC"
-        private const val VERSION = 1
+        // Built-in aliases changed: older automatic results must be rescored, even for unchanged inputs.
+        // Confirm/reject decisions are stored separately in Room and survive this cache miss.
+        private const val VERSION = 3
         private const val MAX_EVENTS = 512
         private const val MAX_RESULTS = 40_000
         private const val MAX_BYTES = 16L * 1024 * 1024

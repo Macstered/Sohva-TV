@@ -1,6 +1,7 @@
 """Imports beta 23's strings from docs/rebuild/reference/strings into the rebuild's resources.
 
-The texts stay exactly as they are in all seven languages (AGENTS.md §5 rule 5); each element is
+The original texts stay as they are in the seven beta 23 languages; French is the owner's
+30 September 2026 extension (docs/decisions.md). Each element is
 copied verbatim, so escapes, placeholders and attributes survive. Files are regrouped by feature
 (strings_<group>.xml) instead of by the old module. While a feature has no module yet, its group
 lives in :ui:design; when the module is created, point its group at it in DESTINATIONS and run
@@ -20,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REFERENCE = ROOT / "docs" / "rebuild" / "reference" / "strings"
-LOCALES = ["values", "values-fi", "values-es", "values-pt", "values-de", "values-sv", "values-it"]
+LOCALES = ["values", "values-fi", "values-es", "values-pt", "values-de", "values-sv", "values-it", "values-fr"]
 
 # Old module (or old file) -> default group.
 MODULE_GROUP = {

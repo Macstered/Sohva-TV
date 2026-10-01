@@ -21,9 +21,19 @@ class GatedReads(private val real: LiveReads) : LiveReads by real {
 
     /** Group and All-channels list reads, the ones GUIDE-FR-120 keeps. */
     val listReads = AtomicInteger()
+    val listsOpen = MutableStateFlow(true)
+    val listsWaiting = AtomicInteger()
 
     override suspend fun open(spec: ListSpec): ChannelList {
-        if (spec is ListSpec.Group || spec is ListSpec.All) listReads.incrementAndGet()
+        if (spec is ListSpec.Group || spec is ListSpec.All) {
+            listReads.incrementAndGet()
+            listsWaiting.incrementAndGet()
+            try {
+                listsOpen.first { it }
+            } finally {
+                listsWaiting.decrementAndGet()
+            }
+        }
         return real.open(spec)
     }
 

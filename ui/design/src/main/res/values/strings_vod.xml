@@ -78,7 +78,7 @@
     <string name="artwork_cache_cleared">Image cache cleared</string>
     <string name="translate_title">Translations</string>
     <string name="translate_help_title">Help translate Sohva TV</string>
-    <string name="translate_help">Spanish, Portuguese, German, Swedish and Italian are drafts. Corrections are welcome in the public repository.</string>
+    <string name="translate_help">Spanish, Portuguese, German, Swedish, Italian and French are drafts. Corrections are welcome in the public repository.</string>
     <string name="catalogue_sort_alphabetical">A–Z</string>
     <string name="catalogue_sort_newest">Newest</string>
     <string name="catalogue_sort_year">Year</string>

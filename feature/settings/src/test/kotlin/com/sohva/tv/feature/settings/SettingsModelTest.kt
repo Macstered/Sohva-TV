@@ -54,11 +54,13 @@ class SettingsModelTest {
     }
 
     private class FakeServices : SettingsServices {
+        var language: String? = null
+        val languageChanges = mutableListOf<String?>()
         override val library: LibrarySettingsServices = FakeLibrary()
         override val profiles: ProfileSettingsServices = FakeProfiles()
         override val general: GeneralSettingsServices = object : GeneralSettingsServices {
-            override suspend fun languageTag(): String? = null
-            override fun applyLanguage(tag: String?) = Unit
+            override suspend fun languageTag(): String? = language
+            override fun applyLanguage(tag: String?) { language = tag; languageChanges += tag }
             override fun scale() = flowOf(com.sohva.tv.core.model.settings.InterfaceScale.NORMAL)
             override suspend fun setScale(value: com.sohva.tv.core.model.settings.InterfaceScale) = Unit
             override fun theme() = flowOf(com.sohva.tv.core.model.settings.ColorThemeId.ORIGINAL)
@@ -223,6 +225,18 @@ class SettingsModelTest {
 
     private val state get() = model.ui.value
     private val status get() = state.messages[SettingsSection.SOURCES]
+
+    @Test
+    fun frenchIsRetainedAndReselectingItDoesNotRestartTheScreen() {
+        services.language = "fr"
+        val french = GeneralSettings(services.general, kotlinx.coroutines.CoroutineScope(UnconfinedTestDispatcher()))
+        assertEquals("fr", french.state.value.language)
+        french.setLanguage("fr")
+        assertTrue(services.languageChanges.isEmpty())
+        french.setLanguage(null)
+        assertNull(french.state.value.language)
+        assertEquals(listOf<String?>(null), services.languageChanges)
+    }
 
     private fun newM3u(url: String = "http://provider.example/list.m3u"): SourceDraft {
         model.addSource(SourceType.M3U)

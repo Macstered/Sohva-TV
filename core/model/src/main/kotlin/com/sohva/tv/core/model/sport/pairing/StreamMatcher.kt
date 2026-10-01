@@ -74,6 +74,10 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
 
     private val index = HashMap<String, MutableList<Variant>>()
     private val decidedByChannel = HashMap<String, MutableList<Int>>()
+    // Scratch maps hold at most the scan's event count, clear on each candidate/phrase, and retain
+    // no provider text. Reuse avoids allocating a map for every word in large guide descriptions.
+    private val mentions = HashMap<Int, Int>()
+    private val phraseMentions = HashMap<Int, Int>()
 
     /** The winner per (game index, channel key), with whether it came in as a fallback. */
     private class Kept(val match: StreamMatch, val fallback: Boolean)
@@ -83,9 +87,14 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
     init {
         this.events.forEachIndexed { i, e ->
             for ((side, team) in listOf(HOME to e.home.name, AWAY to e.away.name)) {
-                for (v in TeamVariants.of(team, aliases)) {
+                for (v in TeamVariants.of(team, aliases, e.sport)) {
                     val words = v.split(' ')
                     index.getOrPut(words.first()) { ArrayList() } += Variant(words, i, side)
+                    // Joining all words retains the entire club identity, unlike city/token guesses.
+                    if (words.size > 1) {
+                        val compact = words.joinToString("")
+                        index.getOrPut(compact) { ArrayList() } += Variant(listOf(compact), i, side)
+                    }
                 }
             }
         }
@@ -99,15 +108,34 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
     fun add(c: Candidate) {
         val text = if (c.source == MatchSource.GUIDE) listOfNotNull(c.title, c.subtitle, c.description).joinToString(" ") else c.title
         val words = MatchText.words(text)
-        // Whole words only: a variant matches at a word position when all its words follow (SPORT-FR-106).
-        val mentions = HashMap<Int, Int>()
-        for (at in words.indices) {
-            val variants = index[words[at]] ?: continue
+        mentions.clear()
+        var at = 0
+        while (at < words.size) {
+            val variants = index[words[at]]
+            // Most words in long guide descriptions cannot start a club name. Keep that path to
+            // one lookup; even empty-map iteration per word costs CPU at owner scale.
+            if (variants == null) {
+                at++
+                continue
+            }
+            var width = 0
+            phraseMentions.clear()
+            // Consume the longest complete club phrase. "Inter Milan" cannot also count as Milan;
+            // a phrase shared by both opponents is ambiguous, even if repeated elsewhere in text.
             for (v in variants) {
                 if (at + v.words.size <= words.size && (1 until v.words.size).all { words[at + it] == v.words[it] }) {
-                    mentions[v.event] = (mentions[v.event] ?: 0) or v.side
+                    if (v.words.size > width) {
+                        width = v.words.size
+                        phraseMentions.clear()
+                    }
+                    if (v.words.size == width) phraseMentions[v.event] = (phraseMentions[v.event] ?: 0) or v.side
                 }
             }
+            for ((event, sides) in phraseMentions) {
+                val unambiguous = if (sides == (HOME or AWAY)) AMBIGUOUS else sides
+                mentions[event] = (mentions[event] ?: 0) or unambiguous
+            }
+            at += maxOf(1, width)
         }
         val decided = decidedByChannel[c.channelKey].orEmpty()
         if (mentions.isEmpty() && decided.isEmpty()) return
@@ -121,7 +149,7 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
     private fun score(i: Int, sides: Int, c: Candidate, schedule: NameSchedule?): StreamMatch? {
         val event = events[i]
         val kickOff = event.startMillis
-        val both = sides == HOME or AWAY
+        val both = (sides and (HOME or AWAY)) == (HOME or AWAY)
         val fallback = sides == 0
         val explicit: Boolean
         val offset: Long
@@ -136,7 +164,7 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
             val stated = schedule.offsetMinutes(kickOff)
             explicit = stated != null
             offset = stated ?: 0
-            dateSupports = schedule.dateSupports(kickOff, explicit)
+            dateSupports = schedule.dateSupports(kickOff, stated)
             if (!fallback && !both && (!explicit || abs(offset) > WINDOW)) return null
         }
         val teamScore = when {
@@ -152,7 +180,10 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
             abs(offset) <= WINDOW -> 5
             else -> 0
         }
-        val automatic = if (both && dateSupports && (!explicit || abs(offset) <= CLOSE)) Confidence.AVAILABLE else Confidence.POSSIBLE
+        // A provider's channel-name clock is weak evidence across country feeds, even when zoned.
+        // Both teams and a compatible date decide name confidence; real guide starts stay strict.
+        val startSupports = c.source == MatchSource.NAME || abs(offset) <= CLOSE
+        val automatic = if (both && dateSupports && startSupports) Confidence.AVAILABLE else Confidence.POSSIBLE
         return StreamMatch(
             event.id, c.channelKey, c.channelName, c.programmeId, c.title, c.source,
             if (schedule == null) c.startMillis else kickOff + offset * MINUTE, offset, explicit, teamScore + timeScore, automatic,
@@ -186,14 +217,16 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
     private companion object {
         const val HOME = 1
         const val AWAY = 2
+        const val AMBIGUOUS = 4
         const val MINUTE = 60_000L
         const val WINDOW = 120
         const val CLOSE = 30
         const val BOTH_TEAMS = 70
         const val ONE_TEAM = 38
 
-        /** Higher score, then closer, then the guide, then the earlier programme, then its id: page order never matters. */
-        val BETTER: Comparator<StreamMatch> = compareByDescending<StreamMatch> { it.score }.thenBy { abs(it.offsetMinutes) }
+        /** Keep supporting evidence before uncertain hits; then score, closeness and stable ties. */
+        val BETTER: Comparator<StreamMatch> = compareBy<StreamMatch> { it.automatic.ordinal }
+            .thenByDescending { it.score }.thenBy { abs(it.offsetMinutes) }
             .thenBy { it.source.ordinal }.thenBy { it.programmeStartMillis }.thenBy { it.programmeId }
     }
 }

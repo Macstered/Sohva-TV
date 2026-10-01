@@ -86,6 +86,30 @@ class PairingCacheTest {
     }
 
     @Test
+    fun resultsFromBeforeTheProviderClockFixMustBeRescored() {
+        val g = game(1)
+        val cache = PairingCache(file)
+        cache.write("gen", listOf(g), mapOf(g.id to listOf(stream(g, "a"))), now)
+        val bytes = file.readBytes()
+        // The frozen beta.12 cache header is SSPC + version 1. Payload layout is unchanged.
+        bytes[7] = 1
+        file.writeBytes(bytes)
+        assertTrue("old automatic confidence must not survive the update", cache.read("gen", listOf(g), now).isEmpty())
+    }
+
+    @Test
+    fun resultsFromBeforeTheBidirectionalClubAliasesMustBeRescored() {
+        val g = game(1)
+        val cache = PairingCache(file)
+        cache.write("gen", listOf(g), mapOf(g.id to listOf(stream(g, "a"))), now)
+        val bytes = file.readBytes()
+        // Frozen beta.13 and beta.14 use format 2, before the TPS Turku alias existed.
+        bytes[7] = 2
+        file.writeBytes(bytes)
+        assertTrue("older automatic results must be rematched", cache.read("gen", listOf(g), now).isEmpty())
+    }
+
+    @Test
     fun theOldestGamesGoFirstPastTheLimit() {
         val cache = PairingCache(file)
         val games = (1..520).map { game(it) }

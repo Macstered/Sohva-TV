@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="error_source_name_too_long">
+        <item quantity="one">Le nom de la source peut contenir au maximum %1$d caractère</item>
+        <item quantity="other">Le nom de la source peut contenir au maximum %1$d caractères</item>
+        <item quantity="many">Le nom de la source peut contenir au maximum %1$d caractères</item>
+    </plurals>
+    <string name="error_import_interrupted">La mise à jour s’est arrêtée à la fermeture de l’application. Les données précédentes ont été conservées.</string>
+    <string name="error_secrets_unreadable">Les adresses et mots de passe enregistrés ne sont plus lisibles sur cet appareil. Restaurez une sauvegarde ou ajoutez à nouveau vos sources.</string>
+    <string name="error_source_response_too_large">La réponse de la source était trop volumineuse</string>
+    <string name="error_source_limit_reached">Impossible d’ajouter une autre source (limite : %1$d)</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="source_delete_confirm">Supprimer %1$s avec ses chaînes, son guide et ses films ? Cette action est irréversible.</string>
+    <string name="player_cause_network">Impossible de joindre le fournisseur. Vérifiez le réseau.</string>
+    <string name="player_cause_refused">Le fournisseur a refusé le flux. Le compte est peut-être utilisé ailleurs ou a expiré.</string>
+    <string name="player_cause_gone">Ce flux n’est plus disponible chez le fournisseur.</string>
+    <string name="player_cause_server">Une erreur s’est produite sur le serveur du fournisseur.</string>
+    <string name="player_cause_broke_off">La connexion au fournisseur a été interrompue.</string>
+    <string name="player_cause_not_a_stream">Le fournisseur a envoyé un contenu qui ne peut pas être lu.</string>
+    <string name="player_cause_decoder">Ce téléviseur ne peut pas décoder le format vidéo ou audio du flux.</string>
+    <string name="player_cause_too_heavy">Ce téléviseur ne peut pas lire ce format vidéo de manière fluide (%1$s).</string>
+    <string name="player_cause_other">La lecture du flux s’est arrêtée.</string>
+    <string name="player_archive_title">Archives · %1$s</string>
+    <string name="player_archive_unavailable">Ce programme n’est pas disponible dans les archives.</string>
+    <string name="metadata_key_refused">TMDB a refusé la clé trois fois. Les recherches en arrière-plan sont donc arrêtées. Vérifiez la clé, puis choisissez Enregistrer la clé.</string>
+    <string name="metadata_tvmaze_credit">Certaines informations sur les séries proviennent de TVmaze (CC BY-SA)</string>
+    <string name="custom_group_limit">24 groupes maximum</string>
+</resources>

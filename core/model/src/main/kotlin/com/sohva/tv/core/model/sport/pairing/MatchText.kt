@@ -53,35 +53,3 @@ object MatchText {
     private const val CASE = 32
     private const val ASCII = 128
 }
-
-/**
- * Team names and their aliases (SPORT-FR-106, -107). An alias applies only when the provider's name
- * normalises exactly to its canonical key; variants shorter than 3 characters are dropped.
- */
-object TeamVariants {
-    /** Beta 23's built-in football aliases, keyed by the normalised canonical name. */
-    val BUILT_IN: Map<String, Set<String>> = mapOf(
-        "manchester united" to setOf("man utd", "man united", "manchester utd"),
-        "manchester city" to setOf("man city"),
-        "tottenham hotspur" to setOf("tottenham", "spurs"),
-        "paris saint germain" to setOf("psg", "paris sg"),
-        "inter" to setOf("inter milan", "internazionale"),
-        "bayern munchen" to setOf("bayern munich", "bayern"),
-    )
-
-    /** [extra] rows (canonical → aliases, any spelling) are merged with the built-in ones. */
-    fun aliases(extra: Map<String, Set<String>>): Map<String, Set<String>> {
-        val merged = HashMap<String, MutableSet<String>>()
-        for ((canonical, names) in BUILT_IN.entries + extra.entries) {
-            merged.getOrPut(MatchText.normalise(canonical)) { LinkedHashSet() } += names.map(MatchText::normalise)
-        }
-        return merged
-    }
-
-    fun of(team: String, aliases: Map<String, Set<String>>): List<String> {
-        val key = MatchText.normalise(team)
-        return (listOf(key) + aliases[key].orEmpty()).filter { it.length >= MIN_LENGTH }.distinct()
-    }
-
-    private const val MIN_LENGTH = 3
-}

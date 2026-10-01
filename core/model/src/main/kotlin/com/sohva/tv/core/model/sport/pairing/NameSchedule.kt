@@ -36,26 +36,29 @@ class NameSchedule private constructor(private val time: LocalTime?, private val
     }
 
     /**
-     * SPORT-FR-112: no date supports; a zoned clock that gave an offset supports (the instant was
-     * compared); otherwise the date must be the kick-off's UTC date and not ambiguous.
+     * A date must match the kick-off day in the stated zone, else UTC; a clock cannot excuse a
+     * stale date. A broadcast within the two-hour scan window can bridge a midnight boundary.
+     * Provider clocks only rank name matches (owner's 30 September correction to SPORT-FR-115).
      */
-    fun dateSupports(kickOff: Long, hasOffset: Boolean): Boolean {
+    fun dateSupports(kickOff: Long, offsetMinutes: Long?): Boolean {
         val d = date ?: return true
-        if (hasOffset) return true
         if (!d.valid || d.ambiguous) return false
-        val utc = Instant.ofEpochMilli(kickOff).atOffset(ZoneOffset.UTC).toLocalDate()
-        return d.month == utc.monthValue && d.day == utc.dayOfMonth && (d.year == null || d.year == utc.year)
+        if (offsetMinutes != null && abs(offsetMinutes) <= DATE_BOUNDARY_WINDOW) return true
+        val day = Instant.ofEpochMilli(kickOff).atOffset(zone ?: ZoneOffset.UTC).toLocalDate()
+        return d.month == day.monthValue && d.day == day.dayOfMonth && (d.year == null || d.year == day.year)
     }
 
     companion object {
         private const val MINUTE = 60_000L
+        private const val DATE_BOUNDARY_WINDOW = 120
         private const val MONTH = "(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
         private val TIME = Regex(
             "(?<![\\d.])([01]?\\d|2[0-3])[:.]([0-5]\\d)(?![\\d.])\\s*(?:([AP])\\.?\\s*M\\.?)?\\s*((?:UTC|GMT)(?:[+-]\\d{1,2}(?::?\\d{2})?)?|CEST|CET|EEST|EET)?\\b",
             RegexOption.IGNORE_CASE,
         )
         private val ISO = Regex("(?<!\\d)((?:19|20)\\d{2})-(\\d{2})-(\\d{2})(?!\\d)")
-        private val MONTH_FIRST = Regex("\\b$MONTH\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+((?:19|20)\\d{2}))?\\b", RegexOption.IGNORE_CASE)
+        // In "30 Sep 19:15", 19 is a clock hour, not the day in "Sep 19".
+        private val MONTH_FIRST = Regex("\\b$MONTH\\.?\\s+(\\d{1,2})(?!\\d|[:.]\\d{2})(?:st|nd|rd|th)?(?:,?\\s+((?:19|20)\\d{2}))?\\b", RegexOption.IGNORE_CASE)
         private val DAY_FIRST = Regex("\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+$MONTH\\.?(?:,?\\s+((?:19|20)\\d{2}))?\\b", RegexOption.IGNORE_CASE)
         private val NUMERIC = Regex("(?<![\\w/])(\\d{1,2})/(\\d{1,2})(?:/((?:19|20)\\d{2}))?(?![\\w/])")
         private val MONTHS = listOf("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec")

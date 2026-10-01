@@ -3,6 +3,18 @@
 > Current behaviour of Sohva TV 0.1.0-beta.23 (build 57). Rebuild target: same behaviour,
 > same look, cleaner implementation.
 
+**Owner correction, 30 September 2026:** channel-name clocks are weak provider evidence even
+when they state a zone. Different country feeds may advertise different broadcast starts.
+Both teams and a compatible date determine automatic name confidence; time offsets only rank
+these results. Actual guide timestamps retain their 30-minute Available threshold. A wrong,
+invalid or ambiguous name date remains Possible. This replaces the clock condition for name
+candidates in SPORT-FR-115 and the unconditional dated-clock support in SPORT-FR-112 below.
+Per channel, an Available candidate wins over Possible before comparing scores; an ambiguous
+date or a less certain guide programme cannot hide a supporting name candidate (SPORT-FR-116).
+Date support uses the stated zone, otherwise UTC; a zoned start within the two-hour scan window
+can support an adjacent date across midnight. In `30 Sep 19:15`, the clock hour is never read as
+the day in `Sep 19`. The historical beta.23 rules below are retained as reference.
+
 Layout, measurements, colours and state visuals of the Today screen and the match hub are already
 extracted in [design/screens/sohva-sport.md](../design/screens/sohva-sport.md) (cited below as
 **D§n**); the Settings visuals are in [design/screens/settings.md](../design/screens/settings.md)
@@ -76,7 +88,7 @@ Stream pairing
 - SPORT-40 Candidates from guide programmes within 120 minutes of kick-off.
 - SPORT-41 Candidates from M3U channel names that name both teams.
 - SPORT-42 Channel-name clock times with explicit zones (CET, CEST, EET, EEST, UTC/GMT and offsets), AM/PM, and dates (ISO, month names, `18/9`).
-- SPORT-43 Team aliases (built-in football aliases plus a stored alias table).
+- SPORT-43 Team aliases (sport-scoped built-in club identities plus a stored alias table).
 - SPORT-44 Confidence Available / Possible / Rejected, with the ordering rules.
 - SPORT-45 Country/language priority reorders streams within one confidence level.
 - SPORT-46 Pairing results cached across restarts, recomputed when channels, guide or rules change.
@@ -522,15 +534,21 @@ Inputs, candidates and triggers
   "paris saint germain".
 - SPORT-FR-106 Team variants: the normalised team name plus its aliases (SPORT-FR-107), keeping
   only variants of at least 3 characters. A team is **mentioned** when a variant occurs as whole
-  words in the candidate text: the check is on `" " + normalised text + " "` containing
-  `" " + variant + " "`.
-- SPORT-FR-107 Aliases: built-in (football only) — Manchester United: Man Utd, Man United,
-  Manchester Utd; Manchester City: Man City; Tottenham Hotspur: Tottenham, Spurs; Paris
-  Saint-Germain: PSG, Paris SG; Inter: Inter Milan, Internazionale; Bayern München: Bayern
-  Munich, Bayern — plus rows of the `team_aliases` table for the sport. An alias applies only when
-  the provider's team name normalises exactly to the canonical key. Aliases of all sports being
-  matched are merged into one map. No screen adds aliases in beta 23 (the repository method is
-  unused); keep the table and the method.
+  words in the candidate text. Also index the complete variant with spaces joined, preserving
+  every word. Consume the longest matching club phrase, so Inter Milan cannot also count as Milan.
+  A phrase shared by both opponents is ambiguous; it cannot by itself prove both teams, even
+  when repeated. Separate unambiguous mentions of both teams still count.
+- SPORT-FR-107 Aliases (owner extension, 30 September 2026): explicit, bidirectional identity
+  groups scoped to the sport. Retain beta 23's six football groups, adding ManU and Man U
+  for Manchester United. Hockey includes TPS/TPS Turku, HIFK/IFK Helsinki/Helsinki IFK,
+  HPK/Hameenlinna, Sport/Vaasan Sport and K-Espoo/Kiekko-Espoo, plus selected NHL forms.
+  Basketball/NBA and American football include selected full-name, short-name and nickname
+  groups. The finite data lives in `TeamVariants`; an exact member name is needed to activate a
+  group. Never guess from a city, acronym, substring or removed youth/women qualifier. Stored
+  `team_aliases` rows also work in both directions; preserve their existing multi-sport read and
+  repository method. Shared aliases do not transitively merge different clubs. No screen adds
+  aliases. Expand the registry with verified identities and regression fixtures; invalidate the
+  derived pairing cache when identity data or matching rules change.
 
 Channel-name clock and date (`ChannelNameSchedule`, name candidates only)
 
@@ -935,6 +953,12 @@ Open questions (for the owner)
 ## 11. Acceptance tests
 
 Unit (JVM)
+- Owner correction (30 September 2026): the reported Tappara–KooKoo names both become
+  Available for an 18:30 match; `30 Sep 19:15` retains day 30. Country-feed clocks,
+  including explicit zones, do not downgrade both teams and a compatible date.
+  Wrong dates/opponents and ambiguous numeric dates are not promoted; real guide
+  timestamps remain strict. Cache version 1 is a miss after updating, with saved
+  decisions applied to recalculated matches. Verify the parser on Android too.
 - Parser per sport with recorded payloads: football fixture and incidents; hockey (non-HTTPS logo
   dropped); AFL duplicates collapse to the final record, score and goals/behinds detail; basketball
   nested totals; generic half/set/quarter codes are LIVE and `PST` is POSTPONED; NFL nested `game`;

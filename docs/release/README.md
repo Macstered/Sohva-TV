@@ -9,10 +9,17 @@ Sohva TV supplies no channels, subscriptions, playlists, provider credentials,
 addons or developer API keys. Use only media sources and services you are
 allowed to use.
 
-## This release: 0.2.0-beta.11
+## This release: 0.2.0-beta.15
 
-This tester build is version `0.2.0-beta.11`, Android build 121. It is a beta,
-not a stable release.
+This tester build is version `0.2.0-beta.15`, Android build 125. It is a beta,
+not a stable release. Published 1 October 2026. The tester pack was prepared
+30 September; its frozen files are unchanged from the tested build.
+
+This update recognises the reported TPS, HIFK, HPK, Sport and ManU club names in
+Sohva Sport, with bidirectional, sport-scoped aliases and selected international
+names. It guards against a single name counting as both opponents. It includes
+the previous local candidates' focus, channel-info and French updates; French
+is labelled **Français (brouillon)** pending review.
 
 It is the rebuilt Sohva TV. The app was written again from the start. It has
 the same features as `0.1.0-beta.23` (build 57) and looks almost the same. It
@@ -25,7 +32,7 @@ update and keeps your data. On the first start it moves beta 23's data into
 its new storage. See [Installation and update](INSTALL.md).
 
 Download this release only from the numbered
-[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.11)
+[GitHub pre-release](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.15)
 or through **Settings > About > Check for updates** in beta 23, and check the
 SHA-256 value.
 
@@ -33,9 +40,9 @@ SHA-256 value.
 
 | File | What it is |
 | --- | --- |
-| `sohva-tv-0.2.0-beta.11.apk` | The signed app |
-| `sohva-tv-0.2.0-beta.11.api31.dm` | Install profile for Android 12 and newer (optional) |
-| `sohva-tv-0.2.0-beta.11.api28.dm` | Install profile for Android 9 to 11 (optional) |
+| `sohva-tv-0.2.0-beta.15.apk` | The signed app |
+| `sohva-tv-0.2.0-beta.15.api31.dm` | Install profile for Android 12 and newer (optional) |
+| `sohva-tv-0.2.0-beta.15.api28.dm` | Install profile for Android 9 to 11 (optional) |
 | `SHA256SUMS.txt` | SHA-256 checksums of the files above and of the documents |
 | The nine documents below | Instructions, notes, policy and licences |
 
@@ -47,7 +54,7 @@ the APK by hand.
 
 - [Installation and update](INSTALL.md)
 - [What to test and how to report a problem](TESTING.md)
-- [Release notes, in English and Finnish](RELEASE_NOTES.md)
+- [Release notes, in English, Finnish and French](RELEASE_NOTES.md)
 - [Discover addons](ADDONS.md)
 - [Privacy policy](PRIVACY.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
@@ -57,7 +64,7 @@ the APK by hand.
 ## Source code
 
 The source is in the public repository
-[Macstered/Sohva-TV](https://github.com/Macstered/Sohva-TV). If published, `v0.2.0-beta.11` will point to the source of this build. A public copy of the source
+[Macstered/Sohva-TV](https://github.com/Macstered/Sohva-TV). Tag `v0.2.0-beta.15` points to the exact tested source of this build. A public copy of the source
 contains no signing key and no service credentials.
 
 The application ID `com.streammate.tv` and a few internal names from the

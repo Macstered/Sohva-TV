@@ -3,6 +3,7 @@ package com.sohva.tv.feature.sport.hub
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -24,12 +27,15 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
@@ -119,8 +125,13 @@ private fun actionsOf(s: StreamMatch): List<RowAction> = buildList {
  * One stream (SPORT-FR-74): status, source, channel, what is on, tags, the start explanation and
  * the buttons. Flat fill with a coloured left edge for the confidence, not beta 23's gradient (D§10).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StreamRow(stream: StreamMatch, model: TodayModel, firstLead: FocusRequester?, refocus: MutableState<String?>) {
+    val visibility = remember { BringIntoViewRequester() }
+    var focused by remember { mutableStateOf(false) }
+    // Automatic scrolling sees only the bottom buttons. Include the name and status above them.
+    LaunchedEffect(focused) { if (focused) visibility.bringIntoView() }
     val p = Sohva.palette
     val (label, edge) = when {
         stream.decision == Decision.CONFIRMED -> stringResource(R.string.match_confirmed_by_you).uppercase() to p.focus
@@ -132,6 +143,7 @@ private fun StreamRow(stream: StreamMatch, model: TodayModel, firstLead: FocusRe
     Column(
         Modifier.fillMaxWidth().background(fill, RoundedCornerShape(10.dp))
             .drawBehind { drawRect(edge, size = Size(3.dp.toPx(), size.height)) }
+            .bringIntoViewRequester(visibility).onFocusChanged { focused = it.hasFocus }.focusGroup()
             .padding(start = 15.dp, end = 12.dp, top = 9.dp, bottom = 9.dp).testTag("hub-stream-${stream.channelKey}"),
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {

@@ -36,6 +36,8 @@ jobs:
 
       - name: Strings match beta 23's texts
         run: python tools/import_strings.py --check
+      - name: French coverage and formatting
+        run: python tools/check_french_strings.py
       - name: Public-source audit
         run: python tools/audit_public_source.py
       - name: Secret scan (tree and history)

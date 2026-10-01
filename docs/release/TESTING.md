@@ -1,10 +1,63 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.11` (Android build 121). Use only sources you are allowed to
+Build: `0.2.0-beta.15` (Android build 125). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
 
-## Focused checks for build 121
+## Focused checks for build 125
+
+- [ ] In Sohva Sport, check Kiekko-Espoo–TPS Turku against a provider's Kiekko-Espoo–TPS
+      listing. With the correct date it is Available. Also check HIFK/IFK Helsinki,
+      HPK/Hameenlinna, Sport/Vaasan Sport and ManU/Manchester United in names and guide titles.
+- [ ] Check a game whose API name is the short form and provider name the full form.
+      Both directions work. Selected NHL, NBA and NFL aliases are also supported; the list
+      is finite, so report unrecognized pairs with both club names and the stream title.
+- [ ] Wrong dates and unrelated opponents still stay Possible. A single Inter Milan
+      mention cannot prove both Inter and Milan. Saved Confirm/Reject choices survive
+      updating and restarting; automatic results are rescanned for the new rules.
+
+## Focus and playback checks retained from build 124
+
+- [ ] Open a Sohva Sport game with more streams than fit on screen. Scroll to the
+      bottom, then back to the first stream. Each focused card's name, status and
+      buttons stay visible. Moving between Watch and Reject does not shift the card.
+- [ ] In the guide, open its menu and change playlists. Focus stays on Source.
+      Move to another menu button while channels load: focus stays there. Back
+      closes the menu and focuses the new playlist's first channel. Repeat from
+      the group rail's Options button and while the box is busy.
+- [ ] During live playback, open programme information with OK, then focus its
+      buttons with Down. Back hides it. Change channels using both CH+ and CH−:
+      the information box appears briefly, then hides after about five seconds.
+      Repeat several channel changes. Deliberately focused info-box controls
+      still remain visible until you dismiss them.
+
+## Sports matching checks retained from build 123
+
+- [ ] Open Sohva Sport for a game with multiple country feeds. Channel names that
+      mention both teams and the correct date show Available even when advertised
+      clock times differ from the match card. Wrong dates stay Possible.
+- [ ] For Tappara–KooKoo on 30 September, both `[MTVFI] (30/9) 18:15 Tappara - KooKoo`
+      and `NEXT | TAPPARA - KOOKOO | Wed 30 Sep 19:15 EEST (FI) | 8K EXCLUSIVE | FI: PLAY+ PPV 6`
+      should show Available for the 18:30 match. This specific listing is only useful
+      while the event is in today's feed; use another dated game afterwards.
+- [ ] Existing saved Confirm/Reject choices remain after updating. The first visit
+      recalculates automatic matches; leave the screen open until it completes.
+- [ ] A different opponent is never promoted automatically. Actual guide programmes
+      still require a start within 30 minutes for Available.
+
+## French interface checks retained from build 122
+
+- [ ] Open **Settings > General > Interface language**. Move down with the remote
+      to **Français (brouillon)** and choose it. Home and Settings appear in French.
+- [ ] Browse Live TV, the player, Movies, Series, Discover, Sohva Sport and Trakt
+      in French. Focus remains visible; accents, labels and errors display correctly.
+- [ ] Open a phone setup page from the TV. Its labels and status messages are French.
+- [ ] Restart the app: French stays selected. Choose **Langue du système** to return
+      to the TV’s language. Audio/subtitle and metadata preferences remain unchanged.
+- [ ] On Android 13 or newer, choose French from the TV’s per-app language settings.
+      Sohva TV shows the same choice in its picker.
+- [ ] If you speak French, report awkward wording or clipped labels with the exact
+      screen and text. This translation is marked as a draft until reviewed.
 
 - [ ] In Sohva Sport, check a match while its playlist is refreshing, then check it
       again after completion. Newly imported matching channels become available.
@@ -74,7 +127,7 @@ and look almost the same. The most useful reports are:
       uninstalling. Note whether you used the in-app updater or sideloaded.
 - [ ] On the first start, note whether **Updating Sohva TV…** appeared and
       roughly how long it stayed.
-- [ ] **Settings > About** shows `0.2.0-beta.11`.
+- [ ] **Settings > About** shows `0.2.0-beta.12`.
 - [ ] Your colour theme, interface size, language, time zone and start screen
       are as before.
 - [ ] Profiles are all there. For each: favourites, recent channels, locked
@@ -246,7 +299,7 @@ and look almost the same. The most useful reports are:
 Email [hello@luontra.fi](mailto:hello@luontra.fi). Use this template:
 
 ```text
-Version: 0.2.0-beta.11 (121)
+Version: 0.2.0-beta.12 (122)
 Device model:
 Android / Google TV version:
 Updated from beta 23 (in-app or sideload) or fresh install:

@@ -22,6 +22,8 @@ import com.sohva.tv.core.model.time.SystemClock
 import com.sohva.tv.feature.sport.pairing.PairingCache
 import com.sohva.tv.feature.sport.pairing.PairingScan
 import com.sohva.tv.feature.sport.pairing.StreamPairing
+import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -176,5 +178,28 @@ class PairingScanTest {
         } finally {
             scope.cancel()
         }
+    }
+
+    @Test
+    fun datedCountryStreamsSurviveThePagedScanAndKeepViewerDecisions() = runBlocking {
+        seed()
+        val date = LocalDate.now(ZoneOffset.UTC)
+        val event = game.copy(
+            home = Side("Tappara", null), away = Side("KooKoo", null),
+            startMillis = date.atTime(15, 30).toInstant(ZoneOffset.UTC).toEpochMilli(),
+        )
+        // Place fourteen PPV listings beyond the existing 900 channels, across a page boundary.
+        db.channelImport().insert((900 until 914).map { i ->
+            val clock = listOf("19:15 EEST", "18:15 CEST", "06:00 UTC")[i % 3]
+            channel(i, "NEXT | TAPPARA - KOOKOO | $date $clock | PPV $i", null, null)
+        })
+        val decisions = mapOf((event.id to "s:c913") to Decision.REJECTED)
+        val scan = PairingScan(db.pairing())
+        val results = scan.run(listOf(event), emptyMap(), decisions).getValue(event.id)
+        assertEquals(14, results.size)
+        assertTrue(results.all { it.automatic == Confidence.AVAILABLE })
+        assertEquals(13, results.count { it.confidence == Confidence.AVAILABLE })
+        assertEquals(Confidence.REJECTED, results.single { it.channelKey == "s:c913" }.confidence)
+        assertEquals(4, scan.lastStats.channelQueries)
     }
 }
