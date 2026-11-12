@@ -52,7 +52,9 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
     val focus = remember { HomeFocus() }
     val list = rememberLazyListState()
     val railRequesters = remember(items) { items.associateWith { FocusRequester() } }
-    focus.rail = railRequesters.getValue(items.first())
+    // Left into the rail lands on the entry used last in this visit, else on the first.
+    val railEntry = railRequesters[model.lastRailItem] ?: railRequesters.getValue(items.first())
+    focus.rail = railEntry
     val empty by model.empty.collectAsStateWithLifecycle()
     val firstSync by model.firstSync.collectAsStateWithLifecycle()
     // Right or Back from the rail: the card last focused, else Welcome on an empty Home (HOME-FR-83).
@@ -89,7 +91,7 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
                     )
                 }
                 HeroPanel(
-                    hero, details, now, zone, if (empty) focus.welcome else null, railRequesters.getValue(items.first()), model::openGuide,
+                    hero, details, now, zone, if (empty) focus.welcome else null, railEntry, model::openGuide,
                     Modifier.align(Alignment.BottomStart).fillMaxWidth(0.56f),
                 )
             }
@@ -98,7 +100,10 @@ fun HomeScreen(model: HomeModel, items: List<RailItem>, onOpen: (RailItem) -> Un
         HomeRail(
             items = items,
             requesters = railRequesters,
-            onOpen = onOpen,
+            onOpen = { item ->
+                model.lastRailItem = item
+                onOpen(item)
+            },
             onFocused = {
                 if (focus.viaLeft) {
                     // The rail: the idle hero at once, and no hand-off takes focus from it (HOME-FR-47, -62).

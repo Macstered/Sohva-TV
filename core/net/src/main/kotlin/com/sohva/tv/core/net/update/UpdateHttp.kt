@@ -29,7 +29,12 @@ class UpdateHttpException(message: String, cause: Throwable? = null) : IOExcepti
  * buffer that also feeds the SHA-256 digest, never held in memory. Cancelling the caller cancels
  * the call.
  */
-class UpdateHttp(private val client: OkHttpClient) {
+class UpdateHttp(shared: OkHttpClient) {
+    // The shared client follows a redirect from HTTPS to HTTP for the viewer's own providers; an
+    // update must not. GitHub redirects a release download to another HTTPS host, so ordinary
+    // redirects stay on. Same pool and dispatcher as the shared client.
+    private val client: OkHttpClient = shared.newBuilder().followRedirects(true).followSslRedirects(false).build()
+
     /** The release list (§7.1): newest first, unknown fields skipped, incomplete entries dropped. */
     suspend fun releases(url: HttpUrl): List<Release> = call(url, ACCEPT_GITHUB) { response ->
         val body = bounded(response, MAX_FEED)
@@ -55,6 +60,8 @@ class UpdateHttp(private val client: OkHttpClient) {
         val total = response.body.contentLength().takeIf { it > 0 } ?: expected
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteArray(CHUNK)
+        // A body longer than the release list announced is not this release: stop before it fills the cache.
+        val limit = if (expected > 0) minOf(expected + OVERRUN, MAX_APK) else MAX_APK
         var received = 0L
         var percent = -1
         response.body.byteStream().use { input ->
@@ -65,6 +72,7 @@ class UpdateHttp(private val client: OkHttpClient) {
                     digest.update(buffer, 0, n)
                     out.write(buffer, 0, n)
                     received += n
+                    if (received > limit) throw UpdateHttpException("too large")
                     val now = if (total > 0) (received * 100 / total).toInt().coerceIn(0, 100) else 0
                     if (now != percent) {
                         percent = now
@@ -160,7 +168,8 @@ class UpdateHttp(private val client: OkHttpClient) {
                 }
             }
             reader.endObject()
-            if (!name.isNullOrBlank() && !url.isNullOrBlank()) out += ReleaseAsset(name, url, size)
+            // The name becomes a file name in the update folder: plain names only.
+            if (!name.isNullOrBlank() && !url.isNullOrBlank() && PLAIN_NAME.matches(name)) out += ReleaseAsset(name, url, size)
         }
         reader.endArray()
         return out
@@ -180,5 +189,10 @@ class UpdateHttp(private val client: OkHttpClient) {
         private const val MAX_FEED = 4L * 1024 * 1024
         private const val MAX_TEXT = 64L * 1024
         const val MAX_PROFILE: Long = 1_048_576
+
+        /** No release is near this; the published size plus [OVERRUN] is the usual limit. */
+        private const val MAX_APK = 64L * 1024 * 1024
+        private const val OVERRUN = 1_048_576L
+        private val PLAIN_NAME = Regex("[A-Za-z0-9][A-Za-z0-9._-]*")
     }
 }

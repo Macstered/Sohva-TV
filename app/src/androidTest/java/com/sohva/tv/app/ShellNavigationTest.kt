@@ -39,9 +39,9 @@ class ShellNavigationTest {
         // With no source the guide shows its empty card, "Open settings" focused (GUIDE-FR-101).
         Triple(RailItem.LIVE_TV, "screen-guide", "guide-empty-settings"),
         Triple(RailItem.SPORT, "screen-today", "today-tab-all"),
-        // The walls open on History (VOD-FR-49).
-        Triple(RailItem.MOVIES, "screen-movies", "library-row-history"),
-        Triple(RailItem.SERIES, "screen-series", "library-row-history"),
+        // The walls open on History (VOD-FR-49) and move on from an empty one; with nothing imported that is All (decision "Library start").
+        Triple(RailItem.MOVIES, "screen-movies", "library-row-all"),
+        Triple(RailItem.SERIES, "screen-series", "library-row-all"),
         // Search opens on its field (SEARCH-FR-50).
         Triple(RailItem.SEARCH, "screen-search", "unified-search-field"),
         Triple(RailItem.DISCOVER, "screen-discover", "discover-continue-empty"),

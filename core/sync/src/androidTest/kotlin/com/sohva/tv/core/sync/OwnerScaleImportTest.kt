@@ -88,26 +88,32 @@ class OwnerScaleImportTest {
         )
 
         val heap = HeapSampler().also { it.start() }
+        val probe = WriteProbe(data.database).also { it.start() }
         val results = LinkedHashMap<String, Long>()
         suspend fun step(name: String, source: String, kind: RefreshKind) {
+            probe.reset()
             val begun = System.nanoTime()
             runner.sync(source, setOf(kind), WorkOrigin.VIEWER).join()
             results[name] = (System.nanoTime() - begun) / 1_000_000
             val row = data.database.openHelper.readableDatabase
                 .query("SELECT status, error_code, item_count FROM source_status WHERE source_id = ? AND kind = ?", arrayOf(source, kind.id))
                 .use { c -> if (c.moveToFirst()) "${c.getString(0)} ${c.getString(1)} ${c.getInt(2)}" else "none" }
-            Log.i(TAG, "$name: ${results[name]} ms, $row, heap max so far ${heap.maxMb()} MB")
+            Log.i(TAG, "$name: ${results[name]} ms, $row, heap max so far ${heap.maxMb()} MB, small write waited at most ${probe.maxMs()} ms")
         }
         step("m3u playlist", "live", RefreshKind.PLAYLIST)
         step("m3u guide", "live", RefreshKind.EPG)
         step("m3u playlist unchanged", "live", RefreshKind.PLAYLIST)
         step("m3u catalogue (films, series)", "films", RefreshKind.CATALOGUE)
         step("m3u catalogue unchanged", "films", RefreshKind.CATALOGUE)
+        // One film gone from the top of the provider's list: every later entry moves up one place.
+        save(SourceConfig(Source("films", "Films", SourceType.M3U, importScope = ImportScope.VOD), SourceSecrets(m3uUrl = "$BASE/vod-minus-first.m3u")))
+        step("m3u catalogue, first film removed", "films", RefreshKind.CATALOGUE)
         step("xtream playlist", "panel", RefreshKind.PLAYLIST)
         step("xtream guide", "panel", RefreshKind.EPG)
         step("xtream catalogue", "panel", RefreshKind.CATALOGUE)
         step("xtream catalogue unchanged", "panel", RefreshKind.CATALOGUE)
         heap.finish()
+        probe.finish()
 
         // Search at owner scale (spec 03 §9: each group within 100 ms on the stand-in), warm, median of 5.
         for (term in listOf("ha", "north", "signal kitchen", "zz")) {
@@ -132,8 +138,8 @@ class OwnerScaleImportTest {
             data.database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM $table").use { it.moveToFirst(); it.getInt(0) }
         }
         Log.i(TAG, "rows $counts; Java heap max ${heap.maxMb()} MB of ${Runtime.getRuntime().maxMemory() / MB} MB")
-        // 200,000 films each from the M3U VOD playlist and the Xtream panel; 1,500 series each.
-        assertEquals(400_000, counts.getValue("movie"))
+        // 200,000 films each from the M3U VOD playlist (less the one removed above) and the Xtream panel; 1,500 series each.
+        assertEquals(399_999, counts.getValue("movie"))
         assertEquals(3_000, counts.getValue("series"))
         assertEquals(18_000, counts.getValue("episode"))
         assertTrue("Java heap ${heap.maxMb()} MB", heap.maxMb() < 128)
@@ -159,6 +165,35 @@ class OwnerScaleImportTest {
         }
 
         fun maxMb(): Long = max.get() / MB
+    }
+
+    /**
+     * What the viewer's own small writes go through during an import (a favourite, a recent channel,
+     * a playback position): one tiny transaction every 20 ms on its own thread, and the longest it
+     * had to wait for the single write connection (plan/07 §3.4: one write transaction ≤ 100 ms).
+     */
+    private class WriteProbe(private val db: com.sohva.tv.core.data.database.SohvaDatabase) : Thread("WriteProbe") {
+        private val max = AtomicLong()
+
+        @Volatile private var running = true
+
+        override fun run() {
+            while (running) {
+                val begun = System.nanoTime()
+                db.runInTransaction { db.openHelper.writableDatabase.execSQL("INSERT OR REPLACE INTO app_meta(`key`, value) VALUES ('write-probe', '1')") }
+                max.accumulateAndGet((System.nanoTime() - begun) / 1_000_000) { a, b -> maxOf(a, b) }
+                sleep(20)
+            }
+        }
+
+        fun reset() = max.set(0)
+
+        fun finish() {
+            running = false
+            join()
+        }
+
+        fun maxMs(): Long = max.get()
     }
 
     /** The app's dispatchers: two background-priority import threads, as `AndroidDispatchers`. */

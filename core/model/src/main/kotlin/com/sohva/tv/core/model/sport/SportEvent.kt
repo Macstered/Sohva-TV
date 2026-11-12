@@ -1,7 +1,7 @@
 package com.sohva.tv.core.model.sport
 
 /** One side of a game: a team, a fighter, or for Formula 1 the Grand Prix and the circuit. */
-data class Side(val name: String, val logo: String?) {
+data class Side(val name: String, val logo: String?, val reference: ProviderReference? = null) {
     /** The mark drawn under the crest (SPORT-FR-50): the first letters of the first two words, "?" if none. */
     val initials: String
         get() = name.split(WHITESPACE).filter { it.isNotEmpty() }.take(2).joinToString("") { it.first().uppercase() }.ifEmpty { "?" }
@@ -30,6 +30,7 @@ data class SportEvent(
     val score: String?,
     val scoreDetail: String?,
     val minute: String?,
+    val competitionReference: ProviderReference? = null,
 ) {
     /** Only football has match events (SPORT-FR-90). */
     val detailsAvailable: Boolean get() = sport == SportType.FOOTBALL

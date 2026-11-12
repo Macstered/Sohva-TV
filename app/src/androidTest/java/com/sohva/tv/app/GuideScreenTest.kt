@@ -1,6 +1,7 @@
 package com.sohva.tv.app
 
 import androidx.compose.ui.semantics.getOrNull
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import android.view.KeyEvent
 import androidx.compose.ui.test.assertIsFocused
@@ -109,6 +110,22 @@ class GuideScreenTest {
         awaitFocus("guide-row-1")
     }
 
+    /** From the channel, Right goes to what is on now, not to a programme that has ended (decision "Guide, first Right"). */
+    @Test
+    fun rightFromTheChannelSelectsTheProgrammeOnAir() {
+        openGuide()
+        awaitFocus("guide-row-0")
+        val onChannel = rowDescription("guide-row-0")
+        compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("LIVE", unmerged = true) }
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        compose.waitUntil(5_000) { rowDescription("guide-row-0") != onChannel }
+        compose.waitForIdle()
+        assertTrue("the selected programme is not on air: ${rowDescription("guide-row-0")}", compose.onAllNodesWithTextExists("LIVE", unmerged = true))
+        // Earlier blocks stay reachable: Left steps back through them to the channel.
+        repeat(4) { if (rowDescription("guide-row-0") != onChannel) press(KeyEvent.KEYCODE_DPAD_LEFT) }
+        assertEquals(onChannel, rowDescription("guide-row-0"))
+    }
+
     @Test
     fun upFromTheTopRowReachesTheHeroAndDownReturns() {
         openGuide()
@@ -128,6 +145,35 @@ class GuideScreenTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("Tomorrow", unmerged = true) }
         press(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
         compose.waitUntil(5_000) { compose.onAllNodesWithTextExists("Now", unmerged = true) }
+        awaitFocus("guide-row-0")
+    }
+
+    /** An open options sheet keeps the remote inside it: the guide's rows and hero stay composed under the scrim. */
+    @Test
+    fun focusCannotLeaveTheOpenOptionsSheet() {
+        openGuide()
+        press(KeyEvent.KEYCODE_MENU)
+        awaitFocus("guide-options-source")
+        fun inSheet(): Boolean {
+            val sheet = compose.onNodeWithTag("guide-options").fetchSemanticsNode().boundsInRoot
+            return compose.onAllNodes(androidx.compose.ui.test.isFocused()).fetchSemanticsNodes().any { n ->
+                val b = n.boundsInRoot
+                b.left >= sheet.left && b.right <= sheet.right && b.top >= sheet.top && b.bottom <= sheet.bottom &&
+                    n.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)?.startsWith("guide-row-") != true
+            }
+        }
+        for (key in listOf(KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            repeat(12) {
+                press(key)
+                val nodes = compose.onAllNodes(androidx.compose.ui.test.isFocused()).fetchSemanticsNodes()
+                // Not every button of the sheet carries a tag; what matters is that something in it has focus.
+                val focused = nodes.mapNotNull { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag) }
+                assertTrue("nothing has focus", nodes.isNotEmpty())
+                assertTrue("focus left the sheet: $focused", inSheet() && focused.none { it.startsWith("guide-row-") || it.startsWith("guide-hero") || it.startsWith("guide-rail") })
+            }
+        }
+        assertTrue(inSheet())
+        press(KeyEvent.KEYCODE_BACK)
         awaitFocus("guide-row-0")
     }
 

@@ -34,6 +34,16 @@ data class TraktListPageTexts(
     val privacy: String,
 )
 
+/** The diagnostics page's texts (spec 72, rebuild), in the TV's interface language. */
+data class DiagnosticsPageTexts(
+    val languageTag: String,
+    val title: String,
+    val help: String,
+    val save: String,
+    val failed: String,
+    val privacy: String,
+)
+
 /** The logo page's texts (spec 21 CHAN-FR-41), in the TV's interface language. */
 data class LogoPageTexts(
     val languageTag: String,
@@ -102,6 +112,19 @@ object PhonePage {
         .then(function(r){return r.text();}).then(function(s){n.textContent=s;n.hidden=false;}).catch(function(){n.textContent='…';n.hidden=false;});});
     """.trimIndent().replace("\n", "")
 
+    /**
+     * The diagnostics page's script: fetches the file with the token, shows it, and offers it as a
+     * download under the TV's file name. The texts live in the page, so the script stays one constant.
+     */
+    private val DIAGNOSTICS_SCRIPT = """
+        var t=location.hash.slice(1);history.replaceState(null,'','/');
+        var n=document.getElementById('notice'),p=document.getElementById('text'),a=document.getElementById('save');
+        fetch('/submit',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'text/plain; charset=utf-8'},body:''})
+        .then(function(r){if(!r.ok)throw r;return r.text();})
+        .then(function(s){p.textContent=s;p.hidden=false;a.href=URL.createObjectURL(new Blob([s],{type:'text/plain'}));a.download=document.getElementById('name').textContent;a.hidden=false;})
+        .catch(function(){n.textContent=document.getElementById('failed').textContent;n.hidden=false;});
+    """.trimIndent().replace("\n", "")
+
     const val ADDONS_SENT: String = "Sent. Review and confirm on your TV."
     const val ADDONS_INVALID: String = "Use a UTF-8 list of 1 to 32 configured addon URLs, up to 256 KiB, one per line."
 
@@ -116,7 +139,8 @@ object PhonePage {
     /** The Content-Security-Policy: only the pages' own two scripts and inline style (PHONE-FR-24). */
     val contentSecurityPolicy: String by lazy {
         fun hash(script: String) = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray(Charsets.UTF_8)))
-        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}' 'sha256-${hash(ADDON_SCRIPT)}' 'sha256-${hash(LIST_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
+        "default-src 'none'; script-src 'sha256-${hash(SCRIPT)}' 'sha256-${hash(LOGO_SCRIPT)}' 'sha256-${hash(ADDON_SCRIPT)}' 'sha256-${hash(LIST_SCRIPT)}' " +
+            "'sha256-${hash(DIAGNOSTICS_SCRIPT)}'; style-src 'unsafe-inline'; connect-src 'self'; " +
             "img-src 'self' blob: data:; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
     }
 
@@ -185,6 +209,23 @@ object PhonePage {
         append("<input id=\"list\" type=\"url\" inputmode=\"url\" autocapitalize=\"off\" autocomplete=\"off\" maxlength=\"300\">")
         append("<button type=\"button\" id=\"send\">").append(escape(texts.send)).append("</button></form>")
         append("<p>").append(escape(texts.privacy)).append("</p><script>").append(LIST_SCRIPT).append("</script></body></html>")
+    }
+
+    /** The diagnostics file (spec 72, rebuild): fetched by the script, shown, and offered as [name]. */
+    fun diagnostics(texts: DiagnosticsPageTexts, name: String): String = buildString {
+        append("<!DOCTYPE html><html lang=\"").append(escape(texts.languageTag)).append("\"><head><meta charset=\"utf-8\">")
+        append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>").append(escape(texts.title))
+        append("</title><style>").append(STYLE)
+        append("pre{white-space:pre-wrap;word-break:break-word;background:#0f1218;border:1px solid #2f3648;border-radius:8px;padding:12px;font-size:.8rem}")
+        append("a.button{display:block;text-align:center;margin:14px 0;padding:14px;border-radius:10px;background:#ff8a3d;color:#1a0d02;font-weight:bold;text-decoration:none}")
+        append("</style></head><body>")
+        append("<h1>").append(escape(texts.title)).append("</h1><p>").append(escape(texts.help)).append("</p>")
+        append("<p id=\"notice\" class=\"notice\" hidden></p>")
+        append("<span id=\"name\" hidden>").append(escape(name)).append("</span>")
+        append("<span id=\"failed\" hidden>").append(escape(texts.failed)).append("</span>")
+        append("<a id=\"save\" class=\"button\" hidden>").append(escape(texts.save)).append("</a>")
+        append("<pre id=\"text\" hidden></pre>")
+        append("<p>").append(escape(texts.privacy)).append("</p><script>").append(DIAGNOSTICS_SCRIPT).append("</script></body></html>")
     }
 
     private fun StringBuilder.form(type: String, heading: String, texts: PhonePageTexts, fields: StringBuilder.() -> Unit) {

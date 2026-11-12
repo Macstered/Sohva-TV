@@ -13,9 +13,12 @@ import kotlinx.coroutines.withContext
 data class LiveHits(val channels: List<ChannelHit>, val programmes: List<ProgrammeHit>)
 
 /**
- * Search's groups (spec 03 §4.2), each one bounded query on the read threads. Room's suspend
- * queries carry a cancellation signal, so a superseded search stops its statements (§9). Every
- * group keeps to what the active profile ([profile]) may see, before its limit (spec 04 PROF-FR-23).
+ * Search's groups (spec 03 §4.2), each one bounded query on the read threads. A superseded
+ * search's statement is not interrupted (Room's generated code passes no cancellation signal): it
+ * runs to its end and its rows are dropped, which is acceptable because each statement is short
+ * (33 ms for a two-letter term over 400,000 films on the stand-in, `docs/performance-log.md`,
+ * 11 November 2026). Every group keeps to what the active profile ([profile]) may see, before its
+ * limit (spec 04 PROF-FR-23).
  */
 class SearchReads(private val db: SohvaDatabase, private val io: CoroutineDispatcher, private val profile: () -> String) {
     private val dao get() = db.search()

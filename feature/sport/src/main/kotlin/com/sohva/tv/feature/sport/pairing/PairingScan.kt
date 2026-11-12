@@ -1,5 +1,6 @@
 package com.sohva.tv.feature.sport.pairing
 
+import android.os.Debug
 import com.sohva.tv.core.data.database.PairingDao
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.pairing.Candidate
@@ -7,12 +8,13 @@ import com.sohva.tv.core.model.sport.pairing.Decision
 import com.sohva.tv.core.model.sport.pairing.MatchSource
 import com.sohva.tv.core.model.sport.pairing.StreamMatch
 import com.sohva.tv.core.model.sport.pairing.StreamMatcher
+import com.sohva.tv.core.model.sport.pairing.DictionaryNames
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.yield
 
 /** What one scan cost (spec 60 §11 "Performance"): pages read and candidates scored. */
-data class ScanStats(val channelQueries: Int, val programmeQueries: Int, val candidates: Long)
+data class ScanStats(val channelQueries: Int, val programmeQueries: Int, val candidates: Long, val indexCpuNanos: Long = 0)
 
 /**
  * One pairing scan (spec 60 §9 "Pairing"): channels in pages of [CHANNEL_PAGE] in row-id order;
@@ -25,12 +27,18 @@ class PairingScan(private val dao: PairingDao) {
     var lastStats: ScanStats = ScanStats(0, 0, 0)
         private set
 
-    suspend fun run(events: List<SportEvent>, aliases: Map<String, Set<String>>, decisions: Map<Pair<String, String>, Decision>): Map<String, List<StreamMatch>> {
+    suspend fun run(
+        events: List<SportEvent>, aliases: Map<String, Set<String>>, decisions: Map<Pair<String, String>, Decision>,
+        names: DictionaryNames = DictionaryNames.NONE,
+    ): Map<String, List<StreamMatch>> {
         val out = LinkedHashMap<String, List<StreamMatch>>()
         events.forEach { out[it.id] = emptyList() }
         val matchable = events.filter { it.startMillis > 0 }
         if (matchable.isEmpty()) return out
-        val matcher = StreamMatcher(matchable, aliases, decisions)
+        val context = currentCoroutineContext()
+        val indexStarted = Debug.threadCpuTimeNanos()
+        val matcher = StreamMatcher(matchable, aliases, decisions, names) { context.ensureActive() }
+        val indexCpu = Debug.threadCpuTimeNanos() - indexStarted
         val from = matchable.minOf { it.startMillis } - WINDOW_MS
         val to = matchable.maxOf { it.startMillis } + WINDOW_MS
         val guides = dao.guideSources().associateBy { it.id }
@@ -75,7 +83,7 @@ class PairingScan(private val dao: PairingDao) {
             if (page.size < CHANNEL_PAGE) break
             yield()
         }
-        lastStats = ScanStats(channelQueries, programmeQueries, candidates)
+        lastStats = ScanStats(channelQueries, programmeQueries, candidates, indexCpu)
         out.putAll(matcher.finish())
         return out
     }

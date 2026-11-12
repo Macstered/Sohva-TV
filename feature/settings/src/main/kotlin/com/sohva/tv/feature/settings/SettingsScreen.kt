@@ -145,12 +145,16 @@ private fun SettingsPane(
     accounts: (@Composable (FocusRequester) -> Unit)?,
     modifier: Modifier,
 ) {
+    val scroll = rememberScrollState()
+    // The pane keeps one scroll position for whatever it shows: a source page opened after another
+    // was left at its buttons used to appear scrolled down to them. A page that opens starts at its top.
+    LaunchedEffect(state.page?.id) { if (state.page != null) scroll.scrollTo(0) }
     Column(
         modifier
             // Right from the rail comes back to the control focused last (SET-FR-15); Left lands on
             // the selected rail row through the rail's own enter rule.
             .focusRestorer(start)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scroll)
             .padding(bottom = 14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

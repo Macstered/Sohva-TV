@@ -133,5 +133,7 @@ class SearchTest {
         compose.waitUntil(10_000) { exists("screen-film") }
         instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
         compose.waitUntil(10_000) { exists("screen-search") }
+        // Back where the viewer was: on the result, not in the text field with the keyboard up again.
+        awaitFocus(film)
     }
 }

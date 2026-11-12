@@ -93,7 +93,7 @@ internal fun GuideActionsDialog(model: GuideModel, target: ActionsTarget, action
     val live = programme.isLive(model.nowState.longValue)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.width(460.dp).roundFill(Sohva.palette.surface, Sohva.shapes.medium).padding(18.dp).testTag("guide-actions"),
+            Modifier.width(460.dp).roundFill(Sohva.palette.panel, Sohva.shapes.medium).padding(18.dp).testTag("guide-actions"),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(programme.title, style = Sohva.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, fontSize = 18.sp), color = Sohva.palette.textPrimary, maxLines = 2)

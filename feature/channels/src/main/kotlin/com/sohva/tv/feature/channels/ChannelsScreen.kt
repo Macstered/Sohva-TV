@@ -13,12 +13,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +37,7 @@ import com.sohva.tv.ui.design.components.TvActionButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvUrlField
 import com.sohva.tv.ui.design.focus.SurfaceState
+import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
 import com.sohva.tv.ui.design.ground.ScreenBackground
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
@@ -132,12 +136,21 @@ private fun GroupChips(model: ChannelsModel) {
 @Composable
 private fun NewListRow(model: ChannelsModel) {
     var name by remember { mutableStateOf("") }
+    val field = remember { FocusRequester() }
+    val lists by model.lists.collectAsStateWithLifecycle()
+    var hadLists by remember { mutableStateOf(false) }
+    // The last list goes together with its Delete button, the control that had focus: the name
+    // field takes it, so the next key press starts from somewhere the viewer can see (AGENTS §5 rule 2).
+    LaunchedEffect(lists.isEmpty()) {
+        if (lists.isEmpty() && hadLists) field.requestFocusWhenAttached()
+        hadLists = lists.isNotEmpty()
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         TvUrlField(
             name,
             { name = it.take(NAME_MAX) },
             stringResource(R.string.channels_new_list_hint),
-            Modifier.weight(1f).testTag("channels-new-list"),
+            Modifier.weight(1f).focusRequester(field).testTag("channels-new-list"),
             input = FieldInput(keyboard = KeyboardType.Text),
         )
         TvActionButton(

@@ -14,11 +14,11 @@ internal object Tables {
     }
 
     fun movies(db: SohvaDatabase, sourceId: String): KeyedTable<MovieEntity> = db.movieImport().let { dao ->
-        KeyedTable(KeyRange.movies(sourceId), dao::hashes, dao::insert, dao::update, dao::keysPage, dao::delete)
+        KeyedTable(KeyRange.movies(sourceId), dao::hashes, dao::insert, dao::update, dao::keysPage, dao::delete, dao::setOrder)
     }
 
     fun series(db: SohvaDatabase, sourceId: String): KeyedTable<SeriesEntity> = db.seriesImport().let { dao ->
-        KeyedTable(KeyRange.series(sourceId), dao::hashes, { rows -> dao.insert(rows) }, dao::update, dao::keysPage, dao::delete)
+        KeyedTable(KeyRange.series(sourceId), dao::hashes, { rows -> dao.insert(rows) }, dao::update, dao::keysPage, dao::delete, dao::setOrder)
     }
 
     fun episodes(db: SohvaDatabase, sourceId: String): KeyedTable<EpisodeEntity> = db.episodeImport().let { dao ->

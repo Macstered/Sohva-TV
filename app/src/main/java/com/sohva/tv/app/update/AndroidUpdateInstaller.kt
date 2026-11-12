@@ -5,16 +5,20 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.net.toUri
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.sync.update.SessionOutcome
 import com.sohva.tv.core.sync.update.UpdateInstaller
 import java.io.File
+import java.security.MessageDigest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -30,6 +34,62 @@ class AndroidUpdateInstaller(private val context: Context, private val log: Diag
     private val app = context.applicationContext
 
     override fun mayInstall(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || app.packageManager.canRequestPackageInstalls()
+
+    /**
+     * Called off the main thread by the updater. Android itself refuses this package from another
+     * signer, so the check that matters is the package name; signers are compared when the platform
+     * reports any for a file on disk (some versions report none, which must not block every update).
+     */
+    override fun accepts(apk: File): Boolean {
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            PackageManager.GET_SIGNING_CERTIFICATES
+        } else {
+            @Suppress("DEPRECATION")
+            PackageManager.GET_SIGNATURES
+        }
+        return try {
+            @Suppress("DEPRECATION")
+            val file = app.packageManager.getPackageArchiveInfo(apk.path, flags)
+
+            @Suppress("DEPRECATION")
+            val installed = app.packageManager.getPackageInfo(app.packageName, flags)
+            when {
+                file == null -> refused("unreadable")
+                file.packageName != app.packageName -> refused("another package")
+                PackageInfoCompat.getLongVersionCode(file) <= PackageInfoCompat.getLongVersionCode(installed) -> refused("not newer")
+                else -> {
+                    val theirs = signers(file)
+                    if (theirs.isEmpty()) {
+                        log.info("update", "no signer reported for the download")
+                        true
+                    } else {
+                        theirs == signers(installed) || refused("another signer")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            log.error("update", "package check could not run", e)
+            false
+        }
+    }
+
+    private fun refused(why: String): Boolean {
+        log.info("update", "download refused: $why")
+        return false
+    }
+
+    /** SHA-256 of each certificate that signed the package's contents. */
+    private fun signers(info: PackageInfo): Set<String> {
+        val certificates = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.signingInfo?.apkContentsSigners
+        } else {
+            @Suppress("DEPRECATION")
+            info.signatures
+        }
+        return certificates.orEmpty().map { c ->
+            MessageDigest.getInstance("SHA-256").digest(c.toByteArray()).joinToString("") { "%02x".format(it) }
+        }.toSet()
+    }
 
     override suspend fun installWithProfile(apk: File, profile: File): SessionOutcome {
         val installer = app.packageManager.packageInstaller

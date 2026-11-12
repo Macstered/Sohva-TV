@@ -3,6 +3,7 @@ package com.sohva.tv.core.data.database
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Entity
+import androidx.room.Embedded
 import androidx.room.Index
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -49,7 +50,13 @@ data class SportEventEntity(
     val score: String?,
     @ColumnInfo(name = "score_detail") val scoreDetail: String?,
     val minute: String?,
+    @Embedded(prefix = "home_ref_") val homeReference: SportReferenceRow? = null,
+    @Embedded(prefix = "away_ref_") val awayReference: SportReferenceRow? = null,
+    @Embedded(prefix = "competition_ref_") val competitionReference: SportReferenceRow? = null,
 )
+
+/** Nullable embedded groups keep schema-12 cached names usable without inventing source IDs. */
+data class SportReferenceRow(val provider: String, val product: String, val kind: String, val externalId: String)
 
 /** A sport's competition catalogue (SPORT-FR-44), refreshed at most weekly. */
 @Entity(tableName = "sport_competition", primaryKeys = ["sport", "competition_id"])

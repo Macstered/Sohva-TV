@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sohva.tv.ui.design.text.Text
+import com.sohva.tv.ui.design.theme.Palettes
 import com.sohva.tv.ui.design.theme.Sohva
 
 enum class TagTone { PRIMARY, ACCENT, MUTED, RATING, LIVE }
@@ -31,7 +32,7 @@ fun TvTagChip(text: String, modifier: Modifier = Modifier, tone: TagTone = TagTo
         TagTone.ACCENT -> p.accent.copy(alpha = 0.14f) to p.accent
         TagTone.MUTED -> p.textMuted.copy(alpha = 0.14f) to p.textMuted
         TagTone.RATING -> p.rating.copy(alpha = 0.14f) to p.rating
-        TagTone.LIVE -> p.danger to p.textPrimary
+        TagTone.LIVE -> p.danger to Palettes.liveChipInk
     }
     Text(
         text = text,

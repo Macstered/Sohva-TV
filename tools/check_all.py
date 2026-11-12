@@ -30,8 +30,10 @@ STEPS: list[tuple[str, list[str]]] = [
     ("public-source audit", [sys.executable, "tools/audit_public_source.py"]),
     ("gitleaks tree", ["publishable-tree"]),
     ("gitleaks history", [gitleaks(), "git", ".", "--config", ".gitleaks.toml", "--no-banner", "--redact"]),
+    # The workers share the daemon's 4 GB heap: with one worker per core on a 16-core machine, the
+    # parallel dex merges ran out of memory (1 November 2026). Six workers keep the run near 3 minutes.
     ("gradle", [
-        GRADLE, "checkModuleDependencies", "testDebugUnitTest", ":core:model:test", ":lint-checks:test",
+        GRADLE, "--max-workers=6", "checkModuleDependencies", "testDebugUnitTest", ":core:model:test", ":lint-checks:test",
         "verifyRoborazziDebug", "lintDebug", ":app:lintRelease", ":app:lintLab", ":app:lintPlay", "assembleDebugAndroidTest",
         ":app:assembleRelease", ":app:assembleLab", ":app:assemblePlay", ":app:bundlePlay",
         ":app:assembleBenchmarkRelease", ":benchmark:assemble",

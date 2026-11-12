@@ -19,6 +19,9 @@ object Palettes {
     private val dangerSurface = Color(0xFF7A1624)
     private val onDangerSurface = Color(0xFFFFFFFF)
 
+    /** The LIVE chip's text. A fixed dark ink: every theme's own text colour is under 3.4:1 on the red (decision "Contrast"). */
+    val liveChipInk: Color = Color(0xFF05070D)
+
     val original: SohvaPalette = SohvaPalette(
         background = Color(0xFF05070D),
         backgroundTop = Color(0xFF080C15),
@@ -37,7 +40,8 @@ object Palettes {
         rating = rating,
         textPrimary = Color(0xFFF2F5F9),
         textMuted = Color(0xFF93A1B5),
-        textDim = Color(0xFF5B6981),
+        // Beta 23's #5B6981 was 3.6:1 on the ground and 2.9:1 on raised surfaces, at 12 sp (decision "Contrast").
+        textDim = Color(0xFF7F8CA3),
         textDisabled = Color(0xFF5B6981),
         scrim = scrim,
         onScrim = onScrim,

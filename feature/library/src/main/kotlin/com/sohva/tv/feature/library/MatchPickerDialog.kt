@@ -173,10 +173,11 @@ private fun ResultRow(result: MatchResult, picker: MatchPicker) {
 @Composable
 private fun Thumbnail(url: String?) {
     val loader = LocalArtwork.current
-    val density = LocalDensity.current
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    val w = with(LocalDensity.current) { 44.dp.roundToPx() }
+    val h = with(LocalDensity.current) { 62.dp.roundToPx() }
+    var image by remember(url) { mutableStateOf(url?.let { loader.peek(it, w, h, opaque = true) }) }
     LaunchedEffect(url) {
-        if (url != null) image = loader.load(url, with(density) { 44.dp.roundToPx() }, with(density) { 62.dp.roundToPx() }, opaque = true)
+        if (image == null && url != null) image = loader.load(url, w, h, opaque = true)
     }
     val ground = Sohva.palette.surfaceRaised
     Box(

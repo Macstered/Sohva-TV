@@ -141,6 +141,12 @@ def write_vod(out: Path, base: str) -> None:
                 m3u.write(f'#EXTINF:-1 tvg-logo="{base}/logo/series{i}.png" group-title="{group}",'
                           f"{series_title(i)} S{season:02d}E{number:02d} - Part {number}\n")
                 m3u.write(f"{base}/series/{i}/{e}.mkv\n")
+    # The same playlist without its first film: importing it after `vod.m3u` moves every later
+    # entry up by one place, which is what a provider's list does when one title goes.
+    with (out / "vod.m3u").open(encoding="utf-8") as full, (out / "vod-minus-first.m3u").open("w", encoding="utf-8", newline="\n") as shorter:
+        for n, line in enumerate(full):
+            if n not in (1, 2):
+                shorter.write(line)
 
 
 def write_xtream(out: Path, base: str) -> None:

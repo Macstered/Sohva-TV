@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sohva.tv.ui.design.focus.SurfaceState
@@ -38,7 +41,7 @@ import com.sohva.tv.ui.design.theme.Sohva
 fun SettingsOverline(text: String, modifier: Modifier = Modifier) {
     Text(
         text.uppercase(),
-        modifier.padding(start = 14.dp, top = 18.dp, bottom = 8.dp),
+        modifier.padding(start = 14.dp, top = 18.dp, bottom = 8.dp).semantics { heading() },
         style = Sohva.typography.overline,
         color = Sohva.palette.textDim,
         maxLines = 1,
@@ -145,7 +148,7 @@ private fun RowText(
  */
 @Composable
 fun SettingsSwitch(checked: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, keepsFocus: Boolean = false) {
-    TvSurface(onToggle, modifier, SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus), SWITCH_STYLE) {
+    TvSurface(onToggle, modifier, SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus), SWITCH_STYLE, role = Role.Switch) {
         SwitchTrack(checked, enabled)
     }
 }
@@ -173,7 +176,7 @@ fun SettingsSwitchRow(
 ) {
     val state = SurfaceState(selected = checked, enabled = enabled, keepsFocus = keepsFocus)
     Box(containerModifier) {
-        TvSurface(onToggle, modifier.fillMaxWidth(), state, ROW_STYLE) { colors ->
+        TvSurface(onToggle, modifier.fillMaxWidth(), state, ROW_STYLE, role = Role.Switch) { colors ->
             SettingsRow(title, icon = icon, subtitle = subtitle) {
                 // The switch's own look for the row's focus: the same colours a focused SettingsSwitch has.
                 val look = tvSurfaceColors(colors.focused, state, SWITCH_STYLE)

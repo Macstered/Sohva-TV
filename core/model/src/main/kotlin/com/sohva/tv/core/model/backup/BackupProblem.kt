@@ -29,6 +29,9 @@ enum class BackupProblem {
     MISSING_FIELD,
     BLANK_FIELD,
     LONG_FIELD,
+
+    /** This television cannot store secrets (its Keystore key is unusable): nothing was changed. */
+    SECRETS,
 }
 
 /** A backup failure carried to the screen; never a stack trace (AGENTS.md §5 rule 6). */

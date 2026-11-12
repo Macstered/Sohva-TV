@@ -34,6 +34,20 @@ class LiveImportTest {
 
     private fun status(kind: String = "playlist") = h.query("SELECT status, error_code, error_args, item_count FROM source_status WHERE kind = '$kind'").single()
 
+    /** The catch-up template usually carries the same user name and password as the address (spec 73 SEC-01). */
+    @Test
+    fun theCatchupTemplateIsStoredSealed() {
+        h.addM3u()
+        val template = "http://stream.example/user/secret/timeshift/{utc}/One.ts"
+        h.serve("/list.m3u", playlist(entry("One", extra = " catchup=\"default\" catchup-source=\"$template\""), entry("Two")))
+        playlistOnly()
+        assertEquals(listOf("sealed:$template|1"), h.query("SELECT catchup_source, catchup_source IS NOT NULL AND catchup_source != '' FROM channel WHERE name = 'One'"))
+        assertEquals(listOf("null"), h.query("SELECT catchup_source FROM channel WHERE name = 'Two'"))
+        // An unchanged playlist rewrites nothing: the hash is over the plain template.
+        playlistOnly()
+        assertEquals(listOf("sealed:$template"), h.query("SELECT catchup_source FROM channel WHERE name = 'One'"))
+    }
+
     @Test
     fun importsChannelsGroupsAndSealedAddresses() {
         h.addM3u()
@@ -159,7 +173,11 @@ class LiveImportTest {
 
     @Test
     fun scopeBothKeepsFilmsOutOfTheGuideAndLiveTvKeepsEverything() {
-        val text = playlist(entry("Live"), entry("Film", group = "Movies"), entry("Show S01E02", group = "Series"))
+        // Film addresses: a `.ts` address in a group called Movies is a live channel (decision "Live or film").
+        val text = playlist(
+            entry("Live"), entry("Film", group = "Movies", url = "http://stream.example/Film.mkv"),
+            entry("Show S01E02", group = "Series", url = "http://stream.example/Show.mkv"),
+        )
         h.serve("/list.m3u", text)
         h.addM3u(scope = ImportScope.BOTH)
         playlistOnly()

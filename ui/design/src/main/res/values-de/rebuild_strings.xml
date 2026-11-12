@@ -6,7 +6,7 @@
         <item quantity="other">Der Name der Quelle darf höchstens %1$d Zeichen lang sein</item>
     </plurals>
     <string name="error_import_interrupted">Die Aktualisierung wurde beim Schließen der App abgebrochen. Die bisherigen Daten wurden behalten.</string>
-    <string name="error_secrets_unreadable">Gespeicherte Quelladressen und Passwörter können auf diesem Gerät nicht mehr gelesen werden. Stelle eine Sicherung wieder her oder füge die Quellen erneut hinzu.</string>
+    <string name="error_secrets_unreadable">Gespeicherte Quelladressen und Passwörter können auf diesem Gerät nicht mehr gelesen werden. Lösche den Speicher der App in den Einstellungen des Fernsehers und stelle dann eine Sicherung wieder her oder füge die Quellen erneut hinzu.</string>
     <string name="error_source_response_too_large">Die Antwort der Quelle war zu groß</string>
     <string name="error_source_limit_reached">Es können keine weiteren Quellen hinzugefügt werden (höchstens %1$d)</string>
     <string name="action_cancel">Abbrechen</string>
@@ -25,4 +25,23 @@
     <string name="metadata_key_refused">TMDB hat den Schlüssel dreimal abgelehnt, daher ist die Abfrage im Hintergrund angehalten. Prüfe den Schlüssel und drücke dann Schlüssel speichern.</string>
     <string name="metadata_tvmaze_credit">Einige Serieninfos von TVmaze (CC BY-SA)</string>
     <string name="custom_group_limit">Bis zu 24 Gruppen</string>
+    <string name="update_notice_hint">Öffne %1$s › %2$s, um das Update herunterzuladen.</string>
+    <!-- Spec 72 (rebuild): diagnostics on a TV without a file picker, and to a phone. -->
+    <string name="diagnostics_send_phone">An Handy senden</string>
+    <string name="diagnostics_saved_downloads">Dieser Fernseher hat keine Dateiauswahl, daher wurde die Datei im Ordner Download als %1$s gespeichert.</string>
+    <string name="diagnostics_phone_title">Diagnose an ein Handy senden</string>
+    <string name="diagnostics_phone_help">Scanne den Code mit einem Handy im selben Netzwerk oder öffne die Adresse. Die Seite zeigt die Datei und speichert sie auf dem Handy.</string>
+    <string name="diagnostics_phone_sent">Die Datei ist auf einem Handy angekommen. Du kannst dies schließen.</string>
+    <string name="diagnostics_page_title">Sohva TV-Diagnose</string>
+    <string name="diagnostics_page_help">Die Diagnosedatei deines Fernsehers, ohne Adressen und Schlüssel. Speichere sie und sende sie auf Anfrage an den Entwickler.</string>
+    <string name="diagnostics_page_save">Datei speichern</string>
+    <string name="diagnostics_page_failed">Der Fernseher hat die Datei nicht übergeben. Öffne die Seite erneut vom Fernseher aus.</string>
+    <string name="diagnostics_page_privacy">Die Datei bleibt in deinem Heimnetz, bis du sie teilst.</string>
+    <string name="source_draft_kept">Ungespeicherte Änderungen wurden behalten. Öffne die Quelle oder füge sie erneut hinzu, um fortzufahren.</string>
+    <string name="confirm_question">%1$s?</string>
+    <string name="catalogue_nothing_imported_movies">Es wurden noch keine Filme importiert. Füge in den Einstellungen eine Quelle hinzu oder aktualisiere dort Filme und Serien.</string>
+    <string name="catalogue_nothing_imported_series">Es wurden noch keine Serien importiert. Füge in den Einstellungen eine Quelle hinzu oder aktualisiere dort Filme und Serien.</string>
+    <string name="channels_move_up">Sender nach oben verschieben</string>
+    <string name="channels_move_down">Sender nach unten verschieben</string>
+    <string name="settings_section_accounts_title">Konten</string>
 </resources>

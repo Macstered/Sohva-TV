@@ -1,3 +1,88 @@
+# Sohva TV 0.2.0-beta.16
+
+Android build **138**. Prepared and published 12 November 2026.
+
+## Changed in 0.2.0-beta.16
+
+- Live TV: a channel that freezes, or whose stream the provider ends, opens again by
+  itself. While the app reconnects you see one line in a small dark card, not a red bar.
+- Player channel list: the highlight and the list move in the same key press. The channel
+  you chose last is the one that plays, also on a slow box. Programme titles and now/next
+  stay current while a playlist or guide is being imported. The TV's display mode is left
+  alone between channels.
+- Sohva Sport: a reviewed team dictionary for football and ice hockey, with translated
+  names. Dates written as numbers match in either order (day/month or month/day).
+- Home: Live TV and Continue Watching keep working after Android restarts the app in the
+  background. A small notice appears once when a newer version is available.
+- Subtitles: white text with Background: None has a dark shadow and stays readable on
+  white scenes.
+- Diagnostics: on a TV without a file picker, save to the Download folder or send the file
+  to your phone. The file names what kind of reply a failing stream gave, never its address.
+- Safer: the app no longer crashes on a TV whose secure storage fails, and a restore is
+  refused before it removes anything. An update must be this app, newer and signed with the
+  same key. Catch-up addresses are stored encrypted.
+- Channels such as "Showtime" or "Filmbox" are no longer filed as films.
+- Settings > Playlists: a new source starts on its address field, an unsaved page is kept,
+  and the status line ends with what was imported. Delete and reset buttons ask once more.
+- Focus: Back returns to the Discover card or search result you opened. The Home rail opens
+  on the entry you used last. Right from a channel in the guide lands on the programme on air.
+- Player: the focused control is named beside the row. Connecting a keyboard or controller
+  during playback no longer restarts the picture.
+- Readability: dim text and the LIVE chip have more contrast; dialogs have a solid panel.
+- Lighter: refreshes that come due while you watch wait until you stop. A changed film list
+  no longer rewrites every film. Pictures already in memory appear at once.
+
+The first refresh of films and series after this update rewrites them once and takes longer
+than usual. Earlier builds cannot read this build's data: do not install an older build over it.
+
+## Muutokset versiossa 0.2.0-beta.16
+
+- Suora TV: jumiutunut kanava tai lähetys, jonka palveluntarjoaja katkaisee, avautuu
+  itsestään uudelleen. Yhdistämisen aikana näkyy yksi rivi pienessä tummassa kortissa,
+  ei punaista palkkia.
+- Toiston kanavalista: korostus ja lista liikkuvat samalla painalluksella. Viimeksi valittu
+  kanava on se, joka alkaa, myös hitaalla laitteella. Ohjelmien nimet ja nyt/seuraavaksi
+  pysyvät ajan tasalla, kun soittolistaa tai opasta tuodaan. Television näyttötilaan ei
+  kosketa kanavien välillä.
+- Sohva Sport: tarkistettu joukkuesanasto jalkapalloon ja jääkiekkoon käännettyine nimineen.
+  Numeroina kirjoitetut päivämäärät tunnistetaan kummassakin järjestyksessä.
+- Koti: Suora TV ja Jatka katselua toimivat myös sen jälkeen, kun Android on käynnistänyt
+  sovelluksen taustalla uudelleen. Uudesta versiosta kerrotaan kerran pienellä ilmoituksella.
+- Tekstitys: valkoinen teksti ilman taustaa saa tumman varjon ja erottuu valkoisesta kuvasta.
+- Diagnostiikka: jos televisiossa ei ole tiedostonvalitsinta, tiedoston voi tallentaa
+  Download-kansioon tai lähettää puhelimeen. Tiedosto kertoo, millaisen vastauksen
+  epäonnistunut lähetys antoi, ei koskaan sen osoitetta.
+- Turvallisuus: sovellus ei enää kaadu, jos television suojattu tallennus ei toimi, ja
+  palautus estetään ennen kuin mitään poistetaan. Päivityksen on oltava tämä sovellus,
+  uudempi ja samalla avaimella allekirjoitettu. Tallenteiden osoitteet tallennetaan salattuina.
+- Kanavat kuten "Showtime" tai "Filmbox" eivät enää päädy elokuviin.
+- Asetukset > Soittolistat: uusi lähde alkaa osoitekentästä, tallentamaton sivu säilyy ja
+  tilarivi kertoo lopuksi, mitä tuotiin. Poisto- ja nollauspainikkeet kysyvät vielä kerran.
+- Kohdistus: Takaisin palaa avattuun Discover-korttiin tai hakutulokseen. Kodin valikko
+  avautuu viimeksi käytetystä kohdasta. Oikealle kanavasta oppaassa vie meneillään olevaan
+  ohjelmaan.
+- Toisto: valitun painikkeen nimi näkyy rivin vieressä. Näppäimistön tai ohjaimen
+  kytkeminen toiston aikana ei enää käynnistä kuvaa uudelleen.
+- Luettavuus: himmeä teksti ja LIVE-merkki erottuvat paremmin; valintaikkunoilla on
+  tasainen tausta.
+- Kevyempi: katselun aikana erääntyvät päivitykset odottavat katselun loppuun. Muuttunut
+  elokuvalista ei enää kirjoita kaikkia elokuvia uudelleen. Muistissa olevat kuvat näkyvät heti.
+
+Ensimmäinen elokuvien ja sarjojen päivitys tämän jälkeen kirjoittaa ne kerran uudelleen ja
+kestää tavallista kauemmin. Vanhemmat versiot eivät osaa lukea tämän version tietoja: älä
+asenna vanhempaa versiota tämän päälle.
+
+## Nouveautés de la version 0.2.0-beta.16
+
+- TV en direct : une chaîne figée ou interrompue se rouvre d'elle-même ; la reconnexion
+  s'affiche dans une petite carte sombre.
+- La liste des chaînes du lecteur suit la télécommande sans retard, et le dernier choix
+  est celui qui est lu.
+- Sohva Sport : dictionnaire d'équipes vérifié pour le football et le hockey sur glace ;
+  les dates en chiffres sont reconnues dans les deux ordres.
+- Plus sûr et plus léger : stockage sécurisé, restauration et mises à jour mieux protégés ;
+  moins de travail en arrière-plan pendant la lecture.
+
 # Sohva TV 0.2.0-beta.15
 
 Android build **125**. Prepared 30 September 2026. Published 1 October 2026.

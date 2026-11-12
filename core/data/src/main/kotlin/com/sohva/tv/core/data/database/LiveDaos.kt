@@ -19,6 +19,10 @@ interface LiveDao {
     @Query(LiveSql.SOURCES)
     fun observeSources(): Flow<List<LiveSource>>
 
+    /** The same list read once: no observer, so no wait for the write connection. */
+    @Query(LiveSql.SOURCES)
+    suspend fun sources(): List<LiveSource>
+
     @Query(LiveSql.RAIL)
     suspend fun rail(sourceId: String, profile: String): List<LiveGroup>
 
@@ -60,6 +64,21 @@ interface LiveDao {
 
     @Query(LiveSql.PLAYABLE)
     suspend fun playable(key: String): PlayableChannel?
+
+    /** A playlist import is writing channels now ([com.sohva.tv.core.data.live.LiveStore.changes]). */
+    @Query(LiveSql.PLAYLIST_IMPORT_RUNNING)
+    suspend fun playlistImportRunning(): Boolean
+
+    /** What the programmes on screen depend on, per source ([com.sohva.tv.core.data.live.LiveStore.guideChanges]). */
+    @Query(LiveSql.GUIDE_STAMPS)
+    suspend fun guideStamps(): List<GuideStamp>
+
+    /** One page of the templates an earlier build stored plain, by id ([com.sohva.tv.core.data.live.TemplateSealing]). */
+    @Query(LiveSql.PLAIN_TEMPLATES)
+    fun plainTemplates(after: Long, limit: Int): List<PlainTemplate>
+
+    @Query("UPDATE channel SET catchup_source = :sealed WHERE id = :id")
+    fun setTemplate(id: Long, sealed: String)
 
     @Query(LiveSql.EPG_STATE)
     suspend fun epgState(sourceId: String): EpgState?
@@ -163,6 +182,17 @@ data class LiveChannel(
 )
 
 /** What the player needs to open a live stream (spec 30 PLAY-FR-14). The address stays sealed. */
+/** A source's enabled flag, guide time correction and active guide snapshot. */
+data class GuideStamp(
+    val id: String,
+    val enabled: Boolean,
+    @ColumnInfo(name = "epg_offset_minutes") val epgOffsetMinutes: Int,
+    @ColumnInfo(name = "epg_snapshot") val epgSnapshot: Long?,
+)
+
+/** A channel's catch-up template as an earlier build stored it. */
+data class PlainTemplate(val id: Long, val template: String)
+
 data class PlayableChannel(
     val id: Long,
     val key: String,
@@ -174,6 +204,7 @@ data class PlayableChannel(
     @ColumnInfo(name = "user_agent") val userAgent: String?,
     val referrer: String?,
     @ColumnInfo(name = "catchup_type") val catchupType: String?,
+    /** Sealed, or plain from an earlier build: open it with [com.sohva.tv.core.data.live.TemplateSealing.open]. */
     @ColumnInfo(name = "catchup_source") val catchupSource: String?,
     @ColumnInfo(name = "catchup_days") val catchupDays: Int?,
     @ColumnInfo(name = "catchup_tz") val catchupTz: String?,
@@ -272,6 +303,19 @@ object LiveSql {
             "c.user_agent, c.referrer, c.catchup_type, c.catchup_source, c.catchup_days, c.catchup_tz, c.xtream_stream_id " +
             "FROM channel c CROSS JOIN source s ON s.id = c.source_id " +
             "WHERE c.key = :key AND c.visible = 1 AND s.enabled = 1"
+
+    // A walk in primary-key order, run once per install: the rows have no index on the template.
+    const val PLAIN_TEMPLATES: String =
+        "SELECT id, catchup_source AS template FROM channel WHERE id > :after AND catchup_source IS NOT NULL AND catchup_source != '' " +
+            "AND catchup_source NOT LIKE 'v2:%' ORDER BY id LIMIT :limit"
+
+    // Through the handful of sources to each one's status row by its key.
+    const val PLAYLIST_IMPORT_RUNNING: String =
+        "SELECT COUNT(*) FROM source CROSS JOIN source_status st ON st.source_id = source.id AND st.kind = 'playlist' WHERE st.status = 'running'"
+
+    const val GUIDE_STAMPS: String =
+        "SELECT source.id, source.enabled, source.epg_offset_minutes, st.epg_snapshot FROM source " +
+            "LEFT JOIN source_status st ON st.source_id = source.id AND st.kind = 'epg' ORDER BY source.id"
 
     const val EPG_STATE: String =
         "SELECT epg_snapshot, epg_max_duration_ms FROM source_status WHERE source_id = :sourceId AND kind = 'epg'"

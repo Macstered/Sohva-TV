@@ -156,7 +156,9 @@ internal object SubtitleLook {
         val foreground = settings.subtitleColor.argb?.toInt() ?: tv.foregroundColor
         val style = when (settings.subtitleBackground) {
             SubtitleBackground.FOLLOW_TV -> CaptionStyleCompat(foreground, tv.backgroundColor, tv.windowColor, tv.edgeType, tv.edgeColor, tv.typeface)
-            SubtitleBackground.NONE -> CaptionStyleCompat(foreground, AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, AndroidColor.TRANSPARENT, tv.typeface ?: Typeface.DEFAULT)
+            // Unboxed captions still need contrast against bright video. Media3 caches the text
+            // layout and draws this edge; no extra overlay or style work runs during playback.
+            SubtitleBackground.NONE,
             SubtitleBackground.SHADOW -> CaptionStyleCompat(foreground, AndroidColor.TRANSPARENT, AndroidColor.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_DROP_SHADOW, AndroidColor.BLACK, tv.typeface ?: Typeface.DEFAULT)
             SubtitleBackground.BOX -> CaptionStyleCompat(foreground, 0xCC000000.toInt(), AndroidColor.TRANSPARENT, CaptionStyleCompat.EDGE_TYPE_NONE, AndroidColor.TRANSPARENT, tv.typeface ?: Typeface.DEFAULT)
         }

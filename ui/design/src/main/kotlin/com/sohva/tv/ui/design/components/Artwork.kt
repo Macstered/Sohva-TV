@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
@@ -35,6 +36,13 @@ fun interface ArtworkLoader {
      */
     suspend fun load(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): ImageBitmap?
 
+    /**
+     * The same image when it is already in memory, else null: a memory lookup only, safe on the
+     * main thread. A cell seeds its state with it, so a picture seen before is in the cell's first
+     * frame instead of one frame of placeholder.
+     */
+    fun peek(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): ImageBitmap? = null
+
     companion object {
         val None: ArtworkLoader = ArtworkLoader { _, _, _, _ -> null }
     }
@@ -51,13 +59,15 @@ val LocalArtwork = staticCompositionLocalOf { ArtworkLoader.None }
 fun LogoTile(name: String, url: String?, size: Dp, modifier: Modifier = Modifier, padding: Dp = 3.dp, fontSize: TextUnit = 18.sp) {
     val loader = LocalArtwork.current
     val px = with(LocalDensity.current) { (size - padding * 2).roundToPx() }
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(url, px) { mutableStateOf(url?.let { loader.peek(it, px, px, opaque = false) }) }
     LaunchedEffect(url, px) {
-        if (!url.isNullOrBlank()) image = loader.load(url, px, px, opaque = false)
+        if (image == null && !url.isNullOrBlank()) image = loader.load(url, px, px, opaque = false)
     }
     val tile = Sohva.palette.surfaceRaised
     Box(modifier) {
-        InitialsTile(name, Modifier.size(size), fontSize = fontSize)
+        // Not drawn once the logo is in: the cover below is 10 % white in the Original theme and hid
+        // nothing, so initials showed through a transparent logo. Read in the draw phase only.
+        InitialsTile(name, Modifier.size(size).drawWithContent { if (image == null) drawContent() }, fontSize = fontSize)
         // The logo or the initials, never both, as in the guide: a logo narrower or shorter than its
         // tile left the initials showing round it. Covered in the draw phase, so a loading logo
         // recomposes nothing (plan/07 §4.7).

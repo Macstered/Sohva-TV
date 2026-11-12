@@ -148,6 +148,30 @@ class ChannelsScreenTest {
         assertEquals("Add to list", text("channels-list-membership"))
     }
 
+    /** A list built by hand is not lost to one stray OK, and focus has somewhere to be when the last one goes. */
+    @Test
+    fun deletingAListAsksOnceMoreAndTheLastOneLeavesFocusOnTheNameField() {
+        openChannels()
+        type("channels-new-list", "Evening")
+        click("channels-create-list")
+        compose.waitUntil(5_000) { exists("channels-list-choice") && text("channels-list-choice") == "List: Evening" }
+        compose.onNodeWithTag("channels-list-delete").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("channels-list-delete")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { text("channels-list-delete") == "Delete list?" }
+        assertEquals("the first OK already deleted the list", listOf("1"), q("SELECT COUNT(*) FROM channel_list"))
+        // Moving away withdraws the question.
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        compose.waitUntil(5_000) { text("channels-list-delete") == "Delete list" }
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitFocus("channels-list-delete")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { text("channels-list-delete") == "Delete list?" }
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(5_000) { q("SELECT COUNT(*) FROM channel_list") == listOf("0") }
+        awaitFocus("channels-new-list")
+    }
+
     @Test
     fun movingUpPlacesTheChannelBeforeItsNeighbour() {
         openChannels()
@@ -181,9 +205,14 @@ class ChannelsScreenTest {
         val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
         android.graphics.BitmapFactory.decodeFile(file.path, bounds)
         assertEquals("shrunk to 256 px on its longer side", 256, bounds.outWidth)
-        // Reset deletes the file with the edit.
+        // Reset asks once more in place: the first OK changes nothing.
+        click("channels-reset")
+        compose.waitUntil(5_000) { text("channels-reset") == "Reset?" }
+        assertTrue("the first OK already reset the channel", file.exists())
+        // The second OK deletes the file with the edit.
         click("channels-reset")
         compose.waitUntil(5_000) { !file.exists() }
+        assertEquals("Reset", text("channels-reset"))
     }
 
     /** Posts the logo form as the phone page's script does; returns the HTTP status. */

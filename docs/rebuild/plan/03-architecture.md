@@ -391,11 +391,15 @@ kept ([specs/01](../specs/01-app-shell-navigation.md) §4.3). The implementation
   carry ids only (never domain records). The stack is saved with `rememberSaveable`, so process
   death and a language change restore the stack instead of restarting at the start route (a quirk
   listed in specs/01 §10). Playback routes restore to the screen underneath, not to the player.
+  The activity retains the stack object with its screen models, so actions captured before
+  recreation still change the visible stack. Recreation applies the same codec policy for
+  playback and management gates; a fresh process rebuilds the stack from saved route ids/keys.
 - **Per-entry state.** Each entry gets a `SaveableStateHolder` key and its own `ViewModelStore`, so
   its screen model and scroll state survive while the entry is in the stack and are cleared when it
   is popped. Entries below the top keep only their screen model's small state (ids, focus anchors,
   a page window), never catalogue-sized lists; the stack is bounded in practice by the route rules
   (about 6 entries).
+  A restored host also clears models for entries dropped while no host was composed.
 - **Focus memory.** Every screen model exposes a `FocusAnchor` (the key of the focused item and,
   for lists, the key of the first visible item). On return, the screen restores scroll to the
   anchor and requests focus on that key once the item is composed (the frame-retry helper from

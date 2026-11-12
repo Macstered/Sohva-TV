@@ -12,6 +12,11 @@ internal class Row<E>(
     val key: String,
     val hash: Long,
     val group: GroupRef?,
+    /**
+     * The row's place in the provider's list, for tables that keep it out of the hash: a place that
+     * moved alone is written with one narrow statement instead of rewriting the row and its indexes.
+     */
+    val position: Int? = null,
     /** Builds the entity for row [id] (0 for a new one); sealing happens here, only for rows written. */
     val build: (id: Long, groupId: Long?) -> E,
 )
@@ -26,6 +31,8 @@ internal class KeyedTable<E>(
     val update: (List<E>) -> Unit,
     val keysPage: (from: String, until: String, limit: Int) -> List<KeyedId>,
     val delete: (List<Long>) -> Unit,
+    /** Writes a new place (id, position) for an otherwise unchanged row; null where the place is part of the hash. */
+    val reposition: ((Long, Int) -> Unit)? = null,
 )
 
 /**
@@ -70,7 +77,11 @@ internal class KeyedDiff<E>(
             when {
                 old == null -> inserts += row.build(0, groupId)
                 old.hash != row.hash -> updates += row.build(old.id, groupId)
-                else -> unchanged++
+                else -> {
+                    unchanged++
+                    val place = row.position
+                    if (place != null && place != old.position) table.reposition?.invoke(old.id, place)
+                }
             }
         }
         if (inserts.isNotEmpty()) table.insert(inserts)

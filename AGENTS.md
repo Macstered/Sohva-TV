@@ -35,7 +35,7 @@ The rebuild kit lives in [docs/rebuild/](docs/rebuild/). Short paths in this fil
 | Which asset? | `assets/` (drop-in `res/`, see `assets/README.md`) |
 | How fast / how big may it be? | `plan/07-performance.md` and the spec's section 9 |
 | How is it tested? | The spec's section 11 and `plan/06-quality-testing-release.md` |
-| What did the old app do exactly? | The old tree, read-only: `G:\SportMate\.local\sohva-sport-user-reports\.local\beta19-public-source` (commit `efab52a`) |
+| What did the old app do exactly? | The old tree, read-only: `/mnt/g/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source` (commit `efab52a`) |
 
 Record every decision a spec did not settle in `docs/decisions.md` of the new repository (date,
 question, decision, why).
@@ -145,6 +145,8 @@ These are acceptance criteria, not advice. A change that breaks one is not done.
    GitHub release, and any install on the owner's devices each need the owner's explicit
    wording for that release. Never overwrite a published or frozen artifact; every build gets a
    new version code.
+   Accumulate changes for the next agreed beta; do not create a new beta after every fix.
+   Check `docs/preview-builds.md` before choosing a version code; private previews consume codes too.
 
 ## 8. How to work
 

@@ -129,7 +129,7 @@ private fun ReminderAlert(reminder: Reminder, onWatch: () -> Unit, onLater: () -
     val soon = ReminderSchedule.startsSoon(reminder, shownAt)
     Dialog(onDismissRequest = onLater, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.width(460.dp).roundFill(Sohva.palette.surface, Sohva.shapes.medium).padding(18.dp).testTag("reminder-alert"),
+            Modifier.width(460.dp).roundFill(Sohva.palette.panel, Sohva.shapes.medium).padding(18.dp).testTag("reminder-alert"),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
@@ -161,7 +161,7 @@ private fun OverlayPrompt(onOpen: () -> Unit, onLater: () -> Unit) {
     val open = remember { FocusRequester() }
     Dialog(onDismissRequest = onLater, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.width(520.dp).roundFill(Sohva.palette.surface, Sohva.shapes.medium).padding(18.dp).testTag("reminder-overlay-prompt"),
+            Modifier.width(520.dp).roundFill(Sohva.palette.panel, Sohva.shapes.medium).padding(18.dp).testTag("reminder-overlay-prompt"),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(

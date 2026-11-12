@@ -25,6 +25,9 @@ import okio.Path.Companion.toOkioPath
  * two decodes at a time, every request decoded at the size it is drawn (AGENTS.md §4 rule 5).
  */
 class CoilArtwork(private val graph: AppGraph) : ArtworkLoader {
+    /** Set once [loader] exists: building it reads a setting from disk, which [peek] on the main thread must never start. */
+    @Volatile private var built = false
+
     private val loader: ImageLoader by lazy {
         val app = graph.app
         ImageLoader.Builder(app)
@@ -33,17 +36,27 @@ class CoilArtwork(private val graph: AppGraph) : ArtworkLoader {
             .components { add(OkHttpNetworkFetcherFactory(callFactory = { graph.player.callFactory })) }
             .bitmapFactoryMaxParallelism(2)
             .build()
+            .also { built = true }
     }
 
     override suspend fun load(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): ImageBitmap? = withContext(graph.dispatchers.io) {
         val request = ImageRequest.Builder(graph.app)
             .data(url)
+            .memoryCacheKey(key(url, widthPx, heightPx, opaque))
             .size(widthPx, heightPx)
             .precision(Precision.INEXACT)
             .bitmapConfig(if (opaque) Bitmap.Config.RGB_565 else Bitmap.Config.ARGB_8888)
             .build()
         (loader.execute(request) as? SuccessResult)?.image?.toBitmap()?.asImageBitmap()
     }
+
+    override fun peek(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): ImageBitmap? {
+        if (!built) return null
+        return loader.memoryCache?.get(MemoryCache.Key(key(url, widthPx, heightPx, opaque)))?.image?.toBitmap()?.asImageBitmap()
+    }
+
+    /** One entry per address, drawn size and pixel format: a picture can never stand in for another. */
+    private fun key(url: String, widthPx: Int, heightPx: Int, opaque: Boolean): String = "$url|$widthPx|$heightPx|$opaque"
 
     /** The disk cache's own tracked size: no directory walk (spec 70 SET-FR-81). */
     suspend fun usage(): Long = withContext(graph.dispatchers.io) { loader.diskCache?.size ?: 0L }

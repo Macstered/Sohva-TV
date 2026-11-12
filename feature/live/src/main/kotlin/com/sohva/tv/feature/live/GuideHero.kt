@@ -134,8 +134,8 @@ private fun HeroStill(model: GuideModel, selection: GuideSelection, still: Strin
 private fun StillImage(url: String) {
     val loader = LocalArtwork.current
     val px = with(LocalDensity.current) { IntSize((HERO_HEIGHT * 16f / 9f).roundToPx(), HERO_HEIGHT.roundToPx()) }
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(url) { image = loader.load(url, px.width, px.height, opaque = true) }
+    var image by remember(url) { mutableStateOf(loader.peek(url, px.width, px.height, opaque = true)) }
+    LaunchedEffect(url) { if (image == null) image = loader.load(url, px.width, px.height, opaque = true) }
     val bitmap = image ?: return
     Canvas(Modifier.fillMaxSize().clip(RoundedCornerShape(Sohva.shapes.large)).testTag("guide-hero-still")) {
         val scale = maxOf(size.width / bitmap.width, size.height / bitmap.height)

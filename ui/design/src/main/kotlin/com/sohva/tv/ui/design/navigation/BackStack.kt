@@ -4,8 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 /** Turns a route into a short string and back; routes carry ids only, never records. */
 interface RouteCodec<R : Any> {
@@ -64,6 +67,19 @@ class BackStack<R : Any> internal constructor(entries: List<NavEntry<R>>, privat
         routes.drop(if (keep) 1 else 0).forEach { stack.add(NavEntry(nextKey++, it)) }
     }
 
+    /** Apply the codec's playback/PIN restoration policy without replacing the live stack. */
+    internal fun restoreRoutes(codec: RouteCodec<R>): Boolean {
+        val restored = stack.mapNotNull { entry ->
+            codec.decode(codec.encode(entry.route))?.let { NavEntry(entry.key, it) }
+        }
+        if (restored.isEmpty()) return false
+        if (restored != stack) {
+            stack.clear()
+            stack.addAll(restored)
+        }
+        return true
+    }
+
     companion object {
         fun <R : Any> of(routes: List<R>): BackStack<R> {
             require(routes.isNotEmpty()) { "a stack is never empty" }
@@ -88,7 +104,38 @@ class BackStack<R : Any> internal constructor(entries: List<NavEntry<R>>, privat
     }
 }
 
-/** The stack, saved and restored with the activity; [start] is used only the first time. */
+/**
+ * The activity's single navigation stack. Keep its identity with the screen models across
+ * recreation; otherwise their saved actions mutate an invisible old stack (HOME-27).
+ * Save route ids and entry keys for process death; [start] is used only for a fresh stack.
+ */
 @Composable
-fun <R : Any> rememberBackStack(codec: RouteCodec<R>, start: () -> List<R>): BackStack<R> =
-    rememberSaveable(saver = BackStack.saver(codec)) { BackStack.of(start()) }
+fun <R : Any> rememberBackStack(codec: RouteCodec<R>, start: () -> List<R>): BackStack<R> {
+    val retained = viewModel { RetainedBackStack<R>() }
+    val saver = remember(retained, codec) { retained.saver(codec) }
+    return rememberSaveable(saver = saver) { retained.start(start) }
+}
+
+/** One stack per activity owner, released with it; this holds only routes/keys, never content. */
+internal class RetainedBackStack<R : Any> : ViewModel() {
+    private var stack: BackStack<R>? = null
+
+    fun start(routes: () -> List<R>): BackStack<R> = stack ?: BackStack.of(routes()).also { stack = it }
+
+    fun saver(codec: RouteCodec<R>): Saver<BackStack<R>, ArrayList<String>> {
+        val persisted = BackStack.saver(codec)
+        return Saver(
+            save = { value -> with(persisted) { save(value) } },
+            // Keep captured actions live, but still drop playback/reapply management gates.
+            restore = { saved ->
+                val live = stack
+                if (live != null && live.restoreRoutes(codec)) live
+                else persisted.restore(saved).also { stack = it }
+            },
+        )
+    }
+
+    override fun onCleared() {
+        stack = null
+    }
+}

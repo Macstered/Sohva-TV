@@ -102,6 +102,12 @@ class LibraryWallTest {
         sql.execSQL("UPDATE movie SET genre = 'action' WHERE key = '${LibraryFixture.key(2)}'")
         graph.metadata.passes.recountGenres()
         openMovies()
+        // The first entry moved on from the empty History (decision "Library start"); this viewer chooses it.
+        compose.waitUntil(10_000) { !text("library-label").startsWith("History") }
+        compose.onNodeWithTag("library-row-history").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("library-row-history")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { text("library-label").startsWith("History") }
         compose.onNodeWithTag("library-view-genres").performSemanticsAction(SemanticsActions.RequestFocus)
         awaitFocus("library-view-genres")
         press(KeyEvent.KEYCODE_DPAD_CENTER)
@@ -118,13 +124,28 @@ class LibraryWallTest {
         assertTrue(!exists(card(2)))
     }
 
+    /**
+     * Nothing watched yet: the first entry does not stay on an empty History (decision "Library
+     * start"). It moves on to the first group, focus with it, and shows that group's films.
+     */
     @Test
-    fun firstEntryFocusesHistoryAndAnEmptyHistorySaysSo() {
+    fun firstEntryMovesOnFromAnEmptyHistoryToTheFirstGroup() {
         openMovies()
+        compose.waitUntil(10_000) { exists("library-row-group:drama") }
+        compose.waitUntil(10_000) { !text("library-label").startsWith("History") }
+        val first = compose.onAllNodes(androidx.compose.ui.test.isFocused()).fetchSemanticsNodes()
+            .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }.firstOrNull { it.startsWith("library-row-") }
+        assertTrue("focus is on $first", first != null && first != "library-row-history")
+        compose.waitUntil(10_000) {
+            compose.onAllNodes(androidx.compose.ui.test.hasTestTag("library-wall")).fetchSemanticsNodes().isNotEmpty() && !exists("library-message")
+        }
+        // History is still there for the viewer who asks for it, and says it is empty.
+        compose.onNodeWithTag("library-row-history").performSemanticsAction(SemanticsActions.RequestFocus)
         awaitFocus("library-row-history")
-        compose.waitUntil(10_000) { exists("library-message") }
-        assertTrue(text("library-message"), text("library-message").contains("No titles"))
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("library-message") && text("library-message").contains("No titles") }
         assertTrue(text("library-label"), text("library-label").startsWith("History"))
+        awaitFocus("library-row-history")
     }
 
     @Test

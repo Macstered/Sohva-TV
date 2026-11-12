@@ -88,7 +88,8 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val serviceKeys: ServiceKeys by lazy { ServiceKeys(secrets) }
 
     /** The guide's and player's reads, favourites and recents (M2). */
-    val live: LiveStore by lazy { LiveStore(database, dispatchers.io, SystemClock) { profiles.activeId } }
+    private val pendingRecents = com.sohva.tv.core.data.live.PendingRecents()
+    val live: LiveStore by lazy { LiveStore(database, dispatchers.io, SystemClock, pendingRecents) { profiles.activeId } }
 
     /** Channel management's edits and lists (M3, spec 21). */
     val channelEdits: ChannelEditStore by lazy { ChannelEditStore(database, dispatchers.io, SystemClock) }
@@ -113,7 +114,7 @@ class DataGraph(context: Context, private val dispatchers: AppDispatchers) {
     val search: SearchReads by lazy { SearchReads(database, dispatchers.io) { profiles.activeId } }
 
     /** Home's recent channels (spec 02). */
-    val home: HomeReads by lazy { HomeReads(database, dispatchers.io) { profiles.activeId } }
+    val home: HomeReads by lazy { HomeReads(database, dispatchers.io, pendingRecents) { profiles.activeId } }
 
     /** The library manager's reads (spec 42 §4.9); its writes go through [OrgRules] and [OrgPass]. */
     val organization: OrgManager by lazy { OrgManager(database, OrgRules(database), dispatchers.io) }

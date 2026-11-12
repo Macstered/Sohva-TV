@@ -105,7 +105,7 @@ produces (`Color.copy(alpha)` rounds `alpha × 255 + 0.5`).
 | `textDisabled` | `#5B6981` | "Content of a control that cannot be focused." | Disabled content; breadcrumb separator "›" |
 | `scrim` | `#000000` | "Wash over artwork or video. Opacity is chosen by the overlay." | Track picker / quick actions (α 166/255 = `#A6000000`), text-edit dialog (α0.72), seek pill (α0.6), Discover subtitle picker (α0.88), episode-card foot (α0.85), Discover player foot (α0.95), Discover loading gradient |
 | `onScrim` | `#FFFFFF` | "Text over a scrim, independent of the app's ordinary surfaces." | Seek feedback, Discover loading and failure texts, fallback player chrome title |
-| `dangerSurface` | `#7A1624` | "Error banner over playback, with its own contrasting foreground." | Player error / reconnect banner (α0.8) |
+| `dangerSurface` | `#7A1624` | "Error banner over playback, with its own contrasting foreground." | Player error / reconnect banner (α0.8). Rebuild (owner, 1 November 2026): no longer used by the banner (spec 30 §5.13); kept for the themes and the gallery |
 | `onDangerSurface` | `#FFFFFF` | Foreground on `dangerSurface`. | Banner text |
 | `playerInfoSurface` | `#252A31` | "Middle stop of the live-player information wash." | Live info wash stop at 0.42 (α0.16) |
 | `genres`, `sports`, `profiles` | §7 | "Content identities are separate from the app's primary accent." | §7 |

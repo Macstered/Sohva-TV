@@ -10,11 +10,12 @@ import com.sohva.tv.core.model.guide.DialBuffer
 import com.sohva.tv.core.model.guide.GuideWindow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** The channel list as shown (PLAY-FR-50..55): one page of rows around the selection and their now titles. */
@@ -58,11 +59,23 @@ class PlayerChannels internal constructor(private val model: PlayerModel, privat
     private var selected = 0
     private var job: Job? = null
 
+    /** The list whose page [view] shows, and the page [job] is still reading rows for (-1: none). */
+    private var viewList: ChannelList? = null
+    private var loadingPage = -1
+
+    /** The now-titles read and the rows it covers ([titledFrom] until [titledTo], list indexes). */
+    private var titlesJob: Job? = null
+    private var titledFrom = 0
+    private var titledTo = 0
+
     internal suspend fun onPlaying(channel: LiveChannel) {
         val spec = channel.groupId?.let { ListSpec.Group(channel.sourceId, it) } ?: ListSpec.Ungrouped(channel.sourceId)
         val list = reads.open(spec)
+        val index = reads.indexOf(list, channel)
+        currentCoroutineContext().ensureActive()
+        // Publish the list and position together, before the model commits the playing channel.
         playingList = list
-        playingIndex = reads.indexOf(list, channel)
+        playingIndex = index
         playingGroup = channel.groupName
     }
 
@@ -71,7 +84,7 @@ class PlayerChannels internal constructor(private val model: PlayerModel, privat
         val list = playingList ?: return false
         if (playingIndex < 0 || list.size < 2) return false
         val target = Math.floorMod(playingIndex + delta, list.size)
-        scope.launch { rowAt(list, target)?.let { model.play(it.key) } }
+        model.playSelected { rowAt(list, target)?.key }
         return true
     }
 
@@ -94,10 +107,13 @@ class PlayerChannels internal constructor(private val model: PlayerModel, privat
 
     fun close() {
         job?.cancel()
+        forgetTitles()
         _open.value = false
         _groups.value = null
         _view.value = null
         shownList = null
+        viewList = null
+        loadingPage = -1
     }
 
     /** Up/Down in the channel list, wrapping (PLAY-FR-52). */
@@ -113,10 +129,7 @@ class PlayerChannels internal constructor(private val model: PlayerModel, privat
         val list = shownList ?: return
         val index = selected
         close()
-        scope.launch {
-            val row = rowAt(list, index) ?: return@launch
-            if (row.key != model.playing.value?.channel?.key) model.play(row.key)
-        }
+        model.playSelected { rowAt(list, index)?.key }
     }
 
     // ---- Group list --------------------------------------------------------------------------------
@@ -158,32 +171,87 @@ class PlayerChannels internal constructor(private val model: PlayerModel, privat
         }
     }
 
-    /** Reads the page around the selection and, once, the now titles of its rows. */
+    /** Reads the page around the selection; the now titles follow for the rows around the highlight. */
     private fun refresh() {
         val list = shownList ?: return
+        val page = selected / ChannelList.PAGE
+        val current = _view.value
+        if (current != null && viewList === list && current.firstIndex == page * ChannelList.PAGE) {
+            // The rows are on screen: the highlight moves in this key press, without a read (PLAY-FR-54).
+            // A read of another page is stale now.
+            if (loadingPage >= 0 && loadingPage != page) {
+                job?.cancel()
+                loadingPage = -1
+            }
+            _view.value = current.copy(selected = selected)
+            ensureTitles()
+            return
+        }
         job?.cancel()
+        forgetTitles()
+        loadingPage = page
         job = scope.launch {
-            val page = selected / ChannelList.PAGE
             val rows = reads.page(list, page)
-            val base = page * ChannelList.PAGE
-            val current = _view.value
-            _view.value = ChannelListView(
-                shownGroupName, list.size, selected, base, rows,
-                if (current?.firstIndex == base && current.groupName == shownGroupName) current.nowTitles else emptyMap(),
-                model.playing.value?.channel?.key,
-            )
-            if (current?.firstIndex == base && current.groupName == shownGroupName && current.nowTitles.isNotEmpty()) return@launch
-            val source = reads.sources.first().firstOrNull { it.id == list.spec.sourceId } ?: return@launch
+            _view.value = ChannelListView(shownGroupName, list.size, selected, page * ChannelList.PAGE, rows, emptyMap(), model.playing.value?.channel?.key)
+            viewList = list
+            loadingPage = -1
+            ensureTitles()
+        }
+    }
+
+    private fun forgetTitles() {
+        titlesJob?.cancel()
+        titlesJob = null
+        titledFrom = 0
+        titledTo = 0
+    }
+
+    /**
+     * Now titles for the rows around the highlight only (spec 30 §9 "only for the page shown"): a
+     * group can hold hundreds of channels, and one read of all their programmes kept the first
+     * title waiting for seconds on a busy box. [TITLE_REACH] rows either side are read; moving
+     * within [TITLE_EDGE] rows of that range's end reads the next range. Titles already read stay,
+     * at most one page of them.
+     */
+    private fun ensureTitles() {
+        val view = _view.value ?: return
+        val list = viewList ?: return
+        val first = view.firstIndex
+        val end = first + view.rows.size
+        val covered = titledTo > titledFrom &&
+            (selected - TITLE_EDGE >= titledFrom || titledFrom <= first) &&
+            (selected + TITLE_EDGE < titledTo || titledTo >= end)
+        if (covered) return
+        // A read in flight that includes the highlight lands first; it asks again when it is done.
+        if (titlesJob?.isActive == true && selected in titledFrom until titledTo) return
+        titlesJob?.cancel()
+        val from = maxOf(first, selected - TITLE_REACH)
+        val to = minOf(end, selected + TITLE_REACH + 1)
+        if (to <= from) return
+        titledFrom = from
+        titledTo = to
+        titlesJob = scope.launch {
+            val source = reads.source(list.spec.sourceId) ?: return@launch
             val now = model.now()
-            val ids = rows.mapNotNull { it.epgId }.distinct()
-            val schedules = reads.schedules(source, ids, GuideWindow.anchor(now))
+            val rows = view.rows.subList(from - first, to - first)
+            val schedules = reads.schedules(source, rows.mapNotNull { it.epgId }.distinct(), GuideWindow.anchor(now))
             val titles = HashMap<String, String>()
             for (row in rows) {
                 val live = row.epgId?.let { schedules[it] }?.firstOrNull { it.isLive(now) } ?: continue
                 titles[row.key] = live.title
             }
-            _view.value = _view.value?.copy(nowTitles = titles)
+            val shown = _view.value ?: return@launch
+            if (viewList !== list || shown.firstIndex != first) return@launch
+            _view.value = shown.copy(nowTitles = shown.nowTitles + titles)
+            titlesJob = null
+            ensureTitles()
         }
+    }
+
+    private companion object {
+        /** About seven rows are on screen; this covers them with room to scroll before the next read. */
+        const val TITLE_REACH = 12
+        const val TITLE_EDGE = 5
     }
 }
 

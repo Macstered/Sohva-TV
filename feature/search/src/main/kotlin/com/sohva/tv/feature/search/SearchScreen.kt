@@ -73,6 +73,7 @@ fun SearchScreen(model: SearchModel) = trace("Search:Screen") {
     val state by model.state.collectAsStateWithLifecycle()
     val field = remember { FocusRequester() }
     val back = remember { FocusRequester() }
+    val opened = remember { FocusRequester() }
     ScreenBackground(Modifier.fillMaxSize().testTag("screen-search")) {
         Column(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 24.dp)) {
             Header(model, back)
@@ -84,11 +85,16 @@ fun SearchScreen(model: SearchModel) = trace("Search:Screen") {
                 verticalArrangement = Arrangement.spacedBy(7.dp),
                 contentPadding = PaddingValues(bottom = 18.dp),
             ) {
-                items(state.results, key = { it.key }) { result -> ResultRow(result) { model.open(result) } }
+                items(state.results, key = { it.key }) { result ->
+                    ResultRow(result, if (result.key == model.lastOpened) Modifier.focusRequester(opened) else Modifier) { model.open(result) }
+                }
             }
         }
     }
-    LaunchedEffect(Unit) { field.requestFocusWhenAttached() }
+    // First entry: the field. Back from a result's page: that result, where the viewer was.
+    LaunchedEffect(Unit) {
+        if (model.lastOpened == null || !opened.requestFocusWhenAttached()) field.requestFocusWhenAttached()
+    }
 }
 
 @Composable
@@ -171,10 +177,10 @@ private fun StatusLine(state: SearchState) {
 
 /** A result (SEARCH-FR-20, -51): 68 dp, `surface` at rest, the focus flip, no scale. */
 @Composable
-private fun ResultRow(result: SearchResult, onClick: () -> Unit) {
+private fun ResultRow(result: SearchResult, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val style = SurfaceStyle(corner = Sohva.shapes.small, resting = Sohva.palette.surface, focusScale = 1f, padding = PaddingValues(horizontal = 10.dp, vertical = 8.dp))
     val label = stringResource(kindLabel(result.kind))
-    TvSurface(onClick = onClick, modifier = Modifier.fillMaxWidth().height(68.dp).testTag("search-result-${result.key}"), style = style) { colors ->
+    TvSurface(onClick = onClick, modifier = modifier.fillMaxWidth().height(68.dp).testTag("search-result-${result.key}"), style = style) { colors ->
         Row(verticalAlignment = Alignment.CenterVertically) {
             // No picture: the kind label's first letter (SEARCH-FR-21).
             LogoTile(if (result.image.isNullOrBlank()) label.take(1) else result.title, result.image, 50.dp)

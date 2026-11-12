@@ -46,4 +46,18 @@ class PauseGateTest {
         advanceUntilIdle()
         assertEquals(PauseGate.VIEWER_PAGE_PAUSE_MS, currentTime)
     }
+
+    @Test
+    fun workThatMustNotCompeteWithTheDecoderWaitsForPlaybackToEnd() = runTest {
+        gate.awaitNoPlayback()
+        assertEquals("nothing plays: at once", 0L, currentTime)
+        playing.value = true
+        var passed = false
+        launch { gate.awaitNoPlayback(); passed = true }
+        runCurrent()
+        assertFalse(passed)
+        playing.value = false
+        runCurrent()
+        assertTrue(passed)
+    }
 }

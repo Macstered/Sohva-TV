@@ -77,6 +77,8 @@ class MainActivity : ComponentActivity(), RootHost {
         val graph = (application as SohvaApplication).graph
         graph.inForeground.value = false
         if (graph.flags.metadataWorker && !isChangingConfigurations) graph.metadata.scheduler.onLeave()
+        // A refresh that came due while the viewer was here runs now that they have left.
+        if (!isChangingConfigurations) graph.sync.scheduler.onLeave()
         super.onStop()
     }
 

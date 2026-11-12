@@ -68,8 +68,48 @@ class RefreshScheduler(private val workManager: WorkManager) {
         )
     }
 
+    @Volatile
+    private var deferredKinds: Set<RefreshKind> = emptySet()
+
+    @Volatile
+    private var deferredFreshMs: Long = 0
+
+    /**
+     * An automatic refresh came due while the viewer was in the app. It used to return "retry",
+     * and WorkManager's linear backoff then grew with every attempt, up to five hours: after a long
+     * evening the refresh ran hours late. It is remembered here instead (in memory: a process that
+     * dies in the background runs the periodic work in a new one, which is not in front) and runs
+     * when the viewer leaves.
+     */
+    fun deferred(kinds: Set<RefreshKind>, freshMs: Long) = synchronized(this) {
+        deferredKinds = deferredKinds + kinds
+        deferredFreshMs = maxOf(deferredFreshMs, freshMs)
+    }
+
+    /** The app left the front: what was deferred runs after [LEAVE_DELAY_MS], unless the viewer is back by then. */
+    fun onLeave() {
+        val (kinds, freshMs) = synchronized(this) {
+            val taken = deferredKinds to deferredFreshMs
+            deferredKinds = emptySet()
+            deferredFreshMs = 0
+            taken
+        }
+        if (kinds.isEmpty()) return
+        workManager.enqueueUniqueWork(
+            DEFERRED_WORK,
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<RefreshWorker>()
+                .setInitialDelay(LEAVE_DELAY_MS, TimeUnit.MILLISECONDS)
+                .setConstraints(NETWORK)
+                .setInputData(RefreshWorker.input(kinds, sourceId = null, now = false, freshMs = freshMs))
+                .build(),
+        )
+    }
+
     companion object {
         const val LIVE_WORK = "sohva-live-refresh"
+        const val DEFERRED_WORK = "sohva-refresh-deferred"
+        const val LEAVE_DELAY_MS = 30_000L
         const val CATALOGUE_WORK = "sohva-catalogue-refresh"
         // Not beta 23's "sohva-sync-now-": with KEEP, a job of beta 23's still queued at the upgrade
         // would otherwise stand in for the rebuild's first sync of the imported sources.
@@ -95,6 +135,9 @@ interface RefreshHost {
     suspend fun failuresSince(sinceMillis: Long, kinds: Set<RefreshKind>): Int
 
     fun nowMillis(): Long
+
+    /** An automatic refresh of [kinds] found the viewer in the app: it runs when they leave ([RefreshScheduler.deferred]). */
+    fun refreshDeferred(kinds: Set<RefreshKind>, freshMs: Long)
 }
 
 /**
@@ -114,7 +157,10 @@ class RefreshWorker(context: Context, params: WorkerParameters, private val host
         val now = inputData.getBoolean(KEY_NOW, false)
         val freshMs = inputData.getLong(KEY_FRESH, 0)
         // An automatic run waits while the viewer is in the app, unless a source still needs its first import.
-        if (!now && host.appInForeground() && host.everyLiveSourceImportedOnce()) return Result.retry()
+        if (!now && host.appInForeground() && host.everyLiveSourceImportedOnce()) {
+            host.refreshDeferred(kinds, freshMs)
+            return Result.success()
+        }
         val origin = if (now) WorkOrigin.VIEWER else WorkOrigin.AUTOMATIC
         val started = host.nowMillis()
         run(host, kinds, sourceId, origin, freshMs)

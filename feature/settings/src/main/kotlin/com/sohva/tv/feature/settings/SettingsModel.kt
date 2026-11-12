@@ -21,10 +21,13 @@ import com.sohva.tv.core.model.source.SourceRules
 import com.sohva.tv.core.model.source.SourceType
 import com.sohva.tv.core.sync.SourceChecks
 import com.sohva.tv.ui.design.R
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -102,6 +105,23 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
 
     /** The page as last loaded or saved, to tell an edit that needs a sync from a re-save. */
     private var lastSaved: SourceDraft? = null
+
+    /**
+     * A page the viewer left with unsaved input: kept while Settings is open and shown again when
+     * its source is opened or added again (decision "Unsaved source form"). An address typed with a
+     * remote was lost to one stray press on the rail or on Back.
+     */
+    private var parked: SourceDraft? = null
+
+    private fun SourceDraft.hasUnsavedInput(): Boolean =
+        if (isNew) listOf(m3uUrl, xmlTvUrl, server, username, password).any { it.isNotBlank() } else this != lastSaved
+
+    /** The state after leaving its page: unsaved input is parked and the Playlists line says so. */
+    private fun SettingsState.leavingPage(): SettingsState {
+        val leaving = page?.takeIf { it.hasUnsavedInput() } ?: return this
+        parked = leaving
+        return withMessage(SettingsMessage.Text(R.string.source_draft_kept), SettingsSection.SOURCES)
+    }
 
     init {
         viewModelScope.launch {
@@ -203,7 +223,7 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
     }
 
     fun select(section: SettingsSection) = state.update {
-        it.copy(section = section, page = null, confirmingDelete = false, focus = it.focus.next(FocusTarget.SectionStart))
+        it.leavingPage().copy(section = section, page = null, confirmingDelete = false, focus = it.focus.next(FocusTarget.SectionStart))
     }
 
     fun openSource(sourceId: String) = act { current ->
@@ -211,8 +231,11 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
             is Outcome.Failed -> message(loaded.error)
             is Outcome.Ok -> {
                 val config = loaded.value ?: return@act
-                val draft = SourceDraft.of(config)
-                lastSaved = draft
+                val stored = SourceDraft.of(config)
+                lastSaved = stored
+                // Edits left unsaved on this source earlier in this visit come back with it.
+                val draft = parked?.takeIf { it.id == sourceId && !it.isNew } ?: stored
+                if (draft !== stored) parked = null
                 state.update {
                     // "All playlists" takes focus on a page that opens (SRC-FR-13).
                     it.copy(page = draft, confirmingDelete = false, messages = it.messages - current, focus = it.focus.next(FocusTarget.SectionStart))
@@ -221,18 +244,23 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
         }
     }
 
-    fun addSource(type: SourceType) = state.update { s ->
-        val saved = s.sources.orEmpty().count { it.type == type }
-        val status = if (type == SourceType.M3U) R.string.source_new_m3u else R.string.source_new_xtream
-        s.copy(page = SourceDraft.new(type, saved), confirmingDelete = false, focus = s.focus.next(FocusTarget.SectionStart))
-            .withMessage(SettingsMessage.Text(status))
+    fun addSource(type: SourceType) {
+        // A new source of this type left unsaved earlier in this visit is the one being added.
+        val kept = parked?.takeIf { it.isNew && it.type == type }
+        if (kept != null) parked = null
+        state.update { s ->
+            val saved = s.sources.orEmpty().count { it.type == type }
+            val status = if (type == SourceType.M3U) R.string.source_new_m3u else R.string.source_new_xtream
+            s.leavingPage().copy(page = kept ?: SourceDraft.new(type, saved), confirmingDelete = false, focus = s.focus.next(FocusTarget.SectionStart))
+                .withMessage(SettingsMessage.Text(status))
+        }
     }
 
     /** "All playlists" and Back: the list, with focus on this source's row (SRC-FR-06). */
     fun closePage() = state.update { s ->
         val id = s.page?.id ?: return@update s
         val target = if (s.sources.orEmpty().any { it.id == id }) FocusTarget.SourceRowOf(id) else FocusTarget.SectionStart
-        s.copy(page = null, confirmingDelete = false, focus = s.focus.next(target))
+        s.leavingPage().copy(page = null, confirmingDelete = false, focus = s.focus.next(target))
     }
 
     fun edit(change: (SourceDraft) -> SourceDraft) = state.update { s -> s.page?.let { s.copy(page = change(it)) } ?: s }
@@ -247,8 +275,39 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
         if (before.isNew || previous == null || previous.importInputs() != saved.importInputs()) {
             services.syncNow(saved.id)
             message(SettingsMessage.Text(R.string.source_saved_syncing))
+            reportSyncResult(saved)
         } else {
             message(SettingsMessage.Text(R.string.source_saved))
+        }
+    }
+
+    private var syncWatch: Job? = null
+
+    /**
+     * After Save started a sync, the status line ends with what the import brought (or why it
+     * failed) instead of standing on "Syncing…". The result counts when the source's first kind
+     * reaches success or failure after it was seen running, or with a result that differs from
+     * the one stored before the save; a later message on the line is never overwritten.
+     */
+    private fun reportSyncResult(saved: SourceDraft) {
+        val kind = if (saved.scope.includesLive) RefreshKind.PLAYLIST else RefreshKind.CATALOGUE
+        val before = state.value.health.firstOrNull { it.sourceId == saved.id && it.kind == kind }
+        val waiting = state.value.messages[SettingsSection.SOURCES]
+        syncWatch?.cancel()
+        syncWatch = viewModelScope.launch {
+            var ran = false
+            val result = services.health().mapNotNull { list -> list.firstOrNull { it.sourceId == saved.id && it.kind == kind } }.first { health ->
+                if (health.state == RefreshState.RUNNING) ran = true
+                val ended = health.state == RefreshState.SUCCESS || health.state == RefreshState.FAILED
+                ended && (ran || health != before)
+            }
+            if (state.value.messages[SettingsSection.SOURCES] != waiting) return@launch
+            val message = when {
+                result.state == RefreshState.FAILED -> SettingsMessage.Failure(result.error ?: AppError.Unknown)
+                kind == RefreshKind.PLAYLIST -> SettingsMessage.Count(R.plurals.source_imported_channels, result.itemCount)
+                else -> services.catalogueCounts(saved.id).let { (films, series) -> SettingsMessage.Catalogue(films, series) }
+            }
+            state.update { if (it.messages[SettingsSection.SOURCES] == waiting) it.withMessage(message, SettingsSection.SOURCES) else it }
         }
     }
 
@@ -316,9 +375,12 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
         val id = state.value.page?.id ?: return@act
         when (val removed = services.remove(id)) {
             is Outcome.Failed -> message(removed.error)
-            is Outcome.Ok -> state.update { s ->
-                s.copy(page = null, confirmingDelete = false, focus = s.focus.next(FocusTarget.SectionStart))
-                    .withMessage(SettingsMessage.Text(R.string.source_deleted))
+            is Outcome.Ok -> {
+                if (parked?.id == id) parked = null
+                state.update { s ->
+                    s.copy(page = null, confirmingDelete = false, focus = s.focus.next(FocusTarget.SectionStart))
+                        .withMessage(SettingsMessage.Text(R.string.source_deleted))
+                }
             }
         }
     }
@@ -340,6 +402,7 @@ class SettingsModel(private val services: SettingsServices, accounts: Boolean) :
             is Outcome.Ok -> {
                 val draft = SourceDraft.of(saved.value)
                 lastSaved = draft
+                if (parked?.id == draft.id) parked = null
                 state.update { it.copy(page = draft) }
                 saved.value
             }

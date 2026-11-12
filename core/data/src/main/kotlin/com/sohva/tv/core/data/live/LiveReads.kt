@@ -30,6 +30,9 @@ data class LiveRailRules(
 interface LiveReads {
     val sources: Flow<List<LiveSource>>
 
+    /** One enabled source by id, read once without observing (safe during an import); null when it is not in [sources]. */
+    suspend fun source(id: String): LiveSource?
+
     /** The rail's organisation rules now and after every change; the defaults when none are set. */
     fun railRuleChanges(): Flow<LiveRailRules> = kotlinx.coroutines.flow.flowOf(LiveRailRules())
 

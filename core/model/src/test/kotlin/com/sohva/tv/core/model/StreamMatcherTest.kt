@@ -207,10 +207,11 @@ class StreamMatcherTest {
     }
 
     @Test
-    fun ambiguousNumericDatesNeverGuessTheOrder() {
+    fun numericDatesUseFixtureCompatibilityWithoutGuessingProviderOrder() {
         for ((instant, date, expected) in listOf(
-            Triple("2026-10-09T18:45:00Z", "9/10", Confidence.POSSIBLE),
-            Triple("2026-09-10T18:45:00Z", "9/10/2026", Confidence.POSSIBLE),
+            Triple("2026-10-09T18:45:00Z", "9/10", Confidence.AVAILABLE),
+            Triple("2026-09-10T18:45:00Z", "9/10/2026", Confidence.AVAILABLE),
+            Triple("2026-09-18T18:45:00Z", "9/10", Confidence.POSSIBLE),
             Triple("2026-09-09T18:45:00Z", "9/9", Confidence.AVAILABLE),
         )) {
             for (clock in listOf("21:45", "18:45 UTC")) {

@@ -12,7 +12,7 @@ The target, as the owner set it on 24 September 2026:
    Nvidia Shield.
 4. **No reuse of the old code**, except small pure pieces where reuse cannot affect performance.
 
-The old code is reference material only: `G:\SportMate\.local\sohva-sport-user-reports\.local\beta19-public-source`
+The old code is reference material only: `/mnt/g/SportMate/.local/sohva-sport-user-reports/.local/beta19-public-source`
 (public commit `efab52a`).
 
 ## How to use it

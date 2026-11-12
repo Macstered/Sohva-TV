@@ -146,6 +146,39 @@ class EnrichmentTest {
         assertEquals(emptyList<Any>(), db.metadata().queueOf(listOf("vod:movie:s:2")))
     }
 
+    /** The viewer came back during the pass: it stops at the next page and sweeps nothing it had not reached. */
+    @Test
+    fun aSynchronisationStopsWhenTheViewerReturnsAndSweepsNothing() = runBlocking {
+        seed()
+        enrichment.synchronise()
+        val before = db.metadata().queueSize()
+        now += 1_000
+        paused = true
+        assertEquals("stopped, not finished", null, enrichment.synchronise())
+        assertEquals("a stopped pass removes no row", before, db.metadata().queueSize())
+        paused = false
+        assertEquals("the next pass finishes", 3, enrichment.synchronise())
+        assertEquals(before, db.metadata().queueSize())
+    }
+
+    /** The cache's own promise ("capped by the daily maintenance") had no caller: expired rows go, then the oldest past the cap. */
+    @Test
+    fun theLookupCacheLosesExpiredRowsAndStaysUnderItsCap() = runBlocking {
+        val dao = db.metadata()
+        fun row(i: Int, expires: Long) = com.sohva.tv.core.data.database.MetadataCacheEntity("k$i", "tmdb", "positive", "$i", "{}", 1, false, now, expires)
+        for (i in 0 until 5) dao.putCache(row(i, now - 1))
+        for (i in 5 until 30) dao.putCache(row(i, now + 1_000L * i))
+        assertEquals(30, dao.cacheCount())
+        enrichment.trimCache(limit = 20)
+        assertEquals(20, dao.cacheCount())
+        // The expired five went first, then the five that expire soonest.
+        assertEquals(null, dao.cached("k4", "tmdb"))
+        assertEquals(null, dao.cached("k9", "tmdb"))
+        assertEquals("10", dao.cached("k10", "tmdb")?.externalId)
+        enrichment.trimCache(limit = 20)
+        assertEquals(20, dao.cacheCount())
+    }
+
     @Test
     fun nothingRunsWhileVideoPlaysOrTheAppIsInFront() = runBlocking {
         seed()

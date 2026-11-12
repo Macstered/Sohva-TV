@@ -5,16 +5,22 @@ import androidx.test.core.app.ApplicationProvider
 import com.sohva.tv.core.data.database.ChannelEntity
 import com.sohva.tv.core.data.database.ContentGroupEntity
 import com.sohva.tv.core.data.database.ProfileAllowedGroupEntity
+import com.sohva.tv.core.data.database.PairingDao
 import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SohvaDatabase
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
+import com.sohva.tv.core.data.database.TeamAliasEntity
 import com.sohva.tv.core.model.sport.EventStatus
+import com.sohva.tv.core.model.sport.ProviderReference
+import com.sohva.tv.core.model.sport.ReferenceKind
 import com.sohva.tv.core.model.sport.Side
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.SportType
 import com.sohva.tv.core.model.sport.pairing.Confidence
 import com.sohva.tv.core.model.sport.pairing.Decision
+import com.sohva.tv.core.model.sport.pairing.DictionaryNames
+import com.sohva.tv.core.model.sport.pairing.EventNames
 import com.sohva.tv.core.model.sport.pairing.MatchSource
 import com.sohva.tv.core.model.sport.pairing.TeamVariants
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
@@ -22,6 +28,9 @@ import com.sohva.tv.core.model.time.SystemClock
 import com.sohva.tv.feature.sport.pairing.PairingCache
 import com.sohva.tv.feature.sport.pairing.PairingScan
 import com.sohva.tv.feature.sport.pairing.StreamPairing
+import com.sohva.tv.feature.sport.dictionary.PairingDictionary
+import java.io.DataInputStream
+import java.util.concurrent.atomic.AtomicInteger
 import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +40,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
@@ -104,6 +115,157 @@ class PairingScanTest {
 
     private fun scan(decisions: Map<Pair<String, String>, Decision> = emptyMap()) = runBlocking {
         PairingScan(db.pairing()).let { it to it.run(listOf(game), TeamVariants.aliases(emptyMap()), decisions).getValue(game.id) }
+    }
+
+    @Test
+    fun storedAliasesNeverLeakFromHockeyIntoAFootballFixture() = runBlocking {
+        db.sources().upsert(SourceEntity("s", "Fixture", "M3U", true, 0, 1, "BOTH", 0, 0, 0))
+        db.channelImport().insert(listOf(channel(1, "Lake Wolves - Harbor", null, null)))
+        db.sport().putAlias(TeamAliasEntity(SportType.ICE_HOCKEY.name, "Northbridge", "Lake Wolves"))
+        val football = game.copy(startMillis = System.currentTimeMillis())
+        val hockey = football.copy(id = "fixture:hockey", sport = SportType.ICE_HOCKEY)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val log = object : DiagnosticsLog {
+            override fun info(event: String, message: String) = Unit
+            override fun error(event: String, message: String?, error: Throwable?) = Unit
+            override fun snapshot(): List<String> = emptyList()
+        }
+        val pairing = StreamPairing(
+            db.pairing(), db.sport(), flowOf(Unit), flowOf(listOf(football, hockey)),
+            PairingCache(cacheDir.newFile()), SystemClock, scope, Dispatchers.Default, log,
+        )
+        try {
+            pairing.setActive(true)
+            val results = withTimeout(5_000) { pairing.streams.first { it[hockey.id]?.size == 1 } }
+            assertEquals(Confidence.AVAILABLE, results.getValue(hockey.id).single().automatic)
+            assertTrue("hockey alias leaked into football", results.getValue(football.id).isEmpty())
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun oldNumericDateCacheIsRematchedWithoutLosingRejections() = runBlocking {
+        val today = LocalDate.now(ZoneOffset.UTC)
+        val title = "Northbridge - Harbor ${today.monthValue}/${today.dayOfMonth}"
+        val current = game.copy(startMillis = today.atTime(15, 30).toInstant(ZoneOffset.UTC).toEpochMilli())
+        db.sources().upsert(SourceEntity("s", "Fixture", "M3U", true, 0, 1, "BOTH", 0, 0, 0))
+        db.channelImport().insert(listOf(channel(1, title, null, null), channel(2, title, null, null)))
+        val reads = AtomicInteger()
+        val dao = object : PairingDao by db.pairing() {
+            override suspend fun channels(after: Long, limit: Int): List<PairingDao.ScanChannel> {
+                reads.incrementAndGet()
+                return db.pairing().channels(after, limit)
+            }
+        }
+        val file = cacheDir.newFile()
+        val cache = PairingCache(file)
+        val log = object : DiagnosticsLog {
+            override fun info(event: String, message: String) = Unit
+            override fun error(event: String, message: String?, error: Throwable?) { throw AssertionError(message, error) }
+            override fun snapshot(): List<String> = emptyList()
+        }
+        fun controller(): Pair<StreamPairing, CoroutineScope> {
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            return StreamPairing(dao, db.sport(), flowOf(Unit), flowOf(listOf(current)), cache, SystemClock,
+                scope, Dispatchers.Default, log) to scope
+        }
+        var (pairing, scope) = controller()
+        try {
+            pairing.setActive(true)
+            val initial = withTimeout(5_000) { pairing.streams.first { it[game.id]?.size == 2 } }.getValue(game.id)
+            assertEquals(listOf(Confidence.AVAILABLE), initial.map { it.automatic }.distinct())
+            assertTrue(pairing.decide(game.id, "s:c2", Decision.REJECTED))
+            // Results publish before the atomic cache write; wait for that observable state.
+            withTimeout(5_000) { while (file.length() == 0L) delay(10) }
+            scope.cancel()
+            val generation = DataInputStream(file.inputStream()).use { input ->
+                input.readInt()
+                input.readInt()
+                input.readUTF()
+            }
+            // Recreate build 127's persisted Possible results; keep its generation except the rules.
+            val oldGeneration = generation.substringBeforeLast("|rules:") + "|rules:4"
+            cache.write(oldGeneration, listOf(current), mapOf(current.id to initial.map {
+                it.copy(automatic = Confidence.POSSIBLE, decision = null)
+            }), System.currentTimeMillis())
+            val beforeReads = reads.get()
+            controller().also { pairing = it.first; scope = it.second }
+            pairing.setActive(true)
+            val corrected = withTimeout(5_000) { pairing.streams.first { it[game.id]?.size == 2 } }.getValue(game.id)
+            assertEquals(listOf(Confidence.AVAILABLE), corrected.map { it.automatic }.distinct())
+            assertEquals(Confidence.REJECTED, corrected.single { it.channelKey == "s:c2" }.confidence)
+            assertTrue("old date rules must query channels again", reads.get() > beforeReads)
+        } finally {
+            scope.cancel()
+        }
+    }
+
+    @Test
+    fun identityCorrectionsRescanScoresStayCheapAndRestartKeepsChoices() = runBlocking {
+        db.sources().upsert(SourceEntity("s", "Fixture", "M3U", true, 0, 1, "BOTH", 0, 0, 0))
+        db.channelImport().insert(listOf(channel(1, "Northbridge - Harbor", null, null), channel(2, "Lake Wolves - Harbor", null, null)))
+        val ref = ProviderReference("fixture", "football", ReferenceKind.TEAM, "1")
+        val events = MutableStateFlow(listOf(game.copy(startMillis = System.currentTimeMillis(), home = game.home.copy(reference = ref))))
+        val calls = AtomicInteger()
+        val reads = AtomicInteger()
+        val dao = object : PairingDao by db.pairing() {
+            override suspend fun channels(after: Long, limit: Int): List<PairingDao.ScanChannel> {
+                reads.incrementAndGet()
+                return db.pairing().channels(after, limit)
+            }
+        }
+        var revision = "one"
+        val dictionary = PairingDictionary { current ->
+            calls.incrementAndGet()
+            DictionaryNames(revision, current.associate { event ->
+                event.id to EventNames(homeId = event.home.reference?.externalId,
+                    home = if (event.home.reference?.externalId == "2") setOf("lake wolves") else emptySet())
+            })
+        }
+        val file = cacheDir.newFile()
+        val errors = java.util.concurrent.CopyOnWriteArrayList<Throwable?>()
+        val log = object : DiagnosticsLog {
+            override fun info(event: String, message: String) = Unit
+            override fun error(event: String, message: String?, error: Throwable?) { errors += error }
+            override fun snapshot(): List<String> = emptyList()
+        }
+        fun controller(): Pair<StreamPairing, CoroutineScope> {
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            return StreamPairing(dao, db.sport(), flowOf(Unit), events, PairingCache(file), SystemClock, scope, Dispatchers.Default, log, dictionary) to scope
+        }
+        var (pairing, scope) = controller()
+        try {
+            pairing.setActive(true)
+            withTimeout(5_000) { pairing.streams.first { it[game.id]?.size == 1 } }
+            val firstReads = reads.get()
+            val firstCalls = calls.get()
+            events.value = events.value.map { it.copy(score = "2 - 1", minute = "67") }
+            delay(600)
+            assertEquals(firstReads, reads.get())
+            assertEquals(firstCalls, calls.get())
+            events.value = events.value.map { it.copy(home = it.home.copy(reference = ref.copy(externalId = "2"))) }
+            withTimeout(5_000) { pairing.streams.first { it[game.id]?.size == 2 } }
+            assertTrue(reads.get() > firstReads)
+            assertTrue(pairing.decide(game.id, "s:c2", Decision.REJECTED))
+            val savedReads = reads.get()
+            scope.cancel()
+            controller().also { pairing = it.first; scope = it.second }
+            pairing.setActive(true)
+            val restored = withTimeout(5_000) { pairing.streams.first { it[game.id]?.size == 2 } }
+            assertEquals(Confidence.REJECTED, restored.getValue(game.id).single { it.channelKey == "s:c2" }.confidence)
+            assertEquals("warm restart queried channels", savedReads, reads.get())
+            scope.cancel()
+            revision = "two"
+            controller().also { pairing = it.first; scope = it.second }
+            pairing.setActive(true)
+            val rescored = withTimeout(5_000) { pairing.streams.first { it[game.id]?.size == 2 } }
+            assertEquals(Confidence.REJECTED, rescored.getValue(game.id).single { it.channelKey == "s:c2" }.confidence)
+            assertTrue("new dictionary must rescan", reads.get() > savedReads)
+            assertTrue("controller errors $errors", errors.isEmpty())
+        } finally {
+            scope.cancel()
+        }
     }
 
     @Test

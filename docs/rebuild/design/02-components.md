@@ -419,7 +419,7 @@ Placement, timing and behaviour are in [03 §3](03-screen-layouts.md#3-player-li
 | Stats line (`PlayerStatsOverlay`) | `Row(spacedBy 18)` of readings: optional label `label` size `textDim` + 6 dp + value `label` size Bold `textPrimary`; no panel ("a line rather than a panel") |
 | Clock | `headline` size Bold `textPrimary`, device 12/24-hour pattern (`Hm` / `hmma`) in the chosen zone |
 | `ScoreTickerOverlay` | `Column(widthIn 300..420, clip medium, panel α0.92, padding 14 × 10, spacedBy 6)`; per match: "home – away" 14 sp Bold `textPrimary` (weight 1, ellipsis) + 12 dp + score or start time 14 sp Black (`danger` if live, else `textMuted`) + (live with score) 8 dp + status 12 sp `textMuted`; empty: `player_score_ticker_empty` 13 sp `textMuted`; max 4 rows (live first, then starting within 3 h) |
-| Error / reconnect banner | `Column(bottom-centre, dangerSurface α0.8, padding 20 × 12, centred)`: message in `onDangerSurface` (inherited 16 sp) + normal "Reconnect" button top 8 |
+| Error / reconnect banner | `Column(bottom-centre, dangerSurface α0.8, padding 20 × 12, centred)`: message in `onDangerSurface` (inherited 16 sp) + normal "Reconnect" button top 8. Rebuild (owner, 1 November 2026): `PlayerNotice`, a dark card (`background` α0.8, large corners) sized to its text; see spec 30 §5.13 |
 
 **Cost:** over video every non-transparent UI pixel is blended by the compositor; the scrim is a
 full-screen quad. **Cheap:** scrim as two bands; no shadows on player controls; the stats line is

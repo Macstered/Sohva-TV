@@ -6,7 +6,7 @@
         <item quantity="other">Källans namn får vara högst %1$d tecken</item>
     </plurals>
     <string name="error_import_interrupted">Uppdateringen avbröts när appen stängdes. De tidigare uppgifterna behölls.</string>
-    <string name="error_secrets_unreadable">Sparade källadresser och lösenord kan inte längre läsas på den här enheten. Återställ en säkerhetskopia eller lägg till källorna igen.</string>
+    <string name="error_secrets_unreadable">Sparade källadresser och lösenord kan inte längre läsas på den här enheten. Rensa appens lagring i tv:ns inställningar och återställ sedan en säkerhetskopia eller lägg till källorna igen.</string>
     <string name="error_source_response_too_large">Svaret från källan var för stort</string>
     <string name="error_source_limit_reached">Fler källor kan inte läggas till (högst %1$d)</string>
     <string name="action_cancel">Avbryt</string>
@@ -25,4 +25,23 @@
     <string name="metadata_key_refused">TMDB avvisade nyckeln tre gånger, så hämtningen i bakgrunden har stoppats. Kontrollera nyckeln och tryck sedan på Spara nyckel.</string>
     <string name="metadata_tvmaze_credit">En del serieuppgifter från TVmaze (CC BY-SA)</string>
     <string name="custom_group_limit">Högst 24 grupper</string>
+    <string name="update_notice_hint">Öppna %1$s › %2$s för att hämta uppdateringen.</string>
+    <!-- Spec 72 (rebuild): diagnostics on a TV without a file picker, and to a phone. -->
+    <string name="diagnostics_send_phone">Skicka till telefon</string>
+    <string name="diagnostics_saved_downloads">Den här tv:n har ingen filväljare, så filen sparades i mappen Download som %1$s.</string>
+    <string name="diagnostics_phone_title">Skicka diagnostik till en telefon</string>
+    <string name="diagnostics_phone_help">Skanna koden med en telefon i samma nätverk, eller öppna adressen. Sidan visar filen och sparar den på telefonen.</string>
+    <string name="diagnostics_phone_sent">Filen har kommit fram till en telefon. Du kan stänga det här.</string>
+    <string name="diagnostics_page_title">Sohva TV-diagnostik</string>
+    <string name="diagnostics_page_help">Tv:ns diagnostikfil, utan adresser och nycklar. Spara den och skicka den till utvecklaren om du blir ombedd.</string>
+    <string name="diagnostics_page_save">Spara fil</string>
+    <string name="diagnostics_page_failed">Tv:n lämnade inte ut filen. Öppna sidan igen från tv:n.</string>
+    <string name="diagnostics_page_privacy">Filen stannar i ditt hemnätverk tills du delar den.</string>
+    <string name="source_draft_kept">Osparade ändringar behölls. Öppna källan eller lägg till den igen för att fortsätta.</string>
+    <string name="confirm_question">%1$s?</string>
+    <string name="catalogue_nothing_imported_movies">Inga filmer har importerats ännu. Lägg till en källa i Inställningar eller uppdatera filmer och serier där.</string>
+    <string name="catalogue_nothing_imported_series">Inga serier har importerats ännu. Lägg till en källa i Inställningar eller uppdatera filmer och serier där.</string>
+    <string name="channels_move_up">Flytta kanalen uppåt</string>
+    <string name="channels_move_down">Flytta kanalen nedåt</string>
+    <string name="settings_section_accounts_title">Konton</string>
 </resources>

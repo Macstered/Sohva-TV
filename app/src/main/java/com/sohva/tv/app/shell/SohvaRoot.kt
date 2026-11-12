@@ -133,6 +133,7 @@ private fun App(graph: AppGraph, start: StartState, host: RootHost) {
                     // Once, after the import from beta 23; kept closed across an activity recreation.
                     var notice by rememberSaveable { mutableStateOf(start.upgraded) }
                     if (notice) com.sohva.tv.app.migration.UpgradeNotice { notice = false }
+                    com.sohva.tv.app.update.HomeUpdateNotice(graph, stack.top.route == com.sohva.tv.app.navigation.AppRoute.Home, notice)
                 }
             }
         }

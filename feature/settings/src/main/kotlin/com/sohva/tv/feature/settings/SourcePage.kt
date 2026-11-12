@@ -42,18 +42,24 @@ private val PASSWORD_FIELD = FieldInput(keyboard = KeyboardType.Password, transf
 @Composable
 internal fun SourcePage(state: SettingsState, model: SettingsModel, start: FocusRequester) {
     val page = state.page ?: return
+    // The page's first control, where focus starts (SET-FR-14): "All playlists" on a saved source
+    // (SRC-FR-13); on a source not saved yet its address field, which is what the viewer who chose
+    // to add a source fills in next (decision "Source form focus"). One requester, moved between
+    // the two: the pane's focus restorer sends any other request made from outside to its fallback.
+    val startOnField = page.isNew
     Row(verticalAlignment = Alignment.CenterVertically) {
         val overline = if (page.type == SourceType.M3U) R.string.source_type_m3u_overline else R.string.source_type_xtream_overline
         SettingsOverline(stringResource(overline, page.name), Modifier.weight(1f))
         TvActionButton(
             stringResource(R.string.source_back_to_list),
             model::closePage,
-            Modifier.focusRequester(start).testTag("source-page-back"),
+            (if (startOnField) Modifier else Modifier.focusRequester(start)).testTag("source-page-back"),
             icon = TvIcons.Back,
             compact = true,
         )
     }
-    if (page.type == SourceType.M3U) M3uAddresses(page, model) else XtreamAccountFields(page, model)
+    val first = start.takeIf { startOnField }
+    if (page.type == SourceType.M3U) M3uAddresses(page, model, first) else XtreamAccountFields(page, model, first)
     SourceRows(page, state, model)
     SourceActions(page, state.busy, model)
     val health = healthSummary(state.health.filter { it.sourceId == page.id })
@@ -71,18 +77,21 @@ private fun FieldLabel(text: String) {
     )
 }
 
+/** The page's start requester on this control, when the page starts here. */
+private fun Modifier.startingHere(start: FocusRequester?): Modifier = if (start != null) focusRequester(start) else this
+
 /** The dialog title of a field: its label without beta 23's leading glyph. */
 private fun String.withoutGlyph(): String = dropWhile { !it.isLetter() }
 
 @Composable
-private fun M3uAddresses(page: SourceDraft, model: SettingsModel) {
+private fun M3uAddresses(page: SourceDraft, model: SettingsModel, first: FocusRequester?) {
     val m3uLabel = stringResource(R.string.source_m3u_address)
     FieldLabel(m3uLabel)
     TvUrlField(
         page.m3uUrl,
         { value -> model.edit { it.copy(m3uUrl = value) } },
         m3uLabel.withoutGlyph(),
-        Modifier.padding(horizontal = 14.dp).fillMaxWidth(0.82f).testTag("settings-m3u"),
+        Modifier.padding(horizontal = 14.dp).fillMaxWidth(0.82f).startingHere(first).testTag("settings-m3u"),
         icon = TvIcons.Link,
         input = URL_FIELD,
         hint = "http(s)://provider/playlist.m3u",
@@ -103,14 +112,14 @@ private fun M3uAddresses(page: SourceDraft, model: SettingsModel) {
 }
 
 @Composable
-private fun XtreamAccountFields(page: SourceDraft, model: SettingsModel) {
+private fun XtreamAccountFields(page: SourceDraft, model: SettingsModel, first: FocusRequester?) {
     val serverLabel = stringResource(R.string.source_xtream_server)
     FieldLabel(serverLabel)
     TvUrlField(
         page.server,
         { value -> model.edit { it.copy(server = value) } },
         serverLabel.withoutGlyph(),
-        Modifier.padding(horizontal = 14.dp).fillMaxWidth(0.82f).testTag("settings-xtream-base-url"),
+        Modifier.padding(horizontal = 14.dp).fillMaxWidth(0.82f).startingHere(first).testTag("settings-xtream-base-url"),
         icon = TvIcons.Link,
         input = URL_FIELD,
         hint = "http(s)://provider:port",

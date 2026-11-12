@@ -19,15 +19,24 @@ object MatchText {
     fun words(text: String): List<String> {
         val out = ArrayList<String>()
         val word = StringBuilder()
-        for (ch in text) {
+        var at = 0
+        while (at < text.length) {
+            val ch = text[at++]
             when {
                 ch in 'a'..'z' || ch in '0'..'9' -> word.append(ch)
                 ch in 'A'..'Z' -> word.append(ch + CASE)
                 ch.code < ASCII -> flush(word, out)
                 else -> {
-                    for (d in Normalizer.normalize(ch.toString(), Normalizer.Form.NFKD).lowercase(Locale.ROOT)) {
+                    val point = if (Character.isHighSurrogate(ch) && at < text.length && Character.isLowSurrogate(text[at])) {
+                        String(charArrayOf(ch, text[at++]))
+                    } else ch.toString()
+                    val decomposed = Normalizer.normalize(point, Normalizer.Form.NFKD).lowercase(Locale.ROOT)
+                    var next = 0
+                    while (next < decomposed.length) {
+                        val d = decomposed.codePointAt(next)
+                        next += Character.charCount(d)
                         when {
-                            d in 'a'..'z' || d in '0'..'9' -> word.append(d)
+                            d in 'a'.code..'z'.code || d in '0'.code..'9'.code -> word.append(d.toChar())
                             isMark(d) -> Unit
                             else -> flush(word, out)
                         }
@@ -45,7 +54,7 @@ object MatchText {
         word.setLength(0)
     }
 
-    private fun isMark(c: Char): Boolean = when (Character.getType(c).toByte()) {
+    private fun isMark(c: Int): Boolean = when (Character.getType(c).toByte()) {
         Character.NON_SPACING_MARK, Character.COMBINING_SPACING_MARK, Character.ENCLOSING_MARK -> true
         else -> false
     }

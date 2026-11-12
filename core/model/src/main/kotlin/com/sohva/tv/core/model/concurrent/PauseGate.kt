@@ -33,6 +33,14 @@ class PauseGate(
         }
     }
 
+    /**
+     * For work that is never urgent and reads whole indexes (the statistics after an import):
+     * suspends while a video plays, whoever started the import (spec 10 SRC-L-25).
+     */
+    suspend fun awaitNoPlayback() {
+        playbackActive.first { !it }
+    }
+
     companion object {
         const val VIEWER_PAGE_PAUSE_MS: Long = 200
     }

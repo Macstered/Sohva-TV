@@ -55,6 +55,9 @@ interface PlayerEnvironment {
     val lowMemory: Boolean
 
     val log: DiagnosticsLog
+
+    /** Small transition records only; the host dispatches redaction/log formatting off main. */
+    fun recordEvent(message: String): Unit = Unit
 }
 
 sealed interface ArchiveResult {

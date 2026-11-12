@@ -17,6 +17,10 @@ import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
 import com.sohva.tv.feature.home.RailItem
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -128,6 +132,46 @@ class SportsPairingTest {
             assertTrue("$key bottom ${card.bottom} is below ${viewport.bottom}", card.bottom <= viewport.bottom + 1.dp)
         }
         awaitFocus(first)
+    }
+
+    @Test
+    fun delayedPairingPublicationKeepsRemoteFocusAndBackReturnsToTheGame() {
+        openOverflowHub()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        // Gate the serial pairing worker before its next generation query. This creates the
+        // real slow-data gap while the main thread continues accepting native remote events.
+        val gate = graph.appScope.launch(graph.dispatchers.bulk) {
+            entered.countDown()
+            check(release.await(20, TimeUnit.SECONDS)) { "pairing gate timed out" }
+        }
+        try {
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            graph.data.database.guideImport().insertProgrammes((0..5).map { i ->
+                programme("e0-$i", kickOff - 5 * 60_000L, "Football: Northbridge v Harbor", "slow-$i").copy(snapshot = 2)
+            })
+            graph.data.database.sourceStatus().upsert(
+                SourceStatusEntity("fixture-0", "epg", "success", now, now, null, null, null, 6, 0, 2, 2, 110 * 60_000L),
+            )
+            repeat(3) { instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN) }
+            compose.waitForIdle()
+            val chosen = checkNotNull(focusedTag())
+            assertTrue(chosen.startsWith("hub-stream-watch-"))
+            release.countDown()
+            runBlocking {
+                kotlinx.coroutines.withTimeout(10_000) {
+                    graph.sport.pairing.streams.first { streams -> streams[GAME]?.all { it.programmeId.startsWith("slow-") } == true }
+                }
+            }
+            compose.waitForIdle()
+            awaitFocus(chosen)
+            press(KeyEvent.KEYCODE_BACK)
+            compose.waitUntil(5_000) { !exists("match-hub") }
+            awaitFocus("today-card-$GAME")
+        } finally {
+            release.countDown()
+            runBlocking { gate.join() }
+        }
     }
 
     /** Main-thread CPU per ten real presses, including their settled layouts; no desktop frame timings. */

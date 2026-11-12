@@ -33,6 +33,14 @@ object LibrarySql {
         "WHERE movie.group_id = content_group.id AND movie.visible = 1 AND movie.group_primary = 1), " +
         "total_count = (SELECT COUNT(DISTINCT COALESCE(movie.work_key, movie.key)) FROM movie WHERE movie.group_id = content_group.id) " +
         "WHERE source_id = :sourceId AND room = 'MOVIES'"
+    const val FILM_GROUP_IDS = "SELECT id FROM content_group WHERE source_id = :sourceId AND room = 'MOVIES' ORDER BY id"
+
+    // The same counts as RECOUNT_FILM_GROUPS for the named groups: an import recounts in ranges of
+    // groups, so no single write transaction covers every film of the source.
+    const val RECOUNT_FILM_GROUPS_OF = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM movie " +
+        "WHERE movie.group_id = content_group.id AND movie.visible = 1 AND movie.group_primary = 1), " +
+        "total_count = (SELECT COUNT(DISTINCT COALESCE(movie.work_key, movie.key)) FROM movie WHERE movie.group_id = content_group.id) " +
+        "WHERE id IN (:groupIds)"
     const val RECOUNT_SERIES_GROUPS = "UPDATE content_group SET item_count = (SELECT COUNT(*) FROM series " +
         "WHERE series.group_id = content_group.id AND series.visible = 1 AND series.primary_copy = 1), " +
         "total_count = (SELECT COUNT(*) FROM series WHERE series.group_id = content_group.id) WHERE source_id = :sourceId AND room = 'SERIES'"
@@ -78,6 +86,12 @@ interface LibraryDao {
 
     @Query(LibrarySql.RECOUNT_FILM_GROUPS)
     fun recountFilmGroups(sourceId: String)
+
+    @Query(LibrarySql.FILM_GROUP_IDS)
+    fun filmGroupIds(sourceId: String): List<Long>
+
+    @Query(LibrarySql.RECOUNT_FILM_GROUPS_OF)
+    fun recountFilmGroupsOf(groupIds: List<Long>)
 
     @Query(LibrarySql.RECOUNT_SERIES_GROUPS)
     fun recountSeriesGroups(sourceId: String)

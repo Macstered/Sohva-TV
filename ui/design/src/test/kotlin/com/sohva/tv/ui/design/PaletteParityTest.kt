@@ -42,6 +42,9 @@ class PaletteParityTest {
         "rating" to { p -> p.rating.toArgb() },
     )
 
+    /** Where the rebuild knowingly differs from the kit's table: dim text raised to 4.5:1 (decision "Contrast", `PaletteContrastTest`). */
+    private val departures: Map<Pair<String, ColorThemeId>, Int> = mapOf(("textDim" to ColorThemeId.ORIGINAL) to 0xFF7F8CA3.toInt())
+
     @Test
     fun everyTokenMatchesTheResolvedTable() {
         val table = resolvedTable()
@@ -50,7 +53,7 @@ class PaletteParityTest {
             val row = table.getValue(token)
             themesInTableOrder.forEachIndexed { i, theme ->
                 val cell = row[i].takeUnless { it == "same" } ?: row[0]
-                assertEquals("$token in $theme", parse(cell), read(Palettes.of(theme)))
+                assertEquals("$token in $theme", departures[token to theme] ?: parse(cell), read(Palettes.of(theme)))
             }
         }
     }

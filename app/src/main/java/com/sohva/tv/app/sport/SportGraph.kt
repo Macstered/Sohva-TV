@@ -103,6 +103,11 @@ class SportGraph(private val graph: AppGraph) {
         StreamPairing(
             graph.data.pairingDao, graph.data.sportDao, graph.data.pairingInputChanges(), feed.state.map { it.events },
             PairingCache(java.io.File(graph.app.cacheDir, PairingCache.FILE_NAME)), graph.clock, graph.appScope, graph.dispatchers.bulk, graph.diagnostics,
+            com.sohva.tv.feature.sport.dictionary.AssetPairingDictionary(
+                com.sohva.tv.feature.sport.dictionary.DictionaryAsset(
+                    { name -> graph.app.assets.open(name) }, { java.io.File(graph.app.filesDir, "sport-dictionary") },
+                ),
+            ),
         )
     }
 

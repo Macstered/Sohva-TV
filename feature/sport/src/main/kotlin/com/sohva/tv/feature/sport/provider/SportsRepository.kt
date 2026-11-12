@@ -3,6 +3,9 @@ package com.sohva.tv.feature.sport.provider
 import com.sohva.tv.core.data.database.SportCompetitionEntity
 import com.sohva.tv.core.data.database.SportDao
 import com.sohva.tv.core.data.database.SportEventEntity
+import com.sohva.tv.core.data.database.SportReferenceRow
+import com.sohva.tv.core.model.sport.ProviderReference
+import com.sohva.tv.core.model.sport.ReferenceKind
 import com.sohva.tv.core.data.database.SportFeedEntity
 import com.sohva.tv.core.data.database.SportQuotaEntity
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
@@ -195,13 +198,19 @@ class SportsRepository(
         feedKey = feedKey, eventId = e.id, sport = e.sport.name, competitionId = e.competitionId, competition = e.competition,
         competitionLogo = e.competitionLogo, home = e.home.name, homeLogo = e.home.logo, away = e.away.name, awayLogo = e.away.logo,
         startMs = e.startMillis, startMinute = e.startMinuteOfDay, status = e.status.name, score = e.score, scoreDetail = e.scoreDetail, minute = e.minute,
+        homeReference = e.home.reference?.row(), awayReference = e.away.reference?.row(), competitionReference = e.competitionReference?.row(),
     )
 
     private fun event(r: SportEventEntity): SportEvent? = SportEvent(
         r.eventId, SportType.fromStored(r.sport) ?: return null, r.competitionId, r.competition, r.competitionLogo,
-        Side(r.home, r.homeLogo), Side(r.away, r.awayLogo), r.startMs, r.startMinute,
-        EventStatus.entries.firstOrNull { it.name == r.status } ?: EventStatus.UNKNOWN, r.score, r.scoreDetail, r.minute,
+        Side(r.home, r.homeLogo, r.homeReference?.reference()), Side(r.away, r.awayLogo, r.awayReference?.reference()), r.startMs, r.startMinute,
+        EventStatus.entries.firstOrNull { it.name == r.status } ?: EventStatus.UNKNOWN, r.score, r.scoreDetail, r.minute, r.competitionReference?.reference(),
     )
+
+    private fun ProviderReference.row(): SportReferenceRow = SportReferenceRow(provider, product, kind.stored, externalId)
+
+    private fun SportReferenceRow.reference(): ProviderReference? =
+        ReferenceKind.fromStored(kind)?.let { ProviderReference(provider, product, it, externalId) }
 
     companion object {
         private const val MINUTE = 60_000L

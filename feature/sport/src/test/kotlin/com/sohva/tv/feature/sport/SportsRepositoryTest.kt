@@ -11,6 +11,8 @@ import com.sohva.tv.core.model.time.Clock
 import com.sohva.tv.feature.sport.provider.CacheState
 import com.sohva.tv.feature.sport.provider.SportsHttp
 import com.sohva.tv.feature.sport.provider.SportsRepository
+import com.sohva.tv.feature.sport.provider.SportsParsers
+import com.sohva.tv.core.model.sport.ReferenceKind
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
@@ -67,6 +69,34 @@ class SportsRepositoryTest {
     fun stop() {
         server.close()
         db.close()
+    }
+
+    @Test
+    fun allTwelveProductsKeepTypedReferencesAcrossParseStoreAndCacheRead() = runBlocking {
+        val date = LocalDate.now(java.time.ZoneOffset.UTC)
+        now = date.atTime(15, 30).toInstant(java.time.ZoneOffset.UTC).toEpochMilli()
+        SportType.entries.forEach { sport ->
+            val body = ParticipantReferenceRegressionTest.payload(sport, 701, "${date}T15:30:00Z")
+            val parsed = SportsParsers.events(sport, Buffer().writeUtf8(body), zone).single()
+            server.enqueue(answer(body))
+            val written = repo.day(sport, date, zone, null)
+            val restored = repo.day(sport, date, zone, null)
+            assertEquals(sport.name, listOf(parsed), written.events)
+            assertEquals(sport.name, written.events, restored.events)
+            assertEquals(CacheState.HIT, restored.state)
+            val reference = restored.events.single().home.reference!!
+            assertEquals("api-sports", reference.provider)
+            assertEquals(sport.provider, reference.product)
+            assertEquals("701", reference.externalId)
+            val kind = when (sport) {
+                SportType.MMA -> ReferenceKind.FIGHTER
+                SportType.FORMULA_1 -> ReferenceKind.COMPETITION
+                else -> ReferenceKind.TEAM
+            }
+            assertEquals(kind, reference.kind)
+            assertEquals("801", restored.events.single().away.reference!!.externalId)
+        }
+        assertEquals("dictionary references add no requests", 12, server.requestCount)
     }
 
     @Test

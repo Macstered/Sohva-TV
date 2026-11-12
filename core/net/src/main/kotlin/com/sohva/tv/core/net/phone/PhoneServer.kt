@@ -57,6 +57,15 @@ sealed interface PhoneMode {
     class TraktList(val accepts: (String) -> Boolean) : PhoneMode {
         override fun toString(): String = "TraktList"
     }
+
+    /**
+     * The diagnostics file for a TV without a file picker (spec 72, rebuild): the page fetches the
+     * already redacted [file] with the token and offers it to save as [name]. 10 minutes at most;
+     * the page stays open so it can be fetched again. A new start always serves the new file.
+     */
+    class Diagnostics(val file: ByteArray, val name: String) : PhoneMode {
+        override fun toString(): String = "Diagnostics"
+    }
 }
 
 /** The sentences the page answers with, in the TV's interface language (PHONE-FR-32). */
@@ -91,6 +100,12 @@ interface PhoneAnswers {
     fun traktListNotFound(): String = "That list could not be added. It may be private, or Home already has 8 added rows."
 
     fun traktListInvalid(): String = "That is not a trakt.tv list address or number."
+
+    /** The diagnostics page's texts (spec 72, rebuild). */
+    fun diagnosticsPage(): DiagnosticsPageTexts = DiagnosticsPageTexts(
+        "en", "Sohva TV diagnostics", "Your TV's diagnostics file, with addresses and keys removed. Save it and send it to the developer if asked.",
+        "Save file", "The TV did not hand over the file. Open the page again from the TV.", "Nothing leaves your home network.",
+    )
 }
 
 /** Saves what the phone sent; called on the server thread, blocking until done (PHONE-FR-31). */
@@ -123,6 +138,8 @@ class PhoneServer(
         val current = mode
         return when {
             current is PhoneMode.Logo && other is PhoneMode.Logo -> current.channelKey == other.channelKey
+            // Each diagnostics page serves the file made for it.
+            current is PhoneMode.Diagnostics || other is PhoneMode.Diagnostics -> false
             else -> current::class == other::class
         }
     }
@@ -163,7 +180,8 @@ class PhoneServer(
         private val saved = HashSet<PhoneSubmission>()
 
         fun serve() {
-            val end = System.nanoTime() + (if (mode is PhoneMode.Addons) minOf(lifetimeMillis, ADDON_LIFETIME_MILLIS) else lifetimeMillis) * 1_000_000
+            val short = mode is PhoneMode.Addons || mode is PhoneMode.Diagnostics
+            val end = System.nanoTime() + (if (short) minOf(lifetimeMillis, ADDON_LIFETIME_MILLIS) else lifetimeMillis) * 1_000_000
             try {
                 while (!server.isClosed && System.nanoTime() < end) {
                     val client = try {
@@ -171,7 +189,11 @@ class PhoneServer(
                     } catch (_: SocketTimeoutException) {
                         continue
                     }
-                    client.use(::handle)
+                    try {
+                        client.use(::handle)
+                    } catch (_: RuntimeException) {
+                        // One request the handler could not answer ends with its connection; the page stays up.
+                    }
                 }
             } catch (_: IOException) {
                 // The socket closed: stopped from the TV.
@@ -187,7 +209,7 @@ class PhoneServer(
                 val max = when (mode) {
                     is PhoneMode.Logo -> MAX_LOGO_BODY
                     is PhoneMode.Addons -> MAX_ADDON_BODY
-                    is PhoneMode.TraktList -> MAX_LIST_BODY
+                    is PhoneMode.TraktList, is PhoneMode.Diagnostics -> MAX_LIST_BODY
                     PhoneMode.Sources -> MAX_BODY
                 }
                 PhoneRequest.read(client.getInputStream(), max, System.nanoTime() + REQUEST_BUDGET_NANOS)
@@ -206,6 +228,7 @@ class PhoneServer(
         private fun submit(out: OutputStream, request: PhoneRequest) {
             if (mode is PhoneMode.Addons) return addons(out, request, mode)
             if (mode is PhoneMode.TraktList) return traktList(out, request, mode)
+            if (mode is PhoneMode.Diagnostics) return diagnostics(out, request, mode)
             val authorization = request.headers["authorization"].orEmpty().toByteArray(Charsets.US_ASCII)
             val originOk = request.headers["origin"]?.let { it == origin } ?: true
             if (!originOk || !MessageDigest.isEqual(authorization, bearer)) return respond(out, 403, answers.forbidden())
@@ -216,7 +239,7 @@ class PhoneServer(
             val fits = when (mode) {
                 PhoneMode.Sources -> submission !is PhoneSubmission.Logo
                 is PhoneMode.Logo -> submission is PhoneSubmission.Logo && submission.channelKey == mode.channelKey
-                is PhoneMode.Addons, is PhoneMode.TraktList -> false
+                is PhoneMode.Addons, is PhoneMode.TraktList, is PhoneMode.Diagnostics -> false
             }
             if (!fits) return respond(out, 403, answers.forbidden())
             // Sending the same thing twice in a session saves it once (PHONE-FR-31 rebuild rule).
@@ -276,11 +299,23 @@ class PhoneServer(
             respond(out, 200, answers.traktListAdded(added.name.orEmpty()))
         }
 
+        /**
+         * The diagnostics file to the page that holds the token: exact `Origin` and the bearer token,
+         * as the addon page's rules. Each hand-over is counted for the TV's dialog.
+         */
+        private fun diagnostics(out: OutputStream, request: PhoneRequest, mode: PhoneMode.Diagnostics) {
+            val authorization = request.headers["authorization"].orEmpty().toByteArray(Charsets.US_ASCII)
+            if (request.headers["origin"] != origin || !MessageDigest.isEqual(authorization, bearer)) return respond(out, 403, answers.forbidden())
+            respond(out, 200, mode.file.toString(Charsets.UTF_8))
+            stateFlow.update { s -> if (s is PhoneState.Running) s.copy(received = s.received + 1) else s }
+        }
+
         private fun page(): String = when (val m = mode) {
             PhoneMode.Sources -> PhonePage.sources(answers.page())
             is PhoneMode.Logo -> PhonePage.logo(answers.logoPage(m.channelName), m.channelKey)
             is PhoneMode.Addons -> PhonePage.addons()
             is PhoneMode.TraktList -> PhonePage.traktList(answers.traktListPage())
+            is PhoneMode.Diagnostics -> PhonePage.diagnostics(answers.diagnosticsPage(), m.name)
         }
 
         private fun respond(out: OutputStream, code: Int, body: String, html: Boolean = false) {

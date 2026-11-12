@@ -6,7 +6,7 @@
         <item quantity="other">Lähteen nimessä voi olla enintään %1$d merkkiä</item>
     </plurals>
     <string name="error_import_interrupted">Päivitys keskeytyi, kun sovellus suljettiin. Aiemmat tiedot säilytettiin.</string>
-    <string name="error_secrets_unreadable">Tallennettuja lähdeosoitteita ja salasanoja ei voi enää lukea tällä laitteella. Palauta varmuuskopio tai lisää lähteet uudelleen.</string>
+    <string name="error_secrets_unreadable">Tallennettuja lähdeosoitteita ja salasanoja ei voi enää lukea tällä laitteella. Tyhjennä sovelluksen tallennustila television asetuksista ja palauta sitten varmuuskopio tai lisää lähteet uudelleen.</string>
     <string name="error_source_response_too_large">Lähteen vastaus oli liian suuri</string>
     <string name="error_source_limit_reached">Lähteitä ei voi lisätä enempää (enintään %1$d)</string>
     <string name="action_cancel">Peruuta</string>
@@ -25,4 +25,23 @@
     <string name="metadata_key_refused">TMDB hylkäsi avaimen kolme kertaa, joten taustahaku on pysäytetty. Tarkista avain ja paina Tallenna avain.</string>
     <string name="metadata_tvmaze_credit">Osa sarjojen tiedoista: TVmaze (CC BY-SA)</string>
     <string name="custom_group_limit">Enintään 24 ryhmää</string>
+    <string name="update_notice_hint">Avaa %1$s › %2$s ladataksesi päivityksen.</string>
+    <!-- Spec 72 (rebuild): diagnostics on a TV without a file picker, and to a phone. -->
+    <string name="diagnostics_send_phone">Lähetä puhelimeen</string>
+    <string name="diagnostics_saved_downloads">Tässä televisiossa ei ole tiedostonvalitsinta, joten tiedosto tallennettiin Download-kansioon nimellä %1$s.</string>
+    <string name="diagnostics_phone_title">Lähetä diagnostiikka puhelimeen</string>
+    <string name="diagnostics_phone_help">Lue koodi puhelimella, joka on samassa verkossa, tai avaa osoite. Sivu näyttää tiedoston ja tallentaa sen puhelimeen.</string>
+    <string name="diagnostics_phone_sent">Tiedosto on puhelimessa. Voit sulkea tämän.</string>
+    <string name="diagnostics_page_title">Sohva TV:n diagnostiikka</string>
+    <string name="diagnostics_page_help">Television diagnostiikkatiedosto ilman osoitteita ja avaimia. Tallenna se ja lähetä se kehittäjälle, jos sitä pyydetään.</string>
+    <string name="diagnostics_page_save">Tallenna tiedosto</string>
+    <string name="diagnostics_page_failed">Televisio ei antanut tiedostoa. Avaa sivu uudelleen televisiosta.</string>
+    <string name="diagnostics_page_privacy">Tiedosto pysyy kotiverkossasi, kunnes jaat sen.</string>
+    <string name="source_draft_kept">Tallentamattomat muutokset säilytettiin. Jatka avaamalla lähde tai lisäämällä se uudelleen.</string>
+    <string name="confirm_question">%1$s?</string>
+    <string name="catalogue_nothing_imported_movies">Elokuvia ei ole vielä tuotu. Lisää lähde asetuksissa tai päivitä siellä elokuvat ja sarjat.</string>
+    <string name="catalogue_nothing_imported_series">Sarjoja ei ole vielä tuotu. Lisää lähde asetuksissa tai päivitä siellä elokuvat ja sarjat.</string>
+    <string name="channels_move_up">Siirrä kanava ylemmäs</string>
+    <string name="channels_move_down">Siirrä kanava alemmas</string>
+    <string name="settings_section_accounts_title">Tilit</string>
 </resources>

@@ -192,8 +192,8 @@ private fun CastRow(cast: List<CastMember>) {
 private fun Photo(url: String) {
     val loader = LocalArtwork.current
     val px = with(LocalDensity.current) { 52.dp.roundToPx() }
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(url) { image = loader.load(url, px, px, opaque = true) }
+    var image by remember(url) { mutableStateOf(loader.peek(url, px, px, opaque = true)) }
+    LaunchedEffect(url) { if (image == null) image = loader.load(url, px, px, opaque = true) }
     Box(
         Modifier.size(52.dp).drawWithCache {
             val clip = androidx.compose.ui.graphics.Path().apply { addOval(androidx.compose.ui.geometry.Rect(0f, 0f, size.width, size.height)) }
@@ -271,9 +271,10 @@ private fun EpisodeCard(video: AddonVideo, fallback: String?, mark: TitleMark?, 
 @Composable
 private fun Still(url: String) {
     val loader = LocalArtwork.current
-    val density = LocalDensity.current
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(url) { image = loader.load(url, with(density) { 230.dp.roundToPx() }, with(density) { 130.dp.roundToPx() }, opaque = true) }
+    val w = with(LocalDensity.current) { 230.dp.roundToPx() }
+    val h = with(LocalDensity.current) { 130.dp.roundToPx() }
+    var image by remember(url) { mutableStateOf(loader.peek(url, w, h, opaque = true)) }
+    LaunchedEffect(url) { if (image == null) image = loader.load(url, w, h, opaque = true) }
     Box(Modifier.fillMaxSize().drawBehind { image?.let { cropped(it) } })
 }
 

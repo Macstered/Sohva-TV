@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.focusGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,7 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -144,23 +147,34 @@ internal fun EpgOffsetRow(page: SourceDraft, model: SettingsModel) {
     }
 }
 
-/** The action buttons of SRC-FR-17, at most three to a row; disabled while an action runs (SRC-FR-19) but still focusable, so OK on one keeps focus there. */
+/**
+ * The action buttons of SRC-FR-17, at most three to a row; disabled while an action runs (SRC-FR-19)
+ * but still focusable, so OK on one keeps focus there. Down into the buttons lands on Save: the
+ * nearest button below the last setting was the test, and Save needed a Left the viewer had to find.
+ * Sync and refresh act on a stored source, so a page not saved yet shows Save and the test only
+ * (decision "Source form focus").
+ */
 @Composable
 internal fun SourceActions(page: SourceDraft, busy: Boolean, model: SettingsModel) {
     val state = SurfaceState(enabled = !busy, keepsFocus = true)
     val live = page.scope.includesLive
+    val save = remember { FocusRequester() }
     FlowRow(
-        Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+        Modifier
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .focusProperties { onEnter = { if (requestedFocusDirection == FocusDirection.Down) save.requestFocus() } }
+            .focusGroup(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         maxItemsInEachRow = 3,
     ) {
-        Action(R.string.source_save_securely, TvIcons.Save, "settings-save", state, model::save)
+        TvActionButton(stringResource(R.string.source_save_securely), model::save, Modifier.focusRequester(save).testTag("settings-save"), icon = TvIcons.Save, state = state)
         if (page.type == SourceType.M3U) {
             Action(R.string.source_test_address, TvIcons.Check, "settings-test-m3u", state, model::test)
         } else {
             Action(R.string.source_test_connection, TvIcons.Check, "settings-test-xtream", state, model::test)
         }
+        if (page.isNew) return@FlowRow
         Action(R.string.source_sync_everything, TvIcons.Refresh, "settings-sync-everything", state, model::syncEverything)
         if (live) {
             val label = if (page.type == SourceType.M3U) R.string.source_refresh_playlist else R.string.source_refresh_channels

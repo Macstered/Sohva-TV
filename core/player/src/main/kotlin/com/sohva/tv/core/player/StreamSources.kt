@@ -8,6 +8,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
 import com.sohva.tv.core.model.player.StreamContainer
+import com.sohva.tv.core.model.player.StreamReply
 import java.io.IOException
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
@@ -53,18 +54,57 @@ class StreamRegistry(private val defaultAgent: String) {
     @Volatile
     private var current: Entry? = null
 
+    /** The current stream's first reply, as [InspectingDataSource] saw it; null before one arrives. */
+    @Volatile
+    private var reply: StreamReply? = null
+
     private class Entry(val placeholder: String, val address: String, val headers: Map<String, String>, val origin: String?)
 
     fun register(stream: ResolvedStream): Uri {
         val placeholder = placeholder(stream.key)
         val origin = if (stream.addon) stream.address.toHttpUrlOrNull()?.let(AddonTransport::origin) else null
         current = Entry(placeholder.toString(), stream.address, headers(stream), origin)
+        reply = null
+        playlistRetried = null
         return placeholder
     }
 
     fun clear() {
         current = null
+        reply = null
     }
+
+    fun lastReply(): StreamReply? = reply
+
+    /** The placeholder already retried as HLS; null until a playlist reply asks for it. */
+    @Volatile
+    private var playlistRetried: String? = null
+
+    /** Told, on the loader thread, which placeholder's reply was a playlist to retry as HLS. */
+    @Volatile
+    var onPlaylistReply: ((placeholder: String) -> Unit)? = null
+
+    /**
+     * True once per stream when its reply is a playlist although its address names no type: the
+     * caller then holds the failure back while [onPlaylistReply] switches the item to HLS.
+     */
+    internal fun claimPlaylistRetry(): Boolean {
+        val entry = current ?: return false
+        if (reply?.isPlaylist != true || mimeType(entry.address) != null) return false
+        synchronized(this) {
+            if (playlistRetried == entry.placeholder) return false
+            playlistRetried = entry.placeholder
+        }
+        onPlaylistReply?.invoke(entry.placeholder)
+        return true
+    }
+
+    internal fun recordReply(value: StreamReply) {
+        reply = value
+    }
+
+    /** The real address's host, to tell whether a redirect moved the stream elsewhere. */
+    internal fun addressHost(): String? = current?.address?.toHttpUrlOrNull()?.host
 
     /** For [ResolvingDataSource]: the placeholder becomes the address; every request gets the headers. */
     val resolver: ResolvingDataSource.Resolver = ResolvingDataSource.Resolver { spec -> resolve(spec) }

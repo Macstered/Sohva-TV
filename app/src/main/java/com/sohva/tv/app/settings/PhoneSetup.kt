@@ -14,6 +14,7 @@ import com.sohva.tv.core.net.phone.PhoneReceiver
 import com.sohva.tv.core.net.phone.PhoneServer
 import com.sohva.tv.core.net.phone.PhoneState
 import com.sohva.tv.core.net.phone.PhoneSubmission
+import com.sohva.tv.core.net.phone.DiagnosticsPageTexts
 import com.sohva.tv.core.net.phone.TraktListPageTexts
 import com.sohva.tv.ui.design.R
 import kotlinx.coroutines.flow.Flow
@@ -118,6 +119,18 @@ private class ResourceAnswers(private val app: Context) : PhoneAnswers {
     override fun forbidden(): String = context().getString(R.string.phone_setup_page_forbidden)
 
     override fun badRequest(): String = context().getString(R.string.phone_setup_page_bad_request)
+
+    override fun diagnosticsPage(): DiagnosticsPageTexts {
+        val c = context()
+        return DiagnosticsPageTexts(
+            languageTag = (ConfigurationCompat.getLocales(c.resources.configuration)[0] ?: java.util.Locale.ENGLISH).toLanguageTag(),
+            title = c.getString(R.string.diagnostics_page_title),
+            help = c.getString(R.string.diagnostics_page_help),
+            save = c.getString(R.string.diagnostics_page_save),
+            failed = c.getString(R.string.diagnostics_page_failed),
+            privacy = c.getString(R.string.diagnostics_page_privacy),
+        )
+    }
 
     override fun traktListPage(): TraktListPageTexts {
         val c = context()

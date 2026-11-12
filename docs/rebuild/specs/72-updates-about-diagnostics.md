@@ -46,6 +46,9 @@ Updates
 - ABOUT-11 Debug, demo and Lab builds never check, download or install; About says public updates
   are disabled (Lab also shows its safety notice as the notes).
 - ABOUT-12 Help line: downloads are verified; playlists and settings are kept.
+- ABOUT-30 Owner addition, 2 October 2026: Home shows a passive notice once for each newer
+  published Android build, after the existing automatic check. It keeps remote focus and waits
+  while playback, PiP or a modal is active.
 
 About and legal
 - ABOUT-13 **About, privacy and licences** (centred button) opens the legal screen.
@@ -90,8 +93,9 @@ Diagnostics
   Open TMDB/TVmaze/terms/licence and Help translate open a browser; Send email opens a mail app;
   Save diagnostics opens DocumentsUI. When the viewer returns, the Settings screen is resumed as it
   was (except after the legal screen, above).
-- **Other entry points**: none. The app never shows an update prompt outside About (no badge, no
-  dialog, no notification). INSTALL.md and TESTING.md send testers to Settings › About.
+- **Other entry points**: beta 23 had none. Owner addition, 2 October 2026: a passive Home notice
+  names the available version and points to Settings › About. It adds no focusable control or
+  dialog, and does not start a download or installation.
 
 ## 4. Behaviour
 
@@ -139,6 +143,18 @@ Diagnostics
   reason NETWORK and no update, log `update: check failed` with the redacted cause. When the
   installed release was found, its notes are stored under `installed_notes_<versionCode>` and
   shown from then on, also offline.
+
+### 4.2.1 Home notice (owner addition, 2 October 2026)
+
+- ABOUT-FR-32 Reuse the checker's offered update for a 15-second Home notice. Show only after
+  Home has drawn, with the app foregrounded, playback/PiP stopped and no upgrade or reminder
+  modal. Keep an unseen result pending. Mark its Android build after a drawable frame,
+  immediately clearing the process's pending notice and committing one build number on IO.
+  Activity recreation, process restart, profile changes and repeated checks must not repeat
+  that build. A higher build may announce again; a withdrawn older release does not. Clear
+  the pending notice when the feed no longer offers an update. The existing release-only guard,
+  24-hour check limit, download integrity and manual installation behavior remain unchanged.
+  This local, per-device marker is not backed up. Failed automatic checks stay quiet.
 
 ### 4.3 Downloading and verifying
 
@@ -404,6 +420,7 @@ No screenshot of About or the legal screen exists in the kit.
 |---|---|---|---|
 | SharedPreferences `streammate_updates` | `last_check_epoch_millis` | time of the last check attempt | until app data is cleared |
 | same | `installed_notes_<versionCode>` | plain-text notes of that build's own release | never pruned (one short entry per build seen) |
+| same | `last_notified_build` | highest Android build whose Home notice was shown | until app data is cleared; one integer |
 | `cacheDir/updates/` | `<apk name>`, `<profile name>` | the verified download | until the next download or the system trims the cache |
 | memory | diagnostics log | ≤ 600 lines | process |
 | document chosen by the viewer | diagnostics file | text | the viewer's |
@@ -551,7 +568,12 @@ Recent events (<n>)
 - **Storage full**: the download fails with an I/O error → NETWORK.
 - **No browser or mail app** on the TV: links do nothing (ABOUT-FR-23).
 - **No document picker**: `ActivityNotFoundException` from the diagnostics launcher is not caught in
-  beta 23 (by code reading). Rebuild: catch it and say so.
+  beta 23 (by code reading). Rebuild: catch it and say so. Since 8 October 2026 (Google TV on the
+  Chromecast has no picker): on Android 10+ the file is written to the shared Download folder
+  through MediaStore under the same name, and the status names it. A **Send to phone** button
+  beside Save diagnostics opens the phone page in a diagnostics mode on any TV: the page fetches
+  the already redacted file with the page token and exact Origin, shows it and offers it for
+  saving; 10 minutes at most; the TV dialog says when a phone has it.
 - **Diagnostics after a crash**: the in-memory log is empty in the new process; the file cannot
   explain a crash (open question 3).
 - **Clock changes**: a clock set back by more than a day delays the next automatic check until the
@@ -567,6 +589,8 @@ Recent events (<n>)
   on the main thread, which opens `streammate_updates` and makes two `PackageManager` binder calls
   during start-up; the rebuild reads version name and code from `BuildConfig` constants and opens
   the preferences lazily, off the main thread.
+  The owner-added notice reuses this result; only a qualified offered build reads the one
+  notice marker, on IO. It introduces no request, polling loop or first-frame work.
 - ABOUT-NFR-02 **Streamed download and hashing.** The APK (7.8 MB in beta 23) is never held in
   memory: 64 KiB buffer, the digest updated from the same buffer, one pass. Only the profile (≤ 1 MiB,
   about 9 KB) is read whole. Progress state changes ≤ 101 times per download.
@@ -575,6 +599,9 @@ Recent events (<n>)
   inside that mapping on the main thread at every recomposition. Rebuild: the state is collected only
   by the About section; notes are converted once per release body on a background thread and cached
   with the update.
+  Owner addition: a separate Home component collects one pending version/build, not the
+  updater's download progress. It has a static fill and text, one 15-second dismissal timer,
+  no focus target and no per-frame animation.
 - ABOUT-NFR-04 **The legal screen is text.** It is a lazy list of ten cards with no images except
   the TMDB logo. Beta 23 decodes the SVG through Coil + AndroidSVG at runtime (here and in Settings ›
   Library). Rebuild: ship the logo as a VectorDrawable converted from the unmodified SVG (identical

@@ -235,6 +235,10 @@ Automatic reconnection stopped", `player_external_failed` "Could not open the ex
 %1$s". Delays: Standard 2 s × attempt; Persistent 2, 4, 8, 16, 30, 30, 30, 30 s. ≈ 89 dp tall. It
 overlaps the info bar or transport controls when both show (unverified on device).
 
+Rebuild (owner, 1 November 2026): a small dark card replaces the red bar, see spec 30 §5.13. While the app
+reconnects by itself it is one line, ≈ 46 dp tall and as wide as its text; the detail and the
+Reconnect button appear only once the attempts stop.
+
 ### 3.13 Score ticker
 
 `ScoreTickerOverlay` at top end, padding end 40 and top **24 dp**, or **72 dp** while the playback
@@ -260,9 +264,11 @@ After each skip: "+30 s" / "−2 min" pill, bottom centre, 120 dp above the bott
 Media3's `SubtitleView` inside `PlayerView`. Viewer choices (Settings › Playback): size Follow the TV
 / Small ×0.8 / Normal ×1 / Large ×1.3 / Very large ×1.6 of `SubtitleView.DEFAULT_TEXT_SIZE_FRACTION`
 (embedded sizes ignored unless following the TV); colour Follow the TV / White `#FFFFFFFF` / Yellow
-`#FFFFE14D`; background Follow the TV / None / Shadow (drop shadow edge `#FF000000`) / Box
+`#FFFFE14D`; background Follow the TV / None / Shadow / Box
 (`#CC000000`). When every choice follows the TV, the system caption style is used whole. Bitmap
-subtitles keep their own colours.
+subtitles keep their own colours. None and Shadow both keep the background and window transparent
+and add a black drop shadow (`#FF000000`) for contrast against bright pictures (owner request,
+1 October 2026).
 
 ### 3.17 Picture-in-picture
 

@@ -1,10 +1,29 @@
 # Sohva TV tester checklist
 
-Build: `0.2.0-beta.15` (Android build 125). Use only sources you are allowed to
+Build: `0.2.0-beta.16` (Android build 138). Use only sources you are allowed to
 use. Test at your own pace. When something fails, write it down before you
 reset or reinstall anything.
 
-## Focused checks for build 125
+## Focused checks for build 138
+
+- [ ] Update over your installed build and keep your data. The first refresh of films and
+      series afterwards takes longer than usual, once.
+- [ ] Watch live channels as usual. If a channel freezes or its stream ends, a small dark
+      card says the app is reconnecting and the channel opens again by itself.
+- [ ] In the player, open the channel list and hold Up or Down: the highlight and the list
+      move together. Choose channels quickly one after another: the last choice plays.
+- [ ] Play a catch-up programme you could play before the update.
+- [ ] Refresh a playlist in Settings > Playlists and read the status line when it ends:
+      it says what was imported.
+- [ ] Open a Discover card or a search result, then press Back: focus returns to that
+      card or result.
+- [ ] Connect or wake a keyboard or game controller during playback: the picture carries on.
+- [ ] On a TV without a file picker, Settings > About > Save diagnostics offers the
+      Download folder and Send to phone.
+- [ ] In Sohva Sport, check a game whose channel name writes the date as numbers
+      (day/month or month/day): with both teams and the right date it is Available.
+
+## Sports alias checks retained from build 125
 
 - [ ] In Sohva Sport, check Kiekko-Espoo–TPS Turku against a provider's Kiekko-Espoo–TPS
       listing. With the correct date it is Available. Also check HIFK/IFK Helsinki,

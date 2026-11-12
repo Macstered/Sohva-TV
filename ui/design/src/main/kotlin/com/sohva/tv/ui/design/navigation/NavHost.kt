@@ -37,6 +37,8 @@ fun <R : Any> NavHost(stack: BackStack<R>, content: @Composable (R) -> Unit) {
     // Drop the state of popped entries; entries still below the top keep theirs.
     LaunchedEffect(stack) {
         var previous = stack.entries.map { it.key }.toSet()
+        // Restore can drop playback/gates before this host exists; release their old models too.
+        stores.clearMissing(previous).forEach(holder::removeState)
         snapshotFlow { stack.entries.map { it.key }.toSet() }.collect { live ->
             (previous - live).forEach { key ->
                 holder.removeState(key)
@@ -60,6 +62,10 @@ internal class EntryStores : ViewModel() {
 
     fun clear(key: Int) {
         stores.remove(key)?.clear()
+    }
+
+    fun clearMissing(live: Set<Int>): List<Int> = stores.keys.filterNot(live::contains).also { removed ->
+        removed.forEach(::clear)
     }
 
     override fun onCleared() {

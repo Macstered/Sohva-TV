@@ -47,7 +47,9 @@ class LibraryPasses(private val db: SohvaDatabase) {
         }
         flips.flush()
         phase("standing copies")
-        dao.recountFilmGroups(sourceId)
+        // In ranges of groups: one statement over every film of a 200,000-film source held the
+        // write connection for 164 ms on the stand-in (plan/07 §3.4 allows a transaction 100 ms).
+        dao.filmGroupIds(sourceId).chunked(RECOUNT_GROUPS).forEach(dao::recountFilmGroupsOf)
         phase("film counts")
     }
 
@@ -178,3 +180,6 @@ class LibraryPasses(private val db: SohvaDatabase) {
         const val SERIES = "SERIES"
     }
 }
+
+/** Film groups recounted per write transaction after an import. */
+private const val RECOUNT_GROUPS = 50

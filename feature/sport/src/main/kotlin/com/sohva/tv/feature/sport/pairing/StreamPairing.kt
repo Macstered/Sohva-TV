@@ -5,6 +5,8 @@ import com.sohva.tv.core.data.database.PairingDao
 import com.sohva.tv.core.data.database.SportDao
 import com.sohva.tv.core.model.diagnostics.DiagnosticsLog
 import com.sohva.tv.core.model.sport.SportEvent
+import com.sohva.tv.core.model.sport.SportType
+import com.sohva.tv.feature.sport.dictionary.PairingDictionary
 import com.sohva.tv.core.model.sport.pairing.Decision
 import com.sohva.tv.core.model.sport.pairing.StreamMatch
 import com.sohva.tv.core.model.sport.pairing.TeamVariants
@@ -47,6 +49,7 @@ class StreamPairing(
     private val scope: CoroutineScope,
     private val work: CoroutineDispatcher,
     private val log: DiagnosticsLog,
+    private val dictionary: PairingDictionary = PairingDictionary.NONE,
 ) {
     private val scan = PairingScan(dao)
     private val automatic = MutableStateFlow<Map<String, List<StreamMatch>>>(emptyMap())
@@ -93,8 +96,8 @@ class StreamPairing(
         active.collectLatest { on ->
             if (!on) return@collectLatest
             val generations = inputChanges.onStart { emit(Unit) }.map { generation() }.distinctUntilChanged()
-            // The same games (ids and kick-offs) need no new run; a score change is not a new input.
-            val gameKeys = games.distinctUntilChanged { a, b -> a.map { it.id to it.startMillis } == b.map { it.id to it.startMillis } }
+            // Names/references/competition corrections matter; score and crest changes do not.
+            val gameKeys = games.distinctUntilChanged { a, b -> a.map(PairingCache::fingerprint) == b.map(PairingCache::fingerprint) }
             combine(gameKeys, generations) { g, gen -> g to gen }.debounce(SETTLE_MS).collectLatest { (g, gen) -> pair(g, gen) }
         }
     }
@@ -107,16 +110,21 @@ class StreamPairing(
                 (d.eventId to d.channelKey) to decision
             }.toMap()
             val now = clock.wallMillis()
-            val cached = cache.read(generation, events, now)
+            val resolved = dictionary.resolve(events)
+            // Numeric date compatibility changed; rescan saved automatic results, keep Room choices.
+            val combinedGeneration = "$generation|dictionary:${resolved.revision}|context:${PairingCache.competitionContext(resolved)}|rules:5"
+            val cached = cache.read(combinedGeneration, events, now, resolved.events)
             // Games still to scan keep what they showed until the scan publishes (no flash of "no broadcast").
             val shown = automatic.value
             automatic.value = events.associate { it.id to (cached[it.id] ?: shown[it.id].orEmpty()) }
             val missing = events.filter { it.id !in cached && it.startMillis > 0 }
             if (missing.isEmpty()) return
             val aliasRows = sport.aliases(missing.map { it.sport.name }.distinct())
-            val aliases = TeamVariants.aliases(aliasRows.groupBy({ it.canonical }, { it.alias }).mapValues { it.value.toSet() })
+            val aliases = aliasRows.groupBy { SportType.fromStored(it.sport) }.mapNotNull { (sport, rows) ->
+                sport?.let { it to TeamVariants.aliases(rows.groupBy({ row -> row.canonical }, { row -> row.alias }).mapValues { group -> group.value.toSet() }) }
+            }.toMap()
             val started = clock.monotonicNanos()
-            val scanned = scan.run(missing, aliases, decisions.value)
+            val scanned = scan.run(missing, emptyMap(), decisions.value, resolved.copy(stored = aliases))
             val stats = scan.lastStats
             log.info(
                 "sport",
@@ -124,7 +132,7 @@ class StreamPairing(
                     "${(clock.monotonicNanos() - started) / 1_000_000} ms",
             )
             automatic.update { it + scanned.mapValues { (_, list) -> list.map { m -> m.withDecision(null) } } }
-            cache.write(generation, missing, scanned, now)
+            cache.write(combinedGeneration, missing, scanned, now, resolved.events)
         } catch (e: CancellationException) {
             // A newer generation or game list: this scan is discarded (SPORT-FR-120).
             throw e

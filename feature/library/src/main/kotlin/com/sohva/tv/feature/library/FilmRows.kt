@@ -145,9 +145,9 @@ private fun CastMember(member: CastCard) {
 private fun Avatar(member: CastCard) {
     val loader = LocalArtwork.current
     val px = with(LocalDensity.current) { 52.dp.roundToPx() }
-    var image by remember(member.photoUrl) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(member.photoUrl) { mutableStateOf(member.photoUrl?.let { loader.peek(it, px, px, opaque = true) }) }
     LaunchedEffect(member.photoUrl) {
-        member.photoUrl?.let { image = loader.load(it, px, px, opaque = true) }
+        if (image == null) member.photoUrl?.let { image = loader.load(it, px, px, opaque = true) }
     }
     val fill = Sohva.palette.surface
     Box(

@@ -37,8 +37,8 @@ android {
     defaultConfig {
         applicationId = "com.streammate.tv"
         // Beta 23 is build 57; the rebuild started at 100 / 0.2.0-beta.1 (decision A3); 100 to 103 went to the owner's devices only; 104 was 0.2.0-beta.1, 105 0.2.0-beta.2, 106 to 111 went to the owner's Shield only; 112 was 0.2.0-beta.3.
-        versionCode = 125
-        versionName = "0.2.0-beta.15"
+        versionCode = 138
+        versionName = "0.2.0-beta.16"
         // The emulator's update test (tools/update_e2e.py) builds two local releases above these;
         // they never leave the emulator (decision "Updater test").
         providers.gradleProperty("sohva.versionCode").orNull?.let { versionCode = it.toInt() }
@@ -123,7 +123,19 @@ android {
 
 // Google Play's own application ID (decision "Play application ID"); the GitHub build keeps
 // com.streammate.tv, which its installs and in-app updater depend on.
+abstract class SportDictionaryFixtureTask : Exec() {
+    @get:OutputDirectory abstract val assetDirectory: DirectoryProperty
+}
+val compileSportDictionaryFixture by tasks.registering(SportDictionaryFixtureTask::class) {
+    inputs.files(rootProject.file("tools/sport_dictionary_fixture.py"), rootProject.file("tools/team_dictionary/compiler.py"), rootProject.file("tools/team_dictionary/schema.sql"))
+    assetDirectory.set(layout.buildDirectory.dir("generated/sportDictionaryFixture"))
+    commandLine("python", rootProject.file("tools/sport_dictionary_fixture.py").absolutePath,
+        "--output", assetDirectory.dir("testDictionary").get().asFile)
+}
 androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(compileSportDictionaryFixture) { it.assetDirectory }
+    }
     // The profile plugin copies release's source-set manifest to its generated build type.
     // Restore the benchmark-only fixture manifest after that copy; it never enters release/Play.
     finalizeDsl { extension ->

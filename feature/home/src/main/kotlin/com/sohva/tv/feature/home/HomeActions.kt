@@ -44,7 +44,7 @@ internal fun ResumeActionsDialog(card: ResumeCard, onClose: (ResumeAction?) -> U
     Dialog(onDismissRequest = { onClose(null) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
-                Modifier.width(460.dp).roundFill(Sohva.palette.surface, Sohva.shapes.medium).padding(18.dp).testTag("home-resume-actions"),
+                Modifier.width(460.dp).roundFill(Sohva.palette.panel, Sohva.shapes.medium).padding(18.dp).testTag("home-resume-actions"),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(

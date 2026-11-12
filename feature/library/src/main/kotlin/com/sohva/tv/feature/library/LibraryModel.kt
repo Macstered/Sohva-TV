@@ -89,6 +89,23 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
     private var searchJob: Job? = null
     private var lastRail = Rail(emptyList(), historyShown = true, historyPosition = null, manual = false)
 
+    /**
+     * A first entry that found History empty may move on, once, to the first group (decision
+     * "Library start"): a viewer who has watched nothing yet sees titles, not "No titles in this
+     * group." Without groups that is the All row, which says so when nothing has been imported.
+     * Withdrawn as soon as the viewer chooses a row.
+     */
+    private var mayLeaveEmptyHistory = false
+
+    /** The History row has focus: only then may focus follow the move away from an empty History. */
+    private var historyRowHasFocus = false
+    private var railWasFocused = false
+    private var followPending = false
+    private val _historyLeft = MutableStateFlow(0)
+
+    /** Bumped when the first entry moved on from an empty History. */
+    val historyLeft: StateFlow<Int> = _historyLeft.asStateFlow()
+
     private val _railRefocus = MutableStateFlow(0)
 
     /** Bumped when the row focus was on left the rail (hidden History): the screen puts focus on the selection again. */
@@ -125,7 +142,10 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
             }
         }
         viewModelScope.launch { _tvmazeCredit.value = runCatching { env.tvmazeCredit() }.getOrDefault(false) }
-        if (!restoresDestination) select(HISTORY_KEY)
+        if (!restoresDestination) {
+            select(HISTORY_KEY)
+            mayLeaveEmptyHistory = firstEntry
+        }
         watchChanges()
         if (env.room == WallRoom.MOVIES) viewModelScope.launch { _wall.collect { readTicks(it.window) } }
     }
@@ -144,6 +164,8 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
 
     /** OK on a rail row (VOD-FR-06): focus alone never selects. Selecting what is loading does nothing. */
     fun select(key: String) {
+        // Whatever is selected from here on is the viewer's choice, or the one move already made.
+        mayLeaveEmptyHistory = false
         if (key == _selected.value && loadJob?.isActive == true) return
         val row = _rail.value.firstOrNull { it.key == key } ?: when {
             key == HISTORY_KEY -> historyRow()
@@ -259,7 +281,34 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
     fun railFocused() {
         focusOnWall = false
         session.focusOnWall = false
+        railWasFocused = true
     }
+
+    /** The History row gained or lost focus. */
+    fun historyRowFocused(focused: Boolean) {
+        historyRowHasFocus = focused
+    }
+
+    /**
+     * Called when History's first page or the rail's groups arrive. Selecting the first group is
+     * a change of what the wall shows; focus follows only if it is still on the History row, where
+     * the screen put it, or was not placed yet. Focus the viewer moved stays where it is (AGENTS §5 rule 2).
+     */
+    private fun leaveEmptyHistory() {
+        if (!mayLeaveEmptyHistory || !lastRailRead || _selected.value != HISTORY_KEY || _search.value.isNotEmpty()) return
+        val wall = _wall.value
+        if (wall.destination != WallDestination.History || !wall.current || wall.window.items.isNotEmpty()) return
+        val first = _rail.value.firstOrNull { it.key != HISTORY_KEY } ?: return
+        val follow = historyRowHasFocus || !railWasFocused
+        select(first.key)
+        if (follow) {
+            followPending = true
+            _historyLeft.value++
+        }
+    }
+
+    /** Whether focus should follow the move away from History; true once, so a screen that comes back never replays it. */
+    fun takeHistoryFollow(): Boolean = followPending.also { followPending = false }
 
     fun entryPlaced() {
         firstEntry = false
@@ -335,7 +384,10 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
                     if (mine != serial) return@launch
                     page = env.page(destination, _search.value, null, true, WallWindow.PAGE)
                 }
-                if (mine == serial) _wall.value = WallState(destination, WallWindow.of(page), current = true, failed = false)
+                if (mine == serial) {
+                    _wall.value = WallState(destination, WallWindow.of(page), current = true, failed = false)
+                    leaveEmptyHistory()
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -413,6 +465,7 @@ class LibraryModel(private val env: LibraryEnvironment, private val session: Bro
         lastRailRead = true
         if (genresUsed) lastCounts = runCatching { env.genreCounts() }.getOrDefault(lastCounts)
         applyRows()
+        leaveEmptyHistory()
     }
 
     /**

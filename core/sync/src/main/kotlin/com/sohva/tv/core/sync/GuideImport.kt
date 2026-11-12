@@ -76,8 +76,10 @@ internal class GuideImport(private val env: ImportEnvironment) {
             })
             if (seen == 0) throw AppException(AppError.EpgEmpty)
             if (kept == 0) throw AppException(AppError.EpgUnmatched)
-            // The new snapshot into Search's index in one statement; the old one leaves it with its rows.
-            withContext(env.dispatchers.bulkWrite) { SearchIndex.catchUp(env.db, SearchTable.PROGRAMME) }
+            // The new snapshot into Search's index, in pages; the old one leaves it with its rows.
+            withContext(env.dispatchers.bulkWrite) {
+                SearchIndex.catchUpPaged(env.db, SearchTable.PROGRAMME) { env.pauseGate.awaitTurn(WorkOrigin.VIEWER) }
+            }
             return Result(kept, maxDuration)
         } catch (e: Throwable) {
             withContext(NonCancellable) { sweep(job.sourceId, keep = activeSnapshot ?: NO_SNAPSHOT) }

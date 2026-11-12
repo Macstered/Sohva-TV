@@ -18,7 +18,9 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionError
 import com.sohva.tv.core.data.database.LiveChannel
 import com.sohva.tv.core.model.guide.GuideWindow
+import com.sohva.tv.core.model.player.BufferProfile
 import com.sohva.tv.core.model.player.PictureShape
+import com.sohva.tv.core.model.player.PlaybackCause
 import com.sohva.tv.core.model.player.PlaybackSettings
 import com.sohva.tv.core.model.player.SubtitleChoice
 import com.sohva.tv.core.model.player.TrackLanguages
@@ -28,10 +30,10 @@ import com.sohva.tv.core.player.PlaybackErrors
 import com.sohva.tv.core.player.PlaybackService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -165,6 +167,9 @@ class PlayerModel(
     private var boxTimer: Job? = null
     private var boxTicker: Job? = null
     private var reconnectJob: Job? = null
+    private var stallJob: Job? = null
+    /** One channel choice may resolve; a later choice cancels its reads before it can stop playback. */
+    private var playJob: Job? = null
 
     private val listener = Listener()
 
@@ -197,10 +202,25 @@ class PlayerModel(
      * leaves the current one playing; a locked one asks for the PIN over the player.
      */
     fun play(key: String, record: Boolean = true, admitted: Boolean = false) {
+        requestPlay(record, admitted, skipCurrent = false) { key }
+    }
+
+    /** The list/step lookup belongs to the same cancellable choice as admission and channel reads. */
+    internal fun playSelected(resolve: suspend () -> String?) {
+        requestPlay(record = true, admitted = false, skipCurrent = true, resolve)
+    }
+
+    private fun requestPlay(record: Boolean, admitted: Boolean, skipCurrent: Boolean, resolve: suspend () -> String?) {
         val c = controller ?: return
-        viewModelScope.launch {
+        playJob?.cancel()
+        playJob = viewModelScope.launch {
+            val key = resolve() ?: return@launch
+            coroutineContext.ensureActive()
+            if (skipCurrent && key == _playing.value?.channel?.key) return@launch
             if (!admitted) {
-                when (env.admit(key)) {
+                val admission = env.admit(key)
+                coroutineContext.ensureActive()
+                when (admission) {
                     ChannelAdmission.PLAY -> Unit
                     ChannelAdmission.REFUSED -> {
                         navigation.refused()
@@ -214,15 +234,23 @@ class PlayerModel(
                     }
                 }
             }
-            val current = _playing.value?.channel?.key
-            if (current != null && current != key) previousKey = current
-            val channel = reads.channel(key) ?: run {
+            val channel = reads.channel(key)
+            coroutineContext.ensureActive()
+            if (channel == null) {
                 // A channel gone before anything played (a stale "Last channel") falls back to the guide.
                 if (_playing.value == null) navigation.guide() else _banner.value = Banner(BannerReason.Unavailable, 0, 0, stopped = true)
                 return@launch
             }
-            _playing.value = format(channel)
+            val next = format(channel)
+            channels.onPlaying(channel)
+            coroutineContext.ensureActive()
+            val current = _playing.value?.channel?.key
+            if (current != null && current != key) previousKey = current
+            _playing.value = next
             _nowNext.value = NowNext(null, null)
+            // The box may still be up from the channel before: its 30 s reader would not read this
+            // channel before the box hides. Stop it, so reveal() starts one that reads at once.
+            boxTicker?.cancel()
             attempt = 0
             reconnectJob?.cancel()
             _banner.value = null
@@ -235,9 +263,8 @@ class PlayerModel(
                 c.prepare()
                 c.play()
             }
-            if (record) env.recordWatched(key)
-            channels.onPlaying(channel)
             reveal()
+            if (record) env.recordWatched(key)
         }
     }
 
@@ -364,9 +391,11 @@ class PlayerModel(
             _nowNext.value = NowNext(null, null)
             return
         }
-        val source = reads.sources.first().firstOrNull { it.id == channel.sourceId } ?: return
+        val source = reads.source(channel.sourceId) ?: return
         val now = env.clock.wallMillis()
         val schedule = reads.schedules(source, listOf(epg), GuideWindow.anchor(now))[epg].orEmpty()
+        // A read that took long must not land on the channel zapped to meanwhile.
+        if (_playing.value?.channel?.key != channel.key) return
         val current = schedule.firstOrNull { it.isLive(now) }
         val nextStart = current?.stop ?: now
         _nowNext.value = NowNext(current, schedule.firstOrNull { it.start >= nextStart })
@@ -538,10 +567,7 @@ class PlayerModel(
         attempt = 0
         reconnectJob?.cancel()
         _banner.value = null
-        controller?.let {
-            it.prepare()
-            it.play()
-        }
+        controller?.let(::reopen)
     }
 
     private fun onError(error: PlaybackException) {
@@ -559,19 +585,69 @@ class PlayerModel(
             return
         }
         val failure = PlaybackErrors.of(error)
+        nextAttempt(c, failure.cause, failure.detail)
+    }
+
+    /**
+     * A live channel never ends on its own: the provider closed the connection, often after its
+     * own feed stalled. A live stream has no length, so Media3 reads the close as the end of the
+     * media and stops on the last frame without an error. It counts as a dropped connection
+     * (decision "A live stream that ends").
+     */
+    private fun liveEnded() {
+        val c = controller ?: return
+        if (c.mediaItemCount == 0 || _playing.value == null) return
+        nextAttempt(c, PlaybackCause.BROKE_OFF, ENDED_DETAIL)
+    }
+
+    /**
+     * A live channel still buffering after [stallMs] has stalled: the provider stopped sending but
+     * kept the connection open. Media3 would wait out the 90 s read timeout and then ask for the
+     * rest of the same stream by byte position, which a live server answers with a new stream that
+     * Media3 skips through, so it buffers on with no error. It counts as a dropped connection and
+     * the channel opens again from the live edge, as switching away and back does (decision "A
+     * live stream that stalls").
+     */
+    private fun watchStall() {
+        val c = controller ?: return
+        stallJob?.cancel()
+        stallJob = viewModelScope.launch {
+            delay(stallMs(settings.buffer))
+            if (c.playbackState == Player.STATE_BUFFERING && c.playWhenReady && _playing.value != null) {
+                nextAttempt(c, PlaybackCause.BROKE_OFF, STALLED_DETAIL)
+            }
+        }
+    }
+
+    /** Counts an attempt, names it on the banner, and opens the stream again after the policy's delay. */
+    private fun nextAttempt(c: MediaController, cause: PlaybackCause, detail: String) {
         val policy = settings.reconnect
         attempt++
         val delayMs = policy.delayBefore(attempt)
-        _banner.value = Banner(BannerReason.Cause(failure.cause, failure.detail), attempt, policy.attempts, stopped = delayMs == null)
-        env.logFailure("${_playing.value?.channel?.key ?: "title"}: ${failure.detail}, attempt $attempt")
+        _banner.value = Banner(BannerReason.Cause(cause, detail), attempt, policy.attempts, stopped = delayMs == null)
+        env.logFailure("${_playing.value?.channel?.key ?: "title"}: $detail, attempt $attempt")
         if (delayMs != null) {
             reconnectJob?.cancel()
             reconnectJob = viewModelScope.launch {
                 delay(delayMs)
-                c.prepare()
-                c.play()
+                reopen(c)
             }
         }
+    }
+
+    /**
+     * Prepares the same item again and plays. After an error the player is idle and preparing is
+     * enough. An ended or stalled player ignores prepare, so it is stopped and put back at the
+     * default position first: a fresh source makes one request from the start, where seeking the
+     * old source would keep the closed connection's timestamps or its byte position.
+     */
+    private fun reopen(c: MediaController) {
+        if (c.playbackState == Player.STATE_ENDED || c.playbackState == Player.STATE_BUFFERING) {
+            c.stop()
+            c.seekToDefaultPosition()
+        }
+        c.prepare()
+        c.play()
     }
 
     // ---- Another player (PLAY-FR-115..116) ------------------------------------------------------------
@@ -610,6 +686,8 @@ class PlayerModel(
 
     fun onStop() {
         addon?.let { return it.onBackground() }
+        // A pending attempt must not open the stream in the background; onStart opens it again.
+        reconnectJob?.cancel()
         controller?.stop()
     }
 
@@ -638,10 +716,13 @@ class PlayerModel(
         override fun onPlaybackStateChanged(playbackState: Int) {
             _buffering.value = playbackState == Player.STATE_BUFFERING
             if (playbackState == Player.STATE_READY) {
-                // A recovered stream gets a fresh set of attempts (PLAY-FR-92).
+                // A recovered stream gets a fresh set of attempts (PLAY-FR-92); a stall that cleared
+                // by itself during an attempt's delay needs no reopen.
                 attempt = 0
+                reconnectJob?.cancel()
                 _banner.value = null
             }
+            if (playbackState == Player.STATE_BUFFERING && live) watchStall() else stallJob?.cancel()
             addon?.onState(playbackState)
             vodSubtitles?.onState(playbackState)
             val request = vod
@@ -649,6 +730,7 @@ class PlayerModel(
                 finished = true
                 navigation.finished(request.contentKey)
             }
+            if (playbackState == Player.STATE_ENDED && live) liveEnded()
         }
 
         override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
@@ -724,6 +806,21 @@ class PlayerModel(
         const val BOX_MS: Long = 5_000
         const val NOW_TICK_MS: Long = 30_000
         const val EXTERNAL_WAIT_MS: Long = 150
+
+        /** The banner's detail for a live stream the provider closed: Media3's state name, like its error code names. */
+        const val ENDED_DETAIL: String = "STATE_ENDED"
+
+        /** The banner's detail for a live stream that stopped arriving, named the same way. */
+        const val STALLED_DETAIL: String = "STATE_BUFFERING"
+
+        /** Media3's rebuffer amount, which the Default profile keeps. */
+        private const val MEDIA3_REBUFFER_MS: Long = 5_000
+
+        /**
+         * How long a live channel may buffer before it counts as stalled: a stream that resumes must
+         * refill the profile's rebuffer amount in real time before it plays, so that plus 10 s.
+         */
+        fun stallMs(profile: BufferProfile): Long = (profile.rebufferMs?.toLong() ?: MEDIA3_REBUFFER_MS) + 10_000
 
         /** How long the HDMI audio output takes to return after a mode switch (about 1 s on the Shield), with margin. */
         const val AUDIO_SETTLE_MS: Long = 1_500

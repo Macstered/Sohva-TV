@@ -43,7 +43,7 @@ jobs:
           disk-size: 2048M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -no-metrics -noaudio -no-boot-anim -camera-back none
-          script: ./gradlew --no-daemon :core:data:connectedDebugAndroidTest :app:connectedDebugAndroidTest
+          script: ./gradlew --no-daemon :core:data:connectedDebugAndroidTest :feature:player:connectedDebugAndroidTest :app:connectedDebugAndroidTest
       - if: always()
         uses: actions/upload-artifact@v6
         with:

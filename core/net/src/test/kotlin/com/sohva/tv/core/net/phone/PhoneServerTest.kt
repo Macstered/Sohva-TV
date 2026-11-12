@@ -122,6 +122,44 @@ class PhoneServerTest {
     }
 
     /**
+     * Spec 72 (rebuild): on a TV without a file picker, the phone fetches the diagnostics file. The
+     * page itself carries no diagnostics; only a request with the token and the exact Origin gets
+     * them. The page stays open, so the file can be fetched again.
+     */
+    @Test
+    fun diagnosticsModeHandsTheFileOnlyToTheTokenHolder() {
+        val file = "Sohva TV diagnostics\n  2026-10-08 00:44:46 I/player: reply: empty\n"
+        server.start(InetAddress.getLoopbackAddress() as Inet4Address, PhoneMode.Diagnostics(file.toByteArray(Charsets.UTF_8), "sohva-tv-diagnostics-20261008-0100.txt"))
+        val state = server.state.value as PhoneState.Running
+        val host = state.url.removePrefix("http://").substringBefore('/')
+        val token = state.url.substringAfter('#')
+        val page = send(state.url, "GET / HTTP/1.1\r\nHost: $host\r\n\r\n")
+        assertEquals(200, page.code)
+        assertTrue(page.body.contains("sohva-tv-diagnostics-20261008-0100.txt"))
+        assertFalse("the page alone holds no diagnostics", page.body.contains("I/player"))
+        val script = page.body.substringAfter("<script>").substringBefore("</script>")
+        val hash = Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(script.toByteArray()))
+        assertTrue(page.headers["content-security-policy"].orEmpty().contains("'sha256-$hash'"))
+        fun fetch(token: String, origin: String?): Reply = send(
+            state.url,
+            "POST /submit HTTP/1.1\r\nHost: $host\r\nAuthorization: Bearer $token\r\n" + (origin?.let { "Origin: $it\r\n" } ?: "") +
+                "Content-Type: text/plain; charset=utf-8\r\nContent-Length: 0\r\n\r\n",
+        )
+        assertEquals("no Origin", 403, fetch(token, null).code)
+        assertEquals("wrong token", 403, fetch("0".repeat(32), "http://$host").code)
+        assertEquals("another site", 403, fetch(token, "http://192.0.2.9").code)
+        assertTrue((server.state.value as PhoneState.Running).received == 0)
+        val reply = fetch(token, "http://$host")
+        assertEquals(200, reply.code)
+        assertEquals(file, reply.body)
+        assertTrue(reply.headers["content-type"].orEmpty().startsWith("text/plain"))
+        assertEquals("no-store", reply.headers["cache-control"])
+        assertEquals(200, fetch(token, "http://$host").code)
+        assertEquals(2, (server.state.value as PhoneState.Running).received)
+        assertTrue("nothing reaches the receiver", received.isEmpty())
+    }
+
+    /**
      * Spec 02 HOME-FR-100: the Trakt list page takes an address as text/plain with Origin and the
      * token; the receiver names the list it added; the page stays open for another.
      */

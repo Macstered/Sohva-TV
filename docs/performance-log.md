@@ -442,3 +442,829 @@ only. This changes no built-in group or measured fixture. Evidence:
 `team-alias-short-identity-before.log` and `team-alias-final-compatibility.log`.
 All unit tests were rerun after the compatibility correction. The final native
 repeat is in `team-alias-final-native.log`.
+
+## 1 October 2026: subtitle contrast without a background
+
+White text with Background: None now uses Media3's existing black drop shadow,
+with a transparent caption background and window. The existing Shadow option
+uses the same style. No runtime dependency, player, drawing layer, background
+job or catalogue read is added. Media3 keeps its cached caption layout.
+
+`SubtitleReadabilityTest` draws the actual `SubtitleView` at 1920×1080 onto a
+white bitmap. Before the fix its contrast assertion fails: there are zero pixels
+with all colour channels below 220. After the fix it passes with 14,277 such
+pixels. The saved single-draw image was inspected: both white text lines are
+readable and there is no background box. Repeated draws are cleared before
+the final image, so accumulated shadow alpha cannot make the assertion pass.
+
+Measurements use the cold-booted API 30 Android TV emulator, xhdpi, with the
+temporary 1,024 MiB RAM limit (`MemTotal: 997544 kB`). The text, settings and
+renderer fixture are identical before and after. After 50 warm-up draws, seven
+samples each measure 100 cached draws using `Debug.threadCpuTimeNanos` on the
+UI thread. Bitmap clearing, PNG encoding and pixel analysis are excluded.
+
+| Measurement | Before: no edge | After: black shadow |
+|---|---:|---:|
+| CPU per cached draw, seven samples (µs) | 85.805, 97.960, 83.292, 62.252, 47.869, 64.480, 77.310 | 202.466, 171.592, 119.464, 90.580, 132.078, 94.405, 81.504 |
+| Median CPU per cached draw | 0.077 ms | 0.119 ms |
+| Visible dark pixels against white | 0 | 14,277 |
+
+The requested visual edge adds 0.042 ms to the median software caption draw.
+This is a caption-renderer comparison, not a measurement of video playback,
+GPU frame time or physical-box performance. Style selection still runs when
+creating the subtitle view; it adds no per-frame settings work.
+
+Player/model unit tests: 265 passed, zero failures or skips. Player debug lint
+reports no issues. The debug app and renderer test compile. The normal Gradle
+device task and direct native regression both pass after the fix. Strings and
+the public-source audit pass. No new strings or preference values are needed.
+
+Evidence in `harness-out/`: `subtitle-before-native.log`,
+`subtitle-before-instrumentation.log`, `subtitle-before-cpu.txt`,
+`subtitle-before.png`, `subtitle-after-instrumentation.log`,
+`subtitle-after-cpu.txt`, `subtitle-after.png`, `subtitle-after-checks.log`
+and `subtitle-after-native.log`.
+
+This change is accumulated for the next agreed beta. Version metadata remains
+unchanged; no beta artifact is packaged or published for this fix.
+
+## 2 October 2026: reviewed sports dictionary, private build 127
+
+The production snapshot contains 43 reviewed identities, 43 provider bindings,
+261 distinct runtime aliases, 16 collision markers and 217 qualifier guards.
+It asserts no competition mappings or memberships. Other collected proposals
+remain pending. The reproducible database is 81,920 bytes, content revision
+`10f8a028cbee5c42addfac3d0a858fb4bbf669f741fb0196971f2482bbb12518`,
+SHA-256 `a4c8a40abed08c103449c6e92e672addb49628dd1266fba827388dc7e882dc31`.
+There are no dictionary network requests or Home-startup asset reads.
+
+The separate test-only dictionary represents the complete schema: 40,371
+identities, 52,939 aliases and 1,024 membership rows, 13,475,840 bytes on disk.
+Only current fixtures are resolved. Alias/guard/membership pages are at most
+256 rows; aggregate accounted input is at most 2 MiB / 16,384 phrases.
+Overflow falls back as a whole. No permanent participant cache is added.
+
+Before implementation, five runs of source `f2f396b` gave median total pairing
+CPU of 5,327 ms on 1 GB and 5,240 ms on 2 GB. The original logs remain saved.
+Absolute emulator timings vary across sessions. The final dictionary-cost
+comparison below interleaves five runs of each mode within one session per
+memory configuration, using the same final debug APK, seed and serial worker.
+No build or profile generation runs concurrently with those comparisons.
+
+The API 30, xhdpi, 1920x1080 emulator is cold-booted at each RAM configuration;
+its Java heap limit is 192 MiB. The fixture has 56,164 channels and 112,328
+programmes with 2,150-character descriptions. Every run visits 168,492
+candidates through 220 channel and 1,975 programme pages, preserving exactly
+49 Available results. Cancellation and the subsequent zero-query cache hit
+are assertions in every run. Reported times are background CPU, not frame time.
+
+| RAM / mode | Total CPU median [range], ms | Lookup CPU median [range], ms | Index CPU median [range], ms | Heap peak median [range], KiB |
+|---|---:|---:|---:|---:|
+| 1 GB / baseline | 5,889 [5,785-6,070] | 0 | 8 [7-11] | 11,837 [11,445-12,475] |
+| 1 GB / aliases | 5,869 [5,834-6,065] | 66 [60-97] | 8 [7-9] | 11,854 [11,315-13,267] |
+| 1 GB / competition | 5,891 [5,847-10,425] | 64 [60-78] | 9 [7-10] | 11,772 [10,978-12,728] |
+| 2 GB / baseline | 5,141 [5,043-5,441] | 0 | 5 [5-6] | 12,137 [11,301-13,958] |
+| 2 GB / aliases | 5,143 [5,018-5,152] | 46 [44-55] | 8 [7-9] | 12,529 [12,107-14,439] |
+| 2 GB / competition | 5,136 [5,065-5,338] | 45 [37-47] | 9 [8-9] | 11,945 [11,724-13,114] |
+
+Median total CPU changes against the same-session baseline are -0.340% and
++0.034% on 1 GB, +0.039% and -0.097% on 2 GB. Both dictionary modes meet the
+10% comparison gate and the 16 MiB scan-heap bound. The first 1 GB competition
+run is a slow outlier, retained above and in the raw data; no sample was removed.
+Median wall times for baseline/aliases/competition are 18,839/19,238/18,894 ms
+on 1 GB and 16,064/15,836/16,100 ms on 2 GB. The main-thread heartbeat's largest
+gap is 24 ms; that counter is not a physical-TV key-response measurement.
+
+The 512-event capacity case accounts 1,304,176 bytes and retains 2,049,976
+bytes on 1 GB / 2,082,616 bytes on 2 GB after collection, for the resolved
+dictionary, matcher and results. This is not a measurement of all screen state.
+Cold copy/checksum/open of the full test asset costs 60 ms CPU / 186 ms wall
+on 1 GB and 98 ms CPU / 180 ms wall on 2 GB. At replacement the disk bound is
+two 16 MiB database files plus small receipts; the current reviewed slice needs
+at most two 81,920-byte files. Five hot Android SQLite query plans use indexed
+SEARCH operations, without a catalogue scan or temporary sort.
+
+Packaged-asset fixtures demonstrate added Suomi/Saksa, Huuhkajat/Deutschland,
+Finlande/Allemagne, Helmarit, Leijonat and HIFK/HPK matches. The labelled corpus
+retains existing positives across all twelve products and produces no new false
+Available outcomes in its unrelated, shared, single-team, date or known-category
+negatives. Unknown explicit references never acquire an identity by name.
+Room 12-to-13 migration preserves cached names and saved Confirm choices.
+The serial slow-data focus test sends repeated D-pad and real Back events while
+results are gated, then verifies focus remains on the viewer's chosen control.
+
+Latest unit results: 764 tests in 144 suites, zero failures/errors/skips.
+Desktop dictionary tooling: 162 tests pass. Native migration, reviewed asset,
+full-size lookup, query plans, provider matching and hub/focus checks pass on
+the emulator. Fresh baseline/startup profiles are generated on API 34; the
+profiling runner's suppressed macrobenchmark assumptions are not acceptance
+tests. Debug lint, screenshot goldens and dependency boundaries pass.
+
+Evidence in `harness-out/`: `dictionary-baseline-1gb.json`,
+`dictionary-baseline-2gb.json`, `dictionary-measure-1gb.json`,
+`dictionary-measure-2gb.json`, `dictionary-measure-summary.json`,
+`dictionary-cold-1gb.log`, `dictionary-cold-2gb.log`,
+`dictionary-native-1gb.log`, `dictionary-migration-13.log`,
+`dictionary-all-gates.log`, `dictionary-final-tests.log`,
+`dictionary-python-final.log` and `dictionary-generated-profiles.log`.
+Earlier exploratory 2 GB results remain separate with the `-exploratory` suffix.
+
+The final signed APK is 6,320,570 bytes, 136,727 bytes above the recorded size
+baseline and below the 8 MB target / 10 MB ceiling. R8, release lint and size
+gates pass. There are 39,257 dex methods (9,551 app methods); the largest app
+method has 3,826 code units. The exact APK passes ART verification with 40
+dex2oat log lines, no rejections, and launches in 407 ms while still alive
+eight seconds later. This fresh verify-mode launch is a smoke check; it is
+not a compiled first-frame budget measurement. Identity, signing, manifest,
+dictionary checksum/schema/credits and matching profile audits pass. Source,
+secret and all eight-language resource checks pass.
+
+APK source: `8e69df4c828debc18adae1c88f58c4215f6e847c`.
+APK SHA-256: `42cc21e7ec7b88dbd869f831bad0486873d7d6fbf1e28a051f3ba2e209f3037e`.
+Release receipts: `dictionary-preview-release.log`,
+`dictionary-preview-apk-audit.log` and `dictionary-preview-dex.log`.
+The matching Android 9-11 profile installs with `status=speed-profile` and
+`reason=install-dm`; its receipt is `dictionary-preview-profile-install.log`.
+Private build 127 is frozen with both profiles, notices, measurements and
+checksums. See `docs/preview-builds.md`; no public release was created.
+
+The owner authorised installation of the frozen preview on Shield. On
+2 October 2026, build 126 was updated to 127 with existing data preserved.
+Version read-back and the matching Android 9-11 install profile pass:
+`arm64`, `status=speed-profile`, `reason=install-dm`.
+Receipt: `harness-out/dictionary-preview-shield-install.log` and the private
+`.local/dictionary-preview-shield-install.json`. Viewer testing is pending.
+Elisa installation still awaits its own instruction. Both devices' feed,
+first-data, frame/key and decoder/playback budgets remain unmeasured here.
+
+## 2 October 2026: numeric dates in the five Shield reports
+
+Build 127 recognised both participants in all five reported fixtures but
+rejected `10/2` and `2/10` as ambiguous. The fix checks either valid numeric
+reading against this fixture's day, respecting explicit year and zone,
+otherwise UTC. Literal EDT is recognised. Clocks still rank name matches;
+wrong dates/years, invalid dates, wrong opponents and single-team listings
+remain guarded. Only the existing explicit-zone two-hour midnight window
+can support an adjacent date. No dictionary approval or catalogue query is added.
+
+Nine new model tests cover the ten visible listings, all 144 month/day
+combinations in both orders, several clocks, explicit years and negatives.
+Eight fail before the fix, including all five photo tests. The native date
+regression separately fails on the old code, reporting Possible in all six
+samples. An old-cache fixture is proven red (Possible instead of Available)
+before advancing matching rules from 4 to 5. It then passes and retains
+the saved Reject choice. Cache format 4 and Room schema 13 do not change.
+
+After the fix, 337 affected model/sports unit tests and six native provider/name
+tests pass. Debug lint passes. The native fixtures use the current UTC day;
+the photo tests are pure date logic without an expiring repository window.
+All parsing remains on the existing background worker and only happens for
+participant/decision candidates. No new I/O, API request, dependency, cache,
+startup task, main-thread work or playback job is introduced.
+
+The same cold-booted API 30 TV emulator uses 1,024 MiB RAM, 192 MiB Java heap,
+1920x1080/xhdpi and the unminified debug build with natural ART/JIT state.
+Each name-only sample visits 12,000 matching zoned numeric listings and keeps
+120 winners. Sample 0 is warm-up; all raw samples remain saved.
+
+| Name-only path | Warm CPU median [range], ms | Result |
+|---|---:|---|
+| Before | 291 [279-358] | Incorrect Possible |
+| Initial fix | 366 [338-397] | Available |
+| Final isolated run | 339 [303-421] | Available |
+| Final full six-test suite | 367 [347-397] | Available |
+
+The corrected path computes dates/offsets which were previously skipped.
+Repeated date conversion and temporary date lists were removed. The final
+isolated median adds 48 ms across 12,000 listings (4 microseconds per listing,
+16.5% of this deliberately all-matching name-only case). The full-suite sample
+shows variance rather than a lower-cost claim. This is background CPU, not
+remote-key latency or frame time.
+
+Five final whole-scan runs use the full synthetic dictionary/context and the
+same 56,164-channel, 112,328-programme owner-scale seed as the earlier log.
+All visit 168,492 candidates, 220 channel pages and 1,975 programme pages,
+retaining exactly 49 Available results. Total CPU is 5,006 [4,912-5,084] ms;
+scan CPU is 4,943 [4,843-5,006] ms, lookup 69 [63-78] ms and index 9 [8-12] ms.
+Heap peak is 13,168 [11,543-13,900] KiB, below 16 MiB. Cancellation and a
+subsequent zero-query cache hit pass in every run. Main-thread heartbeat
+gaps are at most 21 ms; this is not physical-TV key-response acceptance.
+
+Earlier comparable whole-scan CPU was 5,891 [5,847-10,425] ms. These full-scan
+runs are from separate sessions, so the lower absolute time is not evidence
+of a speed improvement. No overall regression is visible in this workload;
+the added numeric-date work is explicitly measured above. Physical-box
+frame/key/playback acceptance remains pending.
+
+Evidence: `harness-out/numeric-date-before-build.log`,
+`numeric-date-cache-before.log`, `numeric-date-after-build.log`,
+`numeric-date-after-optimized-build.log`, `numeric-date-before-native.log`,
+`numeric-date-after-native.log`, `numeric-date-optimized-native.log`,
+`numeric-date-all-native.log`, `numeric-date-owner-scale.log` and the complete
+raw/summary `numeric-date-measurements.json`.
+
+Private follow-up build 128 is frozen from source
+`ac237f4b04124c20f578e746cc6a2817f12ec547`, APK SHA-256
+`1056fd2198c0ac401620c60b09581be2d40110dd9d9932bb66a501838f40fc80`.
+APK size is 6,320,570 bytes; 39,259 methods, 9,553 app methods and largest
+app method 3,826 code units. Release lint, size/method/module gates and
+identity/signing/manifest/dictionary/profile audits pass. The exact APK
+verifies under ART with 39 dex2oat lines and no rejection, starts in 596 ms
+and remains alive eight seconds later. This is a verify-mode launch smoke
+check, not a compiled first-frame measurement. The Android 9–11 profile is
+accepted with speed-profile/install-dm on the emulator. Source audit checks
+1,207 files with zero findings; tree/history gitleaks scans find no secrets.
+
+Receipts: `numeric-date-preview-release.log`, `numeric-date-preview-apk-audit.log`,
+`numeric-date-preview-dex.log`, `numeric-date-preview-profile-install.log` and
+`numeric-date-preview-package.log`. Both matching profiles, checksums, notices,
+measurements and English/Finnish device notes ship in the private pack.
+Build 127 and public beta.15 remain frozen; no household install or public
+publication was made for 128. The next unreserved distributed APK needs 129+.
+
+After the owner's explicit installation instruction, Shield was updated from
+127 to 128 on 2 October 2026 using the exact frozen APK and Android 9–11
+profile, with app data preserved. Version read-back confirms
+0.2.0-beta.15-dates.1, build 128; compilation reports
+`arm64`, `status=speed-profile`, `reason=install-dm`.
+Receipt: `harness-out/numeric-date-preview-shield-install.log` and the private
+`.local/numeric-date-preview-shield-install.json`. Frozen package files are
+unchanged. Shield viewer acceptance and Elisa installation remain pending.
+
+## 2 October 2026: Home actions after background activity recreation
+
+The owner reports that Home's live channel cards do nothing after reopening
+the app on Shield, while the same channels open from Guide. On the API 30 TV
+emulator, ordinary background return passes, but background activity recreation
+reproduces the failure for both a live channel and a Continue Watching film.
+Before the fix, two of three native tests fail with Home still visible after OK.
+Home's retained model captures a BackStack object that the recreated UI replaces.
+
+Keep one navigation stack per activity lifecycle with the retained screen models.
+On recreation, apply the existing route codec to that same object: drop playback,
+reapply management gates and preserve surviving entry keys. A fresh process still
+restores saved routes/keys. A new host clears entry models and saved state for
+routes dropped during restoration. The holder contains only route ids/keys and
+is released with the activity. No new I/O, catalogue query, background task,
+dependency, database change or user-visible text is added.
+
+The final checks pass: 32 UI-design/Home unit tests, four Home restoration native
+tests, and eight existing native tests covering Home, three launches in one
+process and French language selection/reset. The channel regression also checks
+the remembered focus, a second recreation, playback dropping under the existing
+policy, reopening, and real Back returning to Guide on the chosen channel.
+The film regression checks real Back to its details page. Entry-store and saver
+unit tests cover model cleanup, stale saved snapshots, fresh-process restoration,
+route keys and management policy. Debug app/UI lint, UI golden verification and
+module-boundary checks pass; compilation/lint introduce no new warnings.
+The existing Gradle deprecation notice remains in the golden check log.
+
+CPU comparison: same cold-booted `sohva_rebuild_tv30`, API 30 x86, 1920x1080 xhdpi,
+1,024 MiB RAM and 192 MiB Java heap; debug build with natural ART/JIT behavior.
+The fixture contains four fictional live channels and four library films, with
+one paused film and one recently watched channel. Each isolated instrumentation
+run performs six stop/recreate/resume cycles. Measure main-thread CPU from before
+the stop until the same Home film card has focus again; exclude sample 0 as warm-up.
+No concurrent Gradle work runs during either isolated measurement.
+
+| Build | All six main-thread CPU samples (ms) | Warm median [range] (ms) |
+|---|---|---|
+| Before | 239, 185, 167, 155, 123, 137 | 155 [123-185] |
+| Final fix | 222, 197, 174, 132, 136, 148 | 148 [132-197] |
+
+These samples show no increase in the measured cycle's median, with overlapping
+ranges; they do not prove a speed improvement or physical-TV key/frame timing.
+An intermediate identity-only implementation measured 145 [117-191] ms, but is
+not the final comparison because the unchanged French regression found that it
+skipped Settings restoration. The final implementation preserves that policy.
+
+Evidence: `harness-out/home-restore-before-native.log`, `home-restore-before-cpu.log`,
+`home-restore-final-build.log`, `home-restore-final-cpu.log`,
+`home-restore-final-native.log`, `home-restore-final-related-native.log` and
+`home-restore-final-gates.log`. The isolated CPU test also passes separately.
+No new APK is frozen or installed on a household device. Build 128 remains the
+owner's current sports preview; release ART/profile and household acceptance
+checks belong to the next agreed preview.
+
+Following the owner's installation request, private build 129 is frozen from
+`ce2dbbf1186f4f1ea17add36802ee3eebbcd1c4c`, APK SHA-256
+`c95bb996f9e64c0a71c07112b6adb00a8237640b0f43113c316228730f45fe8c`.
+It is 6,320,570 bytes, with 39,266 methods, 9,560 app methods and largest app
+method 3,826 code units. Release lint/R8/module/size and APK/profile safety
+checks pass. ART reports 40 dex2oat lines with no rejection; the verified APK
+launches in 631 ms and remains alive eight seconds later. This is a verify-mode
+launch smoke, not a compiled first-frame measurement. Both install profiles
+match the APK; Android 9–11 reports speed-profile/install-dm on the emulator.
+The source audit checks 1,210 files with no findings; tree/history secret scans
+find no leaks. Measurements, checksums, notices and test notes are frozen with
+the APK. Evidence: `harness-out/home-preview-{release,apk-audit,dex,profile-install,package}.log`.
+
+Shield was updated from 128 to 129 at 14:22 UTC on 2 October 2026, using the
+exact APK/profile with app data preserved. Version read-back confirms
+0.2.0-beta.15-home.1, build 129, and arm64 speed-profile/install-dm.
+Receipts: `harness-out/home-preview-shield-install.log` and the private
+`.local/home-preview-shield-install.json`. All 14 frozen payload hashes still
+match. No device key events, launch, data clearing or settings changes were
+performed. Viewer acceptance remains pending; no public publication occurred.
+
+The owner subsequently reports the Home background/restart scenario working
+on Shield. On explicit instruction, the same frozen APK and Android 12+ profile
+were installed on Elisa at 14:31 UTC on 2 October 2026, preserving app data and
+updating build 112 to 129. Device identity is ZTE B866V2F01, Android 12/API 31.
+Read-back confirms 0.2.0-beta.15-home.1, build 129, and
+`arm`, `status=speed-profile`, `reason=install-dm`. The profile SHA-256 is
+`e78e97fd12009d36d3a6ee8cc3a5b24b62ffbb366f8586bb4089d21e57c015c8`.
+Receipts: `harness-out/home-preview-elisa-install.log` and the private
+`.local/home-preview-elisa-install.json`. Frozen payloads remain unchanged.
+Installation confirms package/profile acceptance, not Elisa frame/key/playback
+budgets; the owner will test those separately. No launch, device key events,
+data clearing or display/inactivity changes were performed.
+
+## 2 October 2026: once-per-build Home update notice
+
+Reuse the existing release checker, which runs after the first frame at process
+startup and fetches releases only when the last successful check is at least
+24 hours old. The notice adds no HTTP request or periodic background service.
+It observes only a changed offered build, keeps one pending version/build pair,
+and replaces or clears that pair when the offer changes or is shown. Persist
+one highest announced build integer on IO in the existing local updater store.
+This marker is shared across profiles on the device and excluded from backup.
+Disabled builds and offers no newer than the installed APK never read this marker.
+
+Home shows a static, bounded panel for 15 seconds, after a drawable frame, without
+focus targets or a Back handler. Defer it while playback, PiP, an import notice,
+or a reminder prompt is active. Only Home subscribes to the small pending flow;
+download progress cannot recompose the panel. There is no catalogue read, Room
+change, new dependency, notification permission, animation or extra bulk job.
+Preferences remain off the main thread. A checked IO commit makes a failed marker
+write diagnosable; the process also remembers the shown build during a slow write.
+
+Regression-first evidence: eight new core tests ran against an inert coordinator;
+six failed and the two neutral guards passed. The implemented coordinator passes
+all eight. In total, 59 core-sync and 21 UI-design unit tests pass. The final native
+suite has ten passes and one existing conditional skip (the TV can open the About
+link, so its no-browser fallback test does not apply). The four new tests cover
+deferred display, retained remote focus and Back, durable memory across a new
+memory/controller instance, a later version, automatic dismissal and paired CPU
+measurement. Four Home restoration tests and two applicable About tests still pass.
+The fixture screenshot was inspected: the notice is readable and the underlying
+Watch button keeps visible focus. This is a small test screen, not the real Home
+catalogue. Debug app/UI lint, UI golden verification, module boundaries, and string
+coverage/format checks in all eight languages pass. No new compiler/lint warnings
+remain; the existing Gradle deprecation notice remains.
+
+CPU comparison: cold-booted `sohva_rebuild_tv30`, API 30 x86, 1920x1080 xhdpi,
+1,024 MiB RAM and 192 MiB Java heap, debug APK with natural ART/JIT behavior.
+Six paired cycles redraw the same small screen with two buttons and a cycle label,
+first without a notice, then with a new notice. Measure main-thread CPU through
+state delivery, drawing and the after-draw acknowledgement. The marker write runs
+on IO. Exclude pair 0 as warm-up. No Gradle work runs during this isolated test.
+
+| Mode | All six main-thread CPU samples (ms) | Warm median [range] (ms) |
+|---|---|---|
+| Without notice | 36, 21, 18, 20, 18, 18 | 18 [18-21] |
+| With notice | 48, 51, 47, 36, 51, 51 | 51 [36-51] |
+
+The difference of warm medians is 33 ms; warm paired differences have a median
+of 30 ms [16-33]. This is a one-time cost when a new version is announced, not
+per-frame time, real Home startup time or physical-TV key latency. There is no
+ongoing animation, and the notice never appears during playback. An intermediate
+implementation acknowledged after one frame and measured 21 to 39 ms; it is not
+the final result because acknowledgement now waits for the drawable frame.
+
+Evidence: `harness-out/update-notice-before.log`, `update-notice-after-core.log`,
+`update-notice-build.log`, `update-notice-final-build.log`,
+`update-notice-strings.log`, `update-notice-final-ready.log`,
+`update-notice-verified-test-build.log`, `update-notice-final-native.log`,
+`update-notice-final-draw-cpu.log` and `update-notice-home.png`.
+The first combined build exposed the narrow SharedPreferences lint issue, fixed
+before the final lint runs. The public-source audit checks 1,215 files with zero
+findings, and the publishable-tree secret scan finds no leaks. Receipts:
+`harness-out/update-notice-source-audit.log` and `update-notice-gitleaks.log`.
+No new APK is frozen, installed or published.
+Household devices remain on preview 129; release ART/profile and physical-device
+checks belong to the next agreed preview. No new distributed version code is
+reserved by this change.
+
+## 4 October 2026: sidebar channel choices under slow reads
+
+The owner relayed a report of a frozen picture after choosing a channel from the
+player's right-side list, while opening the channel from Guide works. The affected
+user's exact model, Android version and APK are pending. The baseline live player
+matches public beta.15. Six normal and six delayed-response sidebar switches drew
+new frames before this change; the reported single-switch freeze is not reproduced.
+
+Regression-first tests gate actual reads and send remote events through the window.
+A delayed channel read can finish after a later choice and replace it. Cancelling
+only inside play still allows an older list-page lookup to enter play late; the
+second gated test proves this. Reviewing that fix found a third timing gap: starting
+playback before resolving its group position lets a reselect cancel the position
+update, leaving channel keys on the old index. The corrected delayed-position test
+fails against that intermediate ordering and passes with the final ordering.
+
+Keep one pending choice through the list/step page, admission, channel formatting
+and group-position reads. Check cancellation after suspended reads; prepare the
+list and position together and commit playback without another suspension. Resolve
+the existing indexed position reads before stopping the current stream, so the old
+picture continues during slow reads. Reveal the temporary info box before the
+recent-channel write. Reselecting the playing channel cancels the pending choice
+without opening a new stream. No new query, catalogue load, cache, schema,
+dependency, startup work or decoder/buffer policy is introduced.
+
+Playback transitions now record resolution, state, play/pause and suppression
+reasons, and the first frame. These are transition events, not a per-frame timer or
+watchdog. Capture elapsed time on the application thread and run existing regex
+redaction, time formatting and logcat mirroring on the IO app scope. The existing
+600-line ring evicts its oldest line; each line is capped at 500 characters. New
+records contain only states, flags and request counters, without channel names,
+keys or addresses. Logcat confirms resolution, buffering, ready and first-frame
+records in `harness-out/player-switch-diagnostics.log`. There are no uploads.
+
+The existing held-key/zap-back group followed by the channel-key test failed twice
+with the initial stream continuing and no second request; that test passed alone.
+Holding composition until the initial info box arrives then proves the video key
+host is unfocused. Request entry focus once on attachment regardless of initial
+chrome, cancelling it if the viewer already chose a control, overlay or stopped
+banner. The gated focus test and the same three-test group now pass. This is a
+separate entry-focus correction, not proof of the reported provider-specific freeze.
+
+CPU comparison: the same cold-booted `sohva_rebuild_tv30`, API 30 x86,
+1920x1080 xhdpi, 1,024 MiB RAM and 192 MiB Java heap. Both isolated runs use
+freshly installed debug APKs with natural ART/JIT behavior and no concurrent Gradle
+work. Measure main-thread CPU from sending OK through the HTTP request, a new
+rendered frame and UI idle. The test clip is a synthetic 320x180 H.264/AAC MP4;
+exclude switch 0 as warm-up.
+
+| Source | All six main-thread CPU samples (ms) | Warm median [range] (ms) |
+|---|---|---|
+| Unchanged player | 114, 105, 86, 99, 76, 78 | 86 [76-105] |
+| Final choices, entry focus and diagnostics | 116, 116, 110, 91, 73, 75 | 91 [73-116] |
+
+The warm median rises by 5 ms, with overlapping ranges. This whole switch-to-frame
+CPU window is not wall-clock zap latency, single-key CPU, proof of the 50 ms
+key-up-to-setMediaItem target, or a physical Chromecast measurement. Earlier
+intermediate fixes measured 95 and 88 ms warm medians; neither is the final source.
+
+Evidence: `harness-out/player-switch-baseline-native.log`,
+`player-switch-race-before.log`, `player-switch-page-before.log`,
+`player-switch-position-valid-before.log`, `player-switch-focus-valid-before.log`,
+`player-switch-final-eight.log`, `player-switch-cpu-before.log`,
+`player-switch-final-focus-cpu.log` and `player-switch-focus-ready-build.log`.
+The final eight new native tests pass,
+including the two lookup races, the position race, reselect cancellation and
+normal/delayed first-frame checks at connection limit one and gated entry focus. A further isolated CPU
+repeat passes. The initial reselect fixture wrongly assumed one HTTP request per
+MP4; it now compares counts before/after the reselect and first-frame counts. The
+first position fixture sent the previous-channel key while expecting the next;
+its corrected default mapping is proved red before green.
+
+The final related suite passes ten existing tests: held-key single-zap, held Back,
+channel-key/Guide return, temporary info-box timeout after action focus, parental
+PIN admission, track-picker Back, a new picture after buffer-profile recreation,
+zero hidden-overlay UI frames in its 15-second window, catch-up focus/pause/skip,
+and film resume/completion with focus restored to its details and wall. Together
+with the eight new tests, 18 distinct native tests pass. Receipts:
+`harness-out/player-switch-final-related-remote.log`,
+`player-switch-final-related-focus.log` and
+`player-switch-final-related-playback.log`. The previous combined channel-key
+failures led to the focus fix; they are not dismissed as flakes.
+
+All 19 core/feature player unit tests pass. Debug app, core-player and feature-player
+lint and module boundaries pass, with no new compiler/lint warnings. Strings and
+resources are unchanged. The public-source audit checks 1,216 files with zero
+findings; the publishable-tree gitleaks scan finds no leaks. Receipts:
+`harness-out/player-switch-source-audit.log`, `player-switch-gitleaks.log` and
+`player-switch-focus-ready-build.log`.
+
+No new distributed version code is reserved, APK frozen, household install or
+public push performed. Build 129 stays frozen. Release ART/profile verification,
+release-size checks and physical-device acceptance belong to the next agreed
+preview. The actual reported single-switch freeze remains unconfirmed pending
+the affected user's exact model/Android/APK and reproduction details. The new
+transition records become available on that user's device only after installing
+a future build containing this change.
+
+## 6 October 2026: channel list highlight and scroll in one frame
+
+The owner sees the player's right-side channel list move its highlight first and
+centre the list a moment later on both household boxes. PLAY-FR-54 requires both in
+the same key press. Two causes: every Up/Down launched a page read before publishing
+the new selection, even for a row already on screen, and the centring ran in a
+launched effect, which on a device is dispatched after the highlight's frame is drawn.
+
+Up/Down within the page on screen now publishes the selection at once, without a
+read. Moving to another page still reads it; returning to the page on screen cancels
+that stale read, while a now-titles read for the page on screen continues. Both the
+channel and group columns request their scroll position from a side effect, which
+the lazy list applies in the same frame's measure. No query, cache, dependency or
+schema is added; the rows read per page are unchanged (at most 200).
+
+Regression-first tests on `sohva_rebuild_tv30` (API 30 x86, 1920x1080 xhdpi,
+1,024 MiB): with every page read held, twelve Down presses must each move the
+highlight; the unchanged code fails at the first press
+(`harness-out/channel-scroll-before.log`). Compose frames are then stepped one at a
+time with the test clock paused, and no frame may show the highlight below the
+middle row. That check fails when the scroll is delayed by one frame
+(`channel-scroll-detector-check.log`). It does not fail on the old launched effect,
+because the test dispatcher runs the effect before layout; the device-only lag is
+therefore fixed by construction rather than proven red. A 205-channel group tests a
+held read of the second page while the viewer returns to the first; removing the
+stale-read cancel fails it (`channel-scroll-stale-mutation.log`).
+
+Main-thread CPU per Down press, key to idle UI, 20 warm presses per run, runs
+alternated on the same cold-booted emulator (`channel-scroll-cpu-*.log`):
+
+| Source | Run 1 median [range] (ms) | Run 2 median [range] (ms) |
+|---|---|---|
+| Unchanged list (with row selection semantics for the test) | 30.3 [10.1-38.5] | 29.4 [17.8-52.5] |
+| Highlight without a read, same-frame scroll | 30.6 [20.0-36.3] | 31.8 [19.7-40.6] |
+
+Main-thread CPU is unchanged within noise; the removed read ran on the IO
+dispatcher, so the gain is the wait between key and highlight, not main-thread work.
+This is not a physical low-end box measurement.
+
+The two new tests, PlayerChannelSwitchTest (8), PlayerRemoteTest (5) and
+PlayerControlsTest (5) pass (`channel-scroll-after*.log`). Feature-player and core
+model unit tests, feature-player and app debug lint pass with no new warnings
+(`channel-scroll-lint-unit.log`). Rows now carry the `selected` semantics property,
+which also tells accessibility services which channel is highlighted.
+
+## 7 October 2026: display mode kept during a channel change
+
+A Chromecast with Google TV (Android TV 14) user reports that every channel chosen
+from the player's list freezes the picture and stops the sound without a message,
+while the Guide works. With "Match the display to the picture" on (the default), an
+in-player zap stopped the old stream, the tracks cleared, the unknown rate restored
+the original display mode, and the new stream's rate switched it again: two HDMI
+re-negotiations per zap. A re-negotiation can make the system report "audio becoming
+noisy", which pauses the player. Only switches to a matched mode were marked for the
+existing pause recovery, so the pause after the restore stayed.
+
+The mode choice moves to the pure `DisplayModes.target`. An unknown rate requests
+nothing; a known rate requests its mode, or the original when nothing fits, only if
+it differs from the window's preference. Every request is marked before it is made.
+Leaving the player and turning the setting off restore the original as before.
+
+`DisplayModesTest` (4 tests) plays rate sequences such as 25, unknown, 25 fps. With
+the helper written to the old rule, three fail
+(`harness-out/display-mode-unit-old-rule.log`); with the fix all pass
+(`display-mode-unit-after.log`, with core-model and feature-player unit tests and
+feature-player and app debug lint). On the cold-booted 1 GiB `sohva_rebuild_tv30`,
+PlayerChannelSwitchTest (8), PlayerChannelListScrollTest (3), PlayerRemoteTest (5),
+PlayerControlsTest (5), DiscoverPlaybackTest (5) and LibraryPlaybackTest (2) pass
+(`display-mode-after-*.log`).
+
+The emulator offers one 60 Hz mode and the test clip is 25 fps, so no mode is
+requested there in either version: these runs show nothing broke, not the device
+effect. The change removes window-attribute writes during zaps and adds no per-frame,
+query or background work, so no CPU comparison was run. Confirmation needs the
+affected user on the next preview, or the setting turned off on beta.15.
+
+## 8 October 2026: naming unreadable stream replies and retrying playlists as HLS
+
+The owner's Shield diagnostics show films and live channels from the "TV" source
+failing with "none of the available extractors", alongside 502, 503 and spurious
+407 replies from the same provider. Beta.15 could not say what the provider sent.
+
+The stream's first request (its placeholder, from position 0) is now classified on
+its way to the player: the kind of reply from at most 256 bytes, the Content-Type
+media type when it is a plain type/subtype, and whether a redirect changed the host.
+Only the classification is kept. An unsupported or malformed container records
+`reply: <kind>, type <type>, same host|redirected to another host` through the
+existing off-main transition log. A playlist reply at an address that names no type
+is retried once as HLS: a load-error policy turns that first failure into a 3 s
+retry wait while the service switches the item on the same placeholder and lease.
+
+A first version hid the failure by wrapping the session's player listeners. Kotlin
+interface delegation does not forward Java default methods, so every
+`Player.Listener` event was dropped; all eight PlayerChannelSwitchTest cases failed
+(`harness-out/stream-reply-suite-PlayerChannelSwitchTest.log`). That design was
+removed before commit.
+
+Tests: StreamReplyTest (4) and ReplyInspectionTest (4, MockWebServer through the
+real OkHttp data source, including a redirect to another host and the one-time
+retry claim). PlayerStreamReplyTest (2) on the 1 GiB `sohva_rebuild_tv30` failed
+before wiring (`stream-reply-e2e-before.log`) and passes after
+(`stream-reply-e2e-v2.log`): a playlist at `/live/0` is fetched again and its
+segment requested, the screen never logs the parsing failure, and a web page reply
+shows the banner and its `reply: web page, type text/html, same host` line, with no
+address in the diagnostics. Without the policy the retry never happens
+(`stream-reply-policy-mutation.log`). The final code passes PlayerChannelSwitchTest
+(8), PlayerChannelListScrollTest (3), PlayerRemoteTest (5), PlayerControlsTest (5),
+PlayerArchiveTest (4), DiscoverPlaybackTest (5), DiscoverSubtitleTest (3),
+VodAddonSubtitleTest (1), LibraryPlaybackTest (2) and PlayerStreamReplyTest (2)
+(`stream-reply-suite-*.log`), plus unit tests and debug lint
+(`stream-reply-lint-v2.log`).
+
+Cost: one 256-byte copy and a classification per stream start, on the loader
+thread; no extra request, connection, query, cache or main-thread work. No CPU
+comparison was run for this reason. The emulator test segment is not playable, so a
+real HLS stream reached this way is still unproven on hardware.
+
+## 8 October 2026: diagnostics without a file picker
+
+Google TV on the Chromecast has no document picker, so Save diagnostics only showed
+its no-picker sentence. Without a picker the file now goes to the shared Download
+folder (MediaStore, Android 10+), and a "Send to phone" button opens the phone page
+in a diagnostics mode on any TV.
+
+Tests: PhoneServerTest (11, one new): the page carries the file name but no
+diagnostics; a missing Origin, a wrong token or another Origin get 403; the token
+holder gets the exact file as no-store text/plain, twice, and the count rises.
+SettingsAboutTest on the 1 GiB `sohva_rebuild_tv30` (`diagnostics-phone-about-test.log`):
+with the picker reported missing, the status names a `sohva-tv-diagnostics-yyyyMMdd-HHmm.txt`
+that MediaStore finds in Download with no address, user name or password in it
+(deleted afterwards); Send to phone shows the address, refuses a wrong token, hands
+the redacted file to the right one, says a phone has it, and Back closes the dialog,
+stops the server and returns focus to Send to phone. The existing About tests pass;
+the link test skips by its assumption, as before, because the emulator has a
+browser. PhoneSetupTest (4) passes. SettingsGeneralTest failed once in its time-zone
+dialog (focus still on the row) and then passed alone twice and as a whole class
+(8/8); it does not use About or the phone page, and is noted as intermittent.
+String import check, French coverage, unit tests, debug lint and the debug and test
+builds pass (`diagnostics-phone-build.log`).
+
+Cost: nothing until the viewer presses a button. The file is collected and redacted
+on the IO dispatcher as before; the phone page runs on the existing daemon thread.
+No startup, playback, query or background work is added.
+
+## 11 October 2026: now/next and recents while an import writes
+
+Owner's report on Shield build 130: sometimes the player's channel list does not show
+the current programmes, the info box's programme does not update, and Home's "on now"
+row keeps old channels and programmes, while the guide is correct at the same moment.
+
+Cause, proved on the emulator: the info box and the channel list looked up their source
+with `reads.sources.first()`. The first value of a Room flow registers table observers
+through the database's single write connection, so the call waits while an import
+holds a write transaction. The guide's own programme reads are plain queries and its
+observer is already registered. Home's recent-channel read is also a plain query, but
+the "just watched" row is a write and queues behind the import, so the row lacked the
+newest channels until the import ended.
+
+`ReadsDuringImportTest` holds a write transaction open on another thread. With the old
+lookup the now/next read does not return within 5 s (`harness-out/stale-now-before.log`);
+with the one-shot `source(id)` it returns at once, as do the programme read and Home's
+read (`stale-now-after.log`). A channel watched during the held write was missing from
+Home's row (`stale-home-before.log`); with the pending list it leads the row at once and
+is in the table after the write is released. `PendingRecentsTest` (3) covers order,
+per-profile keys, a newer watch outliving an older write, and the 20-entry bound.
+
+On the final code, ReadsDuringImportTest (2), PlayerChannelSwitchTest (8), PlayerChannelListScrollTest (3), PlayerRemoteTest (5), PlayerControlsTest (5), HomeTest (6), HomeRestoreTest (4) and HomeLayoutTest (7) pass on the 1 GiB sohva_rebuild_tv30 (harness-out/stale-now-suite-*.log), with core-data, feature-player and feature-home unit tests and debug lint (stale-now-unit.log).
+
+Cost: one plain indexed query per info-box tick or list page in place of a flow
+subscription; an in-memory list of at most 20 small entries. No CPU comparison was
+run: nothing is added to a frame, to start-up or to playback. Not reproduced: stale
+programme text on Home itself, whose read never waited in the test; if it shows again
+after this build, Save diagnostics right then.
+
+## 11 October 2026: info box and channel list programmes after build 132
+
+On Shield build 132 the owner reports Home correct, but the info box and the channel
+list still not showing current programmes.
+
+Info box: now/next came from a reader that runs every 30 s while the box shows. A
+channel change while the box was already showing left that reader running, so the new
+channel was not read before the box hid 5 s later; and a slow read for the previous
+channel could finish after the change and show its programme. `PlayerNowNextTest`
+(2) gives each channel's one-channel read a programme named after it: both cases fail
+on build 132's code at "no read for the new channel within 3 s"
+(`harness-out/now-next-before.log`) and pass with the reader restarted on every
+channel change and results checked against the playing channel (`now-next-after.log`).
+
+Channel list: the titles read covered the whole page (up to 200 channels) in one query
+before any title showed. It now covers 12 rows either side of the highlight and reads
+on as the highlight nears the range's end. The new case in
+`PlayerChannelListScrollTest` asserts every list read asks for at most 30 channels and
+that 20 Down presses bring titles for the rows reached; with the whole-page read
+restored it fails at "the first read asked for 200 channels"
+(`list-titles-mutation.log`).
+
+On the final code PlayerNowNextTest (2), PlayerChannelListScrollTest (4),
+PlayerChannelSwitchTest (8), PlayerRemoteTest (5), PlayerControlsTest (5),
+PlayerArchiveTest (4) and ReadsDuringImportTest (2) pass on the 1 GiB
+`sohva_rebuild_tv30` (`now-next-suite-*.log`), with unit tests and debug lint
+(`now-next-unit-lint.log`).
+
+Cost: the list's read shrinks from up to 200 channels to at most 25 per range; the
+box makes one extra one-channel read per channel change. No CPU comparison was run;
+the read is smaller and runs off the main thread. The list's slowness on the Shield
+was inferred from the code, not measured there.
+
+## 11 November 2026: baseline for the review fixes
+
+Before the steps of [improvement-plan.md](improvement-plan.md), on `sohva_rebuild_tv30`
+(API 30, 2 GB, four cores), unchanged code at the head of `fix/live-stream-end`.
+Logs: `harness-out/plan/BASE-1-*.log`.
+
+Checks: `tools/check_all.py` passes; 726 JVM tests; release APK 6,346,029 bytes.
+
+`OwnerScaleImportTest` (fixture: 56,164 playlist entries, 165,600 programmes, 200,000 films):
+
+| Step | Time | Rows |
+|---|---|---|
+| M3U playlist | 3,883 ms | 50,546 |
+| M3U guide | 2,017 ms | 129,600 |
+| M3U playlist, unchanged | 2,237 ms | 50,546 |
+| M3U catalogue, first | 32,030 ms | 219,500 |
+| M3U catalogue, unchanged | 12,130 ms | 219,500 |
+| Xtream playlist | 3,646 ms | 56,164 |
+| Xtream guide | 2,131 ms | 146,004 |
+| Xtream catalogue, first | 40,117 ms | 201,500 |
+| Xtream catalogue, unchanged | 5,297 ms | 201,500 |
+
+Phases of the first M3U catalogue import: write transactions 26,107 ms; sweep and groups
+281 ms; organisation 1,257 ms; standing copies 1,933 ms; film counts 164 ms; genre counts
+12 ms; search index 1,848 ms (one statement in one transaction). Unchanged: write
+transactions 1,576 ms, standing copies 1,894 ms, film counts 163 ms, search index 128 ms.
+Java heap maximum 89 MB of 192 MB.
+
+Unified search on the imported database (400,000 films, 106,710 channels), median of the
+test's runs: "ha" live 7 ms, films 32 ms, series 0 ms, episodes 2 ms; "north" live 7 ms,
+films 25 ms. Every group is far inside the 100 ms budget of spec 03.
+
+`ReadsDuringImportTest` (2) passes. Start-up, memory and frame figures of the same code,
+measured with the lab build earlier the same day: cold start to first frame 216 to 262 ms
+(five runs), fully drawn 542 to 596 ms; total memory 41 MB on Home, 84 MB in the guide
+after 60 rows, 84 MB during playback, with Java heaps of 4, 30 and 20 MB; 60 rows down the
+guide drew 121 frames, none janky.
+
+## 11 November 2026: the search index in pages (IDX-1)
+
+`OwnerScaleImportTest` gained a write probe: one tiny transaction every 20 ms on its own
+thread, and the longest it waited for the write connection during each step. Same fixture
+and emulator as the baseline above. Logs: `harness-out/plan/IDX-1-before-measure.log` and
+`IDX-1-after-measure.log`.
+
+| Step | Longest wait before | after | Search-index phase before | after |
+|---|---|---|---|---|
+| M3U guide (138,600 programmes) | 334 ms | 12 ms | – | – |
+| Xtream guide | 448 ms | 18 ms | – | – |
+| M3U catalogue, first (200,000 films) | 1,854 ms | 836 ms | 1,858 ms | 756 ms |
+| M3U catalogue, unchanged | 226 ms | 238 ms | 130 ms | 0 ms |
+| Xtream catalogue, first | 2,180 ms | 679 ms | 2,179 ms | 720 ms |
+| Xtream catalogue, unchanged | 403 ms | 402 ms | 248 ms | 0 ms |
+| M3U playlist, first | 364 ms | 375 ms | – | – |
+
+Before, the longest wait of a film import was the single catch-up statement. In pages of
+2,000 rows the catch-up is also faster as a whole, and an unchanged catalogue no longer
+walks the table. What remains (0.7 to 0.8 s in a first film import, 0.4 s in the first
+playlist) comes from another finish phase and was not investigated here. Import totals are
+unchanged within noise (M3U catalogue 33.6 s before, 33.1 s after). Unified search on the
+imported database still answers ("ha": films 33 ms, 40 rows).
+
+## 11 November 2026: the open guide wakes once per import (GUIDE-2)
+
+Counted in `LiveStoreTest` on the store's own signals, before and after. Ten channel writes
+during a running playlist import: 10 list signals before, 0 after, then 1 when the import's
+status changes to its result. A catalogue import's two status writes and a guide import's
+start: 3 programme reloads before, 0 after; a new guide snapshot and a source edit still
+give 1 each. Not counted on the emulator with an owner-scale import: the guide must be open
+for that, and no device test opens it during an import of that size.
+
+
+## 11 November 2026: a film that leaves the list no longer rewrites the others (HASH-1)
+
+`OwnerScaleImportTest` on the emulator, 200,000-film M3U catalogue, with a third import of
+the same list without its first film. Before, the position in the list was part of each
+film's change check, so every later film was rewritten. Logs:
+`harness-out/plan/HASH-1-before-measure.log` and `HASH-1-after-measure.log`.
+
+| Import | Before | After |
+|---|---|---|
+| First (200,000 films, series) | 33.0 s | 33.0 s |
+| Unchanged | 12.6 s | 12.6 s |
+| First film removed, whole import | 52.3 s | 12.6 s |
+| First film removed, write transactions | 48.1 s | 4.2 s |
+| First film removed, longest small-write wait | 1,355 ms | 194 ms |
+
+The 4.2 s is 199,999 one-column position updates by row id. The first refresh after this
+change rewrites every film and series once, because every stored hash changes.
+
+## 11 November 2026: pictures already in memory are in a cell's first frame (IMG-1)
+
+Main-thread CPU per key press, lab build on the emulator, fixture playlist (56,164 channels)
+and film list (200,000 films). Read from the main thread's `stat` (10 ms ticks) before and
+after the presses.
+
+| Screen | Presses | Before | After |
+|---|---|---|---|
+| Guide, channel column (Up and Down) | 240 | 68 ticks, 2.8 ms per press | 68 ticks, 2.8 ms per press |
+| Film wall, one group of posters (Up and Down) | 200 | 60 ticks, 3.0 ms per press | 58 ticks, 2.9 ms per press |
+
+The step adds no measurable work per press. The counter is coarse (one tick is 10 ms), so
+runs of 20 presses differ by a tick or two; the table uses the sums. On a desktop emulator
+these numbers only guard against a regression; they say little about the low-end box.
+
+## 11 November 2026: a focusable creates animation state only when it animates (SURF-1)
+
+Measured as for IMG-1 above, same lab data, before = the build with IMG-1.
+
+| Screen | Presses | Before | After |
+|---|---|---|---|
+| Guide, channel column (Up and Down) | 240 | 68 ticks, 2.8 ms per press | 64 ticks, 2.7 ms per press |
+| Film wall, one group of posters (Up and Down) | 200 | 58 ticks, 2.9 ms per press | 57 ticks, 2.85 ms per press |
+
+Within the counter's noise on the emulator: no regression. The saving is in objects per
+focusable (two animation states fewer for rows and cards that neither scale nor fade), which
+this counter does not show; it should be checked on the low-end box.

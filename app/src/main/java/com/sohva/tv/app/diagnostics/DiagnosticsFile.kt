@@ -1,9 +1,11 @@
 package com.sohva.tv.app.diagnostics
 
+import android.content.ContentValues
 import android.content.Context
 import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Build
+import android.provider.MediaStore
 import android.util.DisplayMetrics
 import android.view.Display
 import com.sohva.tv.app.AppGraph
@@ -37,6 +39,40 @@ class DiagnosticsFile(private val graph: AppGraph, private val context: Context)
         out.bufferedWriter(Charsets.UTF_8).use { writer -> lines.forEach { writer.write(it); writer.write("\n") } }
         graph.diagnostics.info("diagnostics", "saved ${lines.size} lines")
         lines.size
+    }
+
+    /** The file's text for the phone page; nothing is written on the TV. */
+    suspend fun render(): ByteArray = withContext(graph.dispatchers.io) {
+        val lines = collect()
+        graph.diagnostics.info("diagnostics", "rendered ${lines.size} lines for a phone")
+        lines.joinToString("\n", postfix = "\n").toByteArray(Charsets.UTF_8)
+    }
+
+    /**
+     * A TV without a document picker: the file goes to the shared Download folder as [name]
+     * (Android 10+, no storage permission). False on older Android, where that needs a permission
+     * the app does not hold; the phone page still works there.
+     */
+    suspend fun saveToDownloads(name: String): Boolean = withContext(graph.dispatchers.io) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@withContext false
+        val lines = collect()
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val item = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw IOException("no Download entry")
+        try {
+            val out = resolver.openOutputStream(item, "wt") ?: throw IOException("no stream")
+            out.bufferedWriter(Charsets.UTF_8).use { writer -> lines.forEach { writer.write(it); writer.write("\n") } }
+            resolver.update(item, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+        } catch (e: Exception) {
+            resolver.delete(item, null, null)
+            throw e
+        }
+        graph.diagnostics.info("diagnostics", "saved ${lines.size} lines to Download")
+        true
     }
 
     private suspend fun collect(): List<String> {

@@ -1,6 +1,7 @@
 package com.sohva.tv.app
 
 import android.view.KeyEvent
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -81,6 +82,19 @@ class PlayerControlsTest {
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(15_000) { requests.contains("/live/2.mp4") }
         compose.waitUntil(5_000) { !exists("player-channels") }
+    }
+
+    /** The row is icons only: the focused control is named in words beside it. */
+    @Test
+    fun theFocusedControlIsNamedBesideTheRow() {
+        openPlayer()
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        fun label() = compose.onAllNodes(androidx.compose.ui.test.hasTestTag("player-action-label")).fetchSemanticsNodes()
+            .firstOrNull()?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
+        compose.waitUntil(5_000) { label() == "Hide these controls" }
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        compose.waitUntil(5_000) { label().startsWith("Picture") }
     }
 
     @Test

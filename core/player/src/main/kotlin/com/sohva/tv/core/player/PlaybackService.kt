@@ -6,6 +6,8 @@ import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -38,6 +40,8 @@ class PlaybackService : MediaSessionService() {
     private val leases = ConnectionLeases()
     private var lease: ConnectionLeases.Lease? = null
     private var profile = BufferProfile.DEFAULT
+    private var requestSerial = 0
+
 
     /** The film or episode playing, whose position is saved (spec 30 §4.21); null for live and catch-up. */
     private var vodKey: String? = null
@@ -59,6 +63,8 @@ class PlaybackService : MediaSessionService() {
         player = PlayerFactory.create(this, env, registry, profile)
         player.addListener(Watcher())
         keeper = SurfaceKeeper(player, output = null)
+        // Called on the loader thread while the first failure waits as a retry; the switch runs here.
+        registry.onPlaylistReply = { placeholder -> scope.launch { retryAsHls(placeholder) } }
         session = MediaSession.Builder(this, keeper)
             .setId(SESSION_ID)
             .setCallback(Callback())
@@ -82,6 +88,21 @@ class PlaybackService : MediaSessionService() {
         player.release()
         env.setPlaybackActive(false)
         super.onDestroy()
+    }
+
+    /**
+     * A playlist served at an address that does not end in `.m3u8` (PLAY-FR-15): the same item,
+     * placeholder and lease, now as HLS. [PlaylistRetryPolicy] holds the progressive failure back as
+     * a retry wait, so the screen sees the stream start rather than an error and a reconnect.
+     */
+    private fun retryAsHls(placeholder: String) {
+        val item = player.currentMediaItem ?: return
+        val local = item.localConfiguration ?: return
+        if (local.uri.toString() != placeholder || local.mimeType != null) return
+        val reply = registry.lastReply()?.describe() ?: "reply: playlist"
+        env.recordEvent("request $requestSerial $reply; retrying as HLS")
+        player.setMediaItem(item.buildUpon().setMimeType(MimeTypes.APPLICATION_M3U8).build(), false)
+        player.prepare()
     }
 
     private fun releaseStream() {
@@ -129,10 +150,40 @@ class PlaybackService : MediaSessionService() {
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            val state = when (playbackState) {
+                Player.STATE_IDLE -> "idle"
+                Player.STATE_BUFFERING -> "buffering"
+                Player.STATE_READY -> "ready"
+                Player.STATE_ENDED -> "ended"
+                else -> "unknown"
+            }
+            env.recordEvent("request $requestSerial state=$state play=${player.playWhenReady} suppression=${player.playbackSuppressionReason}")
             if (playbackState == Player.STATE_ENDED) {
                 saveProgress()
                 scrobbler?.ended()
             }
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            env.recordEvent("request $requestSerial play=$playWhenReady reason=$reason")
+        }
+
+        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
+            env.recordEvent("request $requestSerial suppression=$playbackSuppressionReason")
+        }
+
+        override fun onRenderedFirstFrame() {
+            env.recordEvent("request $requestSerial first frame")
+        }
+
+        /** A reply the player could not read as a stream is named in the diagnostics (no content or address). */
+        override fun onPlayerError(error: PlaybackException) {
+            if (error.errorCode != PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED &&
+                error.errorCode != PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+            ) {
+                return
+            }
+            registry.lastReply()?.let { env.recordEvent("request $requestSerial ${it.describe()}") }
         }
 
         /** Clearing the items releases the source and its lease (PLAY-FR-23). */
@@ -162,6 +213,8 @@ class PlaybackService : MediaSessionService() {
                 return result
             }
             scope.launch {
+                val serial = ++requestSerial
+                env.recordEvent("request $serial resolving")
                 // Release the previous stream before taking a lease, so a zap works at limit 1 (PLAY-FR-16).
                 releaseStream()
                 applyProfile()
@@ -210,6 +263,7 @@ class PlaybackService : MediaSessionService() {
                     startProgressLoop()
                 }
                 val placeholder = registry.register(stream)
+                env.recordEvent("request $serial resolved")
                 val item = MediaItem.Builder()
                     .setMediaId(stream.key)
                     .setUri(placeholder)

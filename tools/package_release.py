@@ -21,6 +21,7 @@ import hashlib
 import json
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import zipfile
@@ -28,6 +29,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audit_public_source as audit  # noqa: E402
+from sohva_device import sdk_root  # noqa: E402
+from verify_sport_dictionary import verify as verify_dictionary  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 APK = ROOT / "app/build/outputs/apk/release/app-release.apk"
@@ -96,7 +99,7 @@ def sha256(path: Path) -> str:
 
 
 def sdk_tool(name: str) -> str:
-    tools = sorted((Path("C:/Android/sdk/build-tools")).glob("*"), key=lambda p: [int(x) if x.isdigit() else 0 for x in p.name.split(".")])
+    tools = sorted((sdk_root() / "build-tools").glob("*"), key=lambda p: [int(x) if x.isdigit() else 0 for x in p.name.split(".")])
     if not tools:
         fail("no Android build-tools found")
     for candidate in (tools[-1] / name, tools[-1] / f"{name}.exe", tools[-1] / f"{name}.bat"):
@@ -164,6 +167,10 @@ def check_signature() -> None:
 def check_entries() -> None:
     findings: list[str] = []
     with zipfile.ZipFile(APK) as apk:
+        try:
+            dictionary_entries = verify_dictionary(apk)
+        except (ValueError, KeyError, sqlite3.DatabaseError) as error:
+            fail(f"APK dictionary audit: {error}")
         # SEC-27: the source-revision record names only the project root and a commit.
         vcs = apk.read(VCS_ENTRY).decode("utf-8") if VCS_ENTRY in apk.namelist() else ""
         roots = re.findall(r'local_root_path: "([^"]*)"', vcs)
@@ -172,7 +179,7 @@ def check_entries() -> None:
             findings.append(f"{VCS_ENTRY} holds more than the project root and a commit")
         for info in apk.infolist():
             name = info.filename
-            if SENSITIVE_ENTRY.search(name) and name not in KNOWN_ENTRIES:
+            if SENSITIVE_ENTRY.search(name) and name not in KNOWN_ENTRIES | dictionary_entries:
                 findings.append(f"sensitive-looking entry {name}")
             if not TEXT_ENTRY.search(name) or info.file_size > 4 * 1024 * 1024:
                 continue

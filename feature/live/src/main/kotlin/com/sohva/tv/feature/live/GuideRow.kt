@@ -141,9 +141,9 @@ internal fun GuideRow(
     // The logo is decoded at its drawn size and read in the draw phase: its arrival redraws the cell only.
     val loader = LocalArtwork.current
     val logoPx = with(LocalDensity.current) { LOGO_BOX.roundToPx() }
-    val logo = remember(row.channel.logoUrl) { mutableStateOf<ImageBitmap?>(null) }
+    val logo = remember(row.channel.logoUrl) { mutableStateOf(row.channel.logoUrl?.let { loader.peek(it, logoPx, logoPx, opaque = false) }) }
     LaunchedEffect(row.channel.logoUrl) {
-        row.channel.logoUrl?.takeIf { it.isNotBlank() }?.let { logo.value = loader.load(it, logoPx, logoPx, opaque = false) }
+        if (logo.value == null) row.channel.logoUrl?.takeIf { it.isNotBlank() }?.let { logo.value = loader.load(it, logoPx, logoPx, opaque = false) }
     }
     Box(
         base
@@ -262,7 +262,7 @@ private fun handleKey(
             if (schedule == null) return true
             val blocks = model.drawnBlocks(schedule.programmes)
             when {
-                column == GuideModel.CHANNEL -> setColumn(if (blocks.isEmpty()) 0 else blocks.first(), row, state, model, memory)
+                column == GuideModel.CHANNEL -> setColumn(if (blocks.isEmpty()) 0 else model.entryBlock(schedule, blocks), row, state, model, memory)
                 blocks.isEmpty() || column >= blocks.last() -> {
                     if (model.page(+1, index)) setColumn(GuideModel.CHANNEL, row, state, model, memory)
                 }

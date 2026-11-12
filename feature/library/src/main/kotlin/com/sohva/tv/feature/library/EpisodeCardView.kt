@@ -116,9 +116,9 @@ private fun Still(url: String?) {
     val loader = LocalArtwork.current
     val palette = Sohva.palette
     val px = with(LocalDensity.current) { IntSize(208.dp.roundToPx(), 117.dp.roundToPx()) }
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(url) { mutableStateOf(url?.let { loader.peek(it, px.width, px.height, opaque = true) }) }
     LaunchedEffect(url) {
-        if (!url.isNullOrBlank()) image = loader.load(url, px.width, px.height, opaque = true)
+        if (image == null && !url.isNullOrBlank()) image = loader.load(url, px.width, px.height, opaque = true)
     }
     val scrim = remember(palette) { Brush.verticalGradient(0.55f to palette.background.copy(alpha = 0f), 1f to palette.background.copy(alpha = 0.72f)) }
     val ground = palette.surfaceSubtle

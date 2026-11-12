@@ -16,6 +16,8 @@ internal object M3uText {
     private val seriesHints = arrayOf("series", "show", "shows", "sarja", "sarjat")
     private val movieHints = arrayOf("vod", "movie", "movies", "film", "films", "elokuva", "elokuvat")
     private val movieExtensions = arrayOf(".avi", ".m4v", ".mkv", ".mov", ".mp4", ".webm")
+    private val liveEndings = arrayOf(".ts", ".m3u8")
+    private val liveSchemes = arrayOf("udp://", "rtp://", "rtsp://")
 
     fun attributes(text: String): Map<String, String> {
         if (text.indexOf('=') < 0) return emptyMap()
@@ -81,18 +83,25 @@ internal object M3uText {
     }
 
     /**
-     * SRC-FR-57, kept for compatibility: hints are substrings of the type attributes, the
-     * normalised group, or `/<hint>/` in the path.
+     * SRC-FR-57 as changed by the decision "Live or film" (11 November 2026). A hint is a substring
+     * of the declared type attributes or a `/<hint>/` segment of the path, as before. A group name
+     * counts only as a whole word ("Showtime" and "Filmbox" are channels), and not at all when the
+     * address is plainly a live stream: providers put film channels in groups called "Movies", and
+     * those left the guide to appear as unplayable films.
      */
     fun kindOf(typeHints: String, group: String?, address: String, duration: Int?): M3uKind {
-        val normalizedGroup = if (group == null) "" else NameNormalizer.normalize(group)
         val path = address.substringBefore('?').lowercase(Locale.ROOT)
+        val groupWords = if (group == null || looksLive(path)) emptyList() else NameNormalizer.normalize(group).split(' ')
         fun hinted(words: Array<String>): Boolean =
-            words.any { it in typeHints || it in normalizedGroup || path.contains("/$it/") }
+            words.any { it in typeHints || it in groupWords || path.contains("/$it/") }
         return when {
             hinted(seriesHints) -> M3uKind.SERIES
             hinted(movieHints) || movieExtensions.any { path.endsWith(it) } || (duration ?: 0) > 0 -> M3uKind.MOVIE
             else -> M3uKind.LIVE
         }
     }
+
+    /** A transport-stream or playlist ending, a `/live/` segment, or a multicast or RTSP address. */
+    private fun looksLive(path: String): Boolean =
+        liveEndings.any { path.endsWith(it) } || path.contains("/live/") || liveSchemes.any { path.startsWith(it) }
 }

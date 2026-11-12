@@ -86,8 +86,19 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
         }
     }
 
-    /** Work that outlives a screen: imports started from Settings keep going (spec 10 SRC-FR-94). */
-    val appScope: CoroutineScope by lazy { CoroutineScope(SupervisorJob() + dispatchers.io) }
+    /**
+     * Work that outlives a screen: imports started from Settings keep going (spec 10 SRC-FR-94).
+     * A job that fails with something nobody caught is written to the diagnostics log and ends
+     * alone: a start-up job once had the power to end the process at every launch. Debug builds
+     * still crash, so tests see the defect.
+     */
+    val appScope: CoroutineScope by lazy {
+        val handler = kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+            diagnostics.error("app", "background job failed", error)
+            if (BuildConfig.DEBUG) throw error
+        }
+        CoroutineScope(SupervisorJob() + dispatchers.io + handler)
+    }
 
     /** True while an activity is started; set by [MainActivity]. */
     val inForeground: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -194,10 +205,17 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
 
     val addonPlayback: com.sohva.tv.app.discover.AddonPlaybackBridge? by lazy { discover?.let { com.sohva.tv.app.discover.AddonPlaybackBridge(this, it) } }
 
-    /**
-     * The public updater (spec 72 §4): only the release package checks, downloads or installs
-     * (ABOUT-FR-01); built on first use, after the first frame, on the shared HTTP client.
-     */
+    /** Shared small update memory; its preferences remain unopened until an IO call. */
+    private val updateMemory by lazy { com.sohva.tv.app.update.AppUpdateMemory(app, dispatchers.io) }
+
+    val updateNotices: com.sohva.tv.core.sync.update.UpdateNotices by lazy {
+        com.sohva.tv.core.sync.update.UpdateNotices(
+            flags.publicUpdates && app.packageName == RELEASE_PACKAGE,
+            BuildConfig.VERSION_CODE, updateMemory, appScope, diagnostics,
+        )
+    }
+
+    /** Public-release updater, constructed after the first frame with the shared HTTP client. */
     val updater: com.sohva.tv.core.sync.update.Updater by lazy {
         val config = com.sohva.tv.core.sync.update.UpdaterConfig(
             enabled = flags.publicUpdates && app.packageName == RELEASE_PACKAGE,
@@ -207,7 +225,7 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             feed = BuildConfig.UPDATE_FEED.toHttpUrl(),
         )
         com.sohva.tv.core.sync.update.Updater(
-            config, com.sohva.tv.core.net.update.UpdateHttp(sync.http.client), com.sohva.tv.app.update.AppUpdateMemory(app, dispatchers.io),
+            config, com.sohva.tv.core.net.update.UpdateHttp(sync.http.client), updateMemory,
             java.io.File(app.cacheDir, "updates"), com.sohva.tv.app.update.AndroidUpdateInstaller(app, diagnostics, dispatchers.io), diagnostics, clock, appScope,
             // Notes in the interface language (ABOUT-FR-21): the chosen one, else the TV's.
             language = { data.locale.languageTag() ?: java.util.Locale.getDefault().toLanguageTag() },
@@ -248,6 +266,9 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
      */
     @Volatile
     var liveReadsOverride: com.sohva.tv.core.data.live.LiveReads? = null
+
+    /** Tests: false makes Save diagnostics behave as on a TV without a document picker. */
+    var filePickerOverride: Boolean? = null
 
     /** Tests only: awaited before Home reads its recent channels, so that row can be made slow (AGENTS §8). */
     @Volatile
@@ -316,7 +337,11 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             }
         }
         // The secret store wins over the mirrored "PIN exists" flag (spec 01 SHELL-FR-08).
-        appScope.launch { data.profiles.reconcilePin() }
+        appScope.launch {
+            data.profiles.reconcilePin()
+            // Evidence for the diagnostics file: no television has shown this yet (decision "Secure storage").
+            if (!data.secrets.writable()) diagnostics.error("secrets", "secure storage unusable")
+        }
         appScope.launch {
             // Beta 23's sources first, so an upgraded install syncs them at once (decision A1).
             val imported = try {
@@ -337,8 +362,25 @@ class AppGraph(val app: Application, val flags: FeatureFlags) {
             // The demo build's fictional Trakt account (spec 51 FR-37); Trakt itself stays offline there.
             if (flags.trakt && flags.demoContent) trakt?.let { com.sohva.tv.feature.trakt.demo.DemoTraktSeed.seed(it, data.profiles.activeId) }
         }
+        // Catch-up templates an earlier build stored plain are sealed once (spec 73 SEC-01).
+        appScope.launch {
+            try {
+                val sealed = com.sohva.tv.core.data.live.TemplateSealing(
+                    data.database, data.cipher::encrypt, dispatchers.bulkWrite,
+                ) { pauseGate.awaitTurn(com.sohva.tv.core.model.concurrent.WorkOrigin.VIEWER) }.run()
+                if (sealed > 0) diagnostics.info("secrets", "catch-up templates sealed: $sealed")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Tried again at the next start: nothing was marked done.
+                diagnostics.error("secrets", "catch-up templates not sealed", e)
+            }
+        }
         // Once a day at most, and never in the demo build (spec 72 ABOUT-FR-02, -04).
-        if (flags.publicUpdates) updater.start(automatic = !flags.demoContent)
+        if (flags.publicUpdates) {
+            updater.start(automatic = !flags.demoContent)
+            updateNotices.start(updater.state)
+        }
         // A restore the process did not finish is said at start (spec 71 §8); Backup's status line says it too.
         appScope.launch {
             if (data.backup.unfinished()) {

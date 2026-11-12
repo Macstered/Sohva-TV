@@ -46,6 +46,10 @@ interface MovieImportDao {
     @Query(ImportSql.MOVIE_HASHES)
     fun hashes(keys: List<String>): List<KeyedHash>
 
+    /** A film whose content is unchanged but whose place in the provider's list moved: only that column. */
+    @Query(ImportSql.MOVIE_SET_ORDER)
+    fun setOrder(id: Long, position: Int)
+
     @Insert
     fun insert(rows: List<MovieEntity>)
 
@@ -66,6 +70,9 @@ interface MovieImportDao {
 interface SeriesImportDao {
     @Query(ImportSql.SERIES_HASHES)
     fun hashes(keys: List<String>): List<KeyedHash>
+
+    @Query(ImportSql.SERIES_SET_ORDER)
+    fun setOrder(id: Long, position: Int)
 
     @Insert
     fun insert(rows: List<SeriesEntity>): List<Long>
@@ -141,7 +148,7 @@ interface GuideImportDao {
 
 /** The import SQL, as constants for the DAOs and the plan tests. */
 object ImportSql {
-    const val CHANNEL_HASHES = "SELECT id, key, content_hash AS hash FROM channel WHERE key IN (:keys)"
+    const val CHANNEL_HASHES = "SELECT id, key, content_hash AS hash, 0 AS position FROM channel WHERE key IN (:keys)"
     const val CHANNEL_KEYS_PAGE = "SELECT id, key FROM channel WHERE key > :from AND key < :until ORDER BY key LIMIT :limit"
     const val CHANNEL_DELETE = "DELETE FROM channel WHERE id IN (:ids)"
     const val CHANNEL_COUNT = "SELECT COUNT(*) FROM channel WHERE key > :from AND key < :until"
@@ -149,17 +156,19 @@ object ImportSql {
         "WHERE source_id = :sourceId AND (epg_id > :afterEpgId OR (epg_id = :afterEpgId AND id > :afterId)) " +
         "ORDER BY epg_id, id LIMIT :limit"
 
-    const val MOVIE_HASHES = "SELECT id, key, content_hash AS hash FROM movie WHERE key IN (:keys)"
+    const val MOVIE_SET_ORDER = "UPDATE movie SET provider_order = :position WHERE id = :id"
+    const val MOVIE_HASHES = "SELECT id, key, content_hash AS hash, provider_order AS position FROM movie WHERE key IN (:keys)"
     const val MOVIE_KEYS_PAGE = "SELECT id, key FROM movie WHERE key > :from AND key < :until ORDER BY key LIMIT :limit"
     const val MOVIE_DELETE = "DELETE FROM movie WHERE id IN (:ids)"
     const val MOVIE_COUNT = "SELECT COUNT(*) FROM movie WHERE key > :from AND key < :until"
 
-    const val SERIES_HASHES = "SELECT id, key, content_hash AS hash FROM series WHERE key IN (:keys)"
+    const val SERIES_SET_ORDER = "UPDATE series SET provider_order = :position WHERE id = :id"
+    const val SERIES_HASHES = "SELECT id, key, content_hash AS hash, provider_order AS position FROM series WHERE key IN (:keys)"
     const val SERIES_KEYS_PAGE = "SELECT id, key FROM series WHERE key > :from AND key < :until ORDER BY key LIMIT :limit"
     const val SERIES_DELETE = "DELETE FROM series WHERE id IN (:ids)"
     const val SERIES_COUNT = "SELECT COUNT(*) FROM series WHERE key > :from AND key < :until"
 
-    const val EPISODE_HASHES = "SELECT id, key, content_hash AS hash FROM episode WHERE key IN (:keys)"
+    const val EPISODE_HASHES = "SELECT id, key, content_hash AS hash, 0 AS position FROM episode WHERE key IN (:keys)"
     const val EPISODE_KEYS_PAGE = "SELECT id, key FROM episode WHERE key > :from AND key < :until ORDER BY key LIMIT :limit"
     const val EPISODE_DELETE = "DELETE FROM episode WHERE id IN (:ids)"
     const val EPISODE_ORPHANS_DELETE = "DELETE FROM episode WHERE id IN (SELECT e.id FROM episode AS e " +

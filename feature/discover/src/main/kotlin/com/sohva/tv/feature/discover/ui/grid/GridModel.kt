@@ -49,6 +49,9 @@ data class GridState(
  */
 class GridModel(private val host: DiscoverHost, private val profile: String, first: CatalogEntry?, val filterPage: Boolean) : ViewModel() {
     private val _state = MutableStateFlow(GridState(entry = first))
+
+    /** The card that opened a title page (`type:id`): focus returns to it (spec 50 ADDON-36). UI thread only. */
+    var lastOpened: String? = null
     val state: StateFlow<GridState> = _state.asStateFlow()
 
     /** The filter page's catalogs: every visible one, choices required or not (FR-120). */

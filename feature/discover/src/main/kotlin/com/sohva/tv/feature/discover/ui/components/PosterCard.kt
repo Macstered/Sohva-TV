@@ -103,10 +103,11 @@ private fun Poster(content: PosterContent, width: Dp) {
     val density = LocalDensity.current
     val w = with(density) { width.roundToPx() }
     val h = w * 3 / 2
-    var image by remember(content.poster) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(content.poster, w) { mutableStateOf(content.poster?.let { loader.peek(it, w, h, opaque = true) }) }
     var failed by remember(content.poster) { mutableStateOf(content.poster == null) }
     LaunchedEffect(content.poster, w) {
         val url = content.poster ?: return@LaunchedEffect
+        if (image != null) return@LaunchedEffect
         image = loader.load(url, w, h, opaque = true)
         failed = image == null
     }

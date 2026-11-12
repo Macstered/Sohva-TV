@@ -181,6 +181,27 @@ class DiscoverLandingTest {
         compose.waitUntil(5_000) { !exists("discover-landing") }
     }
 
+    /** Spec 50 ADDON-36: Back from a title returns to the grid with the card that opened it focused, not the Back button. */
+    @Test
+    fun backFromATitleReturnsToTheCardThatOpenedIt() {
+        openDiscover()
+        compose.waitUntil(10_000) { exists("discover-card-1-c1-m0") }
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        awaitFocus("discover-card-1-c1-m0")
+        press(KeyEvent.KEYCODE_DPAD_RIGHT, 20)
+        awaitFocus("discover-show-all-1")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("discover-grid-card-c1-m0") }
+        awaitFocus("discover-grid-back")
+        compose.onNodeWithTag("discover-grid-card-c1-m3").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("discover-grid-card-c1-m3")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("screen-discover-title") }
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("discover-grid") && !exists("screen-discover-title") }
+        awaitFocus("discover-grid-card-c1-m3")
+    }
+
     @Test
     fun theGridPagesUntilTheProviderRunsOut() {
         openDiscover()

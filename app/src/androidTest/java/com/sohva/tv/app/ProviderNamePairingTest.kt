@@ -119,6 +119,25 @@ class ProviderNamePairingTest {
         InstrumentationRegistry.getInstrumentation().sendStatus(0, android.os.Bundle().apply { putString("stream", "$message\n") })
     }
 
+    @Test
+    fun numericDatesMatchOnAndroidAndKeepScheduleParsingBounded() = runBlocking(graph.dispatchers.bulk) {
+        val labels = listOf("${day.monthValue}/${day.dayOfMonth}", "${day.dayOfMonth}/${day.monthValue}")
+        val retainedConfidence = ArrayList<Confidence>()
+        repeat(6) { sample ->
+            val matcher = StreamMatcher(listOf(game), emptyMap(), emptyMap())
+            val cpuStart = Debug.threadCpuTimeNanos()
+            val started = SystemClock.elapsedRealtime()
+            repeat(CANDIDATES) { i -> matcher.add(candidate(i, labels[i % labels.size], "3:45 PM EDT")) }
+            val results = matcher.finish().getValue(game.id)
+            val cpuMs = (Debug.threadCpuTimeNanos() - cpuStart) / 1_000_000
+            val wallMs = SystemClock.elapsedRealtime() - started
+            assertEquals(CHANNELS, results.size)
+            retainedConfidence += results.map { it.automatic }.distinct()
+            instrumentationStatus("Numeric date sample=$sample candidates=$CANDIDATES results=${results.size} cpuMs=$cpuMs wallMs=$wallMs confidence=${results.first().automatic}")
+        }
+        assertEquals(listOf(Confidence.AVAILABLE), retainedConfidence.distinct())
+    }
+
     private fun candidate(i: Int, date: String, clock: String): Candidate {
         val title = "NEXT | TAPPARA - KOOKOO | $date $clock (FI) | 8K EXCLUSIVE | FI: PLAY+ PPV ${i % CHANNELS}"
         return Candidate("channel-${i % CHANNELS}", title, "m3u-name:${i % CHANNELS}", title, null, null, 0, MatchSource.NAME)

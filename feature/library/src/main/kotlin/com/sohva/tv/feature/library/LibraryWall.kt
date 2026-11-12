@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tracing.trace
 import com.sohva.tv.core.data.vod.WallDestination
+import com.sohva.tv.core.data.vod.WallRoom
 import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.roundFill
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
@@ -63,7 +64,7 @@ internal fun LibraryWall(model: LibraryModel, grid: LazyGridState, rail: RailFoc
             IntSize(cellWidth.roundToPx().coerceAtMost(POSTER_MAX_W), (cellWidth * 1.5f).roundToPx().coerceAtMost(POSTER_MAX_H))
         }
         val window = wall.window
-        val message = wallMessage(wall, search)
+        val message = wallMessage(wall, search, model.room)
         if (message != null && window.items.isEmpty()) {
             Text(message, Modifier.align(Alignment.Center).testTag("library-message"), style = Sohva.typography.bodyLarge, color = Sohva.palette.textMuted)
             return@BoxWithConstraints
@@ -256,11 +257,14 @@ private fun EmptySlot() {
 }
 
 @Composable
-private fun wallMessage(wall: WallState, search: String): String? = when {
+private fun wallMessage(wall: WallState, search: String, room: WallRoom): String? = when {
     wall.destination == null -> null
     wall.failed -> stringResource(R.string.catalogue_v2_failed)
     !wall.current -> stringResource(R.string.catalogue_v2_loading)
     wall.window.items.isEmpty() && search.isNotBlank() -> stringResource(R.string.catalogue_no_results)
+    // The All row stands in for the groups when there are none: empty, it means nothing was imported.
+    wall.window.items.isEmpty() && wall.destination == WallDestination.AllGroups ->
+        stringResource(if (room == WallRoom.MOVIES) R.string.catalogue_nothing_imported_movies else R.string.catalogue_nothing_imported_series)
     wall.window.items.isEmpty() -> stringResource(R.string.catalogue_v2_empty_group)
     else -> null
 }

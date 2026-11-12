@@ -23,6 +23,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /** What a catalogue lookup settled (spec 41 META-FR-59). */
@@ -92,7 +94,7 @@ class MetadataService(
         val credential = TmdbCredential.of(config.credential) ?: return found
         val s = Lookups.sanitise(request.copy(type = MediaType.MOVIE), config.language) ?: return found
         return shared("details:${s.key}") {
-            val details = runCatching { tmdb.movie(found.externalId, s.language, credential) }.getOrNull() ?: return@shared found
+            val details = attempt { tmdb.movie(found.externalId, s.language, credential) } ?: return@shared found
             store(s, MetadataProvider.TMDB, details)
             details
         }
@@ -137,7 +139,7 @@ class MetadataService(
         val credential = TmdbCredential.of(config.credential) ?: return found
         val s = Lookups.sanitise(request.copy(type = MediaType.SERIES), config.language) ?: return found
         return shared("details:${s.key}") {
-            val details = runCatching { tmdb.series(found.externalId, s.language, credential) }.getOrNull() ?: return@shared found
+            val details = attempt { tmdb.series(found.externalId, s.language, credential) } ?: return@shared found
             store(s, MetadataProvider.TMDB, details)
             details
         }
@@ -164,7 +166,7 @@ class MetadataService(
         val q = query.trim().take(160)
         if (q.isEmpty()) return@withContext emptyList()
         for (provider in providers(config, type)) {
-            val found = runCatching { searchProvider(provider, type, q, config) }.getOrDefault(emptyList())
+            val found = attempt { searchProvider(provider, type, q, config) } ?: emptyList()
             if (found.isNotEmpty()) return@withContext found.take(12)
         }
         emptyList()
@@ -265,6 +267,7 @@ class MetadataService(
                 continue
             }
             val record = (found as Found.Record).record
+            ensureActive()
             store(s, provider, record)
             return@withContext CatalogueOutcome.Matched(record)
         }
@@ -298,7 +301,7 @@ class MetadataService(
         val record = results.first { it.externalId == picked.candidate.externalId && it.type == picked.candidate.type }
         if (provider != MetadataProvider.TMDB || lookup.type != MediaType.SERIES) return record
         val credential = TmdbCredential.of(config.credential) ?: return record
-        val details = runCatching { tmdb.series(record.externalId, language, credential) }.getOrNull() ?: return record
+        val details = attempt { tmdb.series(record.externalId, language, credential) } ?: return record
         val list = results.map { if (it.externalId == details.externalId) details else it }
         val again = Matcher.choose(lookup, list.map { it.candidate() }) ?: return null
         return list.first { it.externalId == again.candidate.externalId }
@@ -324,7 +327,7 @@ class MetadataService(
         val cacheKey = "by-id:${type.name}:${provider.id}:$id:${config.language.lowercase()}"
         val now = clock.wallMillis()
         dao.cached(cacheKey, provider.id)?.takeIf { it.expiresAt > now && it.genresVersion == Genre.VERSION }?.payload?.let(RecordCodec::decode)?.let { return it }
-        val record = runCatching {
+        val record = attempt {
             when (provider) {
                 MetadataProvider.TMDB -> {
                     val credential = TmdbCredential.of(config.credential) ?: return null
@@ -333,9 +336,23 @@ class MetadataService(
                 // TVmaze has no fetch by id here; the search result that was chosen stands.
                 MetadataProvider.TVMAZE -> null
             }
-        }.getOrNull() ?: return null
+        } ?: return null
+        currentCoroutineContext().ensureActive()
         dao.putCache(MetadataCacheEntity(cacheKey, provider.id, POSITIVE, record.externalId, RecordCodec.encode(record), Genre.VERSION, record.detailsLoaded, now, now + TMDB_MS))
         return record
+    }
+
+    /**
+     * A provider call whose failure means "no answer". A cancellation is never an answer: swallowed,
+     * it once let a series pick be stored before its second scoring (the enrichment is cancelled
+     * every time the viewer returns).
+     */
+    private inline fun <T> attempt(block: () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
 
     private fun store(s: SanitisedLookup, provider: MetadataProvider, record: MetadataRecord) {

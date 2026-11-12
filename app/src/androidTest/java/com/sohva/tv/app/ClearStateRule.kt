@@ -36,6 +36,8 @@ class ClearStateRule : ExternalResource() {
             app.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.getEmptyLocaleList()
         }
         runBlocking {
+            // Update announcements must not change a later test's first eligible Home.
+            com.sohva.tv.app.update.AppUpdateMemory(app, graph.dispatchers.io).setLastNotifiedBuild(0)
             graph.data.preferences.resetToDefaults()
             graph.data.sources.all().forEach { graph.sync.runner.remove(it.id) }
             // Favourites and recents outlive their channels by design; tests start without them.

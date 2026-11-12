@@ -113,6 +113,31 @@ class MetadataServiceTest {
      * Spec 40 VOD-FR-112, -113: a series record cached before the aired seasons and IMDb id were kept
      * is fetched again once when its page opens; after that the cache answers.
      */
+    /**
+     * The enrichment is cancelled whenever the viewer returns. A series pick is scored a second
+     * time with its details; a cancellation during that request must not store the first pick,
+     * which the second scoring could still have rejected, for the cache's 30 days.
+     */
+    @Test
+    fun aLookupCancelledDuringTheDetailsRequestStoresNothing() = runBlocking {
+        val search = """{"results":[{"id":1399,"name":"Fictional Saga","first_air_date":"2011-04-17","popularity":90}]}"""
+        val detailsAsked = java.util.concurrent.CountDownLatch(1)
+        answer = { r ->
+            if (r.url.encodedPath.endsWith("/tv/1399")) {
+                detailsAsked.countDown()
+                MockResponse.Builder().headersDelay(5, java.util.concurrent.TimeUnit.SECONDS).body("{}").build()
+            } else {
+                json(search)
+            }
+        }
+        val lookup = CoroutineScope(SupervisorJob() + Dispatchers.IO).async { service.catalogue(MetadataRequest(MediaType.SERIES, "Fictional Saga (2011)")) }
+        assertTrue("the details request never started", detailsAsked.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        lookup.cancel()
+        lookup.join()
+        assertTrue(lookup.isCancelled)
+        assertEquals("a cancelled lookup wrote to the cache", 0, db.metadata().cacheCount())
+    }
+
     @Test
     fun anOlderSeriesRecordGetsItsSeasonsAndImdbIdOnce() = runBlocking {
         val search = """{"results":[{"id":1399,"name":"Fictional Saga","first_air_date":"2011-04-17","popularity":90}]}"""

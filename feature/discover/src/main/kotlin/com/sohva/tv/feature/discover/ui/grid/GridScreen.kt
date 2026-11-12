@@ -70,7 +70,7 @@ fun GridScreen(model: GridModel, backLabel: Int, back: () -> Unit, open: (owner:
     val catalogs by model.catalogs.collectAsStateWithLifecycle()
     var chooser by remember { mutableStateOf<OpenChooser?>(null) }
     val backButton = remember { FocusRequester() }
-    val firstCard = remember { FocusRequester() }
+    val openedCard = remember { FocusRequester() }
     // Back first closes an open form over loaded titles (§3 table).
     BackHandler { if (s.formOpen && s.titles.isNotEmpty()) model.toggleForm() else back() }
     Column(Modifier.fillMaxSize().padding(28.dp).testTag(if (model.filterPage) "discover-filter" else "discover-grid"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,10 +97,13 @@ fun GridScreen(model: GridModel, backLabel: Int, back: () -> Unit, open: (owner:
         }
         if (s.formOpen) TextForm(s.textExtras, s.values, model::applyText)
         statusLine(s)?.let { Text(it, Modifier.testTag("discover-grid-status"), style = Sohva.typography.label, color = Sohva.palette.textMuted) }
-        Titles(model, s, firstCard, open)
+        Titles(model, s, openedCard, open)
     }
     chooser?.let { c -> ChooserDialog(c.title, c.options, c.selected, c.choose, { chooser = null }) }
-    LaunchedEffect(Unit) { backButton.requestFocusWhenAttached() }
+    // Back from a title page: the card that opened it; a first visit starts on the Back button.
+    LaunchedEffect(Unit) {
+        if (model.lastOpened == null || !openedCard.requestFocusWhenAttached()) backButton.requestFocusWhenAttached()
+    }
 }
 
 @Composable
@@ -171,7 +174,7 @@ private fun TextForm(extras: List<CatalogExtra>, values: Map<String, String>, ap
 }
 
 @Composable
-private fun Titles(model: GridModel, s: GridState, firstCard: FocusRequester, open: (String, MetaPreview) -> Unit) {
+private fun Titles(model: GridModel, s: GridState, openedCard: FocusRequester, open: (String, MetaPreview) -> Unit) {
     val grid = rememberLazyGridState()
     val owner = s.entry?.installation?.id ?: return
     val marks = rememberMarks(remember(s.titles) { s.titles.mapNotNull { movieMarkKey(it.type, it.id) } })
@@ -179,11 +182,15 @@ private fun Titles(model: GridModel, s: GridState, firstCard: FocusRequester, op
         GridCells.Adaptive(132.dp), Modifier.fillMaxWidth().testTag("discover-grid-titles"), grid, PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp), horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        itemsIndexed(s.titles, key = { _, m -> "${m.type}:${m.id}" }) { i, m ->
+        itemsIndexed(s.titles, key = { _, m -> "${m.type}:${m.id}" }) { _, m ->
             val caption = listOfNotNull(m.releaseInfo, m.imdbRating).joinToString(" · ")
             PosterCard(
-                PosterContent(m.name, m.poster, caption = caption).marked(movieMarkKey(m.type, m.id)?.let(marks::get)), 132.dp, { open(owner, m) },
-                (if (i == 0) Modifier.focusRequester(firstCard) else Modifier).testTag("discover-grid-card-${m.id}"),
+                PosterContent(m.name, m.poster, caption = caption).marked(movieMarkKey(m.type, m.id)?.let(marks::get)), 132.dp,
+                {
+                    model.lastOpened = "${m.type}:${m.id}"
+                    open(owner, m)
+                },
+                (if ("${m.type}:${m.id}" == model.lastOpened) Modifier.focusRequester(openedCard) else Modifier).testTag("discover-grid-card-${m.id}"),
             )
         }
         // No key: a keyed footer would stay the scroll anchor and push the first titles out of view as they arrive.

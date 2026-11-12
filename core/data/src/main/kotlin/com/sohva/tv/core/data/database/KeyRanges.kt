@@ -21,7 +21,7 @@ data class KeyRange(val from: String, val until: String) {
 }
 
 /** A row's id, key and stored content hash: what the diff import compares. */
-data class KeyedHash(val id: Long, val key: String, val hash: Long)
+data class KeyedHash(val id: Long, val key: String, val hash: Long, val position: Int)
 
 /** A row's id and key: what the sweep of unseen rows walks. */
 data class KeyedId(val id: Long, val key: String)

@@ -32,10 +32,10 @@ spec's section 10.
 | [60](../specs/60-sohva-sport.md) | Sohva Sport | 57 | M8 |
 | [70](../specs/70-settings.md) | Settings | 40 | M7 |
 | [71](../specs/71-backup-restore.md) | Encrypted backup and restore | 15 | M7 |
-| [72](../specs/72-updates-about-diagnostics.md) | Updates, About and diagnostics | 29 | M7 |
+| [72](../specs/72-updates-about-diagnostics.md) | Updates, About and diagnostics | 30 | M7 |
 | [73](../specs/73-security-privacy.md) | Security and privacy | 29 | M1 |
 | [74](../specs/74-localization.md) | Localisation | 13 | M7 |
-| | **Total** | **758** | |
+| | **Total** | **759** | |
 
 ## App shell and navigation
 
@@ -50,7 +50,7 @@ Spec: [specs/01-app-shell-navigation.md](../specs/01-app-shell-navigation.md) ·
 - [x] **SHELL-07** Start screen setting: Home (default), Programme guide, or Last channel.
 - [x] **SHELL-08** Last channel start opens the guide on that channel and plays it; a PIN-locked channel asks for the PIN first; a channel that no longer exists falls back to the guide.
 - [x] **SHELL-09** Who is watching at start when the household has more than one profile and the question is switched on (details in [Profiles](../specs/04-profiles-parental.md)).
-- [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app.
+- [x] **SHELL-10** A destination stack: every screen returns with Back to the screen it was opened from; Back on Home leaves the app. Home actions use the visible stack after background activity recreation; playback and management restoration policies still apply (2 October 2026 regression).
 - [x] **SHELL-11** Live playback started from the guide, a Home channel card, a search result or a dialled number returns with Back to the guide, focused on the channel just watched.
 - [x] **SHELL-12** Live playback started from a Sohva Sport match card or a reminder returns to where it started; catch-up playback always returns to the previous screen.
 - [x] **SHELL-13** Changing channel inside the player replaces the player, so Back never steps back through the channels zapped.
@@ -98,7 +98,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-11** The same film from several providers, or from the library and Discover, shows once (matched by TMDB/IMDb ids); the copy actually watched locally stands. *(library part done in M5; Discover part in M9.)*
 - [x] **HOME-12** At most 12 cards, newest first.
 - [x] **HOME-13** Landscape card: artwork (or initials), progress bar, title, "episode label or year · N min left".
-- [x] **HOME-14** OK on a library card resumes playback at the saved position, with the title's library page and details page placed underneath the player.
+- [x] **HOME-14** OK on a library card resumes playback at the saved position, with the title's library page and details page placed underneath the player. Continue Watching film opening and Back pass after background activity recreation (2 October 2026 regression).
 - [x] **HOME-15** OK on a Discover card opens that Discover title page.
 - [x] **HOME-16** Hold OK on a library card: actions dialog with Resume, Start from beginning, Mark as watched, Remove from Continue watching.
 - [x] **HOME-17** Row hint "Browse the rows with the D-pad" beside the row title.
@@ -117,7 +117,7 @@ Spec: [specs/02-home.md](../specs/02-home.md) · Milestone: M5 · 36 items
 - [x] **HOME-24** Today's sport: up to 6 match cards (status or kick-off, crests, score, competition) with the day's total "N matches" as the row hint.
 - [x] **HOME-25** OK on a match card opens Sohva Sport with that match's card open.
 - [x] **HOME-26** Recently watched channels: up to 6 channel cards (logo, name, current programme, programme progress), most recent first.
-- [x] **HOME-27** OK on a channel card plays it live; Back from the player goes to the guide on that channel.
+- [x] **HOME-27** OK on a channel card plays it live; Back from the player goes to the guide on that channel. Focused channel opening passes after ordinary background return and repeated activity recreation (2 October 2026 regression).
 
 **Hero**
 
@@ -425,6 +425,8 @@ Spec: [specs/22-catchup-and-reminders.md](../specs/22-catchup-and-reminders.md) 
 Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 
 - [x] **PLAY-01** Live channel playback full screen, opened from the guide, Home, Search, Sohva Sport, a reminder or the start screen.
+  Entry focus reaches the video even if the initial info box is visible before its first frame;
+  the pending request respects a control or overlay already chosen by the viewer (4 October 2026).
 - [x] **PLAY-02** Catch-up playback of a past programme ("Watch from start") with transport controls.
 - [x] **PLAY-03** Film and episode (VOD) playback from a resume position.
 - [x] **PLAY-04** Black video ground and letterbox bars in every colour theme.
@@ -435,6 +437,9 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-09** Transport controls for catch-up and VOD: title, Back, picture, audio, subtitles, progress bar, position / duration, rewind, play/pause, forward (buttons name the skip step).
 - [x] **PLAY-10** Transport controls hide after 5 s idle unless focused or a track picker is open.
 - [x] **PLAY-11** Channel list down the right edge: the playing channel's group, numbers (setting), logos, what is on now.
+  Delayed list/channel lookups cannot override a newer choice; selecting the playing channel
+  cancels a pending change without reopening the stream (4 October 2026).
+  Resolve and commit its group position with the channel so later CH+/CH− uses that position.
 - [x] **PLAY-12** Group list beside the channel list with channel counts; browsing another group is temporary until a channel is tuned.
 - [x] **PLAY-13** Channel up / down within the playing channel's group, wrapping at the ends.
 - [x] **PLAY-14** Switch to the previous channel (zap-back), and back again.
@@ -450,7 +455,7 @@ Spec: [specs/30-player.md](../specs/30-player.md) · Milestone: M2 · 47 items
 - [x] **PLAY-24** Automatic reconnection (Standard: 3 tries; Persistent: 8 tries) with a banner naming the cause and the attempt, and a Reconnect button.
 - [x] **PLAY-25** Failure causes in plain words (rebuild improvement over beta 23's code-plus-exception text; see PLAY-FR-93).
 - [x] **PLAY-26** Playback buffer profile: Media3 default, Low latency, Stability; applies to the next playback.
-- [x] **PLAY-27** Subtitle size, colour and background, each "Follow the TV" by default.
+- [x] **PLAY-27** Subtitle size, colour and background, each "Follow the TV" by default. White text with Background: None has a dark shadow for contrast on white pictures (1 October 2026).
 - [x] **PLAY-28** Match the display refresh rate to the stream, and restore it afterwards.
 - [x] **PLAY-29** Keep watching in a corner (picture in picture) on Home, with a Close button.
 - [x] **PLAY-30** Open the live stream in another player app on the TV.
@@ -904,10 +909,10 @@ Spec: [specs/60-sohva-sport.md](../specs/60-sohva-sport.md) · Milestone: M8 · 
 - [x] **SPORT-40** Candidates from guide programmes within 120 minutes of kick-off.
 - [x] **SPORT-41** Candidates from M3U channel names that name both teams.
 - [x] **SPORT-42** Channel-name clock times with explicit zones (CET, CEST, EET, EEST, UTC/GMT and offsets), AM/PM, and dates (ISO, month names, `18/9`). Provider clocks rank name results without downgrading a compatible date and both teams (owner correction, 30 September 2026).
-- [x] **SPORT-43** Team aliases (sport-scoped, bidirectional club groups and a stored alias table). Build 125 covers the reported TPS, HIFK, HPK, Sport and ManU names, selected international aliases and ambiguous-opponent regressions.
-- [x] **SPORT-44** Confidence Available / Possible / Rejected, with the ordering rules.
+- [x] **SPORT-43** Team aliases (sport-scoped, bidirectional club groups and a stored alias table). Build 125 covers the reported TPS, HIFK, HPK, Sport and ManU names. Private build 127 adds 43 reviewed provider-bound identities, translated national names and category guards. Parser, namespace, ambiguous-opponent, qualified-name and packaged-asset fixtures pass. Shield/Elisa acceptance of the dictionary is pending.
+- [x] **SPORT-44** Confidence Available / Possible / Rejected, with the ordering rules. The 2 October correction accepts either fixture-compatible numeric date order and literal EDT; all five reported photo fixtures, wrong-date/year/opponent controls and zoned midnight cases are regression-tested.
 - [x] **SPORT-45** Country/language priority reorders streams within one confidence level.
-- [x] **SPORT-46** Pairing results cached across restarts, recomputed when channels, guide or rules change. Build 125 invalidates older automatic results for the expanded aliases; saved confirm/reject choices stay intact.
+- [x] **SPORT-46** Pairing results cached across restarts, recomputed when channels, guide or rules change. Private build 127 uses cache format 4 with provider references, dictionary revision and competition context. Restart, corrected identity, added context and changed-dictionary fixtures pass; score-only changes stay cheap and saved confirm/reject choices remain intact. Follow-up matching rules 5 invalidate build 127's numeric-date results without changing the binary format or saved choices; its old-cache regression is proven red then green. Hardware acceptance is pending.
 - [x] **SPORT-47** Hidden channels, disabled sources and hidden groups are never offered.
 
 **Favourites and reminders**
@@ -1007,7 +1012,7 @@ Spec: [specs/71-backup-restore.md](../specs/71-backup-restore.md) · Milestone: 
 
 ## Updates, About and diagnostics
 
-Spec: [specs/72-updates-about-diagnostics.md](../specs/72-updates-about-diagnostics.md) · Milestone: M7 · 29 items
+Spec: [specs/72-updates-about-diagnostics.md](../specs/72-updates-about-diagnostics.md) · Milestone: M7 · 30 items
 
 **Updates**
 
@@ -1023,6 +1028,7 @@ Spec: [specs/72-updates-about-diagnostics.md](../specs/72-updates-about-diagnost
 - [x] **ABOUT-10** "What's new in X" shows the offered release's notes, otherwise the installed build's own release notes, remembered for offline use (at most 4,000 characters).
 - [x] **ABOUT-11** Debug, demo and Lab builds never check, download or install; About says public updates are disabled (Lab also shows its safety notice as the notes).
 - [x] **ABOUT-12** Help line: downloads are verified; playlists and settings are kept.
+- [x] **ABOUT-30** Owner addition: one passive Home update notice per newer published Android build, remembered across restarts. Defer during playback, PiP and modals; preserve focus and Back. Reuse the existing automatic check (2 October 2026).
 
 **About and legal**
 

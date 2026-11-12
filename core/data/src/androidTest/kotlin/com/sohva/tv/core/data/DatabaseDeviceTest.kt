@@ -251,6 +251,26 @@ class DatabaseDeviceTest {
     }
 
     @Test
+    fun migratesFrom12To13KeepingCachedNamesAndSavedStreamChoices() {
+        helper.createDatabase(name, 12).use { db ->
+            db.execSQL("INSERT INTO sport_event (feed_key,event_id,sport,competition_id,competition,competition_logo,home,home_logo,away,away_logo,start_ms,start_minute,status,score,score_detail,minute) " +
+                "VALUES ('fixture','fixture:1','FOOTBALL','39','Fixture Cup',NULL,'Northbridge',NULL,'Harbor',NULL,1,0,'SCHEDULED',NULL,NULL,NULL)")
+            db.execSQL("INSERT INTO event_channel_decision VALUES ('fixture:1','fixture:channel','confirmed',1)")
+            db.execSQL("INSERT INTO team_alias VALUES ('FOOTBALL','northbridge','wolves')")
+        }
+        helper.runMigrationsAndValidate(name, 13, true).use { db ->
+            db.query("SELECT home,home_ref_provider,away_ref_externalId,competition_ref_externalId FROM sport_event").use {
+                assertEquals(1, it.count)
+                it.moveToFirst()
+                assertEquals("Northbridge", it.getString(0))
+                assertEquals(true, it.isNull(1) && it.isNull(2) && it.isNull(3))
+            }
+            db.query("SELECT decision FROM event_channel_decision").use { it.moveToFirst(); assertEquals("confirmed", it.getString(0)) }
+            db.query("SELECT alias FROM team_alias").use { it.moveToFirst(); assertEquals("wolves", it.getString(0)) }
+        }
+    }
+
+    @Test
     fun exportedSchemaOfTheCurrentVersionMatchesTheCode() {
         helper.createDatabase(name, SohvaDatabase.VERSION).close()
         // Opening with Room validates the identity hash against the exported schema.

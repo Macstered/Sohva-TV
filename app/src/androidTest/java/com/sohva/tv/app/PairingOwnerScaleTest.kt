@@ -12,10 +12,15 @@ import com.sohva.tv.core.data.database.ProgrammeEntity
 import com.sohva.tv.core.data.database.SourceEntity
 import com.sohva.tv.core.data.database.SourceStatusEntity
 import com.sohva.tv.core.model.sport.EventStatus
+import com.sohva.tv.core.model.sport.ProviderReference
+import com.sohva.tv.core.model.sport.ReferenceKind
 import com.sohva.tv.core.model.sport.Side
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.SportType
 import com.sohva.tv.core.model.sport.pairing.Confidence
+import com.sohva.tv.core.model.sport.pairing.DictionaryNames
+import com.sohva.tv.feature.sport.dictionary.AssetPairingDictionary
+import com.sohva.tv.feature.sport.dictionary.DictionaryAsset
 import com.sohva.tv.core.model.sport.pairing.TeamVariants
 import com.sohva.tv.feature.sport.pairing.PairingCache
 import com.sohva.tv.feature.sport.pairing.PairingScan
@@ -43,6 +48,7 @@ import org.junit.runner.RunWith
 class PairingOwnerScaleTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val asked = InstrumentationRegistry.getArguments().getString("ownerScale") == "true"
+    private val mode = InstrumentationRegistry.getArguments().getString("dictionaryMode") ?: "baseline"
     private val graph get() = (instrumentation.targetContext.applicationContext as SohvaApplication).graph
     private val now = System.currentTimeMillis()
     private val kickOff = (now / HOUR + 2) * HOUR
@@ -50,8 +56,11 @@ class PairingOwnerScaleTest {
     /** Thirty games two hours from now, fifteen minutes apart; channel names and titles name a few of them. */
     private val games = (0 until GAMES).map { g ->
         SportEvent(
-            "api-sports:football:$g", SportType.FOOTBALL, "39", "Premier League", null, Side("Northbridge $g", null), Side("Harbor $g", null),
+            "api-sports:football:$g", SportType.FOOTBALL, "39", "Fixture Cup", null,
+            Side("Northbridge $g", null, ProviderReference("fixture-provider", "football", ReferenceKind.TEAM, "${g * 2 + 1}")),
+            Side("Harbor $g", null, ProviderReference("fixture-provider", "football", ReferenceKind.TEAM, "${g * 2 + 2}")),
             kickOff + g * 15 * MINUTE, 20 * 60, EventStatus.SCHEDULED, null, null, null,
+            ProviderReference("fixture-provider", "football", ReferenceKind.COMPETITION, "990001"),
         )
     }
 
@@ -121,6 +130,7 @@ class PairingOwnerScaleTest {
     @Test
     fun pairingAnOwnerScaleGuideStaysSmallAndCancels() {
         assumeTrue(asked)
+        assertTrue(mode in setOf("baseline", "aliases", "competition"))
         val aliases = TeamVariants.aliases(emptyMap())
         val heartbeat = Heartbeat().also { it.start() }
         Runtime.getRuntime().gc()
@@ -132,9 +142,25 @@ class PairingOwnerScaleTest {
         val scan = PairingScan(dao)
         val started = SystemClock.elapsedRealtime()
         var cpuMs = 0L
+        var lookupCpuMs = 0L
+        var lookupWallMs = 0L
+        var names = DictionaryNames.NONE
+        val resolver = AssetPairingDictionary(DictionaryAsset(
+            { name -> instrumentation.context.assets.open("testDictionary/$name") },
+            { File(instrumentation.targetContext.cacheDir, "owner-dictionary") },
+        ))
         val results = runBlocking(graph.dispatchers.bulk) {
+            val lookupStart = Debug.threadCpuTimeNanos()
+            val lookupWall = SystemClock.elapsedRealtime()
+            if (mode != "baseline") {
+                names = resolver.resolve(games)
+                assertEquals(GAMES, names.events.size)
+                if (mode == "aliases") names = names.copy(competitions = emptyMap())
+            }
+            lookupCpuMs = (Debug.threadCpuTimeNanos() - lookupStart) / 1_000_000
+            lookupWallMs = SystemClock.elapsedRealtime() - lookupWall
             val cpuStart = Debug.threadCpuTimeNanos()
-            scan.run(games, aliases, emptyMap()).also { cpuMs = (Debug.threadCpuTimeNanos() - cpuStart) / 1_000_000 }
+            scan.run(games, aliases, emptyMap(), names).also { cpuMs = (Debug.threadCpuTimeNanos() - cpuStart) / 1_000_000 }
         }
         val scanMs = SystemClock.elapsedRealtime() - started
         heap.finish()
@@ -147,7 +173,10 @@ class PairingOwnerScaleTest {
                 "peak ${heap.max() / KB} KB (+${(heap.max() - baseline) / KB} KB); main-thread longest gap ${heartbeat.longestGapMs()} ms; bulk CPU $cpuMs ms",
         )
         instrumentation.sendStatus(0, android.os.Bundle().apply {
-            putString("stream", "Owner-scale candidates=${scan.lastStats.candidates} available=$available wallMs=$scanMs bulkCpuMs=$cpuMs " +
+            putString("stream", "Owner-scale mode=$mode candidates=${scan.lastStats.candidates} available=$available wallMs=$scanMs bulkCpuMs=$cpuMs " +
+                "lookupCpuMs=$lookupCpuMs lookupWallMs=$lookupWallMs totalCpuMs=${cpuMs + lookupCpuMs} dictionaryBytes=${resolver.lastStats.accountedBytes} " +
+                "indexCpuMs=${scan.lastStats.indexCpuNanos / 1_000_000} " +
+                "aliasPages=${resolver.lastStats.aliasPages} guardPages=${resolver.lastStats.guardPages} " +
                 "heapPeakKiB=${heap.max() / KB} mainGapMs=${heartbeat.longestGapMs()} channelPages=${dao.channelPages.get()} programmePages=${dao.programmePages.get()}\n")
         })
         assertEquals(GAMES, results.size)
@@ -159,7 +188,7 @@ class PairingOwnerScaleTest {
         // Cancellation: once cancelled, at most the page in flight finishes.
         val cancelled = Counting(graph.data.pairingDao)
         runBlocking(graph.dispatchers.bulk) {
-            val job = async { PairingScan(cancelled).run(games, aliases, emptyMap()) }
+            val job = async { PairingScan(cancelled).run(games, aliases, emptyMap(), names) }
             while (cancelled.channelPages.get() < 20) kotlinx.coroutines.delay(5)
             job.cancel()
             val atCancel = cancelled.channelPages.get() + cancelled.programmePages.get()
@@ -171,8 +200,8 @@ class PairingOwnerScaleTest {
 
         // A second run for the same generation is a cache hit: no channel query at all.
         val cache = PairingCache(File(instrumentation.targetContext.cacheDir, "pairing-owner-scale.bin"))
-        cache.write("generation", games, results, now)
-        val hit = cache.read("generation", games, now)
+        cache.write("generation:${names.revision}", games, results, now, names.events)
+        val hit = cache.read("generation:${names.revision}", games, now, names.events)
         assertEquals(results.mapValues { (_, l) -> l.map { it.withDecision(null) } }, hit)
         cache.clear()
     }

@@ -24,6 +24,7 @@ import com.sohva.tv.ui.design.components.SettingsGroup
 import com.sohva.tv.ui.design.components.SettingsOverline
 import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.TvActionButton
+import com.sohva.tv.ui.design.components.TvConfirmButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvListRow
 import com.sohva.tv.ui.design.components.moveKeys
@@ -74,7 +75,7 @@ internal fun HomePane(home: HomeLayoutSettings, start: FocusRequester) {
                     TvIcons.StarOutline, SurfaceState(selected = s.mode == HomeLayoutMode.ADD), compact = true,
                 )
             }
-            TvActionButton(stringResource(R.string.home_layout_reset), home::reset, Modifier.testTag("settings-home-reset"), TvIcons.Refresh, compact = true)
+            TvConfirmButton(stringResource(R.string.home_layout_reset), home::reset, Modifier.testTag("settings-home-reset"), TvIcons.Refresh, compact = true)
         }
         Text(
             stringResource(

@@ -274,6 +274,65 @@ class SettingsModelTest {
         assertEquals("a changed scope syncs (plan/09 M1)", 2, services.synced.size)
     }
 
+    /** "Saved. Syncing…" used to stand until the viewer left: the line ends with what the import brought. */
+    @Test
+    fun afterSavingTheStatusLineEndsWithTheImportResult() {
+        val page = newM3u()
+        model.save()
+        assertEquals(SettingsMessage.Text(R.string.source_saved_syncing), status)
+        services.health.value = listOf(SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.RUNNING, null, 0, 0))
+        assertEquals(SettingsMessage.Text(R.string.source_saved_syncing), status)
+        services.health.value = listOf(SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.SUCCESS, null, 12, 0))
+        assertEquals(SettingsMessage.Count(R.plurals.source_imported_channels, 12), status)
+    }
+
+    @Test
+    fun aFailedFirstImportIsSaidInTheStatusLine() {
+        val page = newM3u()
+        model.save()
+        services.health.value = listOf(SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.FAILED, AppError.PlaylistEmpty, 0, 1))
+        assertEquals(SettingsMessage.Failure(AppError.PlaylistEmpty), status)
+    }
+
+    @Test
+    fun anEarlierResultIsNotTakenForTheNewSyncs() {
+        val page = newM3u()
+        model.save()
+        val earlier = SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.SUCCESS, null, 5, 0)
+        services.health.value = listOf(earlier)
+        assertEquals(SettingsMessage.Count(R.plurals.source_imported_channels, 5), status)
+
+        model.edit { it.copy(m3uUrl = "http://provider.example/other.m3u") }
+        model.save()
+        assertEquals("the earlier success is not this sync's result", SettingsMessage.Text(R.string.source_saved_syncing), status)
+        services.health.value = listOf(earlier.copy(state = RefreshState.RUNNING))
+        services.health.value = listOf(earlier)
+        assertEquals("the same count again, after it was seen running", SettingsMessage.Count(R.plurals.source_imported_channels, 5), status)
+    }
+
+    @Test
+    fun aSourceWithoutLiveTvReportsItsFilmsAndSeries() {
+        model.addSource(SourceType.M3U)
+        model.edit { it.copy(m3uUrl = "http://provider.example/vod.m3u", scope = ImportScope.VOD) }
+        val page = state.page!!
+        services.films = 7 to 2
+        model.save()
+        services.health.value = listOf(SourceHealth(page.id, RefreshKind.CATALOGUE, RefreshState.SUCCESS, null, 9, 0))
+        assertEquals(SettingsMessage.Catalogue(7, 2), status)
+    }
+
+    @Test
+    fun aLaterMessageIsNotOverwrittenByTheSyncsResult() {
+        val page = newM3u()
+        model.save()
+        services.playlistResult = SourceChecks.Result.Playlist(42, more = false)
+        model.test()
+        val tested = status
+        assertTrue(tested != SettingsMessage.Text(R.string.source_saved_syncing))
+        services.health.value = listOf(SourceHealth(page.id, RefreshKind.PLAYLIST, RefreshState.SUCCESS, null, 12, 0))
+        assertEquals(tested, status)
+    }
+
     @Test
     fun anInvalidPageSavesAndSyncsNothing() {
         newM3u(url = "provider.example/list.m3u")
@@ -366,6 +425,64 @@ class SettingsModelTest {
         assertNull(state.qr)
     }
 
+    /** Typing an address with a remote is the most expensive step in the app: leaving the form must not lose it. */
+    @Test
+    fun anUnsavedNewSourceIsKeptWhenThePageIsLeftAndComesBackWithAddSource() {
+        val typed = newM3u()
+        model.select(SettingsSection.SOURCES)
+        assertNull(state.page)
+        assertEquals(SettingsMessage.Text(R.string.source_draft_kept), status)
+        model.addSource(SourceType.M3U)
+        assertEquals(typed, state.page)
+        assertEquals(SettingsMessage.Text(R.string.source_new_m3u), status)
+
+        // Back and "All playlists" keep it too; another type starts empty and leaves it parked.
+        model.closePage()
+        assertEquals(SettingsMessage.Text(R.string.source_draft_kept), status)
+        model.addSource(SourceType.XTREAM)
+        assertEquals("", state.page!!.server)
+        model.closePage()
+        model.addSource(SourceType.M3U)
+        assertEquals(typed, state.page)
+
+        // Saved: nothing is parked any more, and the next new page is empty.
+        model.save()
+        model.closePage()
+        model.addSource(SourceType.M3U)
+        assertEquals("", state.page!!.m3uUrl)
+        assertEquals("IPTV 2", state.page!!.name)
+    }
+
+    @Test
+    fun unsavedEditsOfASavedSourceComeBackWhenItIsOpenedAgain() {
+        val page = newM3u()
+        model.save()
+        model.edit { it.copy(m3uUrl = "http://provider.example/other.m3u") }
+        model.closePage()
+        assertEquals(SettingsMessage.Text(R.string.source_draft_kept), status)
+        assertEquals("the stored source is untouched", "http://provider.example/list.m3u", services.saved.getValue(page.id).secrets.m3uUrl)
+        model.openSource(page.id)
+        assertEquals("http://provider.example/other.m3u", state.page!!.m3uUrl)
+        // The page still knows what is stored: saving the changed address syncs.
+        model.save()
+        assertEquals(2, services.synced.size)
+        assertEquals("http://provider.example/other.m3u", services.saved.getValue(page.id).secrets.m3uUrl)
+    }
+
+    @Test
+    fun aPageWithNothingTypedOrChangedIsNotKept() {
+        model.addSource(SourceType.M3U)
+        model.closePage()
+        assertEquals(SettingsMessage.Text(R.string.source_new_m3u), status)
+        val page = newM3u()
+        model.save()
+        model.closePage()
+        assertEquals(SettingsMessage.Text(R.string.source_saved_syncing), status)
+        model.openSource(page.id)
+        model.closePage()
+        assertTrue(status != SettingsMessage.Text(R.string.source_draft_kept))
+    }
+
     @Test
     fun choosingARailSectionClosesThePageAndTheIntervalReportsInGeneral() {
         newM3u()
@@ -375,6 +492,6 @@ class SettingsModelTest {
         model.setRefreshInterval(RefreshInterval.FOUR_HOURS)
         assertEquals(RefreshInterval.FOUR_HOURS, state.refreshInterval)
         assertEquals(SettingsMessage.IntervalSaved(RefreshInterval.FOUR_HOURS), state.messages[SettingsSection.GENERAL])
-        assertEquals("Playlists keeps its own line", SettingsMessage.Text(R.string.source_new_m3u), state.messages[SettingsSection.SOURCES])
+        assertEquals("Playlists keeps its own line", SettingsMessage.Text(R.string.source_draft_kept), state.messages[SettingsSection.SOURCES])
     }
 }

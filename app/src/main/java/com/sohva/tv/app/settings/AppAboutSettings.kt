@@ -17,7 +17,15 @@ import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.update.UpdateState
 import com.sohva.tv.core.net.phone.QrCodes
 import com.sohva.tv.feature.settings.AboutSettingsServices
+import com.sohva.tv.core.net.phone.LocalAddress
+import com.sohva.tv.core.net.phone.PhoneMode
+import com.sohva.tv.core.net.phone.PhoneState
 import com.sohva.tv.feature.settings.DiagnosticsOutcome
+import com.sohva.tv.feature.settings.DiagnosticsPhone
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import java.io.IOException
 import java.lang.ref.WeakReference
 import kotlinx.coroutines.CancellationException
@@ -79,6 +87,40 @@ class AppAboutSettings(private val graph: AppGraph, activity: Context?, private 
     }
 
     override suspend fun qrCode(url: String): QrMatrix? = withContext(graph.dispatchers.io) { QrCodes.of(url) }
+
+    override fun filePickerAvailable(): Boolean = graph.filePickerOverride ?: true
+
+    override suspend fun saveDiagnosticsToDownloads(name: String): DiagnosticsOutcome = try {
+        if (DiagnosticsFile(graph, context).saveToDownloads(name)) DiagnosticsOutcome.SavedToDownloads(name) else DiagnosticsOutcome.NoPicker
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: IOException) {
+        DiagnosticsOutcome.OpenFailed
+    } catch (_: SecurityException) {
+        DiagnosticsOutcome.OpenFailed
+    } catch (e: Exception) {
+        graph.diagnostics.error("diagnostics", "save to Download failed", e)
+        DiagnosticsOutcome.Failed(Redactor.redact(e.message))
+    }
+
+    // ---- The phone page in diagnostics mode (rebuild) ----
+
+    override val diagnosticsPhone: Flow<DiagnosticsPhone> = graph.phone.server.state.map { state ->
+        when (state) {
+            PhoneState.NoNetwork -> DiagnosticsPhone.NoNetwork
+            is PhoneState.Running -> DiagnosticsPhone.Open(state.url, withContext(graph.dispatchers.io) { QrCodes.of(state.url) }, state.received > 0)
+            PhoneState.Stopped -> DiagnosticsPhone.Closed
+        }
+    }.distinctUntilChanged()
+
+    override fun openDiagnosticsPhone(name: String) {
+        val file = DiagnosticsFile(graph, context)
+        graph.appScope.launch(graph.dispatchers.io) { graph.phone.server.start(LocalAddress.current(), PhoneMode.Diagnostics(file.render(), name)) }
+    }
+
+    override fun closeDiagnosticsPhone() {
+        graph.appScope.launch(graph.dispatchers.io) { graph.phone.server.stop() }
+    }
 
     override suspend fun saveDiagnostics(target: Uri): DiagnosticsOutcome = try {
         DiagnosticsFile(graph, context).write(target)

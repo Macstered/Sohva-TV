@@ -43,6 +43,8 @@ data class StreamMatch(
     val score: Int,
     val automatic: Confidence,
     val decision: Decision? = null,
+    /** Supporting context only: -1 conflict, 0 absent/ambiguous, 1 agreement. */
+    val competitionEvidence: Int = 0,
 ) {
     val confidence: Confidence
         get() = when (decision) {
@@ -57,7 +59,8 @@ data class StreamMatch(
     companion object {
         /** SPORT-FR-117 result order: confidence, score, closeness, name, key. */
         val ORDER: Comparator<StreamMatch> = compareBy<StreamMatch> { it.confidence.ordinal }
-            .thenByDescending { it.score }.thenBy { abs(it.offsetMinutes) }.thenBy { it.channelName }.thenBy { it.channelKey }
+            .thenByDescending { it.score }.thenBy { abs(it.offsetMinutes) }.thenByDescending { it.competitionEvidence }
+            .thenBy { it.channelName }.thenBy { it.channelKey }
     }
 }
 
@@ -67,12 +70,19 @@ data class StreamMatch(
  * one tokenisation and a few lookups however many games there are. [add] keeps only the best
  * candidate per game and channel; nothing else of a candidate outlives the call.
  */
-class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>, private val decisions: Map<Pair<String, String>, Decision>) {
+class StreamMatcher(
+    events: List<SportEvent>,
+    aliases: Map<String, Set<String>>,
+    private val decisions: Map<Pair<String, String>, Decision>,
+    private val names: DictionaryNames = DictionaryNames.NONE,
+    checkCancellation: () -> Unit = {},
+) {
     private val events: List<SportEvent> = events.filter { it.startMillis > 0 }
 
     private class Variant(val words: List<String>, val event: Int, val side: Int)
 
     private val index = HashMap<String, MutableList<Variant>>()
+    private val competitions = CompetitionHints(names.competitions)
     private val decidedByChannel = HashMap<String, MutableList<Int>>()
     // Scratch maps hold at most the scan's event count, clear on each candidate/phrase, and retain
     // no provider text. Reuse avoids allocating a map for every word in large guide descriptions.
@@ -86,14 +96,21 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
 
     init {
         this.events.forEachIndexed { i, e ->
+            checkCancellation()
+            val resolved = names.events[e.id]
             for ((side, team) in listOf(HOME to e.home.name, AWAY to e.away.name)) {
-                for (v in TeamVariants.of(team, aliases, e.sport)) {
+                val extra = if (side == HOME) resolved?.home.orEmpty() else resolved?.away.orEmpty()
+                val guards = if (side == HOME) resolved?.homeGuards.orEmpty() else resolved?.awayGuards.orEmpty()
+                val variants = TeamVariants.of(team, names.stored[e.sport] ?: aliases, e.sport) + extra
+                for ((number, v) in (variants + guards).withIndex()) {
+                    if (number % 64 == 0) checkCancellation()
+                    val bits = if (v in guards) 0 else side
                     val words = v.split(' ')
-                    index.getOrPut(words.first()) { ArrayList() } += Variant(words, i, side)
+                    index.getOrPut(words.first()) { ArrayList() } += Variant(words, i, bits)
                     // Joining all words retains the entire club identity, unlike city/token guesses.
                     if (words.size > 1) {
                         val compact = words.joinToString("")
-                        index.getOrPut(compact) { ArrayList() } += Variant(listOf(compact), i, side)
+                        index.getOrPut(compact) { ArrayList() } += Variant(listOf(compact), i, bits)
                     }
                 }
             }
@@ -132,6 +149,7 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
                 }
             }
             for ((event, sides) in phraseMentions) {
+                if (sides == 0) continue
                 val unambiguous = if (sides == (HOME or AWAY)) AMBIGUOUS else sides
                 mentions[event] = (mentions[event] ?: 0) or unambiguous
             }
@@ -140,13 +158,14 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
         val decided = decidedByChannel[c.channelKey].orEmpty()
         if (mentions.isEmpty() && decided.isEmpty()) return
         val schedule = if (c.source == MatchSource.NAME) NameSchedule.of(c.title) else null
+        val competitionNames = competitions.find(words)
         for (i in (mentions.keys + decided).toSet()) {
-            val scored = score(i, mentions[i] ?: 0, c, schedule) ?: continue
+            val scored = score(i, mentions[i] ?: 0, c, schedule, competitionNames) ?: continue
             keep(i, c.channelKey, Kept(scored, fallback = mentions[i] == null))
         }
     }
 
-    private fun score(i: Int, sides: Int, c: Candidate, schedule: NameSchedule?): StreamMatch? {
+    private fun score(i: Int, sides: Int, c: Candidate, schedule: NameSchedule?, competitionNames: Set<String>): StreamMatch? {
         val event = events[i]
         val kickOff = event.startMillis
         val both = (sides and (HOME or AWAY)) == (HOME or AWAY)
@@ -187,6 +206,8 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
         return StreamMatch(
             event.id, c.channelKey, c.channelName, c.programmeId, c.title, c.source,
             if (schedule == null) c.startMillis else kickOff + offset * MINUTE, offset, explicit, teamScore + timeScore, automatic,
+            competitionEvidence = competitions.evidence(names.events[event.id]?.competitionId, competitionNames,
+                names.events[event.id]?.supportingCompetitions.orEmpty(), names.events[event.id]?.competitionDay),
         )
     }
 
@@ -227,6 +248,7 @@ class StreamMatcher(events: List<SportEvent>, aliases: Map<String, Set<String>>,
         /** Keep supporting evidence before uncertain hits; then score, closeness and stable ties. */
         val BETTER: Comparator<StreamMatch> = compareBy<StreamMatch> { it.automatic.ordinal }
             .thenByDescending { it.score }.thenBy { abs(it.offsetMinutes) }
+            .thenByDescending { it.competitionEvidence }
             .thenBy { it.source.ordinal }.thenBy { it.programmeStartMillis }.thenBy { it.programmeId }
     }
 }

@@ -18,6 +18,7 @@ import com.sohva.tv.core.model.vod.PreferredCopy
 import com.sohva.tv.core.net.metadata.MetadataRecord
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 /** A title on screen for the foreground budget: what its lookup needs. */
@@ -67,8 +68,12 @@ class Enrichment(
     /** Whether the queue must be synchronised before a run (META-FR-56). */
     suspend fun needsSync(): Boolean = withContext(bulk) { dao.queueSize() == 0 || dao.outdatedQueueRows(Genre.VERSION) > 0 }
 
-    /** One paged synchronisation pass (META-FR-55); returns the pending count. */
-    suspend fun synchronise(): Int = withContext(bulk) {
+    /**
+     * One paged synchronisation pass (META-FR-55); returns the pending count, or null when it
+     * stopped because the viewer came back or video started. A stopped pass sweeps nothing: the
+     * sweep removes every row the pass did not stamp, and it had not reached them all.
+     */
+    suspend fun synchronise(): Int? = withContext(bulk) {
         val started = clock.wallMillis()
         val stamp = maxOf(started, (dao.newestStamp() ?: 0) + 1)
         var titles = 0
@@ -78,6 +83,11 @@ class Enrichment(
             for ((range, type) in listOf(KeyRange.movies(source) to MediaType.MOVIE, KeyRange.series(source) to MediaType.SERIES)) {
                 var after = range.from
                 while (true) {
+                    ensureActive()
+                    if (paused()) {
+                        log.info(EVENT, "queue synchronisation stopped: $titles titles, $pages pages")
+                        return@withContext null
+                    }
                     val page = if (type == MediaType.MOVIE) dao.filmCandidates(after, range.until, PAGE) else dao.seriesCandidates(after, range.until, PAGE)
                     if (page.isEmpty()) break
                     pending += reconcile(page, type, stamp)
@@ -91,6 +101,25 @@ class Enrichment(
         dao.sweepQueue(stamp)
         log.info(EVENT, "queue synchronised: $titles titles, $pages pages, $pending pending, ${clock.wallMillis() - started} ms")
         pending
+    }
+
+    /**
+     * Keeps the lookup cache bounded (AGENTS.md §4 rule 4): rows past their expiry go, then the
+     * rows that expire soonest until at most [limit] remain, in transactions of [TRIM_CHUNK]. Every
+     * lookup adds a row per title and provider, and nothing removed them before.
+     */
+    suspend fun trimCache(limit: Int = CACHE_LIMIT) = withContext(bulk) {
+        val swept = dao.sweepCache(clock.wallMillis())
+        var removed = 0
+        while (true) {
+            ensureActive()
+            val excess = dao.cacheCount() - limit
+            if (excess <= 0) break
+            val chunk = minOf(excess, TRIM_CHUNK)
+            db.runInTransaction { dao.deleteOldestCache(chunk) }
+            removed += chunk
+        }
+        if (swept > 0 || removed > 0) log.info(EVENT, "cache trimmed: $swept expired, $removed over the cap")
     }
 
     private fun reconcile(page: List<QueueCandidate>, type: MediaType, stamp: Long): Int {
@@ -249,6 +278,10 @@ class Enrichment(
     }
 
     companion object {
+        /** The lookup cache's cap, as its table promises; eviction is by soonest expiry ([trimCache]). */
+        const val CACHE_LIMIT: Int = 50_000
+        private const val TRIM_CHUNK = 2_000
+
         const val PAGE: Int = 2_000
         const val VISIBLE_MAX: Int = 48
         const val VISIBLE_SPACING_MS: Long = 1_000

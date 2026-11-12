@@ -4,7 +4,7 @@ A free, open-source media player for Android TV and Google TV, built for the rem
 repository is the from-scratch rebuild of Sohva TV `0.1.0-beta.23` (build 57): the same features,
 an almost identical look, and a much lighter footprint so it runs well on low-end TV boxes.
 
-Current beta: [0.2.0-beta.15, build 125](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.15).
+Current beta: [0.2.0-beta.16, build 138](https://github.com/Macstered/Sohva-TV/releases/tag/v0.2.0-beta.16).
 See the [release notes](docs/release/RELEASE_NOTES.md) and [installation instructions](docs/release/INSTALL.md).
 
 - [AGENTS.md](AGENTS.md): the rules for everyone who writes code here. Read it first.
@@ -19,4 +19,4 @@ for parity and the [performance log](docs/performance-log.md) for measured limit
 validation continues with each change. Build with `./gradlew :app:assembleDebug`; run every local
 check, including the Play APK and bundle, with `python tools/check_all.py`.
 
-Licence: GPL-3.0-only for original source; see [LICENSE](LICENSE).
+Licence: GPL-3.0-only for original source; see [LICENSE](docs/release/LICENSE).

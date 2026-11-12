@@ -144,10 +144,10 @@ private fun posters(row: WallRow, widthPx: Int): Pair<String?, String?> {
 @Composable
 internal fun Poster(title: String, url: String?, px: IntSize, fallback: String? = null) {
     val loader = LocalArtwork.current
-    var image by remember(url, fallback) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(url, fallback, px) { mutableStateOf(url?.let { loader.peek(it, px.width, px.height, opaque = true) }) }
     var failed by remember(url, fallback) { mutableStateOf(url.isNullOrBlank()) }
     LaunchedEffect(url, fallback, px) {
-        if (url.isNullOrBlank()) return@LaunchedEffect
+        if (url.isNullOrBlank() || image != null) return@LaunchedEffect
         image = loader.load(url, px.width, px.height, opaque = true) ?: fallback?.let { loader.load(it, px.width, px.height, opaque = true) }
         failed = image == null
     }

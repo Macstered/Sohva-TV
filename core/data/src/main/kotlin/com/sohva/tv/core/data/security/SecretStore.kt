@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.sohva.tv.core.model.error.AppError
 import com.sohva.tv.core.model.error.Outcome
 import java.security.GeneralSecurityException
+import java.security.ProviderException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
@@ -44,18 +45,33 @@ class SecretStore(
         }
     }
 
+    /**
+     * Whether a secret could be stored now: one encryption through the same key path as [write],
+     * storing nothing. A restore asks before it removes anything, and start-up asks once so the
+     * diagnostics file shows a television whose Keystore has stopped working.
+     */
+    suspend fun writable(): Boolean = withContext(io) { guarded { cipher.encrypt(PROBE) } is Outcome.Ok }
+
     // A key that cannot be used makes every secret unreadable; one damaged value is only that value.
     private inline fun <T> guarded(block: () -> T): Outcome<T> = try {
         Outcome.Ok(block())
     } catch (_: SecretsUnreadableException) {
         Outcome.Failed(AppError.SecretsUnreadable)
+    } catch (_: ProviderException) {
+        // What a broken keymaster throws instead of a declared exception: the key cannot be used.
+        Outcome.Failed(AppError.SecretsUnreadable)
     } catch (_: GeneralSecurityException) {
         Outcome.Failed(AppError.Unknown)
     } catch (_: IllegalArgumentException) {
+        Outcome.Failed(AppError.Unknown)
+    } catch (_: IllegalStateException) {
+        // A commit that did not reach the disk, or a key that is missing and may not be created.
+        // Not `Exception`: a cancellation must pass through.
         Outcome.Failed(AppError.Unknown)
     }
 
     companion object {
         const val FILE_NAME: String = "sohva_secure_settings"
+        private const val PROBE = "probe"
     }
 }

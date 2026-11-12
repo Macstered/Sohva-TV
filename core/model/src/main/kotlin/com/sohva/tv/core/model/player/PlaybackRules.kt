@@ -130,6 +130,27 @@ object DisplayRate {
     }
 }
 
+/** Frame-rate matching's display mode requests (PLAY-FR-103..104), as the player's window makes them. */
+object DisplayModes {
+    /** A display mode at the current physical resolution. */
+    data class Mode(val id: Int, val refreshRate: Float)
+
+    /**
+     * The mode id to request for a stream of [fps] frames per second, or null to leave the window's
+     * [preferred] mode as it is. A rate that fits no mode restores [original].
+     *
+     * An unknown rate changes nothing: during a channel change the old stream's tracks clear before
+     * the new ones arrive, and restoring the original there made two HDMI re-negotiations per zap
+     * even between channels of the same rate. The player leaving restores the original instead.
+     */
+    fun target(fps: Float?, modes: List<Mode>, original: Int, preferred: Int): Int? {
+        if (fps == null) return null
+        val chosen = DisplayRate.pick(fps, modes.map(Mode::refreshRate))
+        val id = chosen?.let { c -> modes.first { it.refreshRate == c }.id } ?: original
+        return id.takeIf { it != preferred }
+    }
+}
+
 /** The live box's figures (PLAY-FR-42). */
 object LiveFigures {
     fun fraction(start: Long, stop: Long, now: Long): Float? =

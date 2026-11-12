@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -30,6 +32,7 @@ import com.sohva.tv.ui.design.R
 import com.sohva.tv.ui.design.components.FieldInput
 import com.sohva.tv.ui.design.components.LogoTile
 import com.sohva.tv.ui.design.components.TvActionButton
+import com.sohva.tv.ui.design.components.TvConfirmButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvUrlField
 import com.sohva.tv.ui.design.components.roundFill
@@ -158,7 +161,8 @@ private fun ListsBlock(model: ChannelsModel) {
             model::toggleMembership,
             Modifier.testTag("channels-list-membership"),
         )
-        TvActionButton(stringResource(R.string.channels_delete_list), model::deleteList, Modifier.testTag("channels-list-delete"))
+        // A list is built by hand, one channel at a time: deleting it asks once more.
+        TvConfirmButton(stringResource(R.string.channels_delete_list), model::deleteList, Modifier.testTag("channels-list-delete"))
     }
 }
 
@@ -186,8 +190,11 @@ private fun ActionRow(model: ChannelsModel, row: ChannelRow) {
             else -> R.string.channels_lock_with_pin
         }
         TvActionButton(stringResource(lockLabel), model::toggleLock, Modifier.testTag("channels-lock"), icon = TvIcons.Lock, state = SurfaceState(enabled = pin))
-        TvActionButton("↑", { model.move(up = true) }, Modifier.testTag("channels-up"), state = SurfaceState(enabled = playlist, keepsFocus = true))
-        TvActionButton("↓", { model.move(up = false) }, Modifier.testTag("channels-down"), state = SurfaceState(enabled = playlist, keepsFocus = true))
-        TvActionButton(stringResource(R.string.action_reset), model::reset, Modifier.testTag("channels-reset"))
+        // An arrow says nothing to a screen reader: each button carries its action in words.
+        val moveUp = stringResource(R.string.channels_move_up)
+        val moveDown = stringResource(R.string.channels_move_down)
+        TvActionButton("↑", { model.move(up = true) }, Modifier.semantics { contentDescription = moveUp }.testTag("channels-up"), state = SurfaceState(enabled = playlist, keepsFocus = true))
+        TvActionButton("↓", { model.move(up = false) }, Modifier.semantics { contentDescription = moveDown }.testTag("channels-down"), state = SurfaceState(enabled = playlist, keepsFocus = true))
+        TvConfirmButton(stringResource(R.string.action_reset), model::reset, Modifier.testTag("channels-reset"))
     }
 }

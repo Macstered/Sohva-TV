@@ -22,8 +22,24 @@ class EnrichmentScheduler(private val workManager: () -> WorkManager) {
     @Volatile
     private var used = false
 
-    /** The app left the front: run after 30 s, unless a run is already queued. */
-    fun onLeave() = enqueue(ExistingWorkPolicy.KEEP, synchronise = true, delayMs = LEAVE_DELAY_MS)
+    @Volatile
+    private var owed = false
+
+    /** Whether the run queued on leaving starts with a synchronisation: only when one was stopped half-way. */
+    val leaveSynchronises: Boolean get() = owed
+
+    /** The worker reports whether a synchronisation it was asked for ran to its end. */
+    fun syncOwed(owed: Boolean) {
+        this.owed = owed
+    }
+
+    /**
+     * The app left the front: run after 30 s, unless a run is already queued. Without a
+     * synchronisation, which walks every title: that runs after an import ([afterImport]), after a
+     * language or key change ([restart]), when the queue is empty or outdated (the worker checks),
+     * and here only when an earlier pass was stopped (decision "Metadata queue").
+     */
+    fun onLeave() = enqueue(ExistingWorkPolicy.KEEP, synchronise = owed, delayMs = LEAVE_DELAY_MS)
 
     /**
      * The app came back: a queued or running enrichment stops. Before this process scheduled
@@ -88,8 +104,20 @@ class EnrichmentWorker(context: Context, params: WorkerParameters, private val h
     override suspend fun doWork(): Result {
         if (host.appInForeground() || !host.metadataEnabled() || host.keyRefused()) return Result.success()
         val enrichment = host.enrichment
-        if (inputData.getBoolean(EnrichmentScheduler.SYNCHRONISE, false) || enrichment.needsSync()) enrichment.synchronise()
-        when (enrichment.run()) {
+        if (inputData.getBoolean(EnrichmentScheduler.SYNCHRONISE, false) || enrichment.needsSync()) {
+            var finished = false
+            try {
+                finished = enrichment.synchronise() != null
+            } finally {
+                // Also when this worker is cancelled: the next leave asks for the pass again.
+                host.enrichmentScheduler.syncOwed(!finished)
+            }
+            if (!finished) return Result.success()
+        }
+        val end = enrichment.run()
+        // After the lookups of this run, before anything else is queued.
+        enrichment.trimCache()
+        when (end) {
             RunEnd.CONTINUE -> host.enrichmentScheduler.continueAfter(EnrichmentScheduler.CONTINUE_MS)
             RunEnd.BACK_OFF -> host.enrichmentScheduler.continueAfter(EnrichmentScheduler.BACK_OFF_MS)
             RunEnd.KEY_REFUSED -> host.setKeyRefused()

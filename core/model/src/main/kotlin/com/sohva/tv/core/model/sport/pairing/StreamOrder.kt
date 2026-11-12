@@ -15,7 +15,8 @@ object StreamOrder {
         val languageRank = matches.associateWith { m -> StreamTags.language(m.channelName)?.let(rank::get) ?: Int.MAX_VALUE }
         return matches.sortedWith(
             compareBy<StreamMatch> { it.confidence.ordinal }.thenBy { languageRank.getValue(it) }
-                .thenByDescending { it.score }.thenBy { abs(it.offsetMinutes) }.thenBy { it.channelName },
+                .thenByDescending { it.score }.thenBy { abs(it.offsetMinutes) }.thenByDescending { it.competitionEvidence }
+                .thenBy { it.channelName }.thenBy { it.channelKey },
         )
     }
 

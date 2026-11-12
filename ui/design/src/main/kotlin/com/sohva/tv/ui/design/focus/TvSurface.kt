@@ -2,7 +2,6 @@ package com.sohva.tv.ui.design.focus
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,6 +27,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sohva.tv.ui.design.motion.Motion
@@ -112,18 +113,21 @@ fun TvSurface(
     state: SurfaceState = SurfaceState(),
     style: SurfaceStyle = SurfaceStyle(),
     onLongClick: (() -> Unit)? = null,
+    /** What a screen reader calls it. A [Role.Switch] reports [SurfaceState.selected] as on or off. */
+    role: Role = Role.Button,
     content: @Composable (TvSurfaceColors) -> Unit,
 ) {
     var hasFocus by remember { mutableStateOf(false) }
     val gesture = remember { LongPressGesture() }
     val focused = hasFocus || state.showFocused
     val colors = tvSurfaceColors(focused, state, style)
-    val fill by animateColorAsState(
-        targetValue = colors.background,
-        animationSpec = if (style.animateFill) Motion.focus() else snap(),
-        label = "surface-fill",
-    )
-    val scale by animateFloatAsState(if (focused) style.focusScale else 1f, Motion.focus(), label = "surface-scale")
+    // Animation state only where the style animates: most rows and cards neither fade their fill nor
+    // scale. A call site passes the same kind of style on every recomposition, so the branch it
+    // takes never changes. Both are read in the draw phase.
+    val restingFill = colors.background
+    val animatedFill = if (style.animateFill) animateColorAsState(restingFill, Motion.focus(), label = "surface-fill") else null
+    val animatedScale =
+        if (style.focusScale != 1f) animateFloatAsState(if (focused) style.focusScale else 1f, Motion.focus(), label = "surface-scale") else null
     val ring = focused && style.focusRing
     val ringColor = Sohva.palette.textPrimary
     val ringWidth = Sohva.shapes.focusRing
@@ -132,7 +136,8 @@ fun TvSurface(
         modifier = modifier
             .onFocusChanged { hasFocus = it.isFocused }
             .semantics(mergeDescendants = true) {
-                selected = state.selected
+                // Said only when true: set on every control, each button was announced "not selected".
+                if (role == Role.Switch) toggleableState = ToggleableState(state.selected) else if (state.selected) selected = true
                 if (!state.enabled) disabled()
             }
             .then(if (onLongClick != null && state.enabled) Modifier.longPress(gesture, onLongClick) else Modifier)
@@ -140,12 +145,13 @@ fun TvSurface(
                 interactionSource = null,
                 indication = null,
                 enabled = state.enabled || state.keepsFocus,
-                role = Role.Button,
+                role = role,
                 onClick = { if (state.enabled) onClick() },
             )
-            .then(if (style.focusScale != 1f) Modifier.graphicsLayer { scaleX = scale; scaleY = scale } else Modifier)
+            .then(if (style.focusScale != 1f) Modifier.graphicsLayer { val scale = animatedScale?.value ?: 1f; scaleX = scale; scaleY = scale } else Modifier)
             .drawWithContent {
                 val radius = CornerRadius(style.corner.toPx())
+                val fill = animatedFill?.value ?: restingFill
                 if (fill.alpha > 0f) drawRoundRect(fill, cornerRadius = radius)
                 drawContent()
                 // Artwork can fill the surface: focus must be drawn over it, never underneath.

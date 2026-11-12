@@ -114,8 +114,8 @@ internal class LiveImport(private val env: ImportEnvironment) {
         env.db.runInTransaction { target.groups.finish(complete = true) }
         // The organisation rules over the new rows (spec 42 §9.1): hidden groups and channels, then their counts.
         OrgPass(env.db, OrgRules(env.db), LibraryPasses(env.db)).resolveLive(sourceId)
-        // New channels into Search's index, in one statement (decision "Search index").
-        SearchIndex.catchUp(env.db, SearchTable.CHANNEL)
+        // New channels into Search's index, in pages that let the viewer's own writes through.
+        SearchIndex.catchUpPaged(env.db, SearchTable.CHANNEL) { env.pauseGate.awaitTurn(WorkOrigin.VIEWER) }
         val range = KeyRange.channels(sourceId)
         env.db.channelImport().count(range.from, range.until)
     }
@@ -134,7 +134,8 @@ internal class LiveImport(private val env: ImportEnvironment) {
                 providerName = name, providerGroupId = groupId, providerLogoUrl = e.logoUrl, tvgId = e.tvgId, epgId = e.tvgId, logoUrl = e.logoUrl, streamUrlEnc = env.sealer.seal(e.streamUrl),
                 userAgent = e.userAgent, referrer = e.referrer, playlistOrder = e.index, providerNumber = e.channelNumber,
                 number = e.channelNumber, displayRank = rank(groups, groupId, e.index), visible = true, catchupType = e.catchupType,
-                catchupSource = e.catchupSource, catchupDays = e.catchupDays, catchupTz = null, xtreamStreamId = null,
+                // Sealed like the address: a template usually carries the same credentials (spec 73 SEC-01).
+                catchupSource = e.catchupSource?.let(env.sealer::seal), catchupDays = e.catchupDays, catchupTz = null, xtreamStreamId = null,
                 contentHash = hash, generation = job.generation,
             )
         }

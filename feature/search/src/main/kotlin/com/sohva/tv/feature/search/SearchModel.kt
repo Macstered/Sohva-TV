@@ -33,6 +33,7 @@ class SearchModel(private val env: SearchEnvironment) : ViewModel() {
     fun setText(value: String) {
         val cut = SearchTerms.cut(value)
         if (cut == _text.value) return
+        lastOpened = null
         _text.value = cut
         job?.cancel()
         val term = SearchTerms.term(cut)
@@ -66,7 +67,14 @@ class SearchModel(private val env: SearchEnvironment) : ViewModel() {
         }
     }
 
-    fun open(result: SearchResult) = env.open(result)
+    /** The result that opened a page: coming back focuses it, not the field with its keyboard (decision "Search, return focus"). UI thread only. */
+    var lastOpened: String? = null
+        private set
+
+    fun open(result: SearchResult) {
+        lastOpened = result.key
+        env.open(result)
+    }
 
     fun leave() = env.leave()
 

@@ -61,7 +61,7 @@ internal fun EpgPicker(model: ChannelsModel, current: String?, onDismiss: () -> 
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.width(560.dp).roundFill(Sohva.palette.surface, Sohva.shapes.medium).padding(18.dp).testTag("channels-epg-picker"),
+            Modifier.width(560.dp).roundFill(Sohva.palette.panel, Sohva.shapes.medium).padding(18.dp).testTag("channels-epg-picker"),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Text(stringResource(R.string.channels_epg_mapping), style = Sohva.typography.bodyLarge.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold), color = Sohva.palette.textPrimary)

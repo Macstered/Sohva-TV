@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -84,6 +85,21 @@ class LibraryPassesTest {
         assertEquals(listOf("3"), keys(WallDestination.Group("Classics", listOf(classics))))
         // The group counts count films, not copies.
         assertEquals(listOf(2, 1), runBlocking { reads.groups(WallRoom.MOVIES) }.map { it.count })
+    }
+
+    /** The import's recount in ranges of groups writes what the one-statement recount writes. */
+    @Test
+    fun theRecountInRangesOfGroupsEqualsTheRecountInOneStatement() {
+        seed()
+        fun counts() = db.openHelper.readableDatabase.query("SELECT id, item_count, total_count FROM content_group ORDER BY id").use { c ->
+            buildList { while (c.moveToNext()) add(Triple(c.getLong(0), c.getInt(1), c.getInt(2))) }
+        }
+        passes.refreshSource("s", PreferredCopy.NONE)
+        val paged = counts()
+        db.openHelper.writableDatabase.execSQL("UPDATE content_group SET item_count = -1, total_count = -1")
+        db.library().recountFilmGroups("s")
+        assertEquals(counts(), paged)
+        assertTrue(paged.all { it.second >= 0 && it.third > 0 })
     }
 
     @Test

@@ -25,10 +25,15 @@ import com.sohva.tv.core.model.org.RuleValue
 import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 
 /**
@@ -41,6 +46,7 @@ class LiveStore(
     private val db: SohvaDatabase,
     private val io: CoroutineDispatcher,
     private val clock: Clock,
+    private val pending: PendingRecents = PendingRecents(),
     private val profile: () -> String = { DEFAULT_PROFILE },
 ) : LiveReads {
     private val live = db.live()
@@ -50,16 +56,34 @@ class LiveStore(
     override val sources: Flow<List<LiveSource>> = live.observeSources().flowOn(io)
 
     /**
-     * One signal per write to the tables a guide list depends on (GUIDE-FR-37), a profile's allowed
-     * groups included, so a changed restriction applies while the guide is open (GUIDE-49); the
-     * first emission is the current state, not a write (spec 20 §10).
+     * One source, read once. Taking the first value of [sources] registers table observers, which
+     * needs the database's write connection and so waits for a running import; the player's now and
+     * next then stayed stale until the import ended.
      */
-    override fun changes(): Flow<Unit> = db.invalidationTracker.createFlow(
-        "channel", "content_group", "source", "source_status", "channel_list", "channel_list_member", "profile_allowed_group",
-    ).map { }
+    override suspend fun source(id: String): LiveSource? = withContext(io) { live.sources().firstOrNull { it.id == id } }
 
-    /** A new guide snapshot or a source edit re-reads the visible programmes (§8 "Import while open"). */
-    override fun guideChanges(): Flow<Unit> = db.invalidationTracker.createFlow("source_status", "source").map { }
+    /**
+     * A signal when a guide list may have changed (GUIDE-FR-37), a profile's allowed groups included,
+     * so a changed restriction applies while the guide is open (GUIDE-49); the first emission is
+     * the current state, not a write (spec 20 §10). Channel and group writes are not signalled
+     * while a playlist import runs: it commits a batch every few hundred milliseconds, and the
+     * open guide rebuilt its whole list for each one (spec 10 SRC-L-23: observers wake once per
+     * import). The status write that ends the import is signalled, as is everything else.
+     */
+    override fun changes(): Flow<Unit> {
+        val tracker = db.invalidationTracker
+        val rows = tracker.createFlow("channel", "content_group").drop(1).filter { !live.playlistImportRunning() }
+        val rest = tracker.createFlow("source", "source_status", "channel_list", "channel_list_member", "profile_allowed_group").drop(1)
+        return merge(rows, rest).map { }.onStart { emit(Unit) }.flowOn(io)
+    }
+
+    /**
+     * A new guide snapshot or a source edit re-reads the visible programmes (§8 "Import while
+     * open"). Compared by value: every kind writes `source_status` when it starts and ends, and a
+     * playlist or catalogue status says nothing about the programmes on screen.
+     */
+    override fun guideChanges(): Flow<Unit> =
+        db.invalidationTracker.createFlow("source_status", "source").map { live.guideStamps() }.distinctUntilChanged().map { }.flowOn(io)
 
     /** The source's groups the active profile may see (spec 04 PROF-FR-23). */
     override suspend fun rail(sourceId: String): List<LiveGroup> = withContext(io) { live.rail(sourceId, profile()) }
@@ -158,8 +182,18 @@ class LiveStore(
     }
 
     /** Front of the recents, trimmed to 20 (spec 30 PLAY-FR-57). */
-    override suspend fun recordWatched(key: String): Unit = withContext(io) {
-        viewer.recordRecent(RecentChannelEntity(profile(), key, clock.wallMillis()))
+    override suspend fun recordWatched(key: String) {
+        val who = profile()
+        val at = clock.wallMillis()
+        pending.add(who, key, at)
+        // The write may wait minutes for an import; a later zap cancelling the caller must not lose it.
+        withContext(io + NonCancellable) {
+            try {
+                viewer.recordRecent(RecentChannelEntity(who, key, at))
+            } finally {
+                pending.written(who, key, at)
+            }
+        }
     }
 
     /**

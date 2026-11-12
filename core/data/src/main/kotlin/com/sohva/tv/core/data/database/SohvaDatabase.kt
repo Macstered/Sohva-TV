@@ -86,6 +86,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 11, to = 12),
+        AutoMigration(from = 12, to = 13),
     ],
 )
 abstract class SohvaDatabase : RoomDatabase() {
@@ -168,7 +169,7 @@ abstract class SohvaDatabase : RoomDatabase() {
     }
 
     companion object {
-        const val VERSION: Int = 12
+        const val VERSION: Int = 13
 
         /** Not beta 23's `streammate.db`, which the one-time importer reads (decision A1). */
         const val FILE_NAME: String = "sohva.db"

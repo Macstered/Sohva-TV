@@ -4,9 +4,11 @@ import android.net.Uri
 import com.sohva.tv.core.model.phone.QrMatrix
 import com.sohva.tv.core.model.update.UpdateState
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -46,6 +48,30 @@ interface AboutSettingsServices {
 
     /** Writes the diagnostics file into [target] (ABOUT-FR-30). */
     suspend fun saveDiagnostics(target: Uri): DiagnosticsOutcome
+
+    /** False when the TV has no "create document" picker; the launcher's own failure also says so. */
+    fun filePickerAvailable(): Boolean = true
+
+    /** A TV without a picker: the file goes straight to the Download folder as [name] (rebuild). */
+    suspend fun saveDiagnosticsToDownloads(name: String): DiagnosticsOutcome = DiagnosticsOutcome.NoPicker
+
+    /** The phone page that hands the diagnostics file to a phone (rebuild); closed when not open. */
+    val diagnosticsPhone: Flow<DiagnosticsPhone> get() = flowOf(DiagnosticsPhone.Closed)
+
+    /** Renders the file now and serves it as [name] on the phone page. */
+    fun openDiagnosticsPhone(name: String) = Unit
+
+    fun closeDiagnosticsPhone() = Unit
+}
+
+/** The diagnostics phone page as the TV shows it. */
+sealed interface DiagnosticsPhone {
+    data object Closed : DiagnosticsPhone
+
+    data object NoNetwork : DiagnosticsPhone
+
+    /** [sent]: a phone has fetched the file at least once. */
+    data class Open(val url: String, val qr: QrMatrix?, val sent: Boolean) : DiagnosticsPhone
 }
 
 sealed interface DiagnosticsOutcome {
@@ -54,6 +80,9 @@ sealed interface DiagnosticsOutcome {
     data object OpenFailed : DiagnosticsOutcome
 
     data object NoPicker : DiagnosticsOutcome
+
+    /** No picker, so the file was written to the Download folder as [name]. */
+    data class SavedToDownloads(val name: String) : DiagnosticsOutcome
 
     /** [text] is already redacted, or null for "Unknown error". */
     data class Failed(val text: String?) : DiagnosticsOutcome
@@ -116,7 +145,27 @@ class AboutSettings internal constructor(private val services: AboutSettingsServ
         scope.launch { _diagnostics.value = services.saveDiagnostics(target) }
     }
 
-    fun noPicker() {
-        _diagnostics.value = DiagnosticsOutcome.NoPicker
+    fun filePickerAvailable(): Boolean = services.filePickerAvailable()
+
+    /** No picker on this TV: save to the Download folder instead and say where. */
+    fun noPicker(name: String) {
+        scope.launch { _diagnostics.value = services.saveDiagnosticsToDownloads(name) }
+    }
+
+    private val _phoneOpen = MutableStateFlow(false)
+
+    /** The "Send to phone" dialog is up. */
+    val phoneOpen: StateFlow<Boolean> = _phoneOpen.asStateFlow()
+
+    val diagnosticsPhone: Flow<DiagnosticsPhone> get() = services.diagnosticsPhone
+
+    fun openPhone(name: String) {
+        _phoneOpen.value = true
+        services.openDiagnosticsPhone(name)
+    }
+
+    fun closePhone() {
+        services.closeDiagnosticsPhone()
+        _phoneOpen.value = false
     }
 }

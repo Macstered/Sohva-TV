@@ -2,8 +2,10 @@ package com.sohva.tv.app
 
 import android.app.Activity
 import android.app.Instrumentation
+import android.content.ContentUris
 import android.content.Intent
 import android.net.Uri
+import android.provider.MediaStore
 import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -23,6 +25,8 @@ import com.sohva.tv.core.model.source.SourceSecrets
 import com.sohva.tv.core.model.source.SourceType
 import com.sohva.tv.feature.home.RailItem
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -142,6 +146,88 @@ class SettingsAboutTest {
         assertTrue(saved.contains("  Diagnostics playlist: xtream, in use, imports both, priority 0"))
         assertTrue(saved.contains("Display: "))
         for (secret in listOf("viewer-name", "hunter2-secret", "not-a-real-key", ":8080/live")) assertFalse(secret, saved.contains(secret))
+    }
+
+    private fun seedSecrets() {
+        runBlocking {
+            graph.data.sources.save(
+                SourceConfig(Source("diag", "Diagnostics playlist", SourceType.XTREAM), SourceSecrets(xtreamBaseUrl = "http://192.0.2.44:8080", xtreamUsername = "viewer-name", xtreamPassword = "hunter2-secret")),
+            )
+        }
+        graph.diagnostics.info("http", "GET http://192.0.2.44:8080/live/viewer-name/hunter2-secret/7.ts: HTTP 403")
+    }
+
+    private fun assertNoSecret(text: String) {
+        assertTrue(text.startsWith("Sohva TV diagnostics\n"))
+        for (secret in listOf("viewer-name", "hunter2-secret", ":8080/live")) assertFalse(secret, text.contains(secret))
+    }
+
+    /** Rebuild: a TV without a document picker (Google TV on the Chromecast) saves to the Download folder. */
+    @Test
+    fun withoutAFilePickerTheFileGoesToTheDownloadFolder() {
+        seedSecrets()
+        graph.filePickerOverride = false
+        val resolver = instrumentation.targetContext.contentResolver
+        var name = ""
+        try {
+            openAbout("settings-about-licenses")
+            compose.onNodeWithTag("settings-diagnostics-save").performSemanticsAction(SemanticsActions.OnClick)
+            compose.waitUntil(20_000) { text("settings-diagnostics-status").startsWith("This TV has no file picker, so the file was saved in the Download folder as ") }
+            name = text("settings-diagnostics-status").substringAfter(" as ").removeSuffix(".")
+            assertTrue(name, Regex("sohva-tv-diagnostics-\\d{8}-\\d{4}\\.txt").matches(name))
+            val uri = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI, arrayOf(MediaStore.MediaColumns._ID),
+                "${MediaStore.MediaColumns.DISPLAY_NAME} = ?", arrayOf(name), null,
+            )!!.use { c ->
+                assertTrue("the file is in Download", c.moveToFirst())
+                ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, c.getLong(0))
+            }
+            assertNoSecret(resolver.openInputStream(uri)!!.use { it.readBytes().toString(Charsets.UTF_8) })
+        } finally {
+            graph.filePickerOverride = null
+            if (name.isNotEmpty()) resolver.delete(MediaStore.Downloads.EXTERNAL_CONTENT_URI, "${MediaStore.MediaColumns.DISPLAY_NAME} = ?", arrayOf(name))
+        }
+    }
+
+    /**
+     * Rebuild: the phone page hands the redacted file over only with the page's token and Origin;
+     * the dialog says a phone has it, and closing it returns focus to "Send to phone".
+     */
+    @Test
+    fun sendToPhoneHandsTheFileToTheTokenHolder() {
+        seedSecrets()
+        openAbout("settings-about-licenses")
+        compose.onNodeWithTag("settings-diagnostics-phone").performSemanticsAction(SemanticsActions.OnClick)
+        compose.waitUntil(15_000) { text("settings-diagnostics-phone-url").startsWith("http://") }
+        awaitFocus("settings-diagnostics-phone-close")
+        val url = text("settings-diagnostics-phone-url")
+        val origin = url.substringBefore("/#")
+        fun fetch(token: String): Pair<Int, String> {
+            val connection = URL("$origin/submit").openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = "POST"
+                connection.doOutput = true
+                connection.setRequestProperty("Authorization", "Bearer $token")
+                connection.setRequestProperty("Origin", origin)
+                connection.setRequestProperty("Content-Type", "text/plain; charset=utf-8")
+                connection.outputStream.use { }
+                val code = connection.responseCode
+                val body = (if (code == 200) connection.inputStream else connection.errorStream)?.use { it.readBytes().toString(Charsets.UTF_8) }.orEmpty()
+                return code to body
+            } finally {
+                connection.disconnect()
+            }
+        }
+        assertTrue(fetch("0".repeat(32)).first == 403)
+        assertFalse(exists("settings-diagnostics-phone-sent"))
+        val (code, body) = fetch(url.substringAfter('#'))
+        assertTrue(code == 200)
+        assertNoSecret(body)
+        compose.waitUntil(5_000) { exists("settings-diagnostics-phone-sent") }
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(5_000) { !exists("settings-diagnostics-phone-dialog") }
+        awaitFocus("settings-diagnostics-phone")
+        compose.waitUntil(5_000) { graph.phone.server.state.value == com.sohva.tv.core.net.phone.PhoneState.Stopped }
     }
 
     /** ABOUT-FR-23 (rebuild): a TV without a browser shows the address and a code; Close returns focus. */

@@ -35,6 +35,22 @@ class EnrichmentSchedulerTest {
         assertTrue(work().all { it.state == WorkInfo.State.CANCELLED })
     }
 
+    /**
+     * Leaving the app used to walk the whole catalogue again every time. The pass now runs after an
+     * import or a settings change, and on leaving only when an earlier one was stopped half-way.
+     */
+    @Test
+    fun leavingAsksForASynchronisationOnlyWhenOneIsOwed() {
+        val scheduler = EnrichmentScheduler { WorkManager.getInstance(context) }
+        assertEquals(false, scheduler.leaveSynchronises)
+        scheduler.syncOwed(true)
+        assertEquals(true, scheduler.leaveSynchronises)
+        scheduler.onLeave()
+        assertEquals(WorkInfo.State.ENQUEUED, work().single().state)
+        scheduler.syncOwed(false)
+        assertEquals(false, scheduler.leaveSynchronises)
+    }
+
     @Test
     fun beforeAnythingWasScheduledReturningLeavesWorkManagerAlone() {
         EnrichmentScheduler { error("WorkManager must not be reached at start-up") }.onReturn()

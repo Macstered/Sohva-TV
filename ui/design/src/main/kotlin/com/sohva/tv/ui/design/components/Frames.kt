@@ -1,6 +1,7 @@
 package com.sohva.tv.ui.design.components
 
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.sohva.tv.ui.design.focus.KeyMoves
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
 
@@ -44,7 +49,7 @@ fun DialogCard(
 fun DialogTitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text,
-        modifier.padding(bottom = 6.dp),
+        modifier.padding(bottom = 6.dp).semantics { heading() },
         style = Sohva.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
         color = Sohva.palette.textPrimary,
         maxLines = 2,
@@ -69,6 +74,10 @@ fun OptionsSheet(
     Box(
         modifier
             .fillMaxSize()
+            // The screen under the scrim stays composed and focusable: a D-pad move may not leave the
+            // sheet, or OK would act on a row the viewer cannot see is focused (AGENTS.md §5 rule 2).
+            .focusProperties { onExit = { if (requestedFocusDirection in KeyMoves) cancelFocusChange() } }
+            .focusGroup()
             // The scrim covers the safe margins too (guide.md §12 item 5).
             .roundFill(Sohva.palette.background.copy(alpha = 0.86f), 0.dp)
             .padding(horizontal = spacing.safeHorizontal, vertical = spacing.safeVertical),
@@ -81,7 +90,7 @@ fun OptionsSheet(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(title, style = Sohva.typography.headline.copy(fontWeight = FontWeight.Black), color = Sohva.palette.textPrimary)
+            Text(title, Modifier.semantics { heading() }, style = Sohva.typography.headline.copy(fontWeight = FontWeight.Black), color = Sohva.palette.textPrimary)
             if (subtitle != null) {
                 Text(subtitle, Modifier.padding(bottom = 8.dp), style = Sohva.typography.label, color = Sohva.palette.textMuted)
             }

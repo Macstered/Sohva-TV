@@ -62,11 +62,12 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
         val row = graph.data.live.playable(channelKey) ?: return@withContext ArchiveResult.Gone
         val now = graph.clock.wallMillis()
         // The guide offered it, but the clock may have moved past the archive's reach since (CATCH-FR-41).
-        if (!CatchupRules.offers(row.catchupType, row.catchupDays, !row.catchupSource.isNullOrBlank(), start, now)) {
+        val template = com.sohva.tv.core.data.live.TemplateSealing.open(row.catchupSource, graph.data.cipher::decrypt)
+        if (!CatchupRules.offers(row.catchupType, row.catchupDays, template != null, start, now)) {
             return@withContext ArchiveResult.Unavailable
         }
         val live = runCatching { graph.data.cipher.decrypt(row.streamUrlEnc) }.getOrNull() ?: return@withContext ArchiveResult.Gone
-        val request = CatchupRequest(live, row.catchupType, row.catchupSource, row.xtreamStreamId, row.catchupTz, ZoneId.systemDefault(), start, stop, now)
+        val request = CatchupRequest(live, row.catchupType, template, row.xtreamStreamId, row.catchupTz, ZoneId.systemDefault(), start, stop, now)
         val address = CatchupAddress.build(request) ?: return@withContext ArchiveResult.Unavailable
         val title = com.sohva.tv.app.AppLocales.texts(graph.app).getString(R.string.player_archive_title, row.name)
         ArchiveResult.Ready(ResolvedStream(row.key, address, row.sourceId, row.sourceName, row.connectionLimit, title, row.userAgent, row.referrer))
@@ -109,6 +110,12 @@ class PlayerGraph(private val graph: AppGraph) : PlayerEnvironment {
 
     override fun setPlaybackActive(active: Boolean) {
         graph.playbackActive.value = active
+    }
+
+    override fun recordEvent(message: String): Unit {
+        // The player's application thread must not run the log's redaction regex or time formatter.
+        val at = android.os.SystemClock.elapsedRealtime()
+        graph.appScope.launch { graph.diagnostics.info("player", "at=${at}ms $message") }
     }
 
     /** The screen's side, one per player screen. */

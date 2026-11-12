@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.BringIntoViewSpec
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -82,3 +83,6 @@ object KeepVisibleBringIntoViewSpec : BringIntoViewSpec {
         }
     }
 }
+
+/** The moves a remote's D-pad makes; an overlay that traps focus cancels an exit in one of these. */
+val KeyMoves: Set<FocusDirection> = setOf(FocusDirection.Left, FocusDirection.Right, FocusDirection.Up, FocusDirection.Down)

@@ -2,6 +2,7 @@ package com.sohva.tv.core.data.home
 
 import com.sohva.tv.core.data.database.DEFAULT_PROFILE
 import com.sohva.tv.core.data.database.SohvaDatabase
+import com.sohva.tv.core.data.live.PendingRecents
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
@@ -12,13 +13,19 @@ data class NowProgramme(val id: Long, val title: String, val subtitle: String?, 
 data class RecentChannel(val id: Long, val key: String, val name: String, val logoUrl: String?, val number: Int?, val programme: NowProgramme?)
 
 /** Home's own reads; Continue watching is [com.sohva.tv.core.data.vod.ProgressStore.continueWatching]. */
-class HomeReads(private val db: SohvaDatabase, private val io: CoroutineDispatcher, private val profile: () -> String = { DEFAULT_PROFILE }) {
+class HomeReads(
+    private val db: SohvaDatabase,
+    private val io: CoroutineDispatcher,
+    private val pending: PendingRecents = PendingRecents(),
+    private val profile: () -> String = { DEFAULT_PROFILE },
+) {
     /**
      * The profile's recent channels that still resolve (visible, enabled source), newest first,
      * at most [RECENT_CARDS], each with the programme on at [now] (HOME-FR-34, -35).
      */
     suspend fun recentChannels(now: Long): List<RecentChannel> = withContext(io) {
-        val keys = db.viewer().recentKeys(profile())
+        // Channels whose recent row still waits for the write connection come first (see PendingRecents).
+        val keys = (pending.keys(profile()) + db.viewer().recentKeys(profile())).distinct()
         if (keys.isEmpty()) return@withContext emptyList()
         val byKey = db.home().channelsOfKeys(keys, profile()).associateBy { it.key }
         keys.mapNotNull(byKey::get).take(RECENT_CARDS).map { c ->

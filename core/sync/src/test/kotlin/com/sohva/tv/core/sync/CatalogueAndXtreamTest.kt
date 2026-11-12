@@ -59,6 +59,25 @@ class CatalogueAndXtreamTest {
         assertEquals("failed|catalogue_empty|1", status("catalogue"))
     }
 
+    @Test
+    fun aFilmThatLeavesTheListMovesTheOthersWithoutRewritingThem() {
+        h.addM3u(scope = ImportScope.VOD)
+        fun film(n: Int) = "#EXTINF:-1 group-title=\"Movies\",Film $n\nhttp://s.example/$n.mkv\n"
+        fun rows() = h.query("SELECT name, provider_order, generation FROM movie ORDER BY provider_order")
+        h.serve("/list.m3u", "#EXTM3U\n" + film(1) + film(2) + film(3))
+        sync("m3u-1", RefreshKind.CATALOGUE)
+        val first = rows()
+        assertEquals(listOf("Film 1|0", "Film 2|1", "Film 3|2"), first.map { it.substringBeforeLast('|') })
+        sync("m3u-1", RefreshKind.CATALOGUE)
+        assertEquals("An unchanged list writes no film again", first, rows())
+
+        h.serve("/list.m3u", "#EXTM3U\n" + film(2) + film(3))
+        sync("m3u-1", RefreshKind.CATALOGUE)
+        // The generation is written with the row: the same one shows the rows were not rewritten.
+        val generation = first.first().substringAfterLast('|')
+        assertEquals(listOf("Film 2|0|$generation", "Film 3|1|$generation"), rows())
+    }
+
     private fun xtreamPanel(live: String, films: String = "[]", series: String = "[]") {
         h.serve("/panel/player_api.php") {
             val action = h.requests.last().substringAfter("action=", "").substringBefore('&')

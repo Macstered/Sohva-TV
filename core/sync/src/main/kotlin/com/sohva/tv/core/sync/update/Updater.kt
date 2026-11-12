@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /** The installed build and where it looks for updates. [enabled] only in the release package (ABOUT-FR-01). */
 data class UpdaterConfig(val enabled: Boolean, val versionName: String, val versionCode: Int, val sdk: Int, val feed: HttpUrl)
@@ -61,6 +61,13 @@ interface UpdateMemory {
 interface UpdateInstaller {
     /** Android 8+: whether this app may ask to install packages. */
     fun mayInstall(): Boolean
+
+    /**
+     * Whether [apk] is this application in a newer build (and from the same signer, where Android
+     * reports one for a file). The checksum only proves the download matches the release; this
+     * keeps another package out of the "downloaded and verified" flow.
+     */
+    fun accepts(apk: File): Boolean
 
     /** One PackageInstaller session with `base.apk` and `base.dm` (ABOUT-FR-14). */
     suspend fun installWithProfile(apk: File, profile: File): SessionOutcome
@@ -203,7 +210,14 @@ class Updater(
         val target = File(folder, update.apk.name)
         try {
             memory.setDownloaded(null)
-            val sums = http.text(checksums.url.toHttpUrl())
+            val sumsUrl = trusted(checksums.url)
+            val apkUrl = trusted(update.apk.url)
+            if (sumsUrl == null || apkUrl == null) {
+                log.info("update", "download refused: address")
+                fail(UpdateFailure.DOWNLOAD_FAILED)
+                return
+            }
+            val sums = http.text(sumsUrl)
             val published = Releases.digest(sums, update.apk.name)
             if (published == null) {
                 fail(UpdateFailure.CHECKSUM_MISMATCH)
@@ -211,9 +225,15 @@ class Updater(
             }
             folder.mkdirs()
             folder.listFiles()?.forEach { it.delete() }
-            val digest = http.download(update.apk.url.toHttpUrl(), target, update.apk.size) { percent -> _state.update { it.copy(percent = percent) } }
+            val digest = http.download(apkUrl, target, update.apk.size) { percent -> _state.update { it.copy(percent = percent) } }
             if (digest != published) {
                 target.delete()
+                fail(UpdateFailure.CHECKSUM_MISMATCH)
+                return
+            }
+            if (!installer.accepts(target)) {
+                target.delete()
+                log.info("update", "package check failed")
                 fail(UpdateFailure.CHECKSUM_MISMATCH)
                 return
             }
@@ -246,8 +266,13 @@ class Updater(
             log.info("update", "install profile not used")
             return null
         }
+        val url = trusted(asset.url)
+        if (url == null) {
+            log.info("update", "install profile not used")
+            return null
+        }
         return try {
-            val bytes = http.bytes(asset.url.toHttpUrl(), UpdateHttp.MAX_PROFILE)
+            val bytes = http.bytes(url, UpdateHttp.MAX_PROFILE)
             val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
             if (digest != published) {
                 log.info("update", "install profile not used")
@@ -273,6 +298,17 @@ class Updater(
             _state.update { it.copy(phase = UpdatePhase.AVAILABLE, failure = null) }
             return
         }
+        // Checked again: a kept file waits in the cache, possibly across restarts.
+        if (!installer.accepts(file)) {
+            file.delete()
+            profile?.delete()
+            apk = null
+            profile = null
+            memory.setDownloaded(null)
+            log.info("update", "package check failed")
+            fail(UpdateFailure.CHECKSUM_MISMATCH)
+            return
+        }
         if (config.sdk >= 26 && !installer.mayInstall()) {
             _state.update { it.copy(phase = UpdatePhase.NEEDS_PERMISSION) }
             return
@@ -294,6 +330,19 @@ class Updater(
             }
         }
         if (!installer.installPlain(file)) fail(UpdateFailure.INSTALL_BLOCKED)
+    }
+
+    /**
+     * Where a release file may come from: GitHub over HTTPS, or the origin of the configured feed
+     * (the emulator's update test serves both from one local address). The feed names the address,
+     * so anything else is refused before a request is made.
+     */
+    private fun trusted(address: String): HttpUrl? {
+        val url = address.toHttpUrlOrNull() ?: return null
+        val github = url.isHttps && (url.host == "github.com" || url.host.endsWith(".github.com") || url.host.endsWith(".githubusercontent.com"))
+        val feed = config.feed
+        val sameOrigin = url.scheme == feed.scheme && url.host == feed.host && url.port == feed.port
+        return url.takeIf { github || sameOrigin }
     }
 
     /** Moves to [phase] unless a check or download already runs; one place decides, so two presses never race. */

@@ -5,6 +5,8 @@ import com.sohva.tv.core.model.sport.EventStatus
 import com.sohva.tv.core.model.sport.Incident
 import com.sohva.tv.core.model.sport.IncidentKind
 import com.sohva.tv.core.model.sport.Side
+import com.sohva.tv.core.model.sport.ProviderReference
+import com.sohva.tv.core.model.sport.ReferenceKind
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.SportStatuses
 import com.sohva.tv.core.model.sport.SportType
@@ -105,8 +107,8 @@ object SportsParsers {
         val status = SportStatuses.of(SportType.FOOTBALL, Fields.text(fixture, "status", "short"))
         val minute = Fields.int(fixture, "status", "elapsed")?.takeIf { status == EventStatus.LIVE }?.let { "$it′" }
         return event(
-            "api-sports:football:$id", SportType.FOOTBALL, Fields.obj(item, "league"), side(item, "teams", "home") ?: return null,
-            side(item, "teams", "away") ?: return null, start, zone, status,
+            "api-sports:football:$id", SportType.FOOTBALL, Fields.obj(item, "league"), side(SportType.FOOTBALL, item, "teams", "home") ?: return null,
+            side(SportType.FOOTBALL, item, "teams", "away") ?: return null, start, zone, status,
             score(Fields.int(item, "goals", "home"), Fields.int(item, "goals", "away")), null, minute,
         )
     }
@@ -115,8 +117,8 @@ object SportsParsers {
         val id = Fields.text(item, "id") ?: return null
         val start = Fields.start(item) ?: return null
         return event(
-            "api-sports:hockey:$id", SportType.ICE_HOCKEY, Fields.obj(item, "league"), side(item, "teams", "home") ?: return null,
-            side(item, "teams", "away") ?: return null, start, zone, SportStatuses.of(SportType.ICE_HOCKEY, Fields.text(item, "status", "short")),
+            "api-sports:hockey:$id", SportType.ICE_HOCKEY, Fields.obj(item, "league"), side(SportType.ICE_HOCKEY, item, "teams", "home") ?: return null,
+            side(SportType.ICE_HOCKEY, item, "teams", "away") ?: return null, start, zone, SportStatuses.of(SportType.ICE_HOCKEY, Fields.text(item, "status", "short")),
             score(Fields.int(item, "scores", "home"), Fields.int(item, "scores", "away")), null, null,
         )
     }
@@ -128,8 +130,8 @@ object SportsParsers {
         val start = Fields.start(item) ?: Fields.start(game) ?: Fields.start(Fields.obj(game, "date")) ?: return null
         val status = Fields.text(item, "status", "short") ?: Fields.text(game, "status", "short")
         return event(
-            "api-sports:${sport.provider}:$id", sport, Fields.obj(item, "league"), side(item, "teams", "home") ?: return null,
-            side(item, "teams", "away") ?: return null, start, zone, SportStatuses.of(sport, status),
+            "api-sports:${sport.provider}:$id", sport, Fields.obj(item, "league"), side(sport, item, "teams", "home") ?: return null,
+            side(sport, item, "teams", "away") ?: return null, start, zone, SportStatuses.of(sport, status),
             score(points(item, "home"), points(item, "away")), null, null,
         )
     }
@@ -152,7 +154,7 @@ object SportsParsers {
         val detail = if (shown && goals.all { it != null }) "${goals[0]}.${goals[1]} – ${goals[2]}.${goals[3]}" else null
         return event(
             "api-sports:afl:${start.epochSecond}:$homeId:$awayId", SportType.AUSTRALIAN_FOOTBALL, Fields.obj(item, "league"),
-            side(item, "teams", "home") ?: return null, side(item, "teams", "away") ?: return null, start, zone, status,
+            side(SportType.AUSTRALIAN_FOOTBALL, item, "teams", "home") ?: return null, side(SportType.AUSTRALIAN_FOOTBALL, item, "teams", "away") ?: return null, start, zone, status,
             if (shown) score(Fields.int(home, "score"), Fields.int(away, "score")) else null, detail, null, competitionName = "AFL", noLogo = true,
         )
     }
@@ -162,7 +164,7 @@ object SportsParsers {
         val start = Fields.start(item) ?: return null
         val name = listOfNotNull(Fields.text(item, "event"), Fields.text(item, "category")).joinToString(" · ").ifEmpty { "MMA" }
         return SportEvent(
-            "api-sports:mma:$id", SportType.MMA, "", name, null, side(item, "fighters", "first") ?: return null, side(item, "fighters", "second") ?: return null,
+            "api-sports:mma:$id", SportType.MMA, "", name, null, side(SportType.MMA, item, "fighters", "first") ?: return null, side(SportType.MMA, item, "fighters", "second") ?: return null,
             start.toEpochMilli(), minuteOfDay(start, zone), SportStatuses.of(SportType.MMA, Fields.text(item, "status", "short") ?: Fields.text(item, "status")),
             null, null, null,
         )
@@ -172,14 +174,16 @@ object SportsParsers {
         val id = Fields.text(item, "id") ?: return null
         val start = Fields.start(item) ?: return null
         val status = SportStatuses.of(SportType.FORMULA_1, Fields.text(item, "status", "short") ?: Fields.text(item, "status"))
-        val grandPrix = Side(Fields.text(item, "competition", "name") ?: return null, Fields.image(item, "circuit", "image"))
-        val circuit = Side(Fields.text(item, "circuit", "name") ?: Fields.text(item, "competition", "location", "city") ?: "", null)
+        val grandPrix = Side(Fields.text(item, "competition", "name") ?: return null, Fields.image(item, "circuit", "image"),
+            reference(SportType.FORMULA_1, ReferenceKind.COMPETITION, Fields.text(item, "competition", "id")))
+        val circuit = Side(Fields.text(item, "circuit", "name") ?: Fields.text(item, "competition", "location", "city") ?: "", null,
+            reference(SportType.FORMULA_1, ReferenceKind.CIRCUIT, Fields.text(item, "circuit", "id")))
         val total = Fields.int(item, "laps", "total") ?: 0
         val laps = if (status == EventStatus.LIVE && total > 0) "${Fields.int(item, "laps", "current") ?: 0} / $total" else null
         val name = listOfNotNull("Formula 1", Fields.text(item, "type")).joinToString(" · ")
         return SportEvent(
             "api-sports:formula-1:$id", SportType.FORMULA_1, "", name, null, grandPrix, circuit,
-            start.toEpochMilli(), minuteOfDay(start, zone), status, laps, null, null,
+            start.toEpochMilli(), minuteOfDay(start, zone), status, laps, null, null, grandPrix.reference,
         )
     }
 
@@ -188,20 +192,25 @@ object SportsParsers {
         if (league != null && league != "standard") return null
         val id = Fields.text(item, "id") ?: return null
         val start = Fields.instant(Fields.text(item, "date", "start")) ?: Fields.start(item) ?: return null
-        val away = side(item, "teams", "visitors") ?: side(item, "teams", "away") ?: return null
+        val away = side(SportType.NBA, item, "teams", "visitors") ?: side(SportType.NBA, item, "teams", "away") ?: return null
         val home = Fields.int(item, "scores", "home", "points") ?: Fields.int(item, "scores", "home")
         val visitors = Fields.int(item, "scores", "visitors", "points") ?: Fields.int(item, "scores", "visitors")
         return SportEvent(
-            "api-sports:nba:$id", SportType.NBA, "", "NBA", null, side(item, "teams", "home") ?: return null, away,
+            "api-sports:nba:$id", SportType.NBA, "", "NBA", null, side(SportType.NBA, item, "teams", "home") ?: return null, away,
             start.toEpochMilli(), minuteOfDay(start, zone), SportStatuses.of(SportType.NBA, Fields.text(item, "status", "short")),
-            score(home, visitors), null, null,
+            score(home, visitors), null, null, reference(SportType.NBA, ReferenceKind.COMPETITION, league),
         )
     }
 
-    private fun side(item: Map<String, Any?>, vararg path: String): Side? {
+    private fun side(sport: SportType, item: Map<String, Any?>, vararg path: String): Side? {
         val o = Fields.obj(item, *path) ?: return null
-        return Side(Fields.text(o, "name") ?: return null, Fields.image(o, "logo"))
+        val kind = if (sport == SportType.MMA) ReferenceKind.FIGHTER else ReferenceKind.TEAM
+        return Side(Fields.text(o, "name") ?: return null, Fields.image(o, "logo"), reference(sport, kind, Fields.text(o, "id")))
     }
+
+    private fun reference(sport: SportType, kind: ReferenceKind, id: String?): ProviderReference? =
+        id?.takeIf { it.isNotBlank() && (it.toLongOrNull()?.let { value -> value > 0 } ?: (it == "standard")) }
+            ?.let { ProviderReference("api-sports", sport.provider, kind, it) }
 
     private fun event(
         id: String, sport: SportType, league: Map<String, Any?>?, home: Side, away: Side, start: Instant, zone: ZoneId, status: EventStatus,
@@ -212,6 +221,7 @@ object SportsParsers {
         return SportEvent(
             id, sport, competitionId, name, if (noLogo) null else Fields.image(league, "logo"), home, away,
             start.toEpochMilli(), minuteOfDay(start, zone), status, score, detail, minute,
+            reference(sport, ReferenceKind.COMPETITION, competitionId),
         )
     }
 

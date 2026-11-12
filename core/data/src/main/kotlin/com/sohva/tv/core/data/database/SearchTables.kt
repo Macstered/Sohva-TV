@@ -80,6 +80,35 @@ object SearchIndex {
         )
     }
 
+    /**
+     * The catch-up of an import, in pages: transactions of at most [page] rows with [pause] between
+     * them, so the viewer's own small writes (a favourite, a recent channel, a playback position)
+     * never wait for the whole table. One statement over 200,000 films held the single write
+     * connection for 1.9 s on the stand-in. New rows are the ones above the highest id already
+     * indexed: ids are generated in rising order and never reused, and every earlier catch-up ran
+     * to its end or stopped at a page boundary in id order. Blocking: call on the bulk-write thread.
+     */
+    suspend fun catchUpPaged(db: SohvaDatabase, table: SearchTable, page: Int = CATCH_UP_PAGE, pause: suspend () -> Unit) {
+        val sql = db.openHelper.writableDatabase
+        val cols = table.columns.joinToString(", ")
+        val from = table.columns.joinToString(", ") { "t.$it" }
+        // The index's own row store, a plain table keyed by docid: its maximum is one b-tree step.
+        var after = sql.query("SELECT COALESCE(MAX(docid), 0) FROM ${table.index}_content").use { c -> if (c.moveToFirst()) c.getLong(0) else 0L }
+        while (true) {
+            val upper = sql.query("SELECT MAX(id) FROM (SELECT id FROM ${table.table} WHERE id > $after ORDER BY id LIMIT $page)").use { c ->
+                if (c.moveToFirst() && !c.isNull(0)) c.getLong(0) else null
+            } ?: return
+            db.runInTransaction {
+                sql.execSQL("INSERT INTO ${table.index}(rowid, $cols) SELECT t.id, $from FROM ${table.table} t WHERE t.id > $after AND t.id <= $upper")
+            }
+            after = upper
+            pause()
+        }
+    }
+
+    /** Rows per catch-up transaction, the size of an import's own write batches. */
+    const val CATCH_UP_PAGE: Int = 2_000
+
     fun catchUp(db: SohvaDatabase, vararg tables: SearchTable) {
         db.runInTransaction { tables.forEach { catchUp(db.openHelper.writableDatabase, it) } }
     }

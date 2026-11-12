@@ -132,6 +132,8 @@ Back peels one layer per press, in this precedence (the first that applies wins)
 - PLAY-FR-08 On entry the video view takes focus (it holds the clean-screen key handler).
   Live opens with the information box visible (5 s); timeshift opens with the transport
   controls visible but **not** focused (5 s).
+  Request entry focus even when the initial box arrives before the first content frame.
+  Cancel that request if the viewer has already chosen an overlay or control (4 October 2026).
 - PLAY-FR-09 Closing any overlay returns focus to the video view (live) or to the transport
   play/pause button (timeshift, after a picker or the quick actions).
 - PLAY-FR-10 Leaving the player returns focus per the shell's rules (guide row of the watched
@@ -181,6 +183,11 @@ Back peels one layer per press, in this precedence (the first that applies wins)
   → Smooth Streaming; anything else → no MIME type (progressive: MPEG-TS, MP4). Without the MIME
   type the extensionless placeholder would always build a progressive source and HLS/DASH could
   never play. Beta 23 bundles no Smooth Streaming module (§10 L-24).
+  The rebuild classifies the stream's first reply (its first 256 bytes, the Content-Type media
+  type and whether a redirect changed the host; never the content or address). When a progressive
+  item cannot be read, that classification goes to the diagnostics, and a reply that is an HLS
+  playlist (`#EXTM3U`) is retried once as HLS without showing the first failure
+  (8 October 2026, a provider serving playlists at plain addresses or web pages instead of streams).
 - PLAY-FR-16 Connection limit: each source has a limit (Settings, 1–16, default 1). A lease
   is counted per source id in memory; acquiring at the limit fails with
   `error_source_connection_limit` "The connection limit for %1$s (%2$d) is already in use"
@@ -245,6 +252,8 @@ player-side facts:
   and re-subscribed when the 30-minute bucket changes. "Now" advances every **30 s**. The current programme is the
   one with `start ≤ now < stop`; the next is the first starting at or after the current one's
   stop (or now when there is none).
+  A channel change restarts the now/next reader so the new channel is read at once, and a
+  result for a channel no longer playing is dropped (11 October 2026).
 - PLAY-FR-41 Lines (layout in §5.2): logo tile; channel name; LIVE tag, stream tags read from
   the channel name ([Live TV guide](20-live-tv-guide.md)), group title; programme title or
   `player_no_current_programme` "No programme information"; when a programme is on: start time,
@@ -338,6 +347,12 @@ player-side facts:
   player with the new channel; Back from the gate returns to the old channel, which reopens),
   otherwise the channel is recorded as recent (front of the profile's recent list, max 20;
   `last_channel_id`) and the player route is replaced. The guide's focus follows the channel.
+  The rebuild keeps one pending choice from the list/step lookup through admission and
+  channel resolution and its group position. Commit the playing channel and its position
+  together so CH+/CH− and reopening the list refer to that channel. A newer choice cancels
+  the earlier read before it can change the playing/previous channel or stop the stream.
+  Choosing the already-playing channel cancels
+  a pending change without restarting that stream (4 October 2026 regression).
 - PLAY-FR-58 Zap-back (switch to previous channel): the session remembers the channel watched
   before this one (SHELL-FR-24): before any play or zap, the candidate is the playing channel,
   else the persisted last channel, else the remembered one; it becomes "previous" when it
@@ -517,12 +532,14 @@ player-side facts:
   Banner while retrying: `player_reconnecting` "%1$s · Reconnecting %2$d/%3$d…" (message,
   attempt, maximum); after the last: `player_reconnect_stopped` "%1$s · Automatic reconnection
   stopped". The **Reconnect** button (`player_reconnect`) resets the counter, clears the error,
-  prepares and plays.
+  prepares and plays. (Rebuild, owner, 1 November 2026: the button shows once the automatic
+  attempts have stopped; while they run the banner is one line, §5.13.)
 - PLAY-FR-92 Reaching the ready state clears the error, the external-player error and the
   counter (so a stream that recovers and fails again gets a fresh set of attempts).
 - PLAY-FR-93 (Rebuild addition — owner to confirm wording, Q-01.) The banner's first line names
   the cause in words and keeps the technical detail on a second, smaller line and in the
-  diagnostics log:
+  diagnostics log (Rebuild, owner, 1 November 2026: the second line shows only once the
+  attempts stop):
 
   | Media3 error code (group) | Proposed sentence |
   |---|---|
@@ -557,8 +574,8 @@ player-side facts:
 - PLAY-FR-101 Style: when colour and background both follow the TV, the TV's style is used whole
   and embedded styles are honoured. Otherwise embedded styles are ignored and the style is
   foreground = chosen colour or the TV's; background: Follow the TV → the TV's background, window
-  and edge with the chosen foreground; None → transparent background and window, no edge; Shadow
-  → transparent background and window, drop-shadow edge `#FF000000`; Box → background
+  and edge with the chosen foreground; None and Shadow → transparent background and window,
+  drop-shadow edge `#FF000000` (owner's 1 October 2026 readability request); Box → background
   `#CC000000`, transparent window, no edge. Picture-based subtitles (PGS, VobSub, DVB) keep their
   own look. Applied when the view is created and whenever the settings change.
 - PLAY-FR-102 Help: `subtitle_style_help` "Follow the TV keeps the TV's own caption settings.
@@ -576,6 +593,10 @@ player-side facts:
   if it differs from the current mode). The previous preference is restored when the frame rate
   changes, the setting turns off, or the player leaves. Help: `auto_frame_rate_help` "Switches
   the TV to a matching refresh rate; the picture may go black for a second when it changes."
+  The rebuild treats an unknown rate (no video track yet, as during a channel change) as no
+  change: the display keeps its mode, so a zap between channels of the same rate makes no HDMI
+  re-negotiation. Every mode request, a return to the previous preference too, counts as a display
+  switch for the "audio becoming noisy" pause recovery (7 October 2026, Chromecast report).
 - PLAY-FR-105 The frame rate must come from the selected video format on every track change
   (beta 23 reads it from the info-line sample, §10 L-20).
 
@@ -801,10 +822,20 @@ arc stands still.
 
 ### 5.13 Error banner
 
-Bottom-centre, full rectangle (no shape), fill `dangerSurface` [#7A1624] α 0.8, padding 20×12,
-centred column: message in `onDangerSurface` (#FFFFFF), default text style; Reconnect action
-button (normal size) top 8. (Rebuild: the plain sentence in body, the detail in caption
-`onDangerSurface` α 0.72.)
+Old app: bottom-centre, full rectangle (no shape), fill `dangerSurface` [#7A1624] α 0.8, padding
+20×12, centred column: message in `onDangerSurface` (#FFFFFF), default text style; Reconnect
+action button (normal size) top 8.
+
+Rebuild (owner, 1 November 2026): the red bar covered a fifth to a quarter of the screen and
+looked alarming, so the banner is a small dark card instead. Bottom-centre, 24 above the bottom
+edge, as wide as its text up to 720: fill `background` α 0.8, shape large, padding 24×12, centred
+column. First row: a mark, 12 gap, the line in body SemiBold `textPrimary` (at most 2 lines). The
+mark is the Refresh icon (20, `focus`) while automatic attempts run, otherwise an 8 dp `danger`
+dot. While the attempts run that row is all (≈ 46 tall). Once they stop, the detail follows in
+caption `textMuted` (top 4, at most 2 lines) and the Reconnect action button (normal size, top 8).
+Messages with no attempts (connection limit, channel unavailable, external player failed) show the
+dot and the line only. The addon player's "Playback stopped" banner (spec 50) uses the same card:
+dot, line, the progress warning as the detail, and Retry with fresh source as the action.
 
 ### 5.14 Score ticker
 

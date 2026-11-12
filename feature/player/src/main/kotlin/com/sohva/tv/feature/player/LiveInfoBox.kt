@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -121,25 +123,37 @@ private fun ActionRow(model: PlayerModel) {
     val opening by model.externalBusy.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
     val focused = remember { BooleanArray(8) }
+    // The row is icons only, and an arrow that hides the controls or a gear that opens quick actions
+    // is a guess: the focused control's name is written beside the row. The row exists only while
+    // the box shows, so the bare picture still draws nothing.
+    var named by remember { mutableIntStateOf(-1) }
     fun onFocus(i: Int, has: Boolean) {
         focused[i] = has
         model.boxFocused = focused.any { it }
+        if (has) named = i else if (named == i) named = -1
     }
-    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        IconAction(TvIcons.Back, stringResource(R.string.player_action_back), { model.hideBox() }, Modifier.focusRequester(first), onFocus = { onFocus(0, it) })
-        IconAction(TvIcons.Aspect, stringResource(R.string.player_picture_mode, shapeLabel(shape)), { model.cycleShape() }, onFocus = { onFocus(1, it) })
-        IconAction(TvIcons.Audio, stringResource(R.string.player_audio_track, audioLabel(tracks)), { model.openPicker(Picker.AUDIO) }, onFocus = { onFocus(2, it) })
-        IconAction(TvIcons.Subtitles, stringResource(R.string.player_subtitle_track, subtitleLabel(tracks)), { model.openPicker(Picker.SUBTITLES) }, onFocus = { onFocus(3, it) })
-        IconAction(TvIcons.Channels, stringResource(R.string.player_action_channels), { model.channels.openList() }, onFocus = { onFocus(4, it) })
-        IconAction(TvIcons.Stats, stringResource(R.string.player_action_stats), { model.toggleStats() }, selected = stats, onFocus = { onFocus(5, it) })
-        IconAction(TvIcons.Settings, stringResource(R.string.player_action_quick), { model.openQuickActions() }, onFocus = { onFocus(6, it) })
-        IconAction(
-            TvIcons.Forward,
-            stringResource(if (opening) R.string.player_opening_external else R.string.player_external),
-            { model.openExternal() },
-            enabled = !opening,
-            onFocus = { onFocus(7, it) },
-        )
+    val labels = listOf(
+        stringResource(R.string.player_action_back),
+        stringResource(R.string.player_picture_mode, shapeLabel(shape)),
+        stringResource(R.string.player_audio_track, audioLabel(tracks)),
+        stringResource(R.string.player_subtitle_track, subtitleLabel(tracks)),
+        stringResource(R.string.player_action_channels),
+        stringResource(R.string.player_action_stats),
+        stringResource(R.string.player_action_quick),
+        stringResource(if (opening) R.string.player_opening_external else R.string.player_external),
+    )
+    Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        IconAction(TvIcons.Back, labels[0], { model.hideBox() }, Modifier.focusRequester(first), onFocus = { onFocus(0, it) })
+        IconAction(TvIcons.Aspect, labels[1], { model.cycleShape() }, onFocus = { onFocus(1, it) })
+        IconAction(TvIcons.Audio, labels[2], { model.openPicker(Picker.AUDIO) }, onFocus = { onFocus(2, it) })
+        IconAction(TvIcons.Subtitles, labels[3], { model.openPicker(Picker.SUBTITLES) }, onFocus = { onFocus(3, it) })
+        IconAction(TvIcons.Channels, labels[4], { model.channels.openList() }, onFocus = { onFocus(4, it) })
+        IconAction(TvIcons.Stats, labels[5], { model.toggleStats() }, selected = stats, onFocus = { onFocus(5, it) })
+        IconAction(TvIcons.Settings, labels[6], { model.openQuickActions() }, onFocus = { onFocus(6, it) })
+        IconAction(TvIcons.Forward, labels[7], { model.openExternal() }, enabled = !opening, onFocus = { onFocus(7, it) })
+        labels.getOrNull(named)?.let { name ->
+            Text(name, Modifier.padding(start = 6.dp).testTag("player-action-label"), style = Sohva.typography.label, color = Sohva.palette.textPrimary, maxLines = 1)
+        }
     }
     LaunchedEffect(request) {
         if (request > 0) {

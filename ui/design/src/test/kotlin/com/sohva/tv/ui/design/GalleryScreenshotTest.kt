@@ -78,4 +78,37 @@ class GalleryScreenshotTest {
             }
         }
     }
+
+    /**
+     * The same pages in the Original theme with the system's text size at 1.3: evidence for the
+     * decision on text scaling (design/01 §14 keeps the system scale on top of the interface size).
+     * Nothing is asserted about the look; the goldens only make a later change visible.
+     */
+    @Test
+    fun everySectionAtALargerSystemTextSize() {
+        var section by mutableStateOf(GallerySection.TOKENS)
+        compose.setContent {
+            val device = androidx.compose.ui.platform.LocalDensity.current
+            CompositionLocalProvider(
+                LocalRenderDispatcher provides Dispatchers.Unconfined,
+                androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(device.density, 1.3f),
+            ) {
+                SohvaTheme(ColorThemeId.ORIGINAL, reducedMotion = true) {
+                    ScreenBackground {
+                        val inset = if (section == GallerySection.SHEET) Modifier else Modifier.padding(
+                            horizontal = Sohva.spacing.safeHorizontal,
+                            vertical = Sohva.spacing.safeVertical,
+                        )
+                        Box(Modifier.fillMaxSize().then(inset)) { GallerySectionContent(section) }
+                    }
+                }
+            }
+        }
+        runBlocking { GroundCache.prepare(Palettes.of(ColorThemeId.ORIGINAL), IntSize(1920, 1080), Dispatchers.Unconfined) }
+        for (s in GallerySection.entries) {
+            section = s
+            compose.waitForIdle()
+            compose.onRoot().captureRoboImage("src/test/screenshots/${s.name.lowercase()}-original-fontscale130.png", halfSize)
+        }
+    }
 }

@@ -7,7 +7,7 @@
         <item quantity="other">El nombre de la fuente puede tener como máximo %1$d caracteres</item>
     </plurals>
     <string name="error_import_interrupted">La actualización se detuvo al cerrarse la aplicación. Se conservaron los datos anteriores.</string>
-    <string name="error_secrets_unreadable">Las direcciones y contraseñas guardadas de las fuentes ya no se pueden leer en este dispositivo. Restaura una copia de seguridad o vuelve a añadir las fuentes.</string>
+    <string name="error_secrets_unreadable">Las direcciones y contraseñas guardadas de las fuentes ya no se pueden leer en este dispositivo. Borra los datos de la aplicación en los ajustes del televisor y, después, restaura una copia de seguridad o vuelve a añadir las fuentes.</string>
     <string name="error_source_response_too_large">La respuesta de la fuente era demasiado grande</string>
     <string name="error_source_limit_reached">No se pueden añadir más fuentes (máximo %1$d)</string>
     <string name="action_cancel">Cancelar</string>
@@ -26,4 +26,23 @@
     <string name="metadata_key_refused">TMDB rechazó la clave tres veces, así que las búsquedas en segundo plano se han detenido. Revisa la clave y pulsa Guardar clave.</string>
     <string name="metadata_tvmaze_credit">Algunos datos de series de TVmaze (CC BY-SA)</string>
     <string name="custom_group_limit">Hasta 24 grupos</string>
+    <string name="update_notice_hint">Abre %1$s › %2$s para descargar la actualización.</string>
+    <!-- Spec 72 (rebuild): diagnostics on a TV without a file picker, and to a phone. -->
+    <string name="diagnostics_send_phone">Enviar al móvil</string>
+    <string name="diagnostics_saved_downloads">Este televisor no tiene selector de archivos, así que el archivo se guardó en la carpeta Download como %1$s.</string>
+    <string name="diagnostics_phone_title">Enviar el diagnóstico a un móvil</string>
+    <string name="diagnostics_phone_help">Escanea el código con un móvil en la misma red o abre la dirección. La página muestra el archivo y lo guarda en el móvil.</string>
+    <string name="diagnostics_phone_sent">El archivo ha llegado a un móvil. Puedes cerrar esto.</string>
+    <string name="diagnostics_page_title">Diagnóstico de Sohva TV</string>
+    <string name="diagnostics_page_help">El archivo de diagnóstico de tu televisor, sin direcciones ni claves. Guárdalo y envíalo al desarrollador si te lo pide.</string>
+    <string name="diagnostics_page_save">Guardar archivo</string>
+    <string name="diagnostics_page_failed">El televisor no entregó el archivo. Vuelve a abrir la página desde el televisor.</string>
+    <string name="diagnostics_page_privacy">El archivo se queda en tu red doméstica hasta que lo compartas.</string>
+    <string name="source_draft_kept">Los cambios sin guardar se han conservado. Vuelve a abrir o a añadir la fuente para continuar.</string>
+    <string name="confirm_question">¿%1$s?</string>
+    <string name="catalogue_nothing_imported_movies">Aún no se han importado películas. Añade una fuente en Ajustes o actualiza allí las películas y series.</string>
+    <string name="catalogue_nothing_imported_series">Aún no se han importado series. Añade una fuente en Ajustes o actualiza allí las películas y series.</string>
+    <string name="channels_move_up">Subir el canal</string>
+    <string name="channels_move_down">Bajar el canal</string>
+    <string name="settings_section_accounts_title">Cuentas</string>
 </resources>

@@ -1,8 +1,5 @@
 package com.sohva.tv.feature.settings
 
-import android.content.ActivityNotFoundException
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -38,8 +35,6 @@ import com.sohva.tv.ui.design.focus.SurfaceState
 import com.sohva.tv.ui.design.focus.requestFocusWhenAttached
 import com.sohva.tv.ui.design.text.Text
 import com.sohva.tv.ui.design.theme.Sohva
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /** The repository where translations are corrected (spec 70 SET-FR-97, spec 74). */
 internal const val PUBLIC_REPOSITORY: String = "https://github.com/Macstered/Sohva-TV"
@@ -166,44 +161,5 @@ private fun statusText(update: UpdateState): String {
                 UpdateFailure.NETWORK, null -> R.string.update_failed_network
             },
         )
-    }
-}
-
-/** Diagnostics (ABOUT-FR-29, -30): the picker names the file by the local date and time. */
-@Composable
-private fun DiagnosticsGroup(about: AboutSettings) {
-    val outcome by about.diagnostics.collectAsStateWithLifecycle()
-    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { about.saveDiagnostics(it) }
-    SettingsGroup {
-        SettingsOverline(stringResource(R.string.diagnostics_title))
-        SettingsRow(stringResource(R.string.diagnostics_save), icon = TvIcons.Save, subtitle = stringResource(R.string.diagnostics_help)) {
-            TvActionButton(
-                stringResource(R.string.diagnostics_save),
-                {
-                    val name = "sohva-tv-diagnostics-${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmm"))}.txt"
-                    try {
-                        save.launch(name)
-                    } catch (_: ActivityNotFoundException) {
-                        about.noPicker()
-                    }
-                },
-                Modifier.testTag("settings-diagnostics-save"), TvIcons.Save, compact = true,
-            )
-        }
-        val text = when (val o = outcome) {
-            null -> null
-            DiagnosticsOutcome.Saved -> stringResource(R.string.diagnostics_saved)
-            DiagnosticsOutcome.OpenFailed -> stringResource(R.string.diagnostics_open_failed)
-            DiagnosticsOutcome.NoPicker -> stringResource(R.string.diagnostics_no_picker)
-            is DiagnosticsOutcome.Failed -> o.text ?: stringResource(R.string.error_unknown)
-        }
-        if (text != null) {
-            Text(
-                text,
-                Modifier.padding(horizontal = 14.dp).testTag("settings-diagnostics-status"),
-                style = Sohva.typography.caption,
-                color = if (outcome == DiagnosticsOutcome.Saved) Sohva.palette.focus else Sohva.palette.danger,
-            )
-        }
     }
 }

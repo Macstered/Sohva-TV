@@ -33,3 +33,9 @@ data class SohvaSpacing(
     val safeHorizontal: Dp = 40.dp,
     val safeVertical: Dp = 24.dp,
 )
+
+/** Home's passive update notice sits below the clock, above the rows, beside the hero text. */
+object UpdateNoticeDimensions {
+    val width: Dp = 360.dp
+    val top: Dp = 64.dp
+}

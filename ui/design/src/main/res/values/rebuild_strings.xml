@@ -6,7 +6,7 @@
         <item quantity="other">The source name can be at most %1$d characters</item>
     </plurals>
     <string name="error_import_interrupted">The update stopped when the app closed. The previous data was kept.</string>
-    <string name="error_secrets_unreadable">Saved source addresses and passwords can no longer be read on this device. Restore a backup or add your sources again.</string>
+    <string name="error_secrets_unreadable">Saved source addresses and passwords can no longer be read on this device. Clear this app’s storage in the TV’s settings, then restore a backup or add your sources again.</string>
     <string name="error_source_response_too_large">The source response was too large</string>
     <string name="error_source_limit_reached">No more sources can be added (limit %1$d)</string>
     <string name="action_cancel">Cancel</string>
@@ -28,4 +28,23 @@
     <string name="metadata_tvmaze_credit">Some series details from TVmaze (CC BY-SA)</string>
     <!-- Spec 42 ORG-FR-64 (rebuild): "Add a group" is disabled at 24 groups with this note. -->
     <string name="custom_group_limit">Up to 24 groups</string>
+    <string name="update_notice_hint">Open %1$s › %2$s to download the update.</string>
+    <!-- Spec 72 (rebuild): diagnostics on a TV without a file picker, and to a phone. -->
+    <string name="diagnostics_send_phone">Send to phone</string>
+    <string name="diagnostics_saved_downloads">This TV has no file picker, so the file was saved in the Download folder as %1$s.</string>
+    <string name="diagnostics_phone_title">Send diagnostics to a phone</string>
+    <string name="diagnostics_phone_help">Scan the code with a phone on the same network, or open the address. The page shows the file and saves it on the phone.</string>
+    <string name="diagnostics_phone_sent">The file reached a phone. You can close this.</string>
+    <string name="diagnostics_page_title">Sohva TV diagnostics</string>
+    <string name="diagnostics_page_help">Your TV\'s diagnostics file, with addresses and keys removed. Save it and send it to the developer if asked.</string>
+    <string name="diagnostics_page_save">Save file</string>
+    <string name="diagnostics_page_failed">The TV did not hand over the file. Open the page again from the TV.</string>
+    <string name="diagnostics_page_privacy">The file stays on your home network until you share it.</string>
+    <string name="source_draft_kept">Unsaved changes were kept. Open or add the source again to continue.</string>
+    <string name="confirm_question">%1$s?</string>
+    <string name="catalogue_nothing_imported_movies">No movies have been imported yet. Add a source in Settings, or refresh movies and series there.</string>
+    <string name="catalogue_nothing_imported_series">No series have been imported yet. Add a source in Settings, or refresh movies and series there.</string>
+    <string name="channels_move_up">Move channel up</string>
+    <string name="channels_move_down">Move channel down</string>
+    <string name="settings_section_accounts_title">Accounts</string>
 </resources>

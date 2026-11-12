@@ -173,7 +173,9 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
             OrgPass(env.db, OrgRules(env.db), passes).resolveSource(sourceId, preferred, phase)
             passes.recountGenres()
             phase("genre counts")
-            SearchIndex.catchUp(env.db, SearchTable.MOVIE, SearchTable.SERIES, SearchTable.EPISODE)
+            for (table in listOf(SearchTable.MOVIE, SearchTable.SERIES, SearchTable.EPISODE)) {
+                SearchIndex.catchUpPaged(env.db, table) { env.pauseGate.awaitTurn(WorkOrigin.VIEWER) }
+            }
             phase("search index")
             // Positions imported from beta 23 take their titles' film identity and series (decision A1).
             com.sohva.tv.core.data.migration.Beta23Rows.link(env.db)
@@ -189,8 +191,8 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         val group = f.categoryId?.let { id -> categories[id]?.let { GroupRef(Keys.groupKey(id, it), it) } }
         val address = urls.film(f.streamId, f.extension)
         val hash = ContentHash().add(KEYS_VERSION).add(f.name).add(group?.key).add(group?.name).add(f.year).add(f.rating).add(f.posterUrl)
-            .add(address).add(f.plot).add(index).value()
-        return Row(key, hash, group) { id, groupId ->
+            .add(address).add(f.plot).value()
+        return Row(key, hash, group, position = index) { id, groupId ->
             val claims = CopyClaimReader.read(f.name)
             MovieEntity(
                 id = id, key = key, sourceId = job.sourceId, providerId = f.streamId, groupId = groupId, name = f.name,
@@ -208,8 +210,8 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         val key = Keys.seriesKey(job.sourceId, s.seriesId)
         val group = s.categoryId?.let { id -> categories[id]?.let { GroupRef(Keys.groupKey(id, it), it) } }
         val hash = ContentHash().add(KEYS_VERSION).add(s.name).add(group?.key).add(group?.name).add(s.year).add(s.rating).add(s.coverUrl)
-            .add(s.backdropUrl).add(s.plot).add(index).value()
-        return Row(key, hash, group) { id, groupId ->
+            .add(s.backdropUrl).add(s.plot).value()
+        return Row(key, hash, group, position = index) { id, groupId ->
             SeriesEntity(
                 id = id, key = key, sourceId = job.sourceId, providerId = s.seriesId, groupId = groupId, name = s.name,
                 sortName = SortNames.of(s.name), year = VodText.year(s.year, s.name), rating = s.rating,
@@ -250,8 +252,8 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
             val key = Keys.movieKey(job.sourceId, e.id)
             val group = e.group?.let { GroupRef(Keys.groupKey(null, it), it) }
             val year = EpisodeNames.year(name)
-            val hash = ContentHash().add(KEYS_VERSION).add(name).add(group?.key).add(year).add(e.logoUrl).add(e.streamUrl).add(e.index).value()
-            return Row(key, hash, group) { id, groupId ->
+            val hash = ContentHash().add(KEYS_VERSION).add(name).add(group?.key).add(year).add(e.logoUrl).add(e.streamUrl).value()
+            return Row(key, hash, group, position = e.index) { id, groupId ->
                 val claims = CopyClaimReader.read(name)
                 MovieEntity(
                     id = id, key = key, sourceId = job.sourceId, providerId = e.id, groupId = groupId, name = name,
@@ -287,12 +289,14 @@ internal class CatalogueImport(private val env: ImportEnvironment) {
         private fun seriesHeader(e: M3uEntry, marker: EpisodeNames.Marker, key: String, providerId: String): Row<SeriesEntity> {
             val group = e.group?.let { GroupRef(Keys.groupKey(null, it), it) }
             val year = EpisodeNames.year(marker.series)
-            val hash = ContentHash().add(KEYS_VERSION).add(marker.series).add(group?.key).add(year).add(e.logoUrl).add(announced.size).value()
-            return Row(key, hash, group) { id, groupId ->
+            val hash = ContentHash().add(KEYS_VERSION).add(marker.series).add(group?.key).add(year).add(e.logoUrl).value()
+            // Read now: the set keeps growing before the batch is written.
+            val order = announced.size - 1
+            return Row(key, hash, group, position = order) { id, groupId ->
                 SeriesEntity(
                     id = id, key = key, sourceId = job.sourceId, providerId = providerId, groupId = groupId, name = marker.series,
                     sortName = SortNames.of(marker.series), year = year, rating = null, ratingX10 = null, posterUrl = e.logoUrl,
-                    backdropUrl = null, plot = null, providerOrder = announced.size - 1, qualityMask = QualityChips.mask(marker.series),
+                    backdropUrl = null, plot = null, providerOrder = order, qualityMask = QualityChips.mask(marker.series),
                     genre = null, workKey = null,
                     primaryCopy = true, visible = true, itemPosition = null, contentHash = hash, generation = job.generation,
                 )

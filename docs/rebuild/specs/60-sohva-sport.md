@@ -15,6 +15,16 @@ Date support uses the stated zone, otherwise UTC; a zoned start within the two-h
 can support an adjacent date across midnight. In `30 Sep 19:15`, the clock hour is never read as
 the day in `Sep 19`. The historical beta.23 rules below are retained as reference.
 
+**Owner correction, 2 October 2026:** fixture-compatible numeric dates support a name match.
+For `10/2` and `2/10`, either valid day/month reading may agree with the fixture date;
+do not infer a provider's date order from its country or broadcaster. An explicit year must
+agree. A date matching neither reading remains Possible. Compare with the fixture's day in
+the stated zone, otherwise UTC; only the existing explicit-zone two-hour midnight window
+can support an adjacent date. Recognise literal EDT as UTC−4. Clocks still only rank name
+matches, and two independent participant mentions remain required. This replaces the blanket
+rejection of ambiguous numeric dates above and in SPORT-FR-112. Invalidate cached automatic
+results from older matching rules while retaining the viewer's saved Confirm/Reject choices.
+
 Layout, measurements, colours and state visuals of the Today screen and the match hub are already
 extracted in [design/screens/sohva-sport.md](../design/screens/sohva-sport.md) (cited below as
 **D§n**); the Settings visuals are in [design/screens/settings.md](../design/screens/settings.md)

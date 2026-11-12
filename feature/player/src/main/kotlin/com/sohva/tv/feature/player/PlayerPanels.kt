@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -31,6 +33,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -60,7 +64,8 @@ internal fun ChromeScrim() {
             drawRect(Brush.verticalGradient(listOf(ground.copy(alpha = 0.62f), ground.copy(alpha = 0f)), endY = top), size = size.copy(height = top))
             val bottomStart = size.height * 0.52f
             drawRect(
-                Brush.verticalGradient(listOf(ground.copy(alpha = 0f), ground.copy(alpha = 0.94f)), startY = bottomStart, endY = size.height),
+                // Darker sooner: the programme lines sit in the band's upper half and were faint over a bright picture.
+                Brush.verticalGradient(0f to ground.copy(alpha = 0f), 0.35f to ground.copy(alpha = 0.72f), 1f to ground.copy(alpha = 0.94f), startY = bottomStart, endY = size.height),
                 topLeft = androidx.compose.ui.geometry.Offset(0f, bottomStart),
                 size = size.copy(height = size.height - bottomStart),
             )
@@ -89,10 +94,12 @@ internal fun DialReadout(state: Pair<String?, Int?>, statsOn: Boolean) {
     )
 }
 
-/** The error banner (spec 30 §5.13): the cause in words, the detail smaller, the Reconnect button. */
+/**
+ * The error banner (spec 30 §5.13): the cause in words. While the attempts run it is one line;
+ * once they stop, the detail and the Reconnect button join it.
+ */
 @Composable
 internal fun ErrorBanner(model: PlayerModel, banner: Banner, modifier: Modifier = Modifier) {
-    val on = Sohva.palette.onDangerSurface
     val reconnect = remember { FocusRequester() }
     val (sentence, detail) = when (val r = banner.reason) {
         is BannerReason.Cause -> causeText(r.cause) to r.detail
@@ -105,16 +112,20 @@ internal fun ErrorBanner(model: PlayerModel, banner: Banner, modifier: Modifier 
         banner.stopped -> stringResource(R.string.player_reconnect_stopped, sentence)
         else -> stringResource(R.string.player_reconnecting, sentence, banner.attempt, banner.max)
     }
-    Column(
-        modifier.fillMaxWidth().roundFill(Sohva.palette.dangerSurface.copy(alpha = 0.8f), 0.dp).padding(horizontal = 20.dp, vertical = 12.dp).testTag("player-banner"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(line, style = Sohva.typography.body, color = on)
-        if (detail != null) Text(detail, style = Sohva.typography.caption, color = on.copy(alpha = 0.72f), maxLines = 2)
-        if (banner.reason is BannerReason.Cause) {
-            TvActionButton(stringResource(R.string.player_reconnect), { model.reconnect() }, Modifier.padding(top = 8.dp).focusRequester(reconnect).testTag("player-reconnect"))
-        }
-    }
+    val retrying = banner.reason is BannerReason.Cause && !banner.stopped
+    val needsViewer = banner.reason is BannerReason.Cause && banner.stopped
+    PlayerNotice(
+        line,
+        working = retrying,
+        modifier = modifier.testTag("player-banner"),
+        // The detail stays in the diagnostics log while the app is still trying (PLAY-FR-93).
+        detail = detail.takeIf { needsViewer },
+        action = if (needsViewer) {
+            { TvActionButton(stringResource(R.string.player_reconnect), { model.reconnect() }, Modifier.focusRequester(reconnect).testTag("player-reconnect")) }
+        } else {
+            null
+        },
+    )
     // When the automatic attempts stop, Reconnect takes focus (spec 30 L-26).
     LaunchedEffect(banner.stopped) { if (banner.stopped && banner.reason is BannerReason.Cause) reconnect.requestFocusWhenAttached() }
 }
@@ -287,7 +298,8 @@ private fun ChannelColumn(view: ChannelListView, numbers: Boolean, active: Boole
                 }
                 val ink = selected && active
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = 66.dp).roundFill(fill, Sohva.shapes.medium).padding(horizontal = 10.dp).testTag("player-channel-$index"),
+                    Modifier.fillMaxWidth().heightIn(min = 66.dp).roundFill(fill, Sohva.shapes.medium).padding(horizontal = 10.dp)
+                        .semantics { this.selected = selected }.testTag("player-channel-$index"),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (numbers) {
@@ -313,10 +325,8 @@ private fun ChannelColumn(view: ChannelListView, numbers: Boolean, active: Boole
         }
     }
     // The highlight walks to the middle before the list moves, in the same key press (PLAY-FR-54).
-    LaunchedEffect(view.selected, view.firstIndex) {
-        val rows = state.layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 7
-        state.scrollToItem(maxOf(0, view.selected - view.firstIndex - rows / 2))
-    }
+    // A launched scroll lands after the highlight's frame is drawn; a request is applied in this frame's measure.
+    SideEffect { state.centre(view.selected - view.firstIndex, rowsBeforeLayout = 7) }
 }
 
 @Composable
@@ -342,10 +352,14 @@ private fun GroupColumn(view: GroupListView) {
             }
         }
     }
-    LaunchedEffect(view.selected) {
-        val rows = state.layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: 10
-        state.scrollToItem(maxOf(0, view.selected - rows / 2))
-    }
+    SideEffect { state.centre(view.selected, rowsBeforeLayout = 10) }
+}
+
+/** First visible row `max(0, selected − rowsOnScreen / 2)` (PLAY-FR-54), requested only when it changes. */
+private fun LazyListState.centre(selected: Int, rowsBeforeLayout: Int) {
+    val rows = layoutInfo.visibleItemsInfo.size.takeIf { it > 0 } ?: rowsBeforeLayout
+    val first = maxOf(0, selected - rows / 2)
+    if (first != firstVisibleItemIndex || firstVisibleItemScrollOffset != 0) requestScrollToItem(first)
 }
 
 /**

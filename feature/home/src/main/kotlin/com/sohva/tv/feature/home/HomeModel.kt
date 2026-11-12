@@ -38,6 +38,9 @@ import kotlinx.coroutines.launch
  */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HomeModel(private val env: HomeEnvironment) : ViewModel() {
+    /** The rail entry opened last from this Home: Left into the rail returns to it. UI thread only. */
+    var lastRailItem: RailItem? = null
+
     private val _rows = MutableStateFlow<List<HomeRow>>(emptyList())
     val rows: StateFlow<List<HomeRow>> = _rows.asStateFlow()
 

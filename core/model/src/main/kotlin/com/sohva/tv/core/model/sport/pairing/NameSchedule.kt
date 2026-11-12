@@ -28,8 +28,13 @@ class NameSchedule private constructor(private val time: LocalTime?, private val
         val days: List<LocalDate> = when (val d = date) {
             null -> listOf(kickDate.minusDays(1), kickDate, kickDate.plusDays(1))
             else -> {
-                if (!d.valid || d.ambiguous) return null
-                (d.year?.let { listOf(it) } ?: listOf(kickDate.year - 1, kickDate.year, kickDate.year + 1)).mapNotNull { y -> dateOrNull(y, d.month, d.day) }
+                if (!d.valid) return null
+                if (d.ambiguous) {
+                    val day = numericDay(d, kickDate, kickOff) ?: return null
+                    return (day.atTime(time).toInstant(zone).toEpochMilli() - kickOff) / MINUTE
+                } else {
+                    (d.year?.let { listOf(it) } ?: listOf(kickDate.year - 1, kickDate.year, kickDate.year + 1)).mapNotNull { y -> dateOrNull(y, d.month, d.day) }
+                }
             }
         }
         return days.map { (it.atTime(time).toInstant(zone).toEpochMilli() - kickOff) / MINUTE }.minByOrNull { abs(it) }
@@ -42,10 +47,36 @@ class NameSchedule private constructor(private val time: LocalTime?, private val
      */
     fun dateSupports(kickOff: Long, offsetMinutes: Long?): Boolean {
         val d = date ?: return true
-        if (!d.valid || d.ambiguous) return false
-        if (offsetMinutes != null && abs(offsetMinutes) <= DATE_BOUNDARY_WINDOW) return true
+        if (!d.valid) return false
+        // A numeric offset exists only after numericDay established fixture compatibility.
+        if (d.ambiguous && offsetMinutes != null) return true
+        if (!d.ambiguous && offsetMinutes != null && abs(offsetMinutes) <= DATE_BOUNDARY_WINDOW) return true
         val day = Instant.ofEpochMilli(kickOff).atOffset(zone ?: ZoneOffset.UTC).toLocalDate()
+        if (d.ambiguous) return numericDay(d, day, kickOff) != null
         return d.month == day.monthValue && d.day == day.dayOfMonth && (d.year == null || d.year == day.year)
+    }
+
+    /** Resolve compatibility for this fixture, never a provider's date order from its country. */
+    private fun numericDay(d: StatedDate, kickDate: LocalDate, kickOff: Long): LocalDate? {
+        if ((d.year == null || d.year == kickDate.year) &&
+            ((d.month == kickDate.monthValue && d.day == kickDate.dayOfMonth) ||
+                (d.day == kickDate.monthValue && d.month == kickDate.dayOfMonth))) return kickDate
+        val time = time ?: return null
+        val zone = zone ?: return null
+        // Only the existing explicit-zone midnight window can support an adjacent date.
+        // At most two days are considered; no date-format learning or catalogue lookup is added.
+        val year = d.year ?: kickDate.year
+        val first = dateOrNull(year, d.month, d.day)
+        val second = dateOrNull(year, d.day, d.month)
+        fun nearby(day: LocalDate?): Boolean = day != null &&
+            abs((day.atTime(time).toInstant(zone).toEpochMilli() - kickOff) / MINUTE) <= DATE_BOUNDARY_WINDOW
+        val firstNear = nearby(first)
+        val secondNear = nearby(second)
+        return when {
+            firstNear && !secondNear -> first
+            secondNear && !firstNear -> second
+            else -> null
+        }
     }
 
     companion object {
@@ -53,7 +84,7 @@ class NameSchedule private constructor(private val time: LocalTime?, private val
         private const val DATE_BOUNDARY_WINDOW = 120
         private const val MONTH = "(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
         private val TIME = Regex(
-            "(?<![\\d.])([01]?\\d|2[0-3])[:.]([0-5]\\d)(?![\\d.])\\s*(?:([AP])\\.?\\s*M\\.?)?\\s*((?:UTC|GMT)(?:[+-]\\d{1,2}(?::?\\d{2})?)?|CEST|CET|EEST|EET)?\\b",
+            "(?<![\\d.])([01]?\\d|2[0-3])[:.]([0-5]\\d)(?![\\d.])\\s*(?:([AP])\\.?\\s*M\\.?)?\\s*((?:UTC|GMT)(?:[+-]\\d{1,2}(?::?\\d{2})?)?|CEST|CET|EEST|EET|EDT)?\\b",
             RegexOption.IGNORE_CASE,
         )
         private val ISO = Regex("(?<!\\d)((?:19|20)\\d{2})-(\\d{2})-(\\d{2})(?!\\d)")
@@ -96,6 +127,7 @@ class NameSchedule private constructor(private val time: LocalTime?, private val
                 "CET" -> ZoneOffset.ofHours(1)
                 "CEST", "EET" -> ZoneOffset.ofHours(2)
                 "EEST" -> ZoneOffset.ofHours(3)
+                "EDT" -> ZoneOffset.ofHours(-4)
                 "UTC", "GMT" -> ZoneOffset.UTC
                 else -> {
                     val rest = upper.substring(3)
@@ -128,7 +160,7 @@ class NameSchedule private constructor(private val time: LocalTime?, private val
                 val a = m.groupValues[1].toInt()
                 val b = m.groupValues[2].toInt()
                 val year = m.groupValues[3].toIntOrNull()
-                // US order only when it is the one reading that works (9/18); otherwise day first.
+                // Store the only valid order, else day first; numericDay checks both against the fixture.
                 return if (a in 1..12 && b > 12) {
                     stated(year, a, b)
                 } else {

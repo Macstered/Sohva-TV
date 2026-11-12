@@ -43,6 +43,7 @@ import com.sohva.tv.ui.design.components.SettingsRow
 import com.sohva.tv.ui.design.components.SettingsSwitchRow
 import com.sohva.tv.ui.design.components.SettingsValueRow
 import com.sohva.tv.ui.design.components.TvActionButton
+import com.sohva.tv.ui.design.components.TvConfirmButton
 import com.sohva.tv.ui.design.components.TvIcons
 import com.sohva.tv.ui.design.components.TvUrlField
 import com.sohva.tv.ui.design.focus.SurfaceState
@@ -214,7 +215,7 @@ private fun CustomGroupEditor(library: LibrarySettings, initial: CustomGroup?, o
                         Modifier.focusRequester(save).testTag("custom-group-save"), icon = TvIcons.Check, state = SurfaceState(enabled = draft.isUsable), compact = true,
                     )
                     if (initial != null) {
-                        TvActionButton(
+                        TvConfirmButton(
                             stringResource(R.string.action_delete),
                             {
                                 library.deleteCustomGroup(initial.id)

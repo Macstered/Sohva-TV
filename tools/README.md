@@ -16,6 +16,8 @@ often attached to adb) and other emulators (one holds the old app's installs) ar
 | `fixture/make_fixture.py` | The owner-scale synthetic fixture (56,164 channels, 165,600 programmes anchored to now) into `harness-out/fixture` |
 | `fixture/serve_fixture.py` | Serves it on 127.0.0.1:8780 only (emulator: `http://10.0.2.2:8780`); refuses a taken port. 8765 belongs to the old app's harness |
 | `home_benchmark_report.py --input <run-folder> --trace-processor <executable> --output <report.json>` | Summarises populated Home's cold starts, memory, compositions and per-press main-thread CPU from its Perfetto traces |
+| `sports_dictionary.py collect --key-window` | Collects resumable identities for all 12 API-Sports products with masked local keys, TheSportsDB enrichment and multilingual country labels; [research workflow](team_dictionary/README.md) |
+| `sports_dictionary.py aliases --refresh-translations` | Builds sourced alias proposals and identity collision/gap reports, preserves national qualifiers, refreshes nine public Unicode sources and prioritises compatible pending TheSportsDB profiles |
 
 Gradle side (always with `ANDROID_SERIAL=emulator-NNNN`):
 

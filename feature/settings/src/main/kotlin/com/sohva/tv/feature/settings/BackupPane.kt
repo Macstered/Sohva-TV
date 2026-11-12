@@ -194,4 +194,5 @@ private fun problemText(problem: BackupProblem?, field: String?): String = when 
     BackupProblem.MISSING_FIELD -> stringResource(R.string.backup_error_missing_field, field.orEmpty())
     BackupProblem.BLANK_FIELD -> stringResource(R.string.backup_error_blank_field, field.orEmpty())
     BackupProblem.LONG_FIELD -> stringResource(R.string.backup_error_long_field, field.orEmpty())
+    BackupProblem.SECRETS -> stringResource(R.string.error_secrets_unreadable)
 }

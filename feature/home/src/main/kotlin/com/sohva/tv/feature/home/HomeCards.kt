@@ -134,9 +134,9 @@ internal fun CroppedArt(name: String, url: String?, width: Dp, height: Dp) {
     val density = LocalDensity.current
     val w = with(density) { width.roundToPx() }
     val h = with(density) { height.roundToPx() }
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(url, w, h) { mutableStateOf(url?.let { loader.peek(it, w, h, opaque = true) }) }
     LaunchedEffect(url, w, h) {
-        if (!url.isNullOrBlank()) image = loader.load(url, w, h, opaque = true)
+        if (image == null && !url.isNullOrBlank()) image = loader.load(url, w, h, opaque = true)
     }
     Box(Modifier.size(width, height)) {
         InitialsTile(name, Modifier.size(width, height))

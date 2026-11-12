@@ -18,6 +18,7 @@ import com.sohva.tv.core.model.text.SortNames
 import com.sohva.tv.core.model.time.Clock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -94,6 +95,82 @@ class LiveStoreTest {
         assertEquals(1, store.open(ListSpec.Ungrouped("s")).size)
         assertEquals(listOf("News", "Sport"), store.rail("s").map { it.name })
         assertEquals(listOf("s"), store.sources.first().map { it.id })
+    }
+
+    private fun write(sql: String) = db.runInTransaction { db.openHelper.writableDatabase.execSQL(sql) }
+
+    private fun status(kind: String, state: String, snapshot: Long? = null) = write(
+        "INSERT OR REPLACE INTO source_status(source_id, kind, status, item_count, consecutive_failures, generation, epg_snapshot) " +
+            "VALUES ('s', '$kind', '$state', 0, 0, 1, ${snapshot ?: "NULL"})",
+    )
+
+    /** Counts what [flow] emits after its first value, on a real thread as the guide collects it. */
+    private fun counting(flow: kotlinx.coroutines.flow.Flow<Unit>): Pair<java.util.concurrent.atomic.AtomicInteger, kotlinx.coroutines.Job> {
+        val seen = java.util.concurrent.atomic.AtomicInteger(-1)
+        val job = kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch { flow.collect { seen.incrementAndGet() } }
+        runBlocking { kotlinx.coroutines.withTimeout(5_000) { while (seen.get() < 0) kotlinx.coroutines.delay(20) } }
+        return seen to job
+    }
+
+    private fun settle() = runBlocking { kotlinx.coroutines.delay(400) }
+
+    /**
+     * Spec 10 SRC-L-23: an open guide wakes once per import, not once per batch. While a playlist
+     * import runs its channel and group writes are not signalled; the status write that ends it is.
+     */
+    @Test
+    fun aPlaylistImportSignalsTheGuideWhenItEndsNotOnEveryBatch() {
+        seed(channels = 5)
+        status("playlist", "success")
+        val (seen, job) = counting(store.changes())
+        try {
+            status("playlist", "running")
+            settle()
+            val atStart = seen.get()
+            repeat(10) { i ->
+                write("UPDATE channel SET name = 'Batch $i' WHERE key = 's:c1'")
+                settle()
+            }
+            assertEquals("no signal per batch", atStart, seen.get())
+            // A favourite or a restriction changed meanwhile still shows at once.
+            runBlocking { db.profiles().allow(ProfileAllowedGroupEntity("kids", "LIVE", "sport")) }
+            settle()
+            assertEquals(atStart + 1, seen.get())
+            status("playlist", "success")
+            settle()
+            assertEquals("one signal when the import ends", atStart + 2, seen.get())
+            // Outside an import a channel write is signalled as before (an edit in channel management).
+            write("UPDATE channel SET name = 'Edited' WHERE key = 's:c2'")
+            settle()
+            assertEquals(atStart + 3, seen.get())
+        } finally {
+            job.cancel()
+        }
+    }
+
+    /** The visible programmes are read again for a new guide snapshot or a changed source, not for other kinds' status writes. */
+    @Test
+    fun onlyANewGuideSnapshotOrASourceEditSignalsTheProgrammes() {
+        seed(channels = 5)
+        status("epg", "success", snapshot = 1)
+        val (seen, job) = counting(store.guideChanges())
+        try {
+            status("catalogue", "running")
+            settle()
+            status("catalogue", "success")
+            settle()
+            status("epg", "running", snapshot = 1)
+            settle()
+            assertEquals("nothing the guide shows changed", 0, seen.get())
+            status("epg", "success", snapshot = 2)
+            settle()
+            assertEquals(1, seen.get())
+            write("UPDATE source SET epg_offset_minutes = 120 WHERE id = 's'")
+            settle()
+            assertEquals(2, seen.get())
+        } finally {
+            job.cancel()
+        }
     }
 
     /** Spec 04 PROF-FR-23: a restricted profile sees only its groups; widening restores the rest. */

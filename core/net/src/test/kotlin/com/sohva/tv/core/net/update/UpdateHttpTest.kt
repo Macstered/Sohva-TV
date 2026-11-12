@@ -53,6 +53,45 @@ class UpdateHttpTest {
         assertEquals("application/vnd.github+json", server.takeRequest().headers["Accept"])
     }
 
+    /** A redirect that changes between HTTPS and HTTP is not followed: the update never leaves its transport. */
+    @Test
+    fun aRedirectToAnotherSchemeIsNotFollowed() = runBlocking {
+        server.enqueue(MockResponse.Builder().code(302).addHeader("Location", "https://localhost:1/elsewhere").build())
+        try {
+            http.text(server.url("/sums"))
+            fail("the redirect was followed")
+        } catch (e: UpdateHttpException) {
+            assertEquals("HTTP 302", e.message)
+        }
+    }
+
+    /** An asset name is used as a file name: only plain names are kept. */
+    @Test
+    fun assetsWithNamesThatAreNotPlainFileNamesAreDropped() = runBlocking {
+        val feed = """[{"tag_name":"v1","assets":[
+            {"name":"../escape.apk","browser_download_url":"https://downloads.example/a","size":1},
+            {"name":"dir/inner.apk","browser_download_url":"https://downloads.example/b","size":1},
+            {"name":".hidden","browser_download_url":"https://downloads.example/c","size":1},
+            {"name":"sohva-tv_1.0.apk","browser_download_url":"https://downloads.example/d","size":1}]}]"""
+        server.enqueue(MockResponse.Builder().body(feed).build())
+        assertEquals(listOf("sohva-tv_1.0.apk"), http.releases(server.url("/releases")).single().assets.map { it.name })
+    }
+
+    /** A body far longer than the release list announced stops the download instead of filling the cache. */
+    @Test
+    fun aDownloadLongerThanAnnouncedStops() = runBlocking {
+        server.enqueue(MockResponse.Builder().body(Buffer().write(ByteArray(1_400_000))).build())
+        val file = File.createTempFile("update", ".apk")
+        try {
+            http.download(server.url("/apk"), file, expected = 100_000) { }
+            fail("the oversized download was accepted")
+        } catch (e: UpdateHttpException) {
+            assertEquals("too large", e.message)
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun aDownloadStreamsToTheFileWithItsDigestAndPercents() = runBlocking {
         val bytes = ByteArray(300_000) { (it % 251).toByte() }

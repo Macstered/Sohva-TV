@@ -44,9 +44,11 @@
             android:shell="true"
             tools:targetApi="29" />
 
+        <!-- A keyboard, gamepad or remote that connects must not recreate the activity: a recreation
+             closes the player (decision "Home actions after background activity recreation"). -->
         <activity
             android:name=".MainActivity"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden|navigation"
             android:exported="false"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"

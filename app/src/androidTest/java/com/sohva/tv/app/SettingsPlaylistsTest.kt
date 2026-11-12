@@ -4,6 +4,7 @@ import android.view.KeyEvent
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasSetTextAction
@@ -78,8 +79,11 @@ class SettingsPlaylistsTest {
         compose.waitForIdle()
     }
 
-    private fun awaitFocus(tag: String) = compose.waitUntil(5_000) {
-        compose.onAllNodes(hasTestTag(tag) and isFocused()).fetchSemanticsNodes().isNotEmpty()
+    private fun awaitFocus(tag: String) = try {
+        compose.waitUntil(5_000) { compose.onAllNodes(hasTestTag(tag) and isFocused()).fetchSemanticsNodes().isNotEmpty() }
+    } catch (e: androidx.compose.ui.test.ComposeTimeoutException) {
+        val focused = compose.onAllNodes(isFocused(), useUnmergedTree = true).fetchSemanticsNodes().map { it.config.getOrNull(SemanticsProperties.TestTag) }
+        throw AssertionError("focus is on $focused, not on $tag", e)
     }
 
     /** Opens a field's editor with OK, types, and closes it with Done (SRC-FR-18). */
@@ -91,11 +95,17 @@ class SettingsPlaylistsTest {
         compose.waitForIdle()
     }
 
-    private fun statusShows(text: String) = compose.waitUntil(15_000) {
+    private fun statusShows(vararg texts: String) = compose.waitUntil(15_000) {
         compose.onAllNodes(hasTestTag("settings-status")).fetchSemanticsNodes().any { node ->
-            node.config.getOrNull(SemanticsProperties.Text)?.any { it.text.contains(text) } == true
+            node.config.getOrNull(SemanticsProperties.Text)?.any { line -> texts.any { line.text.contains(it) } } == true
         }
     }
+
+    /**
+     * The source was saved: "Saved. Syncing…", or already what the first sync ended with. The line
+     * moves on to the import's result by itself, and a one-channel playlist can get there first.
+     */
+    private fun savedShows() = statusShows("Saved.", "Imported ", "playlist", "Playlist", "provider")
 
     @Test
     fun opensOnPlaylistsWithFocusOnTheFirstControl() {
@@ -104,16 +114,85 @@ class SettingsPlaylistsTest {
         statusShows("Add your first IPTV source")
     }
 
+    /** The viewer who chose "Add M3U source" types an address next: a new page starts on that field (decision "Source form focus"). */
     @Test
-    fun aNewPageStartsOnAllPlaylistsAndBackReturnsToTheList() {
+    fun aNewPageStartsOnItsAddressFieldAndBackReturnsToTheList() {
         openSettings()
         press(KeyEvent.KEYCODE_DPAD_CENTER)
-        await("source-page-back")
-        awaitFocus("source-page-back")
+        await("settings-m3u")
+        awaitFocus("settings-m3u")
         compose.onAllNodesWithText("IPTV 1", substring = true).fetchSemanticsNodes().isNotEmpty().let(::assertTrue)
         press(KeyEvent.KEYCODE_BACK)
         await("source-add-m3u")
         awaitFocus("source-add-m3u")
+        // Xtream starts on its server address.
+        click("source-add-xtream")
+        awaitFocus("settings-xtream-base-url")
+    }
+
+    /** A saved source's page still starts on "All playlists" (SRC-FR-13). */
+    @Test
+    fun aSavedSourcesPageStartsOnAllPlaylists() {
+        server.enqueue(MockResponse.Builder().body("#EXTM3U\n#EXTINF:-1,A\nhttp://s.example/a\n").build())
+        openSettings()
+        click("source-add-m3u")
+        type("settings-m3u", server.url("/list.m3u").toString())
+        click("settings-save")
+        savedShows()
+        val id = runBlocking { graph.data.sources.all() }.single().id
+        press(KeyEvent.KEYCODE_BACK)
+        awaitFocus("source-$id")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        await("source-page-back")
+        awaitFocus("source-page-back")
+    }
+
+    /** Save is where a form ends: Down past the last setting reaches it, not the button that happens to sit below. */
+    @Test
+    fun downFromTheLastSettingReachesSave() {
+        openSettings()
+        click("source-add-m3u")
+        compose.onNodeWithTag("settings-epg-offset-up").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("settings-epg-offset-up")
+        press(KeyEvent.KEYCODE_DPAD_DOWN)
+        awaitFocus("settings-save")
+        // Inside the buttons the remote moves as before.
+        press(KeyEvent.KEYCODE_DPAD_RIGHT)
+        awaitFocus("settings-test-m3u")
+    }
+
+    /** Sync and refresh act on a stored source; an unsaved page offers Save and the test only. */
+    @Test
+    fun syncAndRefreshAppearOnceTheSourceIsSaved() {
+        server.enqueue(MockResponse.Builder().body("#EXTM3U\n#EXTINF:-1,A\nhttp://s.example/a\n").build())
+        openSettings()
+        click("source-add-m3u")
+        await("settings-save")
+        for (early in listOf("settings-sync-everything", "settings-refresh-playlist", "settings-refresh-catalogue", "settings-refresh-epg")) {
+            assertTrue(early, compose.onAllNodes(hasTestTag(early)).fetchSemanticsNodes().isEmpty())
+        }
+        type("settings-m3u", server.url("/list.m3u").toString())
+        click("settings-save")
+        savedShows()
+        // The line ends with the import's result instead of standing on "Syncing…".
+        statusShows("Imported 1 channel")
+        await("settings-sync-everything")
+        await("settings-refresh-playlist")
+        await("settings-refresh-catalogue")
+    }
+
+    /** A second new form opens at its top, not where the last one was left. */
+    @Test
+    fun aNewPageOpensAtItsTopAfterAnotherWasLeftAtItsButtons() {
+        openSettings()
+        click("source-add-m3u")
+        compose.onNodeWithTag("settings-save").performSemanticsAction(SemanticsActions.RequestFocus)
+        awaitFocus("settings-save")
+        press(KeyEvent.KEYCODE_BACK)
+        awaitFocus("source-add-m3u")
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        awaitFocus("settings-m3u")
+        compose.onNodeWithTag("source-page-back").assertIsDisplayed()
     }
 
     /**
@@ -159,7 +238,7 @@ class SettingsPlaylistsTest {
         openSettings()
         click("source-add-m3u")
         click("settings-import-vod")
-        await("settings-refresh-catalogue")
+        await("settings-save")
         for (gone in listOf("settings-refresh-playlist", "settings-refresh-epg", "settings-xmltv", "settings-epg-offset-up")) {
             assertTrue(gone, compose.onAllNodes(hasTestTag(gone)).fetchSemanticsNodes().isEmpty())
         }
@@ -192,7 +271,7 @@ class SettingsPlaylistsTest {
         click("source-add-m3u")
         type("settings-m3u", server.url("/list.m3u").toString())
         click("settings-save")
-        statusShows("Saved.")
+        savedShows()
         val id = runBlocking { graph.data.sources.all() }.single().id
         press(KeyEvent.KEYCODE_BACK)
         await("source-$id")
@@ -212,7 +291,7 @@ class SettingsPlaylistsTest {
         compose.onNodeWithTag("settings-save").performSemanticsAction(SemanticsActions.RequestFocus)
         awaitFocus("settings-save")
         press(KeyEvent.KEYCODE_DPAD_CENTER)
-        statusShows("Saved.")
+        savedShows()
         compose.waitForIdle()
         awaitFocus("settings-save")
         assertTrue(compose.onAllNodes(hasTestTag("settings-section-sources") and isFocused()).fetchSemanticsNodes().isEmpty())
@@ -246,7 +325,7 @@ class SettingsPlaylistsTest {
         click("source-add-m3u")
         type("settings-m3u", server.url("/list.m3u").toString())
         click("settings-save")
-        statusShows("Saved.")
+        savedShows()
         click("settings-source-delete")
         await("settings-source-delete-cancel")
         awaitFocus("settings-source-delete-cancel")

@@ -150,18 +150,16 @@ private fun LoadingBackdrop(url: String?) {
 internal fun AddonStopBanner(session: AddonSession, stop: AddonStop, modifier: Modifier = Modifier) {
     val retry = remember { FocusRequester() }
     val saveFailed by session.saveFailed.collectAsStateWithLifecycle()
-    val on = Sohva.palette.onDangerSurface
-    Column(
-        modifier.fillMaxWidth().background(Sohva.palette.dangerSurface.copy(alpha = 0.8f)).padding(horizontal = 20.dp, vertical = 12.dp).testTag("addon-stopped"),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        val line = when (stop) {
-            AddonStop.FAILED -> R.string.addon_ui_playback_stopped_retry_or_choose_another_source
-            AddonStop.BACKGROUND -> R.string.addon_ui_playback_stopped_while_the_app_was_in_the_background
-        }
-        Text(stringResource(line), style = Sohva.typography.body, color = on)
-        if (saveFailed) Text(stringResource(R.string.addon_ui_watch_progress_could_not_be_saved), style = Sohva.typography.caption, color = on.copy(alpha = 0.72f))
-        TvActionButton(stringResource(R.string.addon_ui_retry_with_fresh_source), session::retry, Modifier.padding(top = 8.dp).focusRequester(retry).testTag("addon-retry"))
+    val line = when (stop) {
+        AddonStop.FAILED -> R.string.addon_ui_playback_stopped_retry_or_choose_another_source
+        AddonStop.BACKGROUND -> R.string.addon_ui_playback_stopped_while_the_app_was_in_the_background
     }
+    PlayerNotice(
+        stringResource(line),
+        working = false,
+        modifier = modifier.testTag("addon-stopped"),
+        detail = if (saveFailed) stringResource(R.string.addon_ui_watch_progress_could_not_be_saved) else null,
+        action = { TvActionButton(stringResource(R.string.addon_ui_retry_with_fresh_source), session::retry, Modifier.focusRequester(retry).testTag("addon-retry")) },
+    )
     LaunchedEffect(stop) { retry.requestFocusWhenAttached() }
 }

@@ -171,6 +171,20 @@ class HomeTest {
         awaitFocus(left)
     }
 
+    /** Left into the rail lands on the entry used last in this visit, not always on the first. */
+    @Test
+    fun theRailOpensOnTheEntryUsedLast() {
+        awaitFocus(card(2))
+        compose.focusRail(RailItem.MOVIES)
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitUntil(10_000) { exists("screen-movies") }
+        press(KeyEvent.KEYCODE_BACK)
+        compose.waitUntil(10_000) { exists("screen-home") }
+        awaitFocus(card(2))
+        press(KeyEvent.KEYCODE_DPAD_LEFT)
+        awaitFocus(RailItem.MOVIES.tag)
+    }
+
     private companion object {
         const val MINUTE = 60_000L
     }

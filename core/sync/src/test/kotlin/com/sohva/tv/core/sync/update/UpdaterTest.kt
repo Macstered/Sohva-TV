@@ -70,7 +70,11 @@ class UpdaterTest {
         var session = SessionOutcome.SUCCESS
         val calls = ArrayList<String>()
 
+        var accepted = true
+
         override fun mayInstall(): Boolean = allowed
+
+        override fun accepts(apk: File): Boolean = accepted
 
         override suspend fun installWithProfile(apk: File, profile: File): SessionOutcome {
             calls += "session ${apk.name} ${profile.name}"
@@ -105,11 +109,14 @@ class UpdaterTest {
 
     private fun hex(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
+    /** Where the feed says the APK is; a test points it at another host. */
+    private var apkAddress: String? = null
+
     private fun feed(checksums: Boolean = true) = """
         [{"tag_name":"v0.2.0-beta.2","draft":false,"prerelease":true,"body":"# New\n\nAndroid build **101**.\n\n## Changed since beta 1\n- Faster guide.",
           "assets":[${if (checksums) """{"name":"SHA256SUMS.txt","browser_download_url":"${server.url("/sums")}","size":300},""" else ""}
             {"name":"sohva.api28.dm","browser_download_url":"${server.url("/dm")}","size":9000},
-            {"name":"sohva.apk","browser_download_url":"${server.url("/apk")}","size":200000}]},
+            {"name":"sohva.apk","browser_download_url":"${apkAddress ?: server.url("/apk")}","size":200000}]},
          {"tag_name":"v0.2.0-beta.1","draft":false,"prerelease":true,"body":"Android build **100**.\n\n## Changed\n- First.","assets":[]}]
     """.trimIndent()
 
@@ -171,6 +178,54 @@ class UpdaterTest {
         updater.install()
         runBlocking { withTimeout(5_000) { while (installer.calls.isEmpty()) kotlinx.coroutines.delay(10) } }
         assertEquals(listOf("session sohva.apk sohva.api28.dm"), installer.calls)
+    }
+
+    /** A file that is not this application, or not a newer build of it, is never handed to the installer. */
+    @Test
+    fun aDownloadThatIsNotThisApplicationIsDeletedAndNeverInstalled() {
+        installer.accepted = false
+        val updater = updater()
+        updater.check()
+        updater.await(UpdatePhase.AVAILABLE)
+        updater.download()
+        val failed = updater.await(UpdatePhase.FAILED)
+        assertEquals(UpdateFailure.CHECKSUM_MISMATCH, failed.failure)
+        assertFalse(File(folder, "sohva.apk").exists())
+        assertNull(memory.kept)
+        assertTrue("update: package check failed" in lines)
+        updater.install()
+        assertTrue(installer.calls.isEmpty())
+    }
+
+    /** Assets come from GitHub over HTTPS or from the feed's own origin (the local test feed), never elsewhere. */
+    @Test
+    fun anAssetOnAnotherHostIsNotDownloaded() {
+        apkAddress = "http://downloads.example/sohva.apk"
+        val updater = updater()
+        updater.check()
+        updater.await(UpdatePhase.AVAILABLE)
+        updater.download()
+        val failed = updater.await(UpdatePhase.FAILED)
+        assertEquals(UpdateFailure.DOWNLOAD_FAILED, failed.failure)
+        assertTrue("update: download refused: address" in lines)
+        assertTrue(folder.list().orEmpty().isEmpty())
+    }
+
+    /** A kept download is checked again before it is installed: the file may have been swapped since. */
+    @Test
+    fun aKeptDownloadIsCheckedAgainBeforeInstalling() {
+        val updater = updater()
+        updater.check()
+        updater.await(UpdatePhase.AVAILABLE)
+        updater.download()
+        updater.await(UpdatePhase.DOWNLOADED)
+        installer.accepted = false
+        updater.install()
+        val failed = updater.await(UpdatePhase.FAILED)
+        assertEquals(UpdateFailure.CHECKSUM_MISMATCH, failed.failure)
+        assertFalse(File(folder, "sohva.apk").exists())
+        assertNull(memory.kept)
+        assertTrue(installer.calls.isEmpty())
     }
 
     @Test

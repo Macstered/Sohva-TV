@@ -6,7 +6,7 @@
         <item quantity="many">Le nom de la source peut contenir au maximum %1$d caractères</item>
     </plurals>
     <string name="error_import_interrupted">La mise à jour s’est arrêtée à la fermeture de l’application. Les données précédentes ont été conservées.</string>
-    <string name="error_secrets_unreadable">Les adresses et mots de passe enregistrés ne sont plus lisibles sur cet appareil. Restaurez une sauvegarde ou ajoutez à nouveau vos sources.</string>
+    <string name="error_secrets_unreadable">Les adresses et mots de passe enregistrés ne sont plus lisibles sur cet appareil. Effacez les données de l’application dans les paramètres du téléviseur, puis restaurez une sauvegarde ou ajoutez à nouveau vos sources.</string>
     <string name="error_source_response_too_large">La réponse de la source était trop volumineuse</string>
     <string name="error_source_limit_reached">Impossible d’ajouter une autre source (limite : %1$d)</string>
     <string name="action_cancel">Annuler</string>
@@ -25,4 +25,23 @@
     <string name="metadata_key_refused">TMDB a refusé la clé trois fois. Les recherches en arrière-plan sont donc arrêtées. Vérifiez la clé, puis choisissez Enregistrer la clé.</string>
     <string name="metadata_tvmaze_credit">Certaines informations sur les séries proviennent de TVmaze (CC BY-SA)</string>
     <string name="custom_group_limit">24 groupes maximum</string>
+    <string name="update_notice_hint">Ouvrez %1$s › %2$s pour télécharger la mise à jour.</string>
+    <!-- Spec 72 (rebuild): diagnostics on a TV without a file picker, and to a phone. -->
+    <string name="diagnostics_send_phone">Envoyer au téléphone</string>
+    <string name="diagnostics_saved_downloads">Ce téléviseur n\'a pas de sélecteur de fichiers : le fichier a été enregistré dans le dossier Download sous le nom %1$s.</string>
+    <string name="diagnostics_phone_title">Envoyer le diagnostic à un téléphone</string>
+    <string name="diagnostics_phone_help">Scannez le code avec un téléphone sur le même réseau, ou ouvrez l\'adresse. La page affiche le fichier et l\'enregistre sur le téléphone.</string>
+    <string name="diagnostics_phone_sent">Le fichier est arrivé sur un téléphone. Vous pouvez fermer.</string>
+    <string name="diagnostics_page_title">Diagnostic de Sohva TV</string>
+    <string name="diagnostics_page_help">Le fichier de diagnostic de votre téléviseur, sans adresses ni clés. Enregistrez-le et envoyez-le au développeur s\'il le demande.</string>
+    <string name="diagnostics_page_save">Enregistrer le fichier</string>
+    <string name="diagnostics_page_failed">Le téléviseur n\'a pas transmis le fichier. Rouvrez la page depuis le téléviseur.</string>
+    <string name="diagnostics_page_privacy">Le fichier reste sur votre réseau domestique jusqu\'à ce que vous le partagiez.</string>
+    <string name="source_draft_kept">Les modifications non enregistrées ont été conservées. Rouvrez la source ou ajoutez-la à nouveau pour continuer.</string>
+    <string name="confirm_question">%1$s ?</string>
+    <string name="catalogue_nothing_imported_movies">Aucun film n’a encore été importé. Ajoutez une source dans les paramètres ou actualisez-y les films et séries.</string>
+    <string name="catalogue_nothing_imported_series">Aucune série n’a encore été importée. Ajoutez une source dans les paramètres ou actualisez-y les films et séries.</string>
+    <string name="channels_move_up">Monter la chaîne</string>
+    <string name="channels_move_down">Descendre la chaîne</string>
+    <string name="settings_section_accounts_title">Comptes</string>
 </resources>

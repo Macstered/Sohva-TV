@@ -155,8 +155,8 @@ private fun TeamMark(side: Side, sport: SportType, colors: TvSurfaceColors, modi
 internal fun Crest(url: String, size: Dp, modifier: Modifier) {
     val loader = LocalArtwork.current
     val px = with(LocalDensity.current) { size.roundToPx() }
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
-    LaunchedEffect(url, px) { image = loader.load(url, px, px, opaque = false) }
+    var image by remember(url, px) { mutableStateOf(loader.peek(url, px, px, opaque = false)) }
+    LaunchedEffect(url, px) { if (image == null) image = loader.load(url, px, px, opaque = false) }
     Box(modifier.drawBehind { image?.let { drawFitted(it, this.size.width, this.size.height) } })
 }
 

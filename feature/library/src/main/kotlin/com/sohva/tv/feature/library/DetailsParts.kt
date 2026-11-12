@@ -61,9 +61,9 @@ internal fun DetailsBackdrop(url: String?) {
     val loader = LocalArtwork.current
     // The window's size in pixels: the backdrop is never decoded larger than the screen (§9.5).
     val size = LocalWindowInfo.current.containerSize
-    var image by remember(url) { mutableStateOf<ImageBitmap?>(null) }
+    var image by remember(url, size) { mutableStateOf(url?.let { loader.peek(it, size.width, size.height, opaque = true) }) }
     LaunchedEffect(url, size) {
-        if (!url.isNullOrBlank()) image = loader.load(url, size.width, size.height, opaque = true)
+        if (image == null && !url.isNullOrBlank()) image = loader.load(url, size.width, size.height, opaque = true)
     }
     val ground = remember(palette) { Brush.linearGradient(listOf(palette.backgroundTop, palette.background, palette.backgroundBottom)) }
     val across = remember(palette) {

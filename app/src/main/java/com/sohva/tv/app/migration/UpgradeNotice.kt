@@ -37,7 +37,7 @@ fun UpgradeNotice(onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
-                Modifier.width(620.dp).roundFill(Sohva.palette.surface, Sohva.shapes.large).padding(28.dp).testTag("upgrade-notice"),
+                Modifier.width(620.dp).roundFill(Sohva.palette.panel, Sohva.shapes.large).padding(28.dp).testTag("upgrade-notice"),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Text(

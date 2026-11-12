@@ -89,6 +89,8 @@ fun LibraryScreen(model: LibraryModel) = trace("Library:Screen") {
     }
     val refocus by model.railRefocus.collectAsStateWithLifecycle()
     LaunchedEffect(refocus) { if (refocus > 0) rail.focusRail() }
+    val historyLeft by model.historyLeft.collectAsStateWithLifecycle()
+    LaunchedEffect(historyLeft) { if (model.takeHistoryFollow()) rail.focusRail() }
     LaunchedEffect(model) {
         if (model.firstEntry) {
             rail.focusRail()
@@ -245,7 +247,10 @@ private fun LibraryRail(model: LibraryModel, list: LazyListState, destination: F
                 TvListRow(
                     label = row.label ?: destinationLabel(row.destination).orEmpty(),
                     onClick = { model.select(row.key) },
-                    modifier = (if (index == target) Modifier.focusRequester(destination) else Modifier).testTag("library-row-${row.key}"),
+                    modifier = (if (index == target) Modifier.focusRequester(destination) else Modifier)
+                        // The model moves on from an empty History once; focus follows only from here.
+                        .then(if (row.key == LibraryModel.HISTORY_KEY) Modifier.onFocusChanged { model.historyRowFocused(it.isFocused) } else Modifier)
+                        .testTag("library-row-${row.key}"),
                     icon = if (row.destination == WallDestination.History) TvIcons.Replay else null,
                     trailing = row.count?.toString(),
                     state = SurfaceState(selected = row.key == selected),

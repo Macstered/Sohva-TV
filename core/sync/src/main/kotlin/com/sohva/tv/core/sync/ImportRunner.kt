@@ -165,7 +165,7 @@ class ImportRunner(
                 if (guideUrl != null) config = adoptPlaylistGuide(config, guideUrl)
             }
         }
-        if (touched.isNotEmpty()) analyze(touched)
+        if (touched.isNotEmpty()) analyze(touched, origin)
     }
 
     /** Runs one kind; returns the playlist header's guide address when the import found one. */
@@ -290,13 +290,29 @@ class ImportRunner(
         }
     }
 
-    private suspend fun analyze(tables: Set<String>) = withContext(env.dispatchers.bulkWrite) {
-        val sql = env.db.openHelper.writableDatabase
-        for (table in tables) sql.execSQL("ANALYZE $table")
+    /**
+     * Fresh statistics for the planner. Never while a video plays (spec 10 SRC-L-25): ANALYZE reads
+     * every index of a table on the write connection, and the old statistics serve until then.
+     * `analysis_limit` makes SQLite 3.32 and later (Android 12 and later, the low-end box) sample
+     * each index instead of reading it whole; older versions ignore the pragma.
+     */
+    private suspend fun analyze(tables: Set<String>, origin: WorkOrigin) {
+        for (table in tables) {
+            env.pauseGate.awaitNoPlayback()
+            env.pauseGate.awaitTurn(origin)
+            withContext(env.dispatchers.bulkWrite) {
+                val sql = env.db.openHelper.writableDatabase
+                sql.query("PRAGMA analysis_limit=$ANALYSIS_LIMIT").use { it.moveToFirst() }
+                sql.execSQL("ANALYZE $table")
+            }
+        }
     }
 
     companion object {
         val ALL_KINDS: Set<RefreshKind> = RefreshKind.entries.toSet()
+
+        /** Rows ANALYZE reads per index where SQLite supports the limit; SQLite's own suggestion for a quick pass. */
+        private const val ANALYSIS_LIMIT = 400
         private val ORDER = listOf(RefreshKind.PLAYLIST, RefreshKind.EPG, RefreshKind.CATALOGUE)
         private const val EVENT = "import"
     }

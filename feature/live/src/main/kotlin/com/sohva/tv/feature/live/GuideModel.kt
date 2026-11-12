@@ -478,6 +478,18 @@ class GuideModel(private val env: GuideEnvironment, private val openedFor: Strin
 
     fun isAtNow(): Boolean = _window.value.isAtNow(env.clock.wallMillis())
 
+    /**
+     * The block Right enters from the channel column. At now that is the programme on air, the one
+     * the hero already shows for the channel; beta 23 took the leftmost block, which at now is
+     * often a programme that has ended (decision "Guide, first Right", a departure from GUIDE-FR-70).
+     * Earlier blocks stay one Left away. Away from now, and when nothing is on air, the leftmost block.
+     */
+    fun entryBlock(schedule: RowSchedule, blocks: List<Int>): Int {
+        if (!isAtNow()) return blocks.first()
+        val now = env.clock.wallMillis()
+        return blocks.firstOrNull { i -> schedule.programmes[i].let { it.start <= now && now < it.stop } } ?: blocks.first()
+    }
+
     // ---- Selection and focus -----------------------------------------------------------------
 
     /** Focus on a row's channel column (GUIDE-FR-60). */

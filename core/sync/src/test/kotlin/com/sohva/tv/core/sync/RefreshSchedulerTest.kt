@@ -40,6 +40,10 @@ class RefreshSchedulerTest {
         override suspend fun failuresSince(sinceMillis: Long, kinds: Set<RefreshKind>): Int =
             h.query("SELECT COUNT(*) FROM source_status WHERE status = 'failed' AND last_failure_at >= $sinceMillis").single().toInt()
         override fun nowMillis(): Long = h.clock.now
+        val deferred = ArrayList<Pair<Set<RefreshKind>, Long>>()
+        override fun refreshDeferred(kinds: Set<RefreshKind>, freshMs: Long) {
+            deferred += kinds to freshMs
+        }
     }
 
     private fun worker(host: Host, kinds: Set<RefreshKind>, now: Boolean, freshMs: Long = 0): RefreshWorker =
@@ -79,8 +83,11 @@ class RefreshSchedulerTest {
         h.addM3u()
         h.serve("/list.m3u", "#EXTM3U\n#EXTINF:-1,A\nhttp://s.example/a\n")
         val host = Host(foreground = true, neverImported = 0)
-        assertEquals(ListenableWorker.Result.retry(), worker(host, setOf(RefreshKind.PLAYLIST), now = false).doWork())
+        // Not a retry: WorkManager's backoff grows with every attempt, up to five hours. The scheduler
+        // is told instead and runs the refresh when the viewer leaves.
+        assertEquals(ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = false, freshMs = 7).doWork())
         assertTrue("nothing was fetched", h.requests.isEmpty())
+        assertEquals(listOf(setOf(RefreshKind.PLAYLIST) to 7L), host.deferred)
 
         host.neverImported = 1
         assertEquals(ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = false).doWork())
@@ -89,6 +96,25 @@ class RefreshSchedulerTest {
         host.neverImported = 0
         assertEquals("Sync now never waits", ListenableWorker.Result.success(), worker(host, setOf(RefreshKind.PLAYLIST), now = true).doWork())
         assertEquals(2, h.requests.size)
+    }
+
+    @Test
+    fun aRefreshDeferredWhileTheViewerWatchedRunsWhenTheyLeave() {
+        WorkManagerTestInitHelper.initializeTestWorkManager(context)
+        val work = WorkManager.getInstance(context)
+        val scheduler = RefreshScheduler(work)
+        scheduler.onLeave()
+        assertTrue("nothing was deferred, nothing is queued", work.getWorkInfosForUniqueWork(RefreshScheduler.DEFERRED_WORK).get().isEmpty())
+        scheduler.deferred(setOf(RefreshKind.PLAYLIST, RefreshKind.EPG), freshMs = 1_000)
+        scheduler.deferred(setOf(RefreshKind.CATALOGUE), freshMs = 9_000)
+        scheduler.onLeave()
+        val queued = work.getWorkInfosForUniqueWork(RefreshScheduler.DEFERRED_WORK).get().single()
+        assertEquals(WorkInfo.State.ENQUEUED, queued.state)
+        assertEquals(RefreshScheduler.LEAVE_DELAY_MS, queued.initialDelayMillis)
+        // Handed over once: leaving again queues nothing new.
+        work.cancelUniqueWork(RefreshScheduler.DEFERRED_WORK).result.get()
+        scheduler.onLeave()
+        assertTrue(work.getWorkInfosForUniqueWork(RefreshScheduler.DEFERRED_WORK).get().none { it.state == WorkInfo.State.ENQUEUED })
     }
 
     @Test
@@ -132,5 +158,21 @@ class RefreshSchedulerTest {
         h.playing.value = false
         run.await()
         assertEquals(1, h.requests.size)
+    }
+
+    /** A viewer-started import keeps going during playback, but its closing statistics wait for the video to end. */
+    @Test
+    fun theStatisticsAfterAnImportWaitWhileVideoPlays() = runBlocking {
+        h.addM3u()
+        h.serve("/list.m3u", "#EXTM3U\n#EXTINF:-1,A\nhttp://s.example/a\n")
+        h.playing.value = true
+        val sync = h.runner.sync("m3u-1", setOf(RefreshKind.PLAYLIST), WorkOrigin.VIEWER)
+        kotlinx.coroutines.withTimeout(10_000) {
+            while (h.query("SELECT status FROM source_status WHERE kind = 'playlist'").singleOrNull() != "success") delay(50)
+        }
+        delay(400)
+        assertTrue("the import is in, the statistics wait", sync.isActive)
+        h.playing.value = false
+        kotlinx.coroutines.withTimeout(10_000) { sync.join() }
     }
 }

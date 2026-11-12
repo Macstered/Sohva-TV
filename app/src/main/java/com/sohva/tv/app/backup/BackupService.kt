@@ -117,6 +117,12 @@ class BackupService(private val graph: AppGraph) {
      */
     suspend fun restore(payload: BackupPayload, withSources: Boolean = true) = withContext(graph.dispatchers.io) {
         val started = SystemClock.elapsedRealtime()
+        // Sources and the PIN are saved through the secret store. A television that cannot store
+        // secrets used to lose the sources the backup does not hold and then stop at the first save.
+        if (withSources && !data.secrets.writable()) {
+            graph.diagnostics.error("backup", "restore refused: secrets cannot be written")
+            throw BackupException(BackupProblem.SECRETS)
+        }
         rows.markRestoring(true)
         val before = data.profiles.household.value.shown.map { it.id }
         // The beta 23 importer brings the sources itself (decision A1) and passes [withSources] false.

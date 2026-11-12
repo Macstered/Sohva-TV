@@ -1,11 +1,15 @@
 package com.sohva.tv.feature.sport
 
 import com.sohva.tv.core.model.sport.EventStatus
+import com.sohva.tv.core.model.sport.ProviderReference
+import com.sohva.tv.core.model.sport.ReferenceKind
 import com.sohva.tv.core.model.sport.Side
 import com.sohva.tv.core.model.sport.SportEvent
 import com.sohva.tv.core.model.sport.SportType
 import com.sohva.tv.core.model.sport.pairing.Confidence
 import com.sohva.tv.core.model.sport.pairing.Decision
+import com.sohva.tv.core.model.sport.pairing.EventNames
+import com.sohva.tv.core.model.sport.pairing.DictionaryNames
 import com.sohva.tv.core.model.sport.pairing.MatchSource
 import com.sohva.tv.core.model.sport.pairing.StreamMatch
 import com.sohva.tv.feature.sport.pairing.PairingCache
@@ -117,5 +121,28 @@ class PairingCacheTest {
         val read = cache.read("gen", games, now)
         assertEquals(512, read.size)
         assertTrue(games.take(8).none { it.id in read })
+    }
+
+    @Test
+    fun identityAndDictionaryChangesInvalidateResultsWhileScoresDoNot() {
+        val g = game(1).let { it.copy(home = it.home.copy(reference = ProviderReference("fixture", "football", ReferenceKind.TEAM, "1"))) }
+        val names = mapOf(g.id to EventNames(homeId = "opaque-home", awayId = "opaque-away", competitionId = "opaque-cup"))
+        val result = stream(g, "a").copy(competitionEvidence = 1)
+        val cache = PairingCache(file)
+        cache.write("dictionary:one", listOf(g), mapOf(g.id to listOf(result)), now, names)
+        assertEquals(listOf(result), cache.read("dictionary:one", listOf(g.copy(score = "2 - 1", minute = "67")), now, names).getValue(g.id))
+        assertTrue(cache.read("dictionary:two", listOf(g), now, names).isEmpty())
+        assertTrue(cache.read("dictionary:one", listOf(g), now, mapOf(g.id to names.getValue(g.id).copy(homeId = "other-home"))).isEmpty())
+        val renamedReference = g.copy(home = g.home.copy(reference = g.home.reference!!.copy(externalId = "2")))
+        assertTrue(cache.read("dictionary:one", listOf(renamedReference), now, names).isEmpty())
+        assertTrue(cache.read("dictionary:one", listOf(g.copy(competition = "Other Cup")), now, names).isEmpty())
+    }
+
+    @Test
+    fun anotherFixturesCompetitionChangesRecognisedContextButNotMapOrder() {
+        val one = DictionaryNames(competitions = mapOf("cup@1" to setOf("fixture cup")))
+        val two = one.copy(competitions = one.competitions + ("league@1" to setOf("fixture league")))
+        assertTrue(PairingCache.competitionContext(one) != PairingCache.competitionContext(two))
+        assertEquals(PairingCache.competitionContext(two), PairingCache.competitionContext(two.copy(competitions = two.competitions.entries.reversed().associate { it.toPair() })))
     }
 }

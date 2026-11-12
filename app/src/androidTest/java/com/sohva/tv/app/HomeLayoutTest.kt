@@ -269,6 +269,11 @@ class HomeLayoutTest {
         val buttons = listOf("settings-home-order", "settings-home-visibility", "settings-home-trakt", "settings-home-reset")
         repeat(10) { if (buttons.none(::focused)) press(KeyEvent.KEYCODE_DPAD_UP) }
         walkTo("settings-home-reset", KeyEvent.KEYCODE_DPAD_RIGHT, limit = 4)
+        // Reset asks once more in place: the first OK keeps the layout.
+        press(KeyEvent.KEYCODE_DPAD_CENTER)
+        compose.waitForIdle()
+        assertFalse("the first OK already reset the layout", stored() == HomeLayout.DEFAULT)
+        assertTrue(focused("settings-home-reset"))
         press(KeyEvent.KEYCODE_DPAD_CENTER)
         compose.waitUntil(5_000) { stored() == HomeLayout.DEFAULT }
         assertEquals(null, runBlocking { prefs.homeLayoutText(profile) })

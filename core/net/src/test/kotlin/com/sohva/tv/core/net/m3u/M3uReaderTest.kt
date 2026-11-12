@@ -128,7 +128,7 @@ class M3uReaderTest {
     }
 
     @Test
-    fun contentKindKeepsBeta23SubstringRule() {
+    fun contentKindFollowsTypesPathsAndWholeGroupWords() {
         fun kind(extinf: String, url: String = "http://provider.example/x"): M3uKind = single("#EXTINF:$extinf\n$url").kind
         assertEquals(M3uKind.MOVIE, kind("-1 group-title=\"Movies FI\",A"))
         assertEquals(M3uKind.SERIES, kind("-1 group-title=\"Sarjat\",A"))
@@ -136,9 +136,9 @@ class M3uReaderTest {
         assertEquals(M3uKind.SERIES, kind("-1,A", "http://provider.example/series/u/p/1.mkv"))
         assertEquals(M3uKind.MOVIE, kind("-1,A", "http://provider.example/x/1.MKV?token=1"))
         assertEquals(M3uKind.MOVIE, kind("5400,A"))
-        // Compatibility, not a wish: substring matching misfiles these live groups (spec 10 §8).
-        assertEquals(M3uKind.SERIES, kind("-1 group-title=\"Showtime\",A"))
-        assertEquals(M3uKind.MOVIE, kind("-1 group-title=\"Filmbox\",A"))
+        // Beta 23 matched substrings and misfiled these live groups (spec 10 §8); whole words now (decision "Live or film").
+        assertEquals(M3uKind.LIVE, kind("-1 group-title=\"Showtime\",A"))
+        assertEquals(M3uKind.LIVE, kind("-1 group-title=\"Filmbox\",A"))
         assertEquals(M3uKind.LIVE, kind("-1 group-title=\"Sports\",A"))
     }
 

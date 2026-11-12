@@ -89,3 +89,8 @@
 | 8.4 | The updater of old builds reads the release body ("Android build **N**") and needs `SHA256SUMS.txt`; since beta 23 it also installs `.dm` profiles. | Keep the release-body contract and the five assets for every release forever. |
 | 8.5 | A tester's "frame around the UI while video fills the screen" was the device's own display-area setting (Amlogic scales only the graphics plane). | Before hunting an app bug for display framing, ask for the device's screen position/size settings. |
 | 8.6 | Two agents (Claude and Codex) worked in the same worktree and ledger; state changed while one was paused. | One shared decision log and ledger in the new repo; re-read it and `git log` before resuming work. |
+
+- **A Room flow's first value waits for the writer (11 October 2026).** `flow.first()` on an observable
+  query registers table observers through the single write connection, so it hangs behind a
+  running import. For a one-off value use a `suspend` query. Writes that must not be lost when
+  their caller is cancelled (recent channel) run non-cancellably and show from memory meanwhile.

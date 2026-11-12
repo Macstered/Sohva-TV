@@ -69,6 +69,8 @@ class SohvaApplication : Application(), Configuration.Provider, RefreshHost, Pla
 
     override fun nowMillis(): Long = graph.clock.wallMillis()
 
+    override fun refreshDeferred(kinds: Set<RefreshKind>, freshMs: Long) = graph.sync.scheduler.deferred(kinds, freshMs)
+
     override fun playerEnvironment(): PlayerEnvironment = graph.player
 
     override val enrichment: Enrichment get() = graph.metadata.enrichment

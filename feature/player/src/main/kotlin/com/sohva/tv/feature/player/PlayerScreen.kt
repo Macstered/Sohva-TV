@@ -93,6 +93,14 @@ private fun androidx.compose.foundation.layout.BoxScope.PlayerContent(model: Pla
     Box(
         Modifier.fillMaxSize().focusRequester(host).onKeyEvent { model.keys.onKey(it.nativeKeyEvent) }.focusable().testTag("player-video"),
     )
+    // Entry owns the clean-screen keys even if the initial info box arrived before this frame.
+    LaunchedEffect(Unit) {
+        host.requestFocusWhenAttached {
+            !model.channels.open.value && model.picker.value == null && !model.quickActions.value &&
+                model.banner.value?.stopped != true && model.addon?.stop?.value == null &&
+                model.boxFocusRequest.value == 0 && model.transport.focusPlayRequest.value == 0
+        }
+    }
     if (box || listOpen || controls) ChromeScrim()
     if (stats) InfoLine(model)
     DialReadout(dial, stats)
